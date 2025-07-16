@@ -5,7 +5,6 @@ from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 from pydantic import BaseModel
-# ВОТ ИСПРАВЛЕНИЕ: Мы импортируем Session отсюда
 from sqlalchemy.orm import Session
 from fastapi import FastAPI, Depends, HTTPException, Header
 from typing import Optional
