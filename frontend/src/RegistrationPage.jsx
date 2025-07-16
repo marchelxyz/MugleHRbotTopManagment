@@ -1,9 +1,6 @@
-// frontend/src/RegistrationPage.jsx
 import React, { useState } from 'react';
 import { registerUser } from './api';
 
-// Компонент получает в качестве props данные о пользователе из Telegram
-// и функцию, которую нужно вызвать после успешной регистрации.
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const [position, setPosition] = useState('');
   const [error, setError] = useState('');
@@ -24,10 +21,10 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         username: telegramUser.username,
         position: position,
       };
-      // Вызываем функцию API для регистрации
+
       await registerUser(telegramUser.id, userData);
       alert('Вы успешно зарегистрированы!');
-      onRegistrationSuccess(); // Сообщаем главному компоненту об успехе
+      onRegistrationSuccess();
     } catch (err) {
       setError('Не удалось зарегистрироваться. Попробуйте снова.');
       console.error(err);
@@ -40,8 +37,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
     <div style={{ padding: '20px', textAlign: 'center' }}>
       <h1>Добро пожаловать!</h1>
       <p>
-        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста,
-        укажите вашу должность.
+        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу должность.
       </p>
       <form onSubmit={handleSubmit}>
         <input
