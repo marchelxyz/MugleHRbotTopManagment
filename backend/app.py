@@ -1,58 +1,126 @@
-# backend/app.py (Временная версия для диагностики №2)
+# backend/app.py (Финальная рабочая версия)
 
 import os
+import logging
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import func
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException, Header
 from typing import Optional
 
-# --- Приложение FastAPI ---
-app = FastAPI(
-    title="MugleHRbot API Diagnostics",
-    description="Тестируем запуск приложения без подключения к БД.",
-    version="1.2.0"
-)
+# --- Настройка логирования ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# --- ВРЕМЕННО УПРОЩЕННЫЕ ЭНДПОИНТЫ ---
-# Мы не используем базу данных, а просто возвращаем тестовые данные.
+# --- Конфигурация базы данных (с исправлением) ---
+logger.info("Загрузка конфигурации базы данных...")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-@app.get("/")
-def read_root():
-    return {"message": "Основной код работает, база данных отключена."}
+if not DATABASE_URL:
+    logger.error("Переменная окружения DATABASE_URL не установлена!")
+    raise Exception("Переменная окружения DATABASE_URL не установлена!")
+
+# ВАЖНО: Исправление для совместимости с Railway/Heroku
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    logger.info("DATABASE_URL был преобразован для совместимости с SQLAlchemy.")
+
+engine = None
+try:
+    logger.info("Попытка подключения к базе данных...")
+    engine = create_engine(DATABASE_URL)
+    # Пробное подключение, чтобы убедиться, что все работает
+    with engine.connect() as connection:
+        logger.info("Подключение к базе данных успешно установлено!")
+except SQLAlchemyError as e:
+    logger.error(f"Ошибка подключения к базе данных: {e}")
+    raise
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# --- Модели Базы Данных (остаются без изменений) ---
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    telegram_id = Column(Integer, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True)
+    first_name = Column(String, nullable=False)
+    position = Column(String, nullable=False)
+    balance = Column(Integer, default=100, nullable=False)
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    receiver_id = Column(Integer, ForeignKey("users.id"))
+    amount = Column(Integer, nullable=False)
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# Создаем таблицы в базе данных
+logger.info("Создание таблиц в базе данных (если их нет)...")
+Base.metadata.create_all(bind=engine)
+logger.info("Проверка таблиц завершена.")
+
+# --- Схемы данных Pydantic (остаются без изменений) ---
+class RegisterRequest(BaseModel):
+    first_name: str
+    username: Optional[str] = None
+    position: str
 
 class UserResponse(BaseModel):
-    """Временная схема для ответа"""
     telegram_id: int
     username: Optional[str]
     first_name: str
     position: str
     balance: int
+    class Config:
+        from_attributes = True
+
+# --- Приложение FastAPI ---
+app = FastAPI(
+    title="MugleHRbot API",
+    description="API для peer-to-peer баллов.",
+    version="2.0.0"
+)
+
+# --- Вспомогательные функции ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# --- API Эндпоинты (полная версия) ---
+@app.get("/")
+def read_root():
+    return {"message": "API для HR бота успешно запущено и работает!"}
 
 @app.get("/users/me", response_model=UserResponse, summary="Проверить статус регистрации пользователя")
-def check_user_status(x_telegram_id: int = Header(...)):
-    """
-    Эмулирует ответ "пользователь найден" без запроса к БД.
-    """
-    # Если мы дошли сюда, значит, приложение работает.
-    # Для теста просто вернем фейкового пользователя.
-    return {
-        "telegram_id": x_telegram_id,
-        "username": "testuser",
-        "first_name": "Тестовый",
-        "position": "Тестировщик",
-        "balance": 999
-    }
+def check_user_status(x_telegram_id: int = Header(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == x_telegram_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не зарегистрирован.")
+    return user
 
-# --- ВЕСЬ КОД, СВЯЗАННЫЙ С БД, ВРЕМЕННО ОТКЛЮЧЕН ---
+@app.post("/auth/register", response_model=UserResponse, status_code=201, summary="Зарегистрировать нового пользователя")
+def register_user(request: RegisterRequest, x_telegram_id: int = Header(...), db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.telegram_id == x_telegram_id).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Этот пользователь уже зарегистрирован.")
+    new_user = User(
+        telegram_id=x_telegram_id,
+        first_name=request.first_name,
+        username=request.username,
+        position=request.position
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
-# import sqlalchemy...
-# from dotenv import load_dotenv
-# ...
-# DATABASE_URL = os.getenv("DATABASE_URL", "...")
-# engine = create_engine(DATABASE_URL)
-# SessionLocal = sessionmaker(...)
-# Base = declarative_base()
-# ... модели User, Transaction ...
-# Base.metadata.create_all(bind=engine)
-# ... схемы Pydantic ...
-# ... функция get_db() ...
-# ... эндпоинт /auth/register ...
+logger.info("Приложение FastAPI полностью сконфигурировано и готово к работе.")
