@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getFeed, getLastMonthLeaderboard } from './api';
+import { getFeed, getLastMonthLeaderboard } from '../api';
 
 function HomePage({ user, onNavigate }) {
   const [feed, setFeed] = useState([]);
