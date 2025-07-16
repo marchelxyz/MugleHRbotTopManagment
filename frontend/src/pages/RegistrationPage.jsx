@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { registerUser } from './api';
+import { registerUser } from '../api';
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const [position, setPosition] = useState('');
