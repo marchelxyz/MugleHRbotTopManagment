@@ -1,15 +1,16 @@
 import os
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
+# ИМПОРТИРУЕМ НОВЫЙ ТИП ДАННЫХ
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException, Header
-from typing import Optional, List # Добавляем List для типизации списка
+from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
 
-# ... (Настройки логирования, БД, и модели User, Transaction остаются без изменений) ...
+# ... (Настройки логирования и подключения к БД остаются без изменений) ...
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,12 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# --- ИЗМЕНЕНИЕ В МОДЕЛИ USER ---
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(Integer, unique=True, index=True, nullable=False)
+    # МЕНЯЕМ Integer НА BigInteger
+    telegram_id = Column(BigInteger, unique=True, index=True, nullable=False)
     username = Column(String, unique=True)
     first_name = Column(String, nullable=False)
     position = Column(String, nullable=False)
@@ -35,6 +38,7 @@ class User(Base):
     sent_transactions = relationship("Transaction", foreign_keys="[Transaction.sender_id]", back_populates="sender")
     received_transactions = relationship("Transaction", foreign_keys="[Transaction.receiver_id]", back_populates="receiver")
 
+# ... (Весь остальной код остается без изменений) ...
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
@@ -43,22 +47,18 @@ class Transaction(Base):
     amount = Column(Integer, nullable=False)
     message = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_transactions")
     receiver = relationship("User", foreign_keys=[receiver_id], back_populates="received_transactions")
 
 Base.metadata.create_all(bind=engine)
 
-# --- Обновленные Схемы данных Pydantic ---
-
 class UserBase(BaseModel):
-    """Базовая схема для отображения пользователя в списке"""
     telegram_id: int
     first_name: str
     position: str
 
 class UserResponse(UserBase):
-    """Полная схема для ответа с данными пользователя"""
     username: Optional[str]
     balance: int
     class Config:
@@ -69,16 +69,13 @@ class RegisterRequest(BaseModel):
     username: Optional[str] = None
     position: str
 
-# НОВАЯ СХЕМА для запроса на перевод
 class TransferRequest(BaseModel):
     receiver_telegram_id: int
     amount: int
     message: str
 
-
 app = FastAPI()
 
-# Настройка CORS
 origins = ["https://mugle-h-rbot-top-managment.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
@@ -95,15 +92,11 @@ def get_db():
     finally:
         db.close()
 
-# --- Обновленные API Эндпоинты ---
-
 @app.get("/")
 def read_root(): return {"message": "API для HR бота успешно запущено и работает!"}
 
-# НОВЫЙ ЭНДПОИНТ для получения списка пользователей
 @app.get("/users", response_model=List[UserBase], summary="Получить список всех пользователей")
 def get_all_users(x_telegram_id: int = Header(...), db: Session = Depends(get_db)):
-    """Возвращает список всех пользователей, кроме текущего."""
     users = db.query(User).filter(User.telegram_id != x_telegram_id).all()
     return users
 
@@ -116,7 +109,6 @@ def check_user_status(x_telegram_id: int = Header(...), db: Session = Depends(ge
 
 @app.post("/auth/register", response_model=UserResponse, status_code=201)
 def register_user(request: RegisterRequest, x_telegram_id: int = Header(...), db: Session = Depends(get_db)):
-    # ... (код регистрации остается без изменений) ...
     existing_user = db.query(User).filter(User.telegram_id == x_telegram_id).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Этот пользователь уже зарегистрирован.")
@@ -131,14 +123,12 @@ def register_user(request: RegisterRequest, x_telegram_id: int = Header(...), db
     db.refresh(new_user)
     return new_user
 
-# НОВЫЙ ЭНДПОИНТ для перевода баллов
 @app.post("/points/transfer", summary="Перевести баллы другому пользователю")
 def transfer_points(
     request: TransferRequest,
     x_telegram_id: int = Header(...),
     db: Session = Depends(get_db)
 ):
-    # Валидация
     if x_telegram_id == request.receiver_telegram_id:
         raise HTTPException(status_code=400, detail="Нельзя переводить баллы самому себе.")
     if request.amount <= 0:
@@ -146,7 +136,6 @@ def transfer_points(
     if not request.message or len(request.message.strip()) == 0:
         raise HTTPException(status_code=400, detail="Комментарий не может быть пустым.")
 
-    # Поиск отправителя и получателя
     sender = db.query(User).filter(User.telegram_id == x_telegram_id).first()
     receiver = db.query(User).filter(User.telegram_id == request.receiver_telegram_id).first()
 
@@ -157,10 +146,9 @@ def transfer_points(
     if sender.balance < request.amount:
         raise HTTPException(status_code=400, detail="Недостаточно баллов для перевода.")
 
-    # Проведение транзакции
     sender.balance -= request.amount
     receiver.balance += request.amount
-    
+
     new_transaction = Transaction(
         sender_id=sender.id,
         receiver_id=receiver.id,
