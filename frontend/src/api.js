@@ -29,3 +29,6 @@ export const transferPoints = (telegramId, transferData) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+export const getFeed = () => apiClient.get('/transactions/feed');
+export const getLastMonthLeaderboard = () => apiClient.get('/leaderboard/last-month');
