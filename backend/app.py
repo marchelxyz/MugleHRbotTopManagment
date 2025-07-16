@@ -9,6 +9,7 @@ from sqlalchemy.sql import func
 from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException, Header
 from typing import Optional
+from sqlalchemy.orm import Session
 
 # --- Настройка логирования ---
 logging.basicConfig(level=logging.INFO)
