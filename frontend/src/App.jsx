@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { checkUserStatus } from './api';
 
 // Компоненты
-import BottomNav from './components/BottomNav';
-import RegistrationPage from './pages/RegistrationPage';
-import HomePage from './pages/HomePage';
-import TransferPage from './pages/TransferPage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import MarketplacePage from './pages/MarketplacePage';
-import ProfilePage from './pages/ProfilePage';
+import BottomNav from './components/BottomNav'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import RegistrationPage from './pages/RegistrationPage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import HomePage from './pages/HomePage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import TransferPage from './pages/TransferPage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import LeaderboardPage from './pages/LeaderboardPage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import MarketplacePage from './pages/MarketplacePage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import ProfilePage from './pages/ProfilePage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
 
 const tg = window.Telegram.WebApp;
 
