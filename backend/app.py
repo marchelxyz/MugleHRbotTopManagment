@@ -1,5 +1,3 @@
-# backend/app.py (Финальная рабочая версия)
-
 import os
 import logging
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
@@ -7,15 +5,16 @@ from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import func
 from pydantic import BaseModel
+# ВОТ ИСПРАВЛЕНИЕ: Мы импортируем Session отсюда
+from sqlalchemy.orm import Session
 from fastapi import FastAPI, Depends, HTTPException, Header
 from typing import Optional
-from sqlalchemy.orm import Session
 
-# --- Настройка логирования ---
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- Конфигурация базы данных (с исправлением) ---
+# Конфигурация базы данных
 logger.info("Загрузка конфигурации базы данных...")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -23,7 +22,6 @@ if not DATABASE_URL:
     logger.error("Переменная окружения DATABASE_URL не установлена!")
     raise Exception("Переменная окружения DATABASE_URL не установлена!")
 
-# ВАЖНО: Исправление для совместимости с Railway/Heroku
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     logger.info("DATABASE_URL был преобразован для совместимости с SQLAlchemy.")
@@ -32,7 +30,6 @@ engine = None
 try:
     logger.info("Попытка подключения к базе данных...")
     engine = create_engine(DATABASE_URL)
-    # Пробное подключение, чтобы убедиться, что все работает
     with engine.connect() as connection:
         logger.info("Подключение к базе данных успешно установлено!")
 except SQLAlchemyError as e:
@@ -42,7 +39,7 @@ except SQLAlchemyError as e:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# --- Модели Базы Данных (остаются без изменений) ---
+# Модели Базы Данных
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -61,12 +58,11 @@ class Transaction(Base):
     message = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-# Создаем таблицы в базе данных
 logger.info("Создание таблиц в базе данных (если их нет)...")
 Base.metadata.create_all(bind=engine)
 logger.info("Проверка таблиц завершена.")
 
-# --- Схемы данных Pydantic (остаются без изменений) ---
+# Схемы данных Pydantic
 class RegisterRequest(BaseModel):
     first_name: str
     username: Optional[str] = None
@@ -81,14 +77,14 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# --- Приложение FastAPI ---
+# Приложение FastAPI
 app = FastAPI(
     title="MugleHRbot API",
     description="API для peer-to-peer баллов.",
-    version="2.0.0"
+    version="2.1.0"
 )
 
-# --- Вспомогательные функции ---
+# Вспомогательные функции
 def get_db():
     db = SessionLocal()
     try:
@@ -96,7 +92,7 @@ def get_db():
     finally:
         db.close()
 
-# --- API Эндпоинты (полная версия) ---
+# API Эндпоинты
 @app.get("/")
 def read_root():
     return {"message": "API для HR бота успешно запущено и работает!"}
