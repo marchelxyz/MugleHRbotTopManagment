@@ -20,7 +20,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
 
     try {
       const userData = {
-        firstName: telegramUser.first_name,
+        first_name: telegramUser.first_name,
         username: telegramUser.username,
         position: position,
       };
