@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllUsers, transferPoints } from './api';
+import { getAllUsers, transferPoints } from '../api';
 
 // Получаем ID текущего пользователя из Telegram
 const tg = window.Telegram.WebApp;
