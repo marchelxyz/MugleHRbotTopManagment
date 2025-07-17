@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getFeed, getLastMonthLeaderboard } from '../api';
+import { getFeed, getLastMonthLeaderboard } from '../api'; // Убедитесь, что путь '../api' правильный
 
 function HomePage({ user, onNavigate }) {
   const [feed, setFeed] = useState([]);
@@ -10,9 +10,8 @@ function HomePage({ user, onNavigate }) {
     const fetchData = async () => {
       try {
         const feedResponse = await getFeed();
-        const leaderboardResponse = await getLastMonthLeaderboard();
         setFeed(feedResponse.data);
-        setLeaderboard(leaderboardResponse.data);
+        // Для главной страницы нам пока не нужен рейтинг, мы его вынесем на отдельную страницу
       } catch (error) {
         console.error("Failed to fetch data for home page", error);
       } finally {
@@ -35,24 +34,6 @@ function HomePage({ user, onNavigate }) {
       >
         Передать баллы
       </button>
-
-      {/* БЛОК РЕЙТИНГА */}
-      <div>
-        <h3>🏆 Лидеры прошлого месяца</h3>
-        {isLoading ? <p>Загрузка рейтинга...</p> : (
-          leaderboard.length > 0 ? (
-            <ol style={{ paddingLeft: '20px' }}>
-              {leaderboard.map((item, index) => (
-                <li key={index}>
-                  <strong>{item.user.first_name}</strong> - {item.total_points} баллов
-                </li>
-              ))}
-            </ol>
-          ) : <p>В прошлом месяце не было активности.</p>
-        )}
-      </div>
-
-      <hr style={{ margin: '30px 0' }}/>
 
       {/* БЛОК ЛЕНТЫ */}
       <div>
