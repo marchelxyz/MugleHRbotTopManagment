@@ -1,5 +1,6 @@
 import os
 import logging
+import httpx
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, BigInteger, func, desc
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, Session
 from sqlalchemy.exc import SQLAlchemyError
