@@ -16,11 +16,13 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
     setError('');
 
     try {
-      const userData = {
-        first_name: telegramUser.first_name,
-        username: telegramUser.username,
-        position: position,
-      };
+     const userData = {
+  first_name: telegramUser.first_name,
+  last_name: lastName,
+  department: department,
+  position: position,
+  username: telegramUser.username,
+};
 
       await registerUser(telegramUser.id, userData);
       alert('Вы успешно зарегистрированы!');
