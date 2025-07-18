@@ -140,7 +140,7 @@ async def send_telegram_notification(message: str):
 
 app = FastAPI()
 # ... (Настройка CORS остается без изменений) ...
-origins = ["https://mugle-h-rbot-top-managment.vercel.app"]
+origins = ["*"]
 app.add_middleware(
     CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
