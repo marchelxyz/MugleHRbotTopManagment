@@ -39,6 +39,8 @@ class User(Base):
     balance = Column(Integer, default=100, nullable=False)
     sent_transactions = relationship("Transaction", foreign_keys="[Transaction.sender_id]", back_populates="sender")
     received_transactions = relationship("Transaction", foreign_keys="[Transaction.receiver_id]", back_populates="receiver")
+    last_name = Column(String, nullable=True)
+    department = Column(String, nullable=True)
 
 class Transaction(Base):
     __tablename__ = "transactions"
