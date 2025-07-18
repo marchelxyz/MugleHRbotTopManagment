@@ -87,6 +87,27 @@ class RegisterRequest(BaseModel):
 class TransferRequest(BaseModel):
     receiver_telegram_id: int; amount: int; message: str
 
+# НОВАЯ МОДЕЛЬ для товаров в магазине
+class MarketItem(Base):
+    __tablename__ = "market_items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
+    price = Column(Integer, nullable=False)
+    quantity = Column(Integer, default=0) # Количество на складе
+
+# НОВАЯ МОДЕЛЬ для истории покупок
+class Purchase(Base):
+    __tablename__ = "purchases"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    item_id = Column(Integer, ForeignKey("market_items.id"))
+    price = Column(Integer, nullable=False)
+    purchased_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# ... (создание таблиц)
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 # ... (Настройка CORS остается без изменений) ...
 origins = ["https://mugle-h-rbot-top-managment.vercel.app"]
