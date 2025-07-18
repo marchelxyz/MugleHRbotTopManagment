@@ -272,3 +272,43 @@ def transfer_points(
     db.commit()
 
     return {"message": "Баллы успешно переведены!"}
+
+# НОВЫЙ ЭНДПОИНТ для получения списка товаров
+@app.get("/market/items", response_model=List[MarketItemResponse])
+def get_market_items(db: Session = Depends(get_db)):
+    return db.query(MarketItem).filter(MarketItem.quantity > 0).all()
+
+# НОВЫЙ ЭНДПОИНТ для покупки товара
+@app.post("/market/purchase")
+async def purchase_item(request: PurchaseRequest, x_telegram_id: int = Header(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.telegram_id == x_telegram_id).first()
+    item = db.query(MarketItem).filter(MarketItem.id == request.item_id).first()
+
+    if not user or not item:
+        raise HTTPException(status_code=404, detail="Пользователь или товар не найден.")
+    if item.quantity <= 0:
+        raise HTTPException(status_code=400, detail="Товар закончился.")
+    if user.balance < item.price:
+        raise HTTPException(status_code=400, detail="Недостаточно баллов для покупки.")
+
+    # Проведение транзакции
+    user.balance -= item.price
+    item.quantity -= 1
+    
+    new_purchase = Purchase(user_id=user.id, item_id=item.id, price=item.price)
+    db.add(new_purchase)
+    db.commit()
+
+    # Формирование и отправка уведомления
+    notification_message = (
+        f"🛍️ *Новая покупка!*\n\n"
+        f"👤 *Сотрудник:* {user.first_name} {user.last_name}\n"
+        f"✉️ *Тег:* @{user.username}\n"
+        f"🏢 *Подразделение:* {user.department}\n"
+        f"👔 *Должность:* {user.position}\n\n"
+        f"🎁 *Товар:* {item.name}\n"
+        f"💰 *Остаток баллов:* {user.balance}"
+    )
+    await send_telegram_notification(notification_message)
+    
+    return {"message": "Покупка совершена успешно!", "new_balance": user.balance}
