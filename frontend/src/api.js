@@ -32,3 +32,9 @@ export const transferPoints = (telegramId, transferData) => {
 
 export const getFeed = () => apiClient.get('/transactions/feed');
 export const getLastMonthLeaderboard = () => apiClient.get('/leaderboard/last-month');
+export const getMarketItems = () => apiClient.get('/market/items');
+export const purchaseItem = (telegramId, itemId) => {
+  return apiClient.post('/market/purchase', { item_id: itemId }, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
