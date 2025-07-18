@@ -47,6 +47,8 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
           placeholder="Например, 'Разработчик'"
           style={{ width: '80%', padding: '10px', marginBottom: '10px' }}
         />
+        <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Ваша фамилия" />
+        <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Ваше подразделение" />
         <button type="submit" disabled={isLoading} style={{ width: '82%', padding: '10px' }}>
           {isLoading ? 'Регистрация...' : 'Завершить регистрацию'}
         </button>
