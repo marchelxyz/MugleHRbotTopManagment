@@ -112,6 +112,32 @@ class Purchase(Base):
 # ... (создание таблиц)
 Base.metadata.create_all(bind=engine)
 
+class MarketItemResponse(BaseModel):
+    id: int; name: str; description: Optional[str]; price: int; quantity: int
+    class Config: from_attributes = True
+
+class PurchaseRequest(BaseModel):
+    item_id: int
+
+# --- Новая функция для отправки уведомлений ---
+async def send_telegram_notification(message: str):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_ADMIN_CHAT_ID:
+        logger.warning("Переменные для Telegram не установлены. Уведомление не отправлено.")
+        return
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_ADMIN_CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(url, json=payload)
+            logger.info("Уведомление администратору успешно отправлено.")
+        except httpx.RequestError as e:
+            logger.error(f"Ошибка отправки уведомления в Telegram: {e}")
+
 app = FastAPI()
 # ... (Настройка CORS остается без изменений) ...
 origins = ["https://mugle-h-rbot-top-managment.vercel.app"]
