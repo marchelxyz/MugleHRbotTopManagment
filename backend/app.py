@@ -83,7 +83,11 @@ class LeaderboardItem(BaseModel):
     class Config: from_attributes = True
 
 class RegisterRequest(BaseModel):
-    first_name: str; username: Optional[str] = None; position: str
+    first_name: str
+    last_name: str # <--- НОВОЕ ПОЛЕ
+    department: str # <--- НОВОЕ ПОЛЕ
+    position: str
+    username: Optional[str] = None
 class TransferRequest(BaseModel):
     receiver_telegram_id: int; amount: int; message: str
 
