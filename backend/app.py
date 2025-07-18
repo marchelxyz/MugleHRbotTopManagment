@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "your_secret_admin_key") # Секретный ключ для админ. функций
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_ADMIN_CHAT_ID = os.getenv("TELEGRAM_ADMIN_CHAT_ID")
 
 if not DATABASE_URL:
     raise Exception("Переменная окружения DATABASE_URL не установлена!")
