@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger # <-- Добавили BigInteger
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -9,7 +9,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(String, unique=True, index=True, nullable=False)
+    telegram_id = Column(BigInteger, unique=True, index=True, nullable=False) # <-- Заменили String
     position = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     department = Column(String, nullable=False)
