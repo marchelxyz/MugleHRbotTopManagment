@@ -1,7 +1,7 @@
-python
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from backend.config import Settings
+# ИЗМЕНЕНО: убрали "backend."
+from config import Settings
 
 # Загружаем настройки
 settings = Settings()
