@@ -8,6 +8,13 @@ from routers import users, transactions, market, admin
 
 app = FastAPI()
 
+@app.middleware("http")
+async def log_headers(request: Request, call_next):
+    # Выводим в лог все заголовки входящего запроса
+    print(f"!!! DEBUG: Incoming request with headers: {request.headers}")
+    response = await call_next(request)
+    return response
+
 # --- НОВАЯ, БОЛЕЕ ГИБКАЯ КОНФИГУРАЦИЯ CORS ---
 app.add_middleware(
     CORSMiddleware,
