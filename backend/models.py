@@ -1,4 +1,4 @@
-```python
+python
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
@@ -62,4 +62,3 @@ class Purchase(Base):
 
     user = relationship("User", back_populates="purchases")
     item = relationship("MarketItem", back_populates="purchases")
-```
