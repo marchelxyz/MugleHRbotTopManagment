@@ -115,3 +115,11 @@ async def reset_balances(db: AsyncSession):
     await db.execute(update(models.User).values(balance=0))
     await db.commit()
     return True
+
+async def get_user_transactions(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(models.Transaction)
+        .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
+        .order_by(models.Transaction.timestamp.desc())
+    )
+    return result.scalars().all()
