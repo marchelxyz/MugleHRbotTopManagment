@@ -1,5 +1,5 @@
 # Файл: backend/config.py
-```python
+python
 from pydantic import BaseSettings, AnyUrl
 
 class Settings(BaseSettings):
