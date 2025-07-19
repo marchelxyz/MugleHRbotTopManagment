@@ -1,4 +1,4 @@
-```python
+python
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -62,4 +62,3 @@ class MarketItemResponse(BaseModel):
 
     class Config:
         orm_mode = True
-```
