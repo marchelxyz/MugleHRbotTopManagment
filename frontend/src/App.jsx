@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { checkUserStatus } from './api';
 
 // Компоненты
-import BottomNav from './components/BottomNav'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
-import RegistrationPage from './pages/RegistrationPage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
-import HomePage from './pages/HomePage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
-import TransferPage from './pages/TransferPage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
-import LeaderboardPage from './pages/LeaderboardPage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
-import MarketplacePage from './pages/MarketplacePage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
-import ProfilePage from './pages/ProfilePage'; // <-- ПРОВЕРЬТЕ ЭТОТ ПУТЬ
+import BottomNav from './components/BottomNav';
+import RegistrationPage from './pages/RegistrationPage';
+import HomePage from './pages/HomePage';
+import TransferPage from './pages/TransferPage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import MarketplacePage from './pages/MarketplacePage';
+import ProfilePage from './pages/ProfilePage';
 
 const tg = window.Telegram.WebApp;
 
@@ -16,7 +16,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [page, setPage] = useState('home'); // 'home' - наша главная страница "Лента"
+  const [page, setPage] = useState('home');
 
    useEffect(() => {
     tg.ready();
@@ -30,24 +30,18 @@ function App() {
       try {
         const response = await checkUserStatus(telegramUser.id);
         setUser(response.data);
-      // ... внутри useEffect
       } catch (err) {
-        // --- БОЛЕЕ ДЕТАЛЬНАЯ ОБРАБОТКА ОШИБОК ---
-        if (err.response) {
-            // Сервер ответил, но с ошибкой (например, 404, 422)
-            const errorDetails = `Server Error: ${err.response.status}. Data: ${JSON.stringify(err.response.data)}`;
-            setError(errorDetails);
-        } else if (err.request) {
-            // Запрос был отправлен, но ответа нет (CORS, нет сети)
-            const errorDetails = `Network Error: No response received. Check CORS or server status.`;
-            setError(errorDetails);
+        // --- ВОЗВРАЩАЕМ ПРАВИЛЬНУЮ ОБРАБОТКУ ОШИБОК ---
+        if (err.response && err.response.status === 404) {
+          // Это нормальная ситуация для нового пользователя, не делаем ничего.
+          // `user` останется null, и покажется страница регистрации.
+          console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
         } else {
-            // Ошибка на этапе создания запроса
-            const errorDetails = `Request Setup Error: ${err.message}`;
-            setError(errorDetails);
+          // Это настоящая ошибка, которую нужно показать.
+          setError('Не удалось связаться с сервером.');
+          console.error(err);
         }
-        console.error(err);
-        // блок закончился
+        // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
       } finally {
         setLoading(false);
       }
