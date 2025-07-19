@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine
-from .models import Base
-from .routers import users, transactions, market, admin
+# ИЗМЕНЕНО: убрали точки перед импортами
+from database import engine
+from models import Base
+from routers import users, transactions, market, admin
 
 app = FastAPI()
 app.add_middleware(
