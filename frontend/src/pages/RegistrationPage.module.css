@@ -1,0 +1,42 @@
+/* frontend/src/pages/RegistrationPage.module.css */
+
+.page {
+  padding: 20px;
+  text-align: center;
+}
+
+.form {
+  margin-top: 20px;
+}
+
+.input {
+  display: block;
+  width: 80%;
+  padding: 12px;
+  margin: 0 auto 10px auto; /* Центрируем и добавляем отступ снизу */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.submitButton {
+  width: 85%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: #007bff;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.submitButton:disabled {
+  background-color: #a0cffc;
+  cursor: not-allowed;
+}
+
+.error {
+  color: red;
+  margin-top: 15px;
+}
