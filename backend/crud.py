@@ -1,7 +1,7 @@
-# backend/crud.py
 from sqlalchemy.future import select
-from sqlalchemy import func, update
+from sqlalchemy import func, update, BigInteger # Добавляем BigInteger
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timedelta # Добавляем для работы с датами
 import models, schemas
 
 # Пользователи
@@ -61,17 +61,29 @@ async def get_feed(db: AsyncSession):
     return result.scalars().all()
 
 # Лидерборд
-async def get_leaderboard(db: AsyncSession, limit: int = 3):
-    result = await db.execute(
+async def get_leaderboard(db: AsyncSession, limit: int = 10):
+    today = datetime.utcnow()
+    first_day_of_current_month = today.replace(day=1)
+    last_day_of_last_month = first_day_of_current_month - timedelta(days=1)
+    first_day_of_last_month = last_day_of_last_month.replace(day=1)
+    
+   result = await db.execute(
         select(
-            models.Transaction.receiver_id.label('user_id'),
-            func.sum(models.Transaction.amount).label('total_received')
+            models.User, # Выбираем всю информацию о пользователе
+            func.sum(models.Transaction.amount).label("total_received"),
         )
-        .group_by(models.Transaction.receiver_id)
+        .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
+        # 3. Фильтруем транзакции за прошлый месяц
+        .where(models.Transaction.timestamp >= first_day_of_last_month)
+        .where(models.Transaction.timestamp < first_day_of_current_month)
+        .group_by(models.User.id)
         .order_by(func.sum(models.Transaction.amount).desc())
         .limit(limit)
     )
-    return result.all()
+    
+    leaderboard_data = result.all()
+
+ return [{"user": user, "total_received": total_received or 0} for user, total_received in leaderboard_data]
 
 # Маркет
 async def get_market_items(db: AsyncSession):
