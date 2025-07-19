@@ -26,4 +26,14 @@ function ProfilePage({ user }) {
   );
 }
 
+<button 
+        onClick={() => onNavigate('history')} 
+        className={styles.historyButton}
+      >
+        История транзакций
+      </button>
+    </div>
+  );
+}
+
 export default ProfilePage;
