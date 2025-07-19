@@ -1,8 +1,8 @@
-python
 from sqlalchemy.future import select
 from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend import models, schemas
+import models
+import schemas
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
