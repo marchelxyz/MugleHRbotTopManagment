@@ -1,0 +1,48 @@
+/* frontend/src/pages/HomePage.module.css */
+
+.page {
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.balance {
+  font-size: 24px;
+  margin: 10px 0;
+}
+
+.transferButton {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  margin-bottom: 30px;
+  border: none;
+  border-radius: 8px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+.feedItem {
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+}
+
+.feedTransaction {
+  margin: 0;
+  font-size: 16px;
+}
+
+.feedMessage {
+  margin: 8px 0 0 0;
+  font-style: italic;
+  color: #555;
+  border-left: 3px solid #007bff;
+  padding-left: 10px;
+}
