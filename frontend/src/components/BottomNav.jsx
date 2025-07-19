@@ -1,26 +1,9 @@
 // frontend/src/components/BottomNav.jsx
 import React from 'react';
-// Импортируем иконки из разных наборов
 import { FaHome, FaTrophy, FaStore, FaUser } from 'react-icons/fa';
 
-// Стили для кнопок навигации
-const navButtonStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexGrow: 1,
-  border: 'none',
-  background: 'none',
-  padding: '5px 0',
-  cursor: 'pointer',
-  color: '#888', // Цвет неактивной иконки
-};
-
-const navLabelStyle = {
-  fontSize: '12px',
-  marginTop: '4px',
-};
+// 1. Импортируем наши стили
+import styles from './BottomNav.module.css';
 
 function BottomNav({ activePage, onNavigate }) {
   const navItems = [
@@ -31,25 +14,17 @@ function BottomNav({ activePage, onNavigate }) {
   ];
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      display: 'flex',
-      justifyContent: 'space-around',
-      backgroundColor: '#fff',
-      borderTop: '1px solid #eee',
-      padding: '5px 0',
-    }}>
+    // 2. Используем классы из импортированных стилей
+    <div className={styles.nav}>
       {navItems.map(item => (
         <button
           key={item.id}
           onClick={() => onNavigate(item.id)}
-          style={{ ...navButtonStyle, color: activePage === item.id ? '#007bff' : '#888' }}
+          // 3. Динамически добавляем класс 'active'
+          className={`${styles.navButton} ${activePage === item.id ? styles.active : ''}`}
         >
           {item.icon}
-          <span style={navLabelStyle}>{item.label}</span>
+          <span className={styles.navLabel}>{item.label}</span>
         </button>
       ))}
     </div>
