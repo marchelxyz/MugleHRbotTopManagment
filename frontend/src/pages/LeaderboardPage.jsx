@@ -1,5 +1,7 @@
+// frontend/src/pages/LeaderboardPage.jsx
 import React, { useState, useEffect } from 'react';
-import { getLastMonthLeaderboard } from '../api'; // Убедитесь, что путь '../api' правильный
+import { getLastMonthLeaderboard } from '../api';
+import styles from './LeaderboardPage.module.css'; // 1. Импортируем стили
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -21,17 +23,19 @@ function LeaderboardPage() {
   }, []);
 
   return (
-    <div style={{ padding: '20px' }}>
+    // 2. Применяем классы
+    <div className={styles.page}>
       <h1>🏆 Рейтинг</h1>
-      <h3>Лидеры прошлого месяца по полученным баллам</h3>
+      <h3 className={styles.subtitle}>Лидеры прошлого месяца по полученным баллам</h3>
       
       {isLoading ? <p>Загрузка рейтинга...</p> : (
         leaderboard.length > 0 ? (
-          <ol style={{ paddingLeft: '20px', fontSize: '18px' }}>
-            {leaderboard.map((item, index) => (
-              <li key={index} style={{ marginBottom: '15px' }}>
-                <strong>{item.user.first_name}</strong> ({item.user.position})
-                <div style={{ color: '#007bff' }}>{item.total_points} баллов</div>
+          <ol className={styles.list}>
+            {leaderboard.map((item) => (
+              <li key={item.user_id} className={styles.listItem}>
+                <strong>{item.user.last_name}</strong>
+                <span className={styles.position}>({item.user.position})</span>
+                <div className={styles.points}>{item.total_received} баллов</div>
               </li>
             ))}
           </ol>
