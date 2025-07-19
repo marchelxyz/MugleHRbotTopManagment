@@ -1,5 +1,8 @@
 import axios from 'axios';
 
+// --- НАША ОТЛАДОЧНАЯ СТРОКА ---
+console.log('Using API URL:', import.meta.env.VITE_API_URL);
+
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
