@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+# backend/routers/users.py
+
+# ИСПРАВЛЕНИЕ: Убедимся, что Header импортирован
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud
 import schemas
@@ -18,11 +21,8 @@ async def list_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 
 @router.get("/users/me", response_model=schemas.UserResponse)
-# --- 2. ИЗМЕНЯЕМ, КАК МЫ ПОЛУЧАЕМ ID ---
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
     user = await crud.get_user_by_telegram(db, telegram_id)
     if not user:
-        # Если пользователь не найден, мы не выбрасываем ошибку, а даем фронтенду
-        # понять, что нужна регистрация. Статус 404 для этого и предназначен.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
