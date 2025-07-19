@@ -1,22 +1,23 @@
+# backend/app.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# ИЗМЕНЕНО: убрали точки перед импортами
 from database import engine
 from models import Base
 from routers import users, transactions, market, admin
 
 app = FastAPI()
-origins = [
-    "https://mugle-h-rbot-top-managment.vercel.app", # URL вашего фронтенда
-]
 
+# --- НОВАЯ, БОЛЕЕ ГИБКАЯ КОНФИГУРАЦИЯ CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Используем наш список разрешенных адресов
+    # Разрешаем запросы от Vercel и его поддоменов (для превью-сборок)
+    allow_origin_regex='https?://.*\.vercel\.app', 
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"], # Явно перечисляем методы
+    allow_headers=["*"], # Разрешаем все заголовки
 )
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 @app.on_event("startup")
 async def on_startup():
