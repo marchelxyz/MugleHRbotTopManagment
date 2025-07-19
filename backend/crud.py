@@ -1,4 +1,4 @@
-```python
+python
 from sqlalchemy.future import select
 from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,4 +101,3 @@ async def reset_balances(db: AsyncSession):
     await db.execute(update(models.User).values(balance=0))
     await db.commit()
     return True
-```
