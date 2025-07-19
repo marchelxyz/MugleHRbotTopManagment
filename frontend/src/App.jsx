@@ -30,13 +30,19 @@ function App() {
       try {
         const response = await checkUserStatus(telegramUser.id);
         setUser(response.data);
+      // ... внутри useEffect
       } catch (err) {
         if (err.response && err.response.status === 404) {
           console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
         } else {
-          setError('Не удалось связаться с сервером.');
+          // --- НАШИ ИЗМЕНЕНИЯ ---
+          // Превращаем объект ошибки в читаемый текст
+          const errorDetails = JSON.stringify(err, Object.getOwnPropertyNames(err), 2);
+          // Выводим этот текст на экран
+          setError(`Ошибка подключения. Детали: ${errorDetails}`);
           console.error(err);
         }
+// ...
       } finally {
         setLoading(false);
       }
