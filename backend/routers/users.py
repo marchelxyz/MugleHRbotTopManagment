@@ -1,4 +1,4 @@
-```python
+python
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import crud, schemas
@@ -23,4 +23,3 @@ async def get_self(telegram_id: str, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
-```
