@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { registerUser } from '../api';
+import styles from './RegistrationPage.module.css'; // 1. Импортируем стили
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
-  // ИСПРАВЛЕНИЕ: Добавляем недостающие состояния
   const [lastName, setLastName] = useState('');
   const [department, setDepartment] = useState('');
   const [position, setPosition] = useState('');
@@ -13,7 +13,6 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // ИСПРАВЛЕНИЕ: Улучшенная проверка на заполнение полей
     if (!position || !lastName || !department) {
       setError('Пожалуйста, заполните все поля.');
       return;
@@ -22,7 +21,6 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
     setError('');
 
     try {
-      // ИСПРАВЛЕНИЕ: Формируем правильный объект для отправки на бэкенд
       const userData = {
         telegram_id: String(telegramUser.id),
         last_name: lastName,
@@ -42,38 +40,38 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   };
 
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
+    // 2. Применяем классы
+    <div className={styles.page}>
       <h1>Добро пожаловать!</h1>
       <p>
         Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу должность, фамилию и подразделение.
       </p>
-      <form onSubmit={handleSubmit}>
-        {/* ИСПРАВЛЕНИЕ: Поля теперь правильно подключены к состоянию */}
+      <form onSubmit={handleSubmit} className={styles.form}>
         <input
           type="text"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Ваша фамилия"
-          style={{ width: '80%', padding: '10px', marginBottom: '10px' }}
+          className={styles.input}
         />
         <input
           type="text"
           value={department}
           onChange={(e) => setDepartment(e.target.value)}
           placeholder="Ваше подразделение"
-          style={{ width: '80%', padding: '10px', marginBottom: '10px' }}
+          className={styles.input}
         />
         <input
           type="text"
           value={position}
           onChange={(e) => setPosition(e.target.value)}
-          placeholder="Ваша должность (например, 'Разработчик')"
-          style={{ width: '80%', padding: '10px', marginBottom: '10px' }}
+          placeholder="Ваша должность"
+          className={styles.input}
         />
-        <button type="submit" disabled={isLoading} style={{ width: '82%', padding: '10px' }}>
+        <button type="submit" disabled={isLoading} className={styles.submitButton}>
           {isLoading ? 'Регистрация...' : 'Завершить регистрацию'}
         </button>
-        {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
+        {error && <p className={styles.error}>{error}</p>}
       </form>
     </div>
   );
