@@ -1,7 +1,9 @@
+# backend/crud.py
+
 from sqlalchemy.future import select
-from sqlalchemy import func, update, BigInteger # Добавляем BigInteger
+from sqlalchemy import func, update, BigInteger
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta # Добавляем для работы с датами
+from datetime import datetime, timedelta
 import models, schemas
 
 # Пользователи
@@ -9,14 +11,12 @@ async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     return result.scalars().first()
 
-# ИЗМЕНЕНИЕ: Ожидаем telegram_id как число (int)
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
     return result.scalars().first()
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db_user = models.User(
-        # ИЗМЕНЕНИЕ: Преобразуем текстовый ID в число перед сохранением
         telegram_id=int(user.telegram_id),
         position=user.position,
         last_name=user.last_name,
@@ -26,7 +26,6 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     await db.commit()
     await db.refresh(db_user)
     return db_user
-# ... (остальной код файла без изменений)
 
 async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
@@ -34,22 +33,18 @@ async def get_users(db: AsyncSession):
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
+    sender = await get_user(db, tr.sender_id)
+    receiver = await get_user(db, tr.receiver_id)
+
+    # Обновляем балансы
+    sender.balance -= tr.amount
+    receiver.balance += tr.amount
+
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
         receiver_id=tr.receiver_id,
         amount=tr.amount,
         message=tr.message
-    )
-    # Обновляем балансы
-    await db.execute(
-        update(models.User)
-        .where(models.User.id == tr.sender_id)
-        .values(balance=models.User.balance - tr.amount)
-    )
-    await db.execute(
-        update(models.User)
-        .where(models.User.id == tr.receiver_id)
-        .values(balance=models.User.balance + tr.amount)
     )
     db.add(db_tr)
     await db.commit()
@@ -57,23 +52,24 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     return db_tr
 
 async def get_feed(db: AsyncSession):
-    result = await db.execute(select(models.Transaction).order_by(models.Transaction.timestamp.desc()))
+    result = await db.execute(
+        select(models.Transaction).order_by(models.Transaction.timestamp.desc())
+    )
     return result.scalars().all()
 
 # Лидерборд
 async def get_leaderboard(db: AsyncSession, limit: int = 10):
     today = datetime.utcnow()
-    first_day_of_current_month = today.replace(day=1)
+    first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_day_of_last_month = first_day_of_current_month - timedelta(days=1)
     first_day_of_last_month = last_day_of_last_month.replace(day=1)
-    
-   result = await db.execute(
+
+    result = await db.execute(
         select(
-            models.User, # Выбираем всю информацию о пользователе
+            models.User,
             func.sum(models.Transaction.amount).label("total_received"),
         )
         .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
-        # 3. Фильтруем транзакции за прошлый месяц
         .where(models.Transaction.timestamp >= first_day_of_last_month)
         .where(models.Transaction.timestamp < first_day_of_current_month)
         .group_by(models.User.id)
@@ -83,7 +79,8 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
     
     leaderboard_data = result.all()
 
- return [{"user": user, "total_received": total_received or 0} for user, total_received in leaderboard_data]
+    return [{"user": user, "total_received": total_received or 0} for user, total_received in leaderboard_data]
+
 
 # Маркет
 async def get_market_items(db: AsyncSession):
@@ -91,20 +88,22 @@ async def get_market_items(db: AsyncSession):
     return result.scalars().all()
 
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
+    item = await db.get(models.MarketItem, pr.item_id)
+    user = await db.get(models.User, pr.user_id)
+
+    if not item or not user:
+        raise ValueError("Item or User not found")
+    if item.stock <= 0:
+        raise ValueError("Item out of stock")
+    if user.balance < item.price:
+        raise ValueError("Insufficient balance")
+
+    item.stock -= 1
+    user.balance -= item.price
+
     db_purchase = models.Purchase(
         user_id=pr.user_id,
         item_id=pr.item_id
-    )
-    # Снижение запаса и списание баллов
-    await db.execute(
-        update(models.MarketItem)
-        .where(models.MarketItem.id == pr.item_id)
-        .values(stock=models.MarketItem.stock - 1)
-    )
-    await db.execute(
-        update(models.User)
-        .where(models.User.id == pr.user_id)
-        .values(balance=models.User.balance - (await db.get(models.MarketItem, pr.item_id)).price)
     )
     db.add(db_purchase)
     await db.commit()
