@@ -50,8 +50,8 @@ class FeedItem(OrmBase): # Наследуемся от нашей новой б�
     sender: UserBase
     receiver: UserBase
 
-class LeaderboardItem(OrmBase): # Наследуемся от нашей новой базы
-    user_id: int
+class LeaderboardItem(OrmBase):
+    user: UserBase # <-- Теперь здесь будет полный объект пользователя
     total_received: int
 
 class MarketItemResponse(OrmBase): # Наследуемся от нашей новой базы
