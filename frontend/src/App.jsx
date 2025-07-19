@@ -9,6 +9,7 @@ import TransferPage from './pages/TransferPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
 import ProfilePage from './pages/ProfilePage';
+import HistoryPage from './pages/HistoryPage';
 
 const tg = window.Telegram.WebApp;
 
@@ -63,6 +64,8 @@ function App() {
     
     // В зависимости от значения `page` показываем нужный компонент
     switch (page) {
+        case 'history': // <-- Наша новая страница
+        return <HistoryPage user={user} onBack={() => navigate('profile')} />;
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'marketplace':
@@ -74,6 +77,7 @@ function App() {
       case 'home':
       default:
         return <HomePage user={user} onNavigate={navigate} />;
+        return <ProfilePage user={user} onNavigate={navigate} />;
     }
   };
 
