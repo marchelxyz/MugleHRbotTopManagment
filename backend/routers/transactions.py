@@ -1,4 +1,4 @@
-```python
+python
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import crud, schemas
@@ -23,4 +23,3 @@ async def get_feed(db: AsyncSession = Depends(get_db)):
 @router.get("/leaderboard/last-month", response_model=list[schemas.LeaderboardItem])
 async def get_leaderboard(db: AsyncSession = Depends(get_db)):
     return await crud.get_leaderboard(db)
-```
