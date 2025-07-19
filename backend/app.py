@@ -6,9 +6,14 @@ from models import Base
 from routers import users, transactions, market, admin
 
 app = FastAPI()
+origins = [
+    "https://mugle-h-rbot-top-managment.vercel.app", # URL вашего фронтенда
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins, # Используем наш список разрешенных адресов
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
