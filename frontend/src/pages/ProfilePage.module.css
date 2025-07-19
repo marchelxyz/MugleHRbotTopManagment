@@ -1,0 +1,32 @@
+/* frontend/src/pages/ProfilePage.module.css */
+
+.page {
+  padding: 20px;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.infoItem {
+  font-size: 16px;
+  margin: 12px 0;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.infoItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.label {
+  font-weight: bold;
+  color: #555;
+  margin-right: 8px;
+}
