@@ -1,21 +1,23 @@
+# backend/crud.py
 from sqlalchemy.future import select
 from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import models
-import schemas
+import models, schemas
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     return result.scalars().first()
 
-async def get_user_by_telegram(db: AsyncSession, telegram_id: str):
+# ИЗМЕНЕНИЕ: Ожидаем telegram_id как число (int)
+async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
     return result.scalars().first()
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db_user = models.User(
-        telegram_id=user.telegram_id,
+        # ИЗМЕНЕНИЕ: Преобразуем текстовый ID в число перед сохранением
+        telegram_id=int(user.telegram_id),
         position=user.position,
         last_name=user.last_name,
         department=user.department
@@ -24,6 +26,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     await db.commit()
     await db.refresh(db_user)
     return db_user
+# ... (остальной код файла без изменений)
 
 async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
