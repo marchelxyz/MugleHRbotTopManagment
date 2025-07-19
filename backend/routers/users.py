@@ -25,3 +25,7 @@ async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSe
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
+
+@router.get("/{user_id}/transactions", response_model=list[schemas.FeedItem])
+async def get_user_transactions_route(user_id: int, db: AsyncSession = Depends(get_db)):
+    return await crud.get_user_transactions(db, user_id=user_id)
