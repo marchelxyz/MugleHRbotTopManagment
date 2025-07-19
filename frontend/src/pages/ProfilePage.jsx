@@ -1,17 +1,17 @@
 // frontend/src/pages/ProfilePage.jsx
 
 import React from 'react';
-import styles from './ProfilePage.module.css'; // 1. Импортируем стили
+import styles from './ProfilePage.module.css';
 
-function ProfilePage({ user }) {
+// Принимаем onNavigate в пропсах
+function ProfilePage({ user, onNavigate }) {
   return (
-    // 2. Применяем классы
     <div className={styles.page}>
       <h1>👤 Профиль</h1>
       <div className={styles.card}>
         <p className={styles.infoItem}>
           <span className={styles.label}>Имя:</span>
-          {user.last_name} 
+          {user.last_name}
         </p>
         <p className={styles.infoItem}>
           <span className={styles.label}>Должность:</span>
@@ -22,12 +22,10 @@ function ProfilePage({ user }) {
           {user.balance} баллов
         </p>
       </div>
-    </div>
-  );
-}
 
-<button 
-        onClick={() => onNavigate('history')} 
+      {/* Кнопка для перехода к истории */}
+      <button
+        onClick={() => onNavigate('history')}
         className={styles.historyButton}
       >
         История транзакций
