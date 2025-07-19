@@ -32,17 +32,22 @@ function App() {
         setUser(response.data);
       // ... внутри useEffect
       } catch (err) {
-        if (err.response && err.response.status === 404) {
-          console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
+        // --- БОЛЕЕ ДЕТАЛЬНАЯ ОБРАБОТКА ОШИБОК ---
+        if (err.response) {
+            // Сервер ответил, но с ошибкой (например, 404, 422)
+            const errorDetails = `Server Error: ${err.response.status}. Data: ${JSON.stringify(err.response.data)}`;
+            setError(errorDetails);
+        } else if (err.request) {
+            // Запрос был отправлен, но ответа нет (CORS, нет сети)
+            const errorDetails = `Network Error: No response received. Check CORS or server status.`;
+            setError(errorDetails);
         } else {
-          // --- НАШИ ИЗМЕНЕНИЯ ---
-          // Превращаем объект ошибки в читаемый текст
-          const errorDetails = JSON.stringify(err, Object.getOwnPropertyNames(err), 2);
-          // Выводим этот текст на экран
-          setError(`Ошибка подключения. Детали: ${errorDetails}`);
-          console.error(err);
+            // Ошибка на этапе создания запроса
+            const errorDetails = `Request Setup Error: ${err.message}`;
+            setError(errorDetails);
         }
-// ...
+        console.error(err);
+        // блок закончился
       } finally {
         setLoading(false);
       }
