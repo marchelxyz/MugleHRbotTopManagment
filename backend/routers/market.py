@@ -1,4 +1,4 @@
-```python
+python
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import crud, schemas
@@ -14,4 +14,3 @@ async def list_items(db: AsyncSession = Depends(get_db)):
 async def purchase_item(request: schemas.PurchaseRequest, db: AsyncSession = Depends(get_db)):
     item = await crud.get_market_items(db)  # get item stock etc
     return await crud.create_purchase(db, request)
-```
