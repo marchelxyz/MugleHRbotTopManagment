@@ -1,14 +1,21 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-# ИЗМЕНЕНО: убрали "backend."
 from config import Settings
 
 # Загружаем настройки
 settings = Settings()
 
+# Получаем оригинальный URL из настроек
+database_url = settings.DATABASE_URL
+
+# ИЗМЕНЕНИЕ: Проверяем, начинается ли URL с "postgresql://"
+# и заменяем его на "postgresql+asyncpg://", чтобы SQLAlchemy был доволен.
+if database_url and database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Асинхронный движок SQLAlchemy
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    database_url, # Используем наш исправленный URL
     echo=True,
     future=True
 )
