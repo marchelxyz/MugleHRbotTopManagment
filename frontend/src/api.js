@@ -41,3 +41,7 @@ export const purchaseItem = (telegramId, itemId) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+export const getUserTransactions = (userId) => {
+  return apiClient.get(`/users/${userId}/transactions`);
+};
