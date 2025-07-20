@@ -88,12 +88,11 @@ function App() {
 
   if (error) return <div>Ошибка: {error}</div>;
 
-  return (
-    // Добавляем отступ снизу, чтобы навигация не перекрывала контент
+return (
     <div style={{ paddingBottom: '70px' }}>
       {renderPage()}
-      {/* Показываем навигацию только если пользователь зарегистрирован */}
-      {user && <BottomNav activePage={page} onNavigate={navigate} />}
+      {/* Передаем user в BottomNav */}
+      {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
     </div>
   );
 }
