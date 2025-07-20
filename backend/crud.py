@@ -2,6 +2,7 @@
 
 from sqlalchemy.future import select
 from sqlalchemy import func, update, BigInteger
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
 import models
@@ -39,8 +40,6 @@ async def get_users(db: AsyncSession):
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
-    # Здесь нужно будет передавать ID отправителя, а не получать его из tg
-    # Это потребует изменений на фронтенде
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
 
@@ -63,16 +62,39 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     await db.refresh(db_tr)
     
     try:
-        message_text = (
-            f"🎉 Вам начислено *{tr.amount}* баллов!\n"
-            f"От: *{sender.last_name}*\n"
-            f"Сообщение: _{tr.message}_"
-        )
+        message_text = (f"🎉 Вам начислено *{tr.amount}* баллов!\n"
+                        f"От: *{sender.last_name}*\n"
+                        f"Сообщение: _{tr.message}_")
         await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
-    return db_tr
+    # 2. Перезагружаем созданную транзакцию с жадной загрузкой
+    result = await db.execute(
+        select(models.Transaction)
+        .where(models.Transaction.id == db_tr.id)
+        .options(selectinload(models.Transaction.sender), selectinload(models.Transaction.receiver))
+    )
+    return result.scalars().one()
+
+async def get_feed(db: AsyncSession):
+    # 3. Добавляем жадную загрузку для ленты
+    result = await db.execute(
+        select(models.Transaction)
+        .options(selectinload(models.Transaction.sender), selectinload(models.Transaction.receiver))
+        .order_by(models.Transaction.timestamp.desc())
+    )
+    return result.scalars().all()
+
+async def get_user_transactions(db: AsyncSession, user_id: int):
+    # 4. Добавляем жадную загрузку для истории пользователя
+    result = await db.execute(
+        select(models.Transaction)
+        .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
+        .options(selectinload(models.Transaction.sender), selectinload(models.Transaction.receiver))
+        .order_by(models.Transaction.timestamp.desc())
+    )
+    return result.scalars().all()
 
 async def get_feed(db: AsyncSession):
     result = await db.execute(
