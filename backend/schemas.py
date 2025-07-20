@@ -68,3 +68,7 @@ class MarketItemCreate(BaseModel):
     description: Optional[str] = None
     price: int
     stock: int
+
+class PurchaseResponse(BaseModel):
+    message: str
+    new_balance: int
