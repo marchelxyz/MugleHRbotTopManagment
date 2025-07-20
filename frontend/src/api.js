@@ -51,3 +51,10 @@ export const addPointsToAll = (data) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+export const createMarketItem = (itemData) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/market-items', itemData, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
