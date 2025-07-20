@@ -27,10 +27,8 @@ export const getAllUsers = (telegramId) => {
 };
 
 // НОВАЯ ФУНКЦИЯ
-export const transferPoints = (telegramId, transferData) => {
-  return apiClient.post('/points/transfer', transferData, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+export const transferPoints = (transferData) => {
+  return apiClient.post('/points/transfer', transferData);
 };
 
 export const getFeed = () => apiClient.get('/transactions/feed');
