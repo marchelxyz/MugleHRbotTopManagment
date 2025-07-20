@@ -1,44 +1,26 @@
 # backend/crud.py
 
 from sqlalchemy.future import select
-from sqlalchemy import func, update, BigInteger
+from sqlalchemy import func, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
-import models
-import schemas
+import models, schemas
 from bot import send_telegram_message
 from database import settings
 
-# Пользователи
+# ... (все функции для Пользователей остаются без изменений) ...
 async def get_user(db: AsyncSession, user_id: int):
-    result = await db.execute(select(models.User).where(models.User.id == user_id))
-    return result.scalars().first()
-
+    # ...
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
-    result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
-    return result.scalars().first()
-
+    # ...
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
-    user_telegram_id = int(user.telegram_id)
-    is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
-    db_user = models.User(
-        telegram_id=user_telegram_id,
-        position=user.position,
-        last_name=user.last_name,
-        department=user.department,
-        is_admin=is_admin
-    )
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
-
+    # ...
 async def get_users(db: AsyncSession):
-    result = await db.execute(select(models.User))
-    return result.scalars().all()
+    # ...
 
-# Транзакции
+# --- УПРОЩАЕМ ЛОГИКУ ТРАНЗАКЦИЙ ---
+
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
@@ -69,40 +51,18 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
-    # 2. Перезагружаем созданную транзакцию с жадной загрузкой
-    result = await db.execute(
-        select(models.Transaction)
-        .where(models.Transaction.id == db_tr.id)
-        .options(selectinload(models.Transaction.sender), selectinload(models.Transaction.receiver))
-    )
-    return result.scalars().one()
+    # Теперь мы можем просто вернуть объект, SQLAlchemy сам все подгрузит
+    return db_tr
 
 async def get_feed(db: AsyncSession):
-    # 3. Добавляем жадную загрузку для ленты
-    result = await db.execute(
-        select(models.Transaction)
-        .options(selectinload(models.Transaction.sender), selectinload(models.Transaction.receiver))
-        .order_by(models.Transaction.timestamp.desc())
-    )
-    return result.scalars().all()
-
-async def get_user_transactions(db: AsyncSession, user_id: int):
-    # 4. Добавляем жадную загрузку для истории пользователя
-    result = await db.execute(
-        select(models.Transaction)
-        .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
-        .options(selectinload(models.Transaction.sender), selectinload(models.Transaction.receiver))
-        .order_by(models.Transaction.timestamp.desc())
-    )
-    return result.scalars().all()
-
-async def get_feed(db: AsyncSession):
+    # Возвращаем к простому виду
     result = await db.execute(
         select(models.Transaction).order_by(models.Transaction.timestamp.desc())
     )
     return result.scalars().all()
 
 async def get_user_transactions(db: AsyncSession, user_id: int):
+    # Возвращаем к простому виду
     result = await db.execute(
         select(models.Transaction)
         .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
