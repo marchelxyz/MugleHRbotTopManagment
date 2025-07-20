@@ -14,7 +14,8 @@ class User(Base):
     last_name = Column(String, nullable=False)
     department = Column(String, nullable=False)
     balance = Column(Integer, default=0)
-
+    is_admin = Column(Boolean, default=False, nullable=False)
+    
     sent_transactions = relationship(
         "Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]"
     )
