@@ -1,0 +1,37 @@
+/* frontend/src/pages/AdminPage.module.css */
+.page {
+  padding: 20px;
+}
+.card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  box-sizing: border-box;
+  margin: 10px 0;
+}
+.button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: #dc3545;
+  color: white;
+  cursor: pointer;
+}
+.button:disabled {
+  background-color: #f28b95;
+}
+.message {
+  margin-top: 15px;
+  font-weight: bold;
+}
