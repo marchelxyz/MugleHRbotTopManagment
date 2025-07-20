@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger # <-- Добавили BigInteger
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
