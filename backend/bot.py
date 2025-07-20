@@ -1,7 +1,7 @@
 # backend/bot.py
 
 import httpx
-from config import settings
+from database import settings
 
 # URL для отправки сообщений через API Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
