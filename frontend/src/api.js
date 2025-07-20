@@ -45,3 +45,11 @@ export const purchaseItem = (telegramId, itemId) => {
 export const getUserTransactions = (userId) => {
   return apiClient.get(`/users/${userId}/transactions`);
 };
+
+export const addPointsToAll = (data) => {
+  // Получаем telegramId из объекта WebApp для отправки в заголовке
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/add-points', data, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
