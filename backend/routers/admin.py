@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud
+import schemas
 from dependencies import get_current_admin_user
 from models import User
 from database import get_db
@@ -22,6 +23,14 @@ async def add_points(
     await crud.add_points_to_all_users(db, amount=request.amount)
     return {"detail": f"Successfully added {request.amount} points to all users"}
 
+@router.post("/admin/market-items", response_model=schemas.MarketItemResponse)
+async def create_new_market_item(
+    item: schemas.MarketItemCreate,
+    admin_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Создает новый товар в магазине. Доступно только для админов."""
+    return await crud.create_market_item(db=db, item=item)
 
 @router.post("/admin/reset-balances")
 async def reset_balances_route(
