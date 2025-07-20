@@ -36,6 +36,7 @@ class UserBase(OrmBase): # Наследуемся от нашей новой б�
     last_name: str
     department: str
     balance: int
+    is_admin: bool = False
 
 class UserResponse(UserBase):
     pass
