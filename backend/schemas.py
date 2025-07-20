@@ -61,3 +61,10 @@ class MarketItemResponse(OrmBase): # Наследуемся от нашей но
     description: Optional[str]
     price: int
     stock: int
+
+# Схема для создания нового товара в магазине
+class MarketItemCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: int
+    stock: int
