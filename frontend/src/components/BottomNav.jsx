@@ -5,7 +5,7 @@ import { FaHome, FaTrophy, FaStore, FaUser, FaCog } from 'react-icons/fa';
 // 1. Импортируем наши стили
 import styles from './BottomNav.module.css';
 
-function BottomNav({ activePage, onNavigate }) {
+function BottomNav({ user, activePage, onNavigate }) { 
   const navItems = [
     { id: 'home', label: 'Лента', icon: <FaHome size={22} /> },
     { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={22} /> },
@@ -13,14 +13,16 @@ function BottomNav({ activePage, onNavigate }) {
     { id: 'profile', label: 'Профиль', icon: <FaUser size={22} /> },
   ];
 
-  return (
-    // 2. Используем классы из импортированных стилей
+    if (user && user.is_admin) {
+    navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={22} /> });
+  }
+  
+ return (
     <div className={styles.nav}>
       {navItems.map(item => (
         <button
           key={item.id}
           onClick={() => onNavigate(item.id)}
-          // 3. Динамически добавляем класс 'active'
           className={`${styles.navButton} ${activePage === item.id ? styles.active : ''}`}
         >
           {item.icon}
