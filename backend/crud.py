@@ -4,8 +4,9 @@ from sqlalchemy.future import select
 from sqlalchemy import func, update, BigInteger
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
-import models, schemas
-from bot import send_telegram_message # <-- Уведомления
+import models
+import schemas
+from bot import send_telegram_message
 from database import settings
 
 # Пользователи
@@ -19,38 +20,35 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
-    
-    # Проверяем, совпадает ли ID пользователя с ID администратора
     is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
-
     db_user = models.User(
         telegram_id=user_telegram_id,
         position=user.position,
         last_name=user.last_name,
         department=user.department,
-        is_admin=is_admin # <-- Устанавливаем флаг админа
+        is_admin=is_admin
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     return db_user
-    
+
 async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
     return result.scalars().all()
 
 # Транзакции
-
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
+    # Здесь нужно будет передавать ID отправителя, а не получать его из tg
+    # Это потребует изменений на фронтенде
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
-    
+
     if not sender or not receiver:
         raise ValueError("Sender or Receiver not found")
     if sender.balance < tr.amount:
         raise ValueError("Insufficient balance")
 
-    # Обновляем балансы
     sender.balance -= tr.amount
     receiver.balance += tr.amount
 
@@ -64,27 +62,29 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     await db.commit()
     await db.refresh(db_tr)
     
-    # --- НОВЫЙ КОД: ОТПРАВКА УВЕДОМЛЕНИЯ ---
     try:
         message_text = (
             f"🎉 Вам начислено *{tr.amount}* баллов!\n"
             f"От: *{sender.last_name}*\n"
             f"Сообщение: _{tr.message}_"
         )
-        # Получатель уведомления - это receiver. Его telegram_id - это chat_id.
         await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
-        # Если отправка сообщения не удалась, мы не должны "ронять" всю операцию.
-        # Просто запишем ошибку в лог.
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
     return db_tr
 
- # --- КОНЕЦ НОВОГО КОДА ---
-
 async def get_feed(db: AsyncSession):
     result = await db.execute(
         select(models.Transaction).order_by(models.Transaction.timestamp.desc())
+    )
+    return result.scalars().all()
+
+async def get_user_transactions(db: AsyncSession, user_id: int):
+    result = await db.execute(
+        select(models.Transaction)
+        .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
+        .order_by(models.Transaction.timestamp.desc())
     )
     return result.scalars().all()
 
@@ -109,9 +109,7 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
     )
     
     leaderboard_data = result.all()
-
     return [{"user": user, "total_received": total_received or 0} for user, total_received in leaderboard_data]
-
 
 # Маркет
 async def get_market_items(db: AsyncSession):
@@ -142,15 +140,15 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     return db_purchase
 
 # Админ
+async def add_points_to_all_users(db: AsyncSession, amount: int):
+    """Начисляет указанное количество баллов всем пользователям."""
+    await db.execute(
+        update(models.User).values(balance=models.User.balance + amount)
+    )
+    await db.commit()
+    return True
+
 async def reset_balances(db: AsyncSession):
     await db.execute(update(models.User).values(balance=0))
     await db.commit()
     return True
-
-async def get_user_transactions(db: AsyncSession, user_id: int):
-    result = await db.execute(
-        select(models.Transaction)
-        .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
-        .order_by(models.Transaction.timestamp.desc())
-    )
-    return result.scalars().all()
