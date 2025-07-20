@@ -74,7 +74,7 @@ function App() {
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'marketplace':
-        return <MarketplacePage />;
+        return <MarketplacePage user={user} />;
       case 'profile':
         return <ProfilePage user={user} onNavigate={navigate} />;
       case 'history': // Наша новая страница
