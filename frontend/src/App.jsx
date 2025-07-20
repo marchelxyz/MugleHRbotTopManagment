@@ -80,7 +80,7 @@ function App() {
       case 'history': // Наша новая страница
         return <HistoryPage user={user} onBack={() => navigate('profile')} />;
       case 'transfer':
-        return <TransferPage onBack={() => navigate('home')} />;
+        return <TransferPage user={user} onBack={() => navigate('home')} />;
       case 'home':
       default:
         return <HomePage user={user} onNavigate={navigate} />;
