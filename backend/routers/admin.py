@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import crud
 from dependencies import get_current_admin_user
 from models import User
-from database import get_db # <-- ВОТ НЕДОСТАЮЩИЙ ИМПОРТ
+from database import get_db
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ class AddPointsRequest(BaseModel):
 
 @router.post("/admin/add-points")
 async def add_points(
-    request: AddPoints_Request,
+    request: AddPointsRequest, # <-- Опечатка исправлена
     admin_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
