@@ -33,9 +33,15 @@ async def get_users(db: AsyncSession):
     return result.scalars().all()
 
 # Транзакции
+
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
+    
+    if not sender or not receiver:
+        raise ValueError("Sender or Receiver not found")
+    if sender.balance < tr.amount:
+        raise ValueError("Insufficient balance")
 
     # Обновляем балансы
     sender.balance -= tr.amount
@@ -50,7 +56,24 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     db.add(db_tr)
     await db.commit()
     await db.refresh(db_tr)
+    
+    # --- НОВЫЙ КОД: ОТПРАВКА УВЕДОМЛЕНИЯ ---
+    try:
+        message_text = (
+            f"🎉 Вам начислено *{tr.amount}* баллов!\n"
+            f"От: *{sender.last_name}*\n"
+            f"Сообщение: _{tr.message}_"
+        )
+        # Получатель уведомления - это receiver. Его telegram_id - это chat_id.
+        await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
+    except Exception as e:
+        # Если отправка сообщения не удалась, мы не должны "ронять" всю операцию.
+        # Просто запишем ошибку в лог.
+        print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
+    
     return db_tr
+
+ # --- КОНЕЦ НОВОГО КОДА ---
 
 async def get_feed(db: AsyncSession):
     result = await db.execute(
