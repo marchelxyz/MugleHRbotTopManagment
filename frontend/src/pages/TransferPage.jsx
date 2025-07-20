@@ -1,10 +1,13 @@
+// frontend/src/pages/TransferPage.jsx
+
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, transferPoints } from '../api';
-import styles from './TransferPage.module.css'; // 1. Импортируем стили
+import styles from './TransferPage.module.css';
 
 const tg = window.Telegram.WebApp;
 
-function TransferPage({ onBack }) {
+// 1. Принимаем полного 'user' в пропсах
+function TransferPage({ user, onBack }) {
   const [users, setUsers] = useState([]);
   const [receiverId, setReceiverId] = useState('');
   const [amount, setAmount] = useState('');
@@ -13,19 +16,21 @@ function TransferPage({ onBack }) {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentUserId = tg.initDataUnsafe?.user?.id;
+  const currentUserId = user?.id; // Используем наш ID из БД
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await getAllUsers(currentUserId);
+        const response = await getAllUsers();
         // Фильтруем список, чтобы нельзя было отправить баллы самому себе
-        setUsers(response.data.filter(user => user.telegram_id !== String(currentUserId)));
+        setUsers(response.data.filter(u => u.id !== currentUserId));
       } catch (error) {
         setError('Не удалось загрузить список сотрудников.');
       }
     };
-    fetchUsers();
+    if (currentUserId) {
+      fetchUsers();
+    }
   }, [currentUserId]);
 
   const handleSubmit = async (e) => {
@@ -36,37 +41,28 @@ function TransferPage({ onBack }) {
       setError('Пожалуйста, заполните все поля.');
       return;
     }
+    if (user.balance < amount) {
+        setError('У вас недостаточно баллов для этого перевода.');
+        return;
+    }
     setIsLoading(true);
 
     try {
+      // 2. Формируем правильный объект с sender_id
       const transferData = {
+        sender_id: currentUserId,
         receiver_id: parseInt(receiverId, 10),
         amount: parseInt(amount, 10),
         message: message,
       };
-      // ID отправителя теперь тоже нужно передавать
-      // Мы можем получить его из данных пользователя, которые у нас есть в App.jsx,
-      // но для простоты этого компонента пока захардкодим или получим из Telegram.
-      // Важно: на бэкенде sender_id - это ID из нашей БД, а не telegram_id
-      // Этот момент нужно будет доработать, когда у нас будет глобальный стейт пользователя
       
-      // Пока что бэкенд ожидает sender_id и receiver_id из нашей БД.
-      // Фронтенд же оперирует telegram_id. Это нужно будет синхронизировать.
-      // Для этого нам понадобится endpoint, который вернет всех пользователей с их id и telegram_id.
-      // getAllUsers уже это делает, нужно просто правильно передать данные.
-      
-      // Давайте временно предположим, что бэкенд ожидает telegram_id,
-      // а на бэкенде мы найдем пользователя по этому ID.
-      // Либо нам нужно будет передавать ID пользователя из нашей БД.
-
-      // Для корректной работы изменим API call и бэкенд, чтобы принимать telegram_id
-      
-      // Временно оставим как есть, но это потенциальное место для улучшения
-      await transferPoints(currentUserId, transferData);
+      await transferPoints(transferData);
       setSuccess('Баллы успешно отправлены!');
+      // Очищаем поля
       setReceiverId('');
       setAmount('');
       setMessage('');
+      // Тут можно добавить логику для обновления баланса на фронте
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
       setError(errorMessage);
@@ -79,14 +75,15 @@ function TransferPage({ onBack }) {
     <div className={styles.page}>
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       <h1>Передать баллы</h1>
+      <p>Ваш баланс: {user?.balance} баллов</p>
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
           <label className={styles.label}>Кому:</label>
           <select value={receiverId} onChange={(e) => setReceiverId(e.target.value)} className={styles.select}>
             <option value="">Выберите сотрудника</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.last_name} ({user.position})
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.last_name} ({u.position})
               </option>
             ))}
           </select>
@@ -99,6 +96,7 @@ function TransferPage({ onBack }) {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Например, 20"
             className={styles.input}
+            min="1"
           />
         </div>
         <div className={styles.formGroup}>
