@@ -9,18 +9,35 @@ import models, schemas
 from bot import send_telegram_message
 from database import settings
 
-# ... (все функции для Пользователей остаются без изменений) ...
+# Пользователи
 async def get_user(db: AsyncSession, user_id: int):
-    # ...
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    return result.scalars().first()
+
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
-    # ...
+    result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
+    return result.scalars().first()
+
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
-    # ...
+    user_telegram_id = int(user.telegram_id)
+    is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
+    db_user = models.User(
+        telegram_id=user_telegram_id,
+        position=user.position,
+        last_name=user.last_name,
+        department=user.department,
+        is_admin=is_admin
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+
 async def get_users(db: AsyncSession):
-    # ...
+    result = await db.execute(select(models.User))
+    return result.scalars().all()
 
-# --- УПРОЩАЕМ ЛОГИКУ ТРАНЗАКЦИЙ ---
-
+# Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
@@ -51,18 +68,15 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
-    # Теперь мы можем просто вернуть объект, SQLAlchemy сам все подгрузит
     return db_tr
 
 async def get_feed(db: AsyncSession):
-    # Возвращаем к простому виду
     result = await db.execute(
         select(models.Transaction).order_by(models.Transaction.timestamp.desc())
     )
     return result.scalars().all()
 
 async def get_user_transactions(db: AsyncSession, user_id: int):
-    # Возвращаем к простому виду
     result = await db.execute(
         select(models.Transaction)
         .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
@@ -99,14 +113,11 @@ async def get_market_items(db: AsyncSession):
     return result.scalars().all()
 
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    """Создает новый товар в магазине."""
     db_item = models.MarketItem(**item.dict())
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
     return db_item
-
-# backend/crud.py
 
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
@@ -128,9 +139,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     )
     db.add(db_purchase)
     await db.commit()
-    # await db.refresh(db_purchase) # Это нам больше не нужно
-
-    # --- Логика отправки уведомления (остается без изменений) ---
+    
     try:
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
@@ -144,12 +153,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
     
-    # --- ИЗМЕНЕНИЕ: Возвращаем новый баланс пользователя ---
     return user.balance
 
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
-    """Начисляет указанное количество баллов всем пользователям."""
     await db.execute(
         update(models.User).values(balance=models.User.balance + amount)
     )
