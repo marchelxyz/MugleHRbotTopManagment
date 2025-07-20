@@ -116,7 +116,13 @@ async def get_market_items(db: AsyncSession):
     result = await db.execute(select(models.MarketItem))
     return result.scalars().all()
 
-# backend/crud.py
+async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
+    """Создает новый товар в магазине."""
+    db_item = models.MarketItem(**item.dict())
+    db.add(db_item)
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
 
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
