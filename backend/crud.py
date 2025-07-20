@@ -18,17 +18,23 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     return result.scalars().first()
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
+    user_telegram_id = int(user.telegram_id)
+    
+    # Проверяем, совпадает ли ID пользователя с ID администратора
+    is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
+
     db_user = models.User(
-        telegram_id=int(user.telegram_id),
+        telegram_id=user_telegram_id,
         position=user.position,
         last_name=user.last_name,
-        department=user.department
+        department=user.department,
+        is_admin=is_admin # <-- Устанавливаем флаг админа
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     return db_user
-
+    
 async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
     return result.scalars().all()
