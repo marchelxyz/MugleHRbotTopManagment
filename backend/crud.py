@@ -116,6 +116,8 @@ async def get_market_items(db: AsyncSession):
     result = await db.execute(select(models.MarketItem))
     return result.scalars().all()
 
+# backend/crud.py
+
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
     user = await db.get(models.User, pr.user_id)
@@ -137,6 +139,24 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     db.add(db_purchase)
     await db.commit()
     await db.refresh(db_purchase)
+    
+    # --- НОВЫЙ КОД: ОТПРАВКА УВЕДОМЛЕНИЯ В АДМИН-ЧАТ ---
+    try:
+        # Формируем информативное сообщение
+        admin_message = (
+            f"🛍️ *Новая покупка в магазине!*\n\n"
+            f"👤 *Пользователь:* {user.last_name} (@{user.telegram_id})\n"
+            f"💼 *Должность:* {user.position}\n\n"
+            f"🎁 *Товар:* {item.name}\n"
+            f"💰 *Стоимость:* {item.price} баллов\n\n"
+            f"📉 *Новый баланс пользователя:* {user.balance} баллов"
+        )
+        # Отправляем сообщение в чат, ID которого указан в настройках
+        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
+    except Exception as e:
+        # Если отправка не удалась, просто логируем ошибку
+        print(f"Could not send admin notification. Error: {e}")
+
     return db_purchase
 
 # Админ
