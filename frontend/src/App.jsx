@@ -12,6 +12,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
 import ProfilePage from './pages/ProfilePage';
 import HistoryPage from './pages/HistoryPage'; // Импортируем новую страницу
+import AdminPage from './pages/AdminPage';
 
 const tg = window.Telegram.WebApp;
 
@@ -83,6 +84,9 @@ function App() {
       case 'home':
       default:
         return <HomePage user={user} onNavigate={navigate} />;
+      case 'admin': // <-- Добавляем case для админ-страницы
+        return <AdminPage />;
+      case 'home':
     }
   };
 
