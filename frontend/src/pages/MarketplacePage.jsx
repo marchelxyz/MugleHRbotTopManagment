@@ -22,6 +22,8 @@ function MarketplacePage({ user }) {
     fetchItems();
   }, []);
 
+// frontend/src/pages/MarketplacePage.jsx
+
   const handlePurchase = async (itemId) => {
     if (!user) {
       alert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.");
@@ -30,22 +32,14 @@ function MarketplacePage({ user }) {
     if (!window.confirm("Вы уверены, что хотите купить этот товар?")) return;
     
     try {
-      // 2. Вызываем обновленную функцию с user.id
-      await purchaseItem(user.id, itemId);
-      alert(`Покупка совершена успешно!`);
-      // TODO: Обновить баланс пользователя в реальном времени
-      window.location.reload(); // Временно перезагружаем страницу для обновления баланса
+      const response = await purchaseItem(user.id, itemId);
+      // --- ИЗМЕНЕНИЕ: Показываем сообщение с новым балансом ---
+      alert(`Покупка совершена успешно! Ваш новый баланс: ${response.data.new_balance} баллов.`);
+      window.location.reload(); // Перезагружаем для обновления всего состояния
     } catch (error) {
-      // 3. Улучшенная обработка ошибок
       let errorMessage = 'Не удалось совершить покупку.';
-      if (error.response && error.response.data && error.response.data.detail) {
-        // Если ошибка - это текст (как мы ожидаем)
-        if (typeof error.response.data.detail === 'string') {
-          errorMessage = error.response.data.detail;
-        } else {
-          // Если ошибка - сложный объект (например, ошибка валидации)
-          errorMessage = JSON.stringify(error.response.data.detail);
-        }
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
       }
       alert(`Ошибка: ${errorMessage}`);
     }
