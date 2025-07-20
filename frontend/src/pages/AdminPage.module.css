@@ -35,3 +35,25 @@
   margin-top: 15px;
   font-weight: bold;
 }
+
+.textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  box-sizing: border-box;
+  margin: 10px 0;
+  resize: vertical;
+}
+
+.buttonGreen {
+  /* Копируем стили основной кнопки и меняем цвет */
+  composes: button; 
+  background-color: #28a745;
+}
+
+.buttonGreen:disabled {
+  background-color: #a3d9b1;
+}
