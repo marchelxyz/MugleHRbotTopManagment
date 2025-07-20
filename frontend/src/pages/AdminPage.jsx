@@ -1,6 +1,7 @@
 // frontend/src/pages/AdminPage.jsx
+
 import React, { useState } from 'react';
-import { addPointsToAll } from '../api'; // Мы создадим эту функцию в api.js
+import { addPointsToAll } from '../api';
 import styles from './AdminPage.module.css';
 
 function AdminPage() {
@@ -18,7 +19,14 @@ function AdminPage() {
       const response = await addPointsToAll({ amount: parseInt(amount, 10) });
       setMessage(response.data.detail);
     } catch (error) {
-      setMessage(`Ошибка: ${error.response?.data?.detail || 'Не удалось выполнить операцию'}`);
+      // --- УЛУЧШЕННАЯ ОБРАБОТКА ОШИБОК ---
+      // Пытаемся получить детальное сообщение от сервера
+      const errorDetails = error.response?.data?.detail || 'Не удалось выполнить операцию';
+      // Показываем статус ошибки, если он есть (например, 403 Forbidden)
+      const errorStatus = error.response?.status ? ` (Статус: ${error.response.status})` : '';
+      
+      setMessage(`Ошибка: ${errorDetails}${errorStatus}`);
+      // --- КОНЕЦ УЛУЧШЕНИЙ ---
     } finally {
       setLoading(false);
     }
