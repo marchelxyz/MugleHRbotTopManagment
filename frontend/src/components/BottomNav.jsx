@@ -1,6 +1,6 @@
 // frontend/src/components/BottomNav.jsx
 import React from 'react';
-import { FaHome, FaTrophy, FaStore, FaUser } from 'react-icons/fa';
+import { FaHome, FaTrophy, FaStore, FaUser, FaCog } from 'react-icons/fa';
 
 // 1. Импортируем наши стили
 import styles from './BottomNav.module.css';
