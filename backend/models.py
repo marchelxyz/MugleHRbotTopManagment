@@ -13,6 +13,7 @@ class User(Base):
     position = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     department = Column(String, nullable=False)
+    username = Column(String, nullable=True)
     balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
