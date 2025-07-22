@@ -1,7 +1,6 @@
 # backend/models.py
 
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean
-# 1. Добавляем 'relationship' из sqlalchemy.orm
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -29,7 +28,7 @@ class Transaction(Base):
     message = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
-    # --- 2. ДОБАВЛЯЕМ ПРАВИЛО ЖАДНОЙ ЗАГРУЗКИ ---
+    # --- ИЗМЕНЕНИЕ: ДОБАВЛЯЕМ ПРАВИЛО ЖАДНОЙ ЗАГРУЗКИ ---
     sender = relationship(
         "User", back_populates="sent_transactions", foreign_keys=[sender_id], lazy='selectin'
     )
