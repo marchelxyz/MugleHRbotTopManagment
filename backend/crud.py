@@ -37,11 +37,11 @@ async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
     return result.scalars().all()
 
-# Транзакции
+# --- ИЗМЕНЕНИЕ: УПРОЩАЕМ ФУНКЦИИ ТРАНЗАКЦИЙ ---
+
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
-
     if not sender or not receiver:
         raise ValueError("Sender or Receiver not found")
     if sender.balance < tr.amount:
@@ -49,7 +49,6 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
 
     sender.balance -= tr.amount
     receiver.balance += tr.amount
-
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
         receiver_id=tr.receiver_id,
@@ -83,6 +82,8 @@ async def get_user_transactions(db: AsyncSession, user_id: int):
         .order_by(models.Transaction.timestamp.desc())
     )
     return result.scalars().all()
+
+# ... (остальные функции - Лидерборд, Маркет, Админ - остаются без изменений) ...
 
 # Лидерборд
 async def get_leaderboard(db: AsyncSession, limit: int = 10):
