@@ -138,9 +138,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     
     # --- ИЗМЕНЕНИЕ: ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ДО COMMIT ---
     try:
+        user_tag = f"@{user.username}" if user.username else f"ID: {user.telegram_id}"
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.last_name} (@{user.telegram_id})\n"
+            f"👤 *Пользователь:* {user.last_name} ({user_tag})\n" # <-- Используем username
             f"💼 *Должность:* {user.position}\n\n"
             f"🎁 *Товар:* {item.name}\n"
             f"💰 *Стоимость:* {item.price} баллов\n\n"
