@@ -16,6 +16,7 @@ class RegisterRequest(BaseModel):
     position: str
     last_name: str
     department: str
+    username: Optional[str] = None
 
 class TransferRequest(BaseModel):
     sender_id: int
@@ -37,6 +38,7 @@ class UserBase(OrmBase): # Наследуемся от нашей новой б�
     department: str
     balance: int
     is_admin: bool = False
+    username: Optional[str] = None
 
 class UserResponse(UserBase):
     pass
