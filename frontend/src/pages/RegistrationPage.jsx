@@ -26,6 +26,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         last_name: lastName,
         department: department,
         position: position,
+        username: telegramUser.username,
       };
 
       await registerUser(telegramUser.id, userData);
