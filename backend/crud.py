@@ -37,8 +37,7 @@ async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
     return result.scalars().all()
 
-# --- ИЗМЕНЕНИЕ: УПРОЩАЕМ ФУНКЦИИ ТРАНЗАКЦИЙ ---
-
+# Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     sender = await get_user(db, tr.sender_id)
     receiver = await get_user(db, tr.receiver_id)
@@ -82,8 +81,6 @@ async def get_user_transactions(db: AsyncSession, user_id: int):
         .order_by(models.Transaction.timestamp.desc())
     )
     return result.scalars().all()
-
-# ... (остальные функции - Лидерборд, Маркет, Админ - остаются без изменений) ...
 
 # Лидерборд
 async def get_leaderboard(db: AsyncSession, limit: int = 10):
@@ -131,16 +128,14 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     if user.balance < item.price:
         raise ValueError("Insufficient balance")
 
+    # Сначала вычитаем, потом сохраняем
     item.stock -= 1
     user.balance -= item.price
 
-    db_purchase = models.Purchase(
-        user_id=pr.user_id,
-        item_id=pr.item_id
-    )
+    db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
     db.add(db_purchase)
-    await db.commit()
     
+    # --- ИЗМЕНЕНИЕ: ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ДО COMMIT ---
     try:
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
@@ -153,14 +148,15 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
+
+    # Сохраняем все изменения в базе
+    await db.commit()
     
     return user.balance
 
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
-    await db.execute(
-        update(models.User).values(balance=models.User.balance + amount)
-    )
+    await db.execute(update(models.User).values(balance=models.User.balance + amount))
     await db.commit()
     return True
 
