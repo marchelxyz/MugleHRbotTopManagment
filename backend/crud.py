@@ -26,6 +26,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         position=user.position,
         last_name=user.last_name,
         department=user.department,
+        username=user.username,
         is_admin=is_admin
     )
     db.add(db_user)
