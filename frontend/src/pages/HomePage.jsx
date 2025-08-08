@@ -25,6 +25,16 @@ function HomePage({ user, onNavigate }) {
   return (
     // 2. Применяем классы
     <div className={styles.page}>
+      <div className={styles.userHeader}>
+        {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.userPhoto} />}
+        <div className={styles.userInfo}>
+          <span className={styles.userName}>{user.last_name}</span>
+          <span className={styles.userPosition}>{user.position}</span>
+        </div>
+        <button onClick={() => onNavigate('transfer')} className={styles.thankYouButton}>
+          Отправить спасибки
+        </button>
+      </div>
       <div className={styles.header}>
         <h1>{user.first_name}, добро пожаловать!</h1>
         <p className={styles.balance}>Ваш баланс: <strong>{user.balance}</strong> баллов</p>
