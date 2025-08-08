@@ -2,19 +2,23 @@
 
 import React, { useState } from 'react';
 import { registerUser } from '../api';
-import styles from './RegistrationPage.module.css'; // 1. Импортируем стили
+import styles from './RegistrationPage.module.css';
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const [lastName, setLastName] = useState('');
   const [department, setDepartment] = useState('');
   const [position, setPosition] = useState('');
+  // --- 1. ДОБАВЛЯЕМ СОСТОЯНИЯ ДЛЯ НОВЫХ ПОЛЕЙ ---
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!position || !lastName || !department) {
-      setError('Пожалуйста, заполните все поля.');
+      setError('Пожалуйста, заполните все обязательные поля.');
       return;
     }
     setIsLoading(true);
@@ -27,6 +31,10 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         department: department,
         position: position,
         username: telegramUser.username,
+        // --- 2. ОТПРАВЛЯЕМ НОВЫЕ ДАННЫЕ ---
+        phone_number: phoneNumber,
+        date_of_birth: dateOfBirth,
+        // --- КОНЕЦ ИЗМЕНЕНИЙ ---
       };
 
       await registerUser(telegramUser.id, userData);
@@ -41,11 +49,10 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   };
 
   return (
-    // 2. Применяем классы
     <div className={styles.page}>
       <h1>Добро пожаловать!</h1>
       <p>
-        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу должность, фамилию и подразделение.
+        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input
@@ -54,6 +61,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Ваша фамилия"
           className={styles.input}
+          required
         />
         <input
           type="text"
@@ -61,6 +69,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
           onChange={(e) => setDepartment(e.target.value)}
           placeholder="Ваше подразделение"
           className={styles.input}
+          required
         />
         <input
           type="text"
@@ -68,7 +77,28 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
           onChange={(e) => setPosition(e.target.value)}
           placeholder="Ваша должность"
           className={styles.input}
+          required
         />
+        
+        {/*--- 3. ДОБАВЛЯЕМ НОВЫЕ ПОЛЯ В ФОРМУ ---*/}
+        <input
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="Номер телефона (необязательно)"
+          className={styles.input}
+        />
+        <input
+          type="text"
+          onFocus={(e) => e.target.type = 'date'}
+          onBlur={(e) => e.target.type = 'text'}
+          value={dateOfBirth}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          placeholder="Дата рождения (необязательно)"
+          className={styles.input}
+        />
+        {/*--- КОНЕЦ ИЗМЕНЕНИЙ ---*/}
+
         <button type="submit" disabled={isLoading} className={styles.submitButton}>
           {isLoading ? 'Регистрация...' : 'Завершить регистрацию'}
         </button>
