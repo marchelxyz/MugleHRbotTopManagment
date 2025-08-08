@@ -6,15 +6,15 @@ from datetime import datetime, date
 class OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# --- ИЗМЕНЕНИЕ №1: УНИФИЦИРУЕМ ТИПЫ ДЛЯ ЗАПРОСОВ ---
+# Схемы для запросов
 class RegisterRequest(BaseModel):
-    telegram_id: int  # <-- Тип изменен на int для единообразия
+    telegram_id: int
     position: str
     last_name: str
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None # <-- Используем правильный тип date
+    date_of_birth: Optional[date] = None
 
 class TransferRequest(BaseModel):
     sender_id: int
@@ -31,9 +31,9 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None # <-- Используем правильный тип date
+    date_of_birth: Optional[date] = None
 
-# --- ИЗМЕНЕНИЕ №2: НАСТРАИВАЕМ ПРАВИЛЬНЫЙ ОТВЕТ С СЕРВЕРА ---
+# Схемы для ответов
 class UserBase(OrmBase):
     id: int
     telegram_id: int
@@ -45,10 +45,8 @@ class UserBase(OrmBase):
     username: Optional[str] = None
     photo_url: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None # <-- Тип соответствует базе данных
+    date_of_birth: Optional[date] = None
 
-    # Этот "конвертер" гарантирует, что перед отправкой на фронтенд
-    # объект date будет преобразован в безопасную строку "YYYY-MM-DD"
     @field_serializer('date_of_birth')
     def serialize_date(self, dob: Optional[date], _info):
         if dob is None:
@@ -57,8 +55,6 @@ class UserBase(OrmBase):
 
 class UserResponse(UserBase):
     pass
-
-# ... (остальные схемы без изменений) ...
 
 class FeedItem(OrmBase):
     id: int
