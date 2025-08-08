@@ -9,9 +9,6 @@ router = APIRouter()
 
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
-    # В Pydantic v2 .dict() устарел, используем .model_dump()
-    # Но так как мы передаем объект целиком, можно и без этого
-    # Преобразуем ID в число перед поиском
     existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already registered")
@@ -27,9 +24,6 @@ async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSe
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # --- ИЗМЕНЕНИЕ: УБИРАЕМ photo_url ---
-    # Мы больше не храним фото в базе, поэтому и не возвращаем его.
-    # Фронтенд берет фото напрямую из данных Telegram.
     user_response = {
         "id": user.id,
         "telegram_id": user.telegram_id,
@@ -41,10 +35,8 @@ async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSe
         "username": user.username,
         "phone_number": user.phone_number,
         "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
-        "photo_url": None, # Возвращаем null, чтобы соответствовать схеме
     }
     return user_response
-# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 @router.put("/users/me", response_model=schemas.UserResponse)
 async def update_me(
