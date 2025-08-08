@@ -21,6 +21,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState('home');
+  const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
 
   useEffect(() => {
     tg.ready();
@@ -30,6 +31,11 @@ function App() {
       setError('Не удалось получить данные Telegram. Откройте приложение через бота.');
       setLoading(false);
       return;
+    }
+
+   // 2. Сохраняем URL фото, если он есть
+       if (telegramUser.photo_url) {
+      setTelegramPhotoUrl(telegramUser.photo_url);
     }
 
     const fetchUser = async () => {
@@ -83,6 +89,8 @@ function App() {
         return <TransferPage user={user} onBack={() => navigate('home')} />;
       case 'home':
       default:
+        // 3. Передаем URL фото в HomePage
+        return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         return <HomePage user={user} onNavigate={navigate} />;
       case 'admin': // <-- Добавляем case для админ-страницы
         return <AdminPage />;
