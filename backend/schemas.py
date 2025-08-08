@@ -68,7 +68,7 @@ class LeaderboardItem(OrmBase):
     user: UserBase
     total_received: int
 
-class MarketItemResponse(Orm_Base):
+class MarketItemResponse(OrmBase):
     id: int
     name: str
     description: Optional[str]
