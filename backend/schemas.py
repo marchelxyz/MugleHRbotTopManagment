@@ -64,7 +64,7 @@ class LeaderboardItem(OrmBase):
     user: UserBase
     total_received: int
 
-class MarketItemResponse(OrmBase): # <-- ОПЕЧАТКА ИСПРАВЛЕНА
+class MarketItemResponse(OrmBase):
     id: int
     name: str
     description: Optional[str]
