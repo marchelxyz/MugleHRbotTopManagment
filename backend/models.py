@@ -1,6 +1,6 @@
 # backend/models.py
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -14,6 +14,8 @@ class User(Base):
     last_name = Column(String, nullable=False)
     department = Column(String, nullable=False)
     username = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
+    date_of_birth = Column(Date, nullable=True)
     balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
