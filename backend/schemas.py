@@ -14,6 +14,7 @@ class RegisterRequest(BaseModel):
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
+    # При регистрации дата может приходить как строка
     date_of_birth: Optional[str] = None
 
 class TransferRequest(BaseModel):
@@ -31,6 +32,7 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
+    # При обновлении дата тоже может приходить как строка
     date_of_birth: Optional[str] = None
 
 # Схемы для ответов
