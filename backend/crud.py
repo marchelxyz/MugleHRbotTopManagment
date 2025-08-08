@@ -21,6 +21,13 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
     is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
+    dob = None
+    if user.date_of_birth:
+        try:
+            dob = date.fromisoformat(user.date_of_birth)
+        except (ValueError, TypeError):
+            # Если формат даты неверный, просто оставляем его пустым
+            dob = None
     db_user = models.User(
         telegram_id=user_telegram_id,
         position=user.position,
