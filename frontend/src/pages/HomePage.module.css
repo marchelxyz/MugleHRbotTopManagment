@@ -1,5 +1,50 @@
 /* frontend/src/pages/HomePage.module.css */
 
+/* --- СТИЛИ ДЛЯ НОВОГО БЛОКА --- */
+.userHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  background-color: #f0f2f5;
+  padding: 15px;
+  border-radius: 12px;
+}
+
+.userPhoto {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-right: 15px;
+  object-fit: cover;
+}
+
+.userInfo {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.userName {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.userPosition {
+  font-size: 14px;
+  color: #65676b;
+}
+
+.thankYouButton {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 15px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 .page {
   padding: 20px;
 }
