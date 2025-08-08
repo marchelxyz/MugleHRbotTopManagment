@@ -1,5 +1,5 @@
 # backend/schemas.py
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 from typing import Optional, List
 from datetime import datetime, date
 
@@ -45,7 +45,15 @@ class UserBase(OrmBase):
     username: Optional[str] = None
     photo_url: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    date_of_birth: Optional[date] = None # <-- Возвращаем тип date
+
+    # --- НОВЫЙ КОД: ЯВНО ПРЕОБРАЗУЕМ ДАТУ В СТРОКУ ---
+    @field_serializer('date_of_birth')
+    def serialize_date_of_birth(self, dob: date, _info):
+        if dob is None:
+            return None
+        return dob.isoformat() # Преобразуем дату в формат "YYYY-MM-DD"
+    # --- КОНЕЦ НОВОГО КОДА ---
 
 class UserResponse(UserBase):
     pass
