@@ -9,6 +9,8 @@ router = APIRouter()
 
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
+    # В Pydantic v2 .dict() устарел, используем .model_dump()
+    # Но так как мы передаем объект целиком, можно и без этого
     # Преобразуем ID в число перед поиском
     existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
     if existing:
@@ -19,15 +21,15 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 
-# --- ГЛАВНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ ---
 @router.get("/users/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
     user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # Вручную создаем словарь для ответа.
-    # Это гарантирует, что дата будет преобразована в строку ПЕРЕД отправкой.
+    # --- ИЗМЕНЕНИЕ: УБИРАЕМ photo_url ---
+    # Мы больше не храним фото в базе, поэтому и не возвращаем его.
+    # Фронтенд берет фото напрямую из данных Telegram.
     user_response = {
         "id": user.id,
         "telegram_id": user.telegram_id,
@@ -37,9 +39,9 @@ async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSe
         "balance": user.balance,
         "is_admin": user.is_admin,
         "username": user.username,
-        "photo_url": user.photo_url,
         "phone_number": user.phone_number,
         "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+        "photo_url": None, # Возвращаем null, чтобы соответствовать схеме
     }
     return user_response
 # --- КОНЕЦ ИЗМЕНЕНИЙ ---
