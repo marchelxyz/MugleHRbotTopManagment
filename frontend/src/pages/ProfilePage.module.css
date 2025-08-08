@@ -42,3 +42,11 @@
   color: white;
   cursor: pointer;
 }
+
+.input:required {
+  border-left: 3px solid #007bff;
+}
+
+.input:optional {
+  border-left: 3px solid #ccc;
+}
