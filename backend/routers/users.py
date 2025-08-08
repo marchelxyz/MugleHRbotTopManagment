@@ -22,8 +22,9 @@ async def list_users(db: AsyncSession = Depends(get_db)):
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
     user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_4_NOT_FOUND, detail="User not found")
 
+    # --- ИЗМЕНЕНИЕ: УБИРАЕМ photo_url ИЗ ОТВЕТА ---
     user_response = {
         "id": user.id,
         "telegram_id": user.telegram_id,
@@ -37,6 +38,7 @@ async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSe
         "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
     }
     return user_response
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 @router.put("/users/me", response_model=schemas.UserResponse)
 async def update_me(
