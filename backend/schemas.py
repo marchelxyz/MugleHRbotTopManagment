@@ -1,7 +1,7 @@
 # backend/schemas.py
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 
 # --- ИСПРАВЛЕНИЕ: МЕНЯЕМ orm_mode НА from_attributes ---
 # Это уберет предупреждение из логов
@@ -17,6 +17,8 @@ class RegisterRequest(BaseModel):
     last_name: str
     department: str
     username: Optional[str] = None
+    phone_number: Optional[str] = None
+    date_of_birth: Optional[date] = None
 
 class TransferRequest(BaseModel):
     sender_id: int
@@ -74,3 +76,11 @@ class MarketItemCreate(BaseModel):
 class PurchaseResponse(BaseModel):
     message: str
     new_balance: int
+
+# ... (Схема для обновления)
+class UserUpdate(BaseModel):
+    last_name: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    phone_number: Optional[str] = None
+    date_of_birth: Optional[date] = None
