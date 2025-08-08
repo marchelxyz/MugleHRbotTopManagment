@@ -82,7 +82,7 @@ function App() {
       case 'marketplace':
         return <MarketplacePage user={user} />;
       case 'profile':
-        return <ProfilePage user={user} onNavigate={navigate} />;
+        return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
       case 'history': // Наша новая страница
         return <HistoryPage user={user} onBack={() => navigate('profile')} />;
       case 'transfer':
