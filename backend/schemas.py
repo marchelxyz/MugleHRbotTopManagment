@@ -18,7 +18,7 @@ class RegisterRequest(BaseModel):
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None
+    date_of_birth: Optional[str] = None
 
 class TransferRequest(BaseModel):
     sender_id: int
@@ -40,6 +40,7 @@ class UserBase(OrmBase): # Наследуемся от нашей новой б�
     department: str
     balance: int
     is_admin: bool = False
+    date_of_birth: Optional[str] = None
     username: Optional[str] = None
 
 class UserResponse(UserBase):
@@ -83,4 +84,4 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None
+    date_of_birth: Optional[str] = None
