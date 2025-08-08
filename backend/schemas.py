@@ -6,16 +6,15 @@ from datetime import datetime, date
 class OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# Схемы для запросов
+# --- ИЗМЕНЕНИЕ №1: УНИФИЦИРУЕМ ТИПЫ ДЛЯ ЗАПРОСОВ ---
 class RegisterRequest(BaseModel):
-    telegram_id: str
+    telegram_id: int  # <-- Тип изменен на int для единообразия
     position: str
     last_name: str
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
-    # При регистрации дата может приходить как строка
-    date_of_birth: Optional[str] = None
+    date_of_birth: Optional[date] = None # <-- Используем правильный тип date
 
 class TransferRequest(BaseModel):
     sender_id: int
@@ -32,10 +31,9 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
-    # При обновлении дата тоже может приходить как строка
-    date_of_birth: Optional[str] = None
+    date_of_birth: Optional[date] = None # <-- Используем правильный тип date
 
-# Схемы для ответов
+# --- ИЗМЕНЕНИЕ №2: НАСТРАИВАЕМ ПРАВИЛЬНЫЙ ОТВЕТ С СЕРВЕРА ---
 class UserBase(OrmBase):
     id: int
     telegram_id: int
@@ -47,18 +45,20 @@ class UserBase(OrmBase):
     username: Optional[str] = None
     photo_url: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None # <-- Возвращаем тип date
+    date_of_birth: Optional[date] = None # <-- Тип соответствует базе данных
 
-    # --- НОВЫЙ КОД: ЯВНО ПРЕОБРАЗУЕМ ДАТУ В СТРОКУ ---
+    # Этот "конвертер" гарантирует, что перед отправкой на фронтенд
+    # объект date будет преобразован в безопасную строку "YYYY-MM-DD"
     @field_serializer('date_of_birth')
-    def serialize_date_of_birth(self, dob: date, _info):
+    def serialize_date(self, dob: Optional[date], _info):
         if dob is None:
             return None
-        return dob.isoformat() # Преобразуем дату в формат "YYYY-MM-DD"
-    # --- КОНЕЦ НОВОГО КОДА ---
+        return dob.isoformat()
 
 class UserResponse(UserBase):
     pass
+
+# ... (остальные схемы без изменений) ...
 
 class FeedItem(OrmBase):
     id: int
