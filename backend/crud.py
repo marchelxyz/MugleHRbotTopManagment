@@ -27,7 +27,9 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         last_name=user.last_name,
         department=user.department,
         username=user.username,
-        is_admin=is_admin
+        is_admin=is_admin,
+        phone_number=user.phone_number,
+        date_of_birth=user.date_of_birth
     )
     db.add(db_user)
     await db.commit()
@@ -37,6 +39,20 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
 async def get_users(db: AsyncSession):
     result = await db.execute(select(models.User))
     return result.scalars().all()
+
+async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.UserUpdate):
+    user = await get_user(db, user_id)
+    if not user:
+        return None
+    
+    update_data = data.dict(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        setattr(user, key, value)
+        
+    await db.commit()
+    await db.refresh(user)
+    return user
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
