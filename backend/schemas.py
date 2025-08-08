@@ -43,7 +43,6 @@ class UserBase(OrmBase):
     balance: int
     is_admin: bool = False
     username: Optional[str] = None
-    photo_url: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
 
