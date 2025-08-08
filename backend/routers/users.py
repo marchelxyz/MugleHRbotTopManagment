@@ -1,14 +1,15 @@
 # backend/routers/users.py
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-import crud, schemas
+import crud
+import schemas
 from database import get_db
 
 router = APIRouter()
 
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
-    # ИЗМЕНЕНИЕ: Преобразуем ID в число перед поиском
+    # Преобразуем ID в число перед поиском
     existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already registered")
@@ -18,17 +19,30 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 
+# --- ГЛАВНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ ---
 @router.get("/users/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
-    # ИЗМЕНЕНИЕ: Преобразуем ID в число перед поиском
     user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
 
-@router.get("/{user_id}/transactions", response_model=list[schemas.FeedItem])
-async def get_user_transactions_route(user_id: int, db: AsyncSession = Depends(get_db)):
-    return await crud.get_user_transactions(db, user_id=user_id)
+    # Вручную создаем словарь для ответа.
+    # Это гарантирует, что дата будет преобразована в строку ПЕРЕД отправкой.
+    user_response = {
+        "id": user.id,
+        "telegram_id": user.telegram_id,
+        "position": user.position,
+        "last_name": user.last_name,
+        "department": user.department,
+        "balance": user.balance,
+        "is_admin": user.is_admin,
+        "username": user.username,
+        "photo_url": user.photo_url,
+        "phone_number": user.phone_number,
+        "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+    }
+    return user_response
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 @router.put("/users/me", response_model=schemas.UserResponse)
 async def update_me(
@@ -41,3 +55,7 @@ async def update_me(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
     return await crud.update_user_profile(db, user_id=user.id, data=user_data)
+
+@router.get("/{user_id}/transactions", response_model=list[schemas.FeedItem])
+async def get_user_transactions_route(user_id: int, db: AsyncSession = Depends(get_db)):
+    return await crud.get_user_transactions(db, user_id=user_id)
