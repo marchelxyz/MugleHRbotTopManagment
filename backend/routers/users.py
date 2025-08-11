@@ -18,28 +18,14 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 
+# --- ВОЗВРАЩАЕМ ПРОСТОЙ И ПРАВИЛЬНЫЙ КОД ---
 @router.get("/users/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
     user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    # --- ИЗМЕНЕНИЕ: УБИРАЕМ photo_url ИЗ ОТВЕТА ---
-    # Мы больше не храним фото в базе, поэтому и не возвращаем его.
-    # Фронтенд берет фото напрямую из данных Telegram.
-    user_response = {
-        "id": user.id,
-        "telegram_id": user.telegram_id,
-        "position": user.position,
-        "last_name": user.last_name,
-        "department": user.department,
-        "balance": user.balance,
-        "is_admin": user.is_admin,
-        "username": user.username,
-        "phone_number": user.phone_number,
-        "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
-    }
-    return user_response
+    # Просто возвращаем объект из базы, Pydantic сделает всю работу
+    return user
 # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 @router.put("/users/me", response_model=schemas.UserResponse)
