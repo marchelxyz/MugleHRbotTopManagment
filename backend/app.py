@@ -1,6 +1,5 @@
 # backend/app.py
-
-from fastapi import FastAPI, Request # <--- ВОТ ПРАВИЛЬНЫЙ ИМПОРТ
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
@@ -8,19 +7,18 @@ from routers import users, transactions, market, admin
 
 app = FastAPI()
 
-# --- Наш "шпионский" код для логирования ---
-@app.middleware("http")
-async def log_headers(request: Request, call_next):
-    # Выводим в лог все заголовки входящего запроса
-    print(f"!!! DEBUG: Incoming request with headers: {request.headers}")
-    response = await call_next(request)
-    return response
-# --- Конец шпионского кода ---
+# Мы временно убираем middleware для логирования,
+# чтобы увидеть оригинальную ошибку от FastAPI
+# @app.middleware("http")
+# async def log_headers(request: Request, call_next):
+#     print(f"!!! DEBUG: Incoming request with headers: {request.headers}")
+#     response = await call_next(request)
+#     return response
 
-# Конфигурация CORS
+# Конфигурация CORS (оставляем ее как есть)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r'https?://.*\.vercel\.app', # Добавил 'r' для корректной строки
+    allow_origin_regex=r'https?://.*\.vercel\.app',
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
