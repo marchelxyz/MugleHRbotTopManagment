@@ -2,7 +2,7 @@
 from sqlalchemy.future import select
 from sqlalchemy import func, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta, date
 import models, schemas
 from bot import send_telegram_message
 from database import settings
@@ -20,12 +20,12 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
     is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
     
-    dob = None
-    if user.date_of_birth and user.date_of_birth.strip():
-        try:
-            dob = date.fromisoformat(user.date_of_birth)
-        except (ValueError, TypeError):
-            dob = None
+ dob = None
+     if user.date_of_birth:
+         try:
+             dob = date.fromisoformat(user.date_of_birth)
+         except (ValueError, TypeError):
+             dob = None  # оставляем пустым, если формат неверный
 
     db_user = models.User(
         telegram_id=user_telegram_id,
