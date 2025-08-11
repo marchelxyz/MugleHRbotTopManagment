@@ -5,6 +5,7 @@ from sqlalchemy import func, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
+from datetime import date
 import models, schemas
 from bot import send_telegram_message
 from database import settings
@@ -21,12 +22,13 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
     is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
-    dob = None
-    if user.date_of_birth:
+  dob = None
+    if user.date_of_birth and user.date_of_birth.strip():
         try:
+            # Преобразуем строку "YYYY-MM-DD" в объект date
             dob = date.fromisoformat(user.date_of_birth)
         except (ValueError, TypeError):
-            # Если формат даты неверный, просто оставляем его пустым
+            # Если формат даты неверный или пустой, оставляем None
             dob = None
     db_user = models.User(
         telegram_id=user_telegram_id,
