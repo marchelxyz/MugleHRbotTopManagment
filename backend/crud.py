@@ -1,11 +1,8 @@
 # backend/crud.py
-
 from sqlalchemy.future import select
 from sqlalchemy import func, update
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta
-from datetime import date
+from datetime import date, datetime, timedelta
 import models, schemas
 from bot import send_telegram_message
 from database import settings
@@ -22,14 +19,14 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
     is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
-  dob = None
+    
+    dob = None
     if user.date_of_birth and user.date_of_birth.strip():
         try:
-            # Преобразуем строку "YYYY-MM-DD" в объект date
             dob = date.fromisoformat(user.date_of_birth)
         except (ValueError, TypeError):
-            # Если формат даты неверный или пустой, оставляем None
             dob = None
+
     db_user = models.User(
         telegram_id=user_telegram_id,
         position=user.position,
@@ -38,7 +35,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         username=user.username,
         is_admin=is_admin,
         phone_number=user.phone_number,
-        date_of_birth=user.date_of_birth
+        date_of_birth=dob
     )
     db.add(db_user)
     await db.commit()
@@ -54,9 +51,14 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
     if not user:
         return None
     
-    update_data = data.dict(exclude_unset=True)
+    update_data = data.model_dump(exclude_unset=True)
     
     for key, value in update_data.items():
+        if key == 'date_of_birth' and value:
+            try:
+                value = date.fromisoformat(value)
+            except (ValueError, TypeError):
+                value = None
         setattr(user, key, value)
         
     await db.commit()
@@ -137,7 +139,7 @@ async def get_market_items(db: AsyncSession):
     return result.scalars().all()
 
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    db_item = models.MarketItem(**item.dict())
+    db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
@@ -154,19 +156,15 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     if user.balance < item.price:
         raise ValueError("Insufficient balance")
 
-    # Сначала вычитаем, потом сохраняем
     item.stock -= 1
     user.balance -= item.price
-
     db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
     db.add(db_purchase)
     
-    # --- ИЗМЕНЕНИЕ: ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ДО COMMIT ---
     try:
-        user_tag = f"@{user.username}" if user.username else f"ID: {user.telegram_id}"
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.last_name} ({user_tag})\n" # <-- Используем username
+            f"👤 *Пользователь:* {user.last_name} (@{user.username or user.telegram_id})\n"
             f"💼 *Должность:* {user.position}\n\n"
             f"🎁 *Товар:* {item.name}\n"
             f"💰 *Стоимость:* {item.price} баллов\n\n"
@@ -176,9 +174,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
 
-    # Сохраняем все изменения в базе
     await db.commit()
-    
     return user.balance
 
 # Админ
