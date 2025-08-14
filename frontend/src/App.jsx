@@ -11,8 +11,11 @@ import TransferPage from './pages/TransferPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
 import ProfilePage from './pages/ProfilePage';
-import HistoryPage from './pages/HistoryPage'; // Импортируем новую страницу
+import HistoryPage from './pages/HistoryPage';
 import AdminPage from './pages/AdminPage';
+// Убедитесь, что вы импортировали новые страницы
+import SettingsPage from './pages/SettingsPage';
+import FaqPage from './pages/FaqPage';
 
 const tg = window.Telegram.WebApp;
 
@@ -24,6 +27,7 @@ function App() {
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
 
   useEffect(() => {
+    // ... этот хук остается без изменений
     tg.ready();
     const telegramUser = tg.initDataUnsafe?.user;
 
@@ -33,8 +37,7 @@ function App() {
       return;
     }
 
-   // 2. Сохраняем URL фото, если он есть
-       if (telegramUser.photo_url) {
+    if (telegramUser.photo_url) {
       setTelegramPhotoUrl(telegramUser.photo_url);
     }
 
@@ -60,57 +63,50 @@ function App() {
   const handleRegistrationSuccess = () => window.location.reload();
   const navigate = (targetPage) => setPage(targetPage);
 
+  // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
+  // Заменяем всю функцию renderPage на эту чистую версию
   const renderPage = () => {
     // Если пользователь не зарегистрирован, всегда показываем регистрацию
     if (!user) {
-      // Показываем заглушку, пока идет проверка пользователя
       if (loading) return <div>Загрузка...</div>;
       
-      // Если пользователь не найден, показываем регистрацию
       if (tg.initDataUnsafe?.user) {
         return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
       }
       
-      // На случай, если что-то пошло не так
       return <div>Что-то пошло не так. Пожалуйста, перезапустите приложение.</div>;
     }
     
-   // В зависимости от значения `page` показываем нужный компонент
+    // В зависимости от значения `page` показываем нужный компонент
     switch (page) {
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'marketplace':
         return <MarketplacePage user={user} />;
       case 'profile':
-        // 2. Передаем onNavigate в ProfilePage
         return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
-
-      // 3. Добавляем логику для новых страниц
       case 'settings':
         return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
-      
       case 'faq':
         return <FaqPage onBack={() => navigate('settings')} />;
-      
-      case 'history': 
+      case 'history':
         return <HistoryPage user={user} onBack={() => navigate('profile')} />;
       case 'transfer':
         return <TransferPage user={user} onBack={() => navigate('home')} />;
-      case 'admin': // <-- Теперь страница админа будет доступна
+      case 'admin':
         return <AdminPage />;
       case 'home':
       default:
-        // Передаем URL фото в HomePage
         return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
     }
   };
-  
+  // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
+
   if (error) return <div>Ошибка: {error}</div>;
 
-return (
+  return (
     <div style={{ paddingBottom: '70px' }}>
       {renderPage()}
-      {/* Передаем user в BottomNav */}
       {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
     </div>
   );
