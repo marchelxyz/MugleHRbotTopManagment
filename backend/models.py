@@ -47,10 +47,8 @@ class MarketItem(Base):
     description = Column(String, nullable=True)
     price = Column(Integer, nullable=False)
     stock = Column(Integer, default=0)
-    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
-    # Добавляем 'lazy' для жадной загрузки, как в Transaction
-    purchases = relationship("Purchase", back_populates="item", lazy='selectin')
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    # Убираем lazy='selectin' отсюда
+    purchases = relationship("Purchase", back_populates="item")
 
 class Purchase(Base):
     __tablename__ = "purchases"
@@ -59,8 +57,5 @@ class Purchase(Base):
     item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="purchases")
-    
-    # --- НАЧАЛО ИСПРАВЛЕНИЙ ---
-    # Убираем lazy='selectin' отсюда, чтобы разорвать цикл
+    # Убираем lazy='selectin' и отсюда
     item = relationship("MarketItem", back_populates="purchases")
-    # --- КОНЕЦ ИСПРАВЛЕНИЙ ---
