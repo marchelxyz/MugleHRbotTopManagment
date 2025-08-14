@@ -82,7 +82,7 @@ function App() {
       case 'leaderboard':
         return <LeaderboardPage />;
       case 'marketplace':
-        return <MarketplacePage user={user} />;
+        return <MarketplacePage user={user} onPurchaseSuccess={updateUser} />;
       case 'profile':
         return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
       case 'settings':
