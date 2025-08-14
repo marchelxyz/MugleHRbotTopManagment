@@ -18,13 +18,15 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 
-# --- ВОЗВРАЩАЕМ ПРОСТОЙ И ПРАВИЛЬНЫЙ КОД ---
+# --- ГЛАВНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ ---
 @router.get("/users/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
     user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    # Просто возвращаем объект из базы, Pydantic сделает всю работу
+    
+    # Мы возвращаем объект напрямую. Pydantic и наш "конвертер" в schemas.py
+    # сами преобразуют дату в строку и уберут photo_url.
     return user
 # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
