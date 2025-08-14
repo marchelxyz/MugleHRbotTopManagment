@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 
-// 1. Принимаем полного 'user' в пропсах
-function MarketplacePage({ user }) {
+// 1. Принимаем новую функцию onPurchaseSuccess в пропсах
+function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   useEffect(() => {
     const fetchItems = async () => {
       try {
@@ -29,14 +29,22 @@ function MarketplacePage({ user }) {
       alert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.");
       return;
     }
+    // Можно оставить confirm для подтверждения
     if (!window.confirm("Вы уверены, что хотите купить этот товар?")) return;
     
     try {
       const response = await purchaseItem(user.id, itemId);
-      // --- ИЗМЕНЕНИЕ: Показываем сообщение с новым балансом ---
-      alert(`Покупка совершена успешно! Ваш новый баланс: ${response.data.new_balance} баллов.`);
-      window.location.reload(); // Перезагружаем для обновления всего состояния
-    } catch (error) {
+      
+      // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+      // 2. Обновляем баланс пользователя в главном компоненте
+      onPurchaseSuccess({ balance: response.data.new_balance });
+
+      // 3. Показываем более приятное сообщение
+      alert(`Покупка совершена! Детали отправлены вам в чат с ботом.`);
+      
+      // Перезагрузка больше не нужна, так как баланс обновился
+      // window.location.reload();
+} catch (error) {
       let errorMessage = 'Не удалось совершить покупку.';
       if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
