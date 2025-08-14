@@ -14,14 +14,14 @@ class RegisterRequest(BaseModel):
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None # Дата из формы приходит как строка
+    date_of_birth: Optional[str] = None # Дата из формы приходит как строка "YYYY-MM-DD"
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None # Дата из формы приходит как строка
+    date_of_birth: Optional[str] = None # Дата из формы приходит как строка "YYYY-MM-DD"
 
 # --- Схемы для ОТВЕТОВ (то, что уходит НА фронтенд) ---
 class UserBase(OrmBase):
