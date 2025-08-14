@@ -4,12 +4,11 @@ import React from 'react';
 import styles from './ProfilePage.module.css';
 import { FaCog } from 'react-icons/fa';
 
-// 1. Принимаем telegramPhotoUrl в пропсах
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
   return (
     <div className={styles.page}>
-      {/* 3. Добавляем кнопку с иконкой настроек */}
       <div className={styles.settingsIconContainer}>
+        {/* Эта кнопка вызывает переход на страницу 'settings' */}
         <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
           <FaCog size={22} />
         </button>
