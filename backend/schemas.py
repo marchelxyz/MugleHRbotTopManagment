@@ -6,27 +6,27 @@ from datetime import datetime, date
 class OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# --- Схемы для ЗАПРОСОВ (то, что приходит С фронтенда) ---
+# Схемы для ЗАПРОСОВ
 class RegisterRequest(BaseModel):
-    telegram_id: str      # ID от Telegram всегда приходит как строка
+    telegram_id: str
     position: str
     last_name: str
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None # Дата из формы приходит как строка "YYYY-MM-DD"
+    date_of_birth: Optional[str] = None
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None # Дата из формы приходит как строка "YYYY-MM-DD"
+    date_of_birth: Optional[str] = None
 
-# --- Схемы для ОТВЕТОВ (то, что уходит НА фронтенд) ---
+# Схемы для ОТВЕТОВ
 class UserBase(OrmBase):
     id: int
-    telegram_id: int      # В нашей базе это число
+    telegram_id: int
     position: str
     last_name: str
     department: str
@@ -34,9 +34,9 @@ class UserBase(OrmBase):
     is_admin: bool = False
     username: Optional[str] = None
     phone_number: Optional[str] = None
-    date_of_birth: Optional[date] = None # Из базы это объект date
+    date_of_birth: Optional[date] = None
 
-    # Этот конвертер гарантирует, что дата будет преобразована в строку "YYYY-MM-DD"
+    # Конвертер для безопасной отправки даты в JSON
     @field_serializer('date_of_birth')
     def serialize_date(self, dob: Optional[date], _info):
         if dob is None:
@@ -46,7 +46,7 @@ class UserBase(OrmBase):
 class UserResponse(UserBase):
     pass
 
-# ... (Остальные классы, которые не меняются)
+# Остальные схемы (без изменений)
 class TransferRequest(BaseModel):
     sender_id: int
     receiver_id: int
