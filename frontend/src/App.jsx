@@ -82,7 +82,16 @@ function App() {
       case 'marketplace':
         return <MarketplacePage user={user} />;
       case 'profile':
+        // 2. Передаем onNavigate в ProfilePage
         return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+
+      // 3. Добавляем логику для новых страниц
+      case 'settings':
+        return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
+      
+      case 'faq':
+        return <FaqPage onBack={() => navigate('settings')} />;
+      
       case 'history': 
         return <HistoryPage user={user} onBack={() => navigate('profile')} />;
       case 'transfer':
