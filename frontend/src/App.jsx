@@ -75,7 +75,7 @@ function App() {
       return <div>Что-то пошло не так. Пожалуйста, перезапустите приложение.</div>;
     }
     
-    // В зависимости от значения `page` показываем нужный компонент
+   // В зависимости от значения `page` показываем нужный компонент
     switch (page) {
       case 'leaderboard':
         return <LeaderboardPage />;
@@ -83,21 +83,19 @@ function App() {
         return <MarketplacePage user={user} />;
       case 'profile':
         return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
-      case 'history': // Наша новая страница
+      case 'history': 
         return <HistoryPage user={user} onBack={() => navigate('profile')} />;
       case 'transfer':
         return <TransferPage user={user} onBack={() => navigate('home')} />;
-      case 'home':
-      default:
-        // 3. Передаем URL фото в HomePage
-        return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
-        return <HomePage user={user} onNavigate={navigate} />;
-      case 'admin': // <-- Добавляем case для админ-страницы
+      case 'admin': // <-- Теперь страница админа будет доступна
         return <AdminPage />;
       case 'home':
+      default:
+        // Передаем URL фото в HomePage
+        return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
     }
   };
-
+  
   if (error) return <div>Ошибка: {error}</div>;
 
 return (
