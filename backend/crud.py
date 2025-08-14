@@ -151,18 +151,10 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
 
 # Маркет
 async def get_market_items(db: AsyncSession):
-    query = select(
-        models.MarketItem.id,
-        models.MarketItem.name,
-        models.MarketItem.description,
-        models.MarketItem.price,
-        models.MarketItem.stock
-    )
-    result = await db.execute(query)
+    # Возвращаемся к простому запросу. Проблему решим в schemas.py.
+    result = await db.execute(select(models.MarketItem))
+    return result.scalars().all()
     
-    # Возвращаем результат, который Pydantic легко преобразует в JSON без ошибок.
-    return result.all()
-
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
