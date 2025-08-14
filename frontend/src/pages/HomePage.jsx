@@ -4,10 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { getFeed } from '../api'; // Убедитесь, что путь '../api' правильный
 import styles from './HomePage.module.css'; // 1. Импортируем стили
 
-function HomePage({ user, onNavigate }) {
+function HomePage({ user, onNavigate, telegramPhotoUrl }) { 
   const [feed, setFeed] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -23,9 +23,9 @@ function HomePage({ user, onNavigate }) {
   }, []);
 
   return (
-    // 2. Применяем классы
     <div className={styles.page}>
       <div className={styles.userHeader}>
+        {/* 2. Теперь эта переменная доступна и фото будет отображаться */}
         {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.userPhoto} />}
         <div className={styles.userInfo}>
           <span className={styles.userName}>{user.last_name}</span>
