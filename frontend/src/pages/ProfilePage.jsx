@@ -2,22 +2,29 @@
 
 import React from 'react';
 import styles from './ProfilePage.module.css';
+import { FaCog } from 'react-icons/fa';
 
 // 1. Принимаем telegramPhotoUrl в пропсах
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
   return (
     <div className={styles.page}>
+      {/* 3. Добавляем кнопку с иконкой настроек */}
+      <div className={styles.settingsIconContainer}>
+        <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
+          <FaCog size={22} />
+        </button>
+      </div>
+
       <h1>👤 Профиль</h1>
 
-      {/* --- НОВЫЙ БЛОК С ФОТО И ИМЕНЕМ --- */}
       <div className={styles.profileHeader}>
         {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.profilePhoto} />}
         <div className={styles.profileName}>{user.last_name}</div>
         <div className={styles.profilePosition}>{user.position}</div>
       </div>
-      {/* --- КОНЕЦ БЛОКА --- */}
 
       <div className={styles.card}>
+        {/* ... остальная информация профиля без изменений ... */}
         <p className={styles.infoItem}>
           <span className={styles.label}>Подразделение:</span>
           {user.department}
