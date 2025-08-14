@@ -59,7 +59,8 @@ class Purchase(Base):
     item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="purchases")
-    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
-    # Также добавляем 'lazy' для консистентности
-    item = relationship("MarketItem", back_populates="purchases", lazy='selectin')
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+    # --- НАЧАЛО ИСПРАВЛЕНИЙ ---
+    # Убираем lazy='selectin' отсюда, чтобы разорвать цикл
+    item = relationship("MarketItem", back_populates="purchases")
+    # --- КОНЕЦ ИСПРАВЛЕНИЙ ---
