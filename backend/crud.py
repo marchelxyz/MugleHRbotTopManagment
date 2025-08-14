@@ -177,6 +177,20 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
     db.add(db_purchase)
     
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: Уведомление для пользователя ---
+    try:
+        user_message = (
+            f"✅ *Покупка совершена!*\n\n"
+            f"Вы приобрели: *{item.name}*.\n"
+            f"С вашего баланса списано *{item.price}* баллов.\n"
+            f"Ваш новый баланс: *{user.balance}* баллов."
+        )
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send purchase notification to user {user.telegram_id}. Error: {e}")
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+    # Существующее уведомление для администратора (остается без изменений)
     try:
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
@@ -192,7 +206,6 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     await db.commit()
     return user.balance
-
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
     await db.execute(update(models.User).values(balance=models.User.balance + amount))
