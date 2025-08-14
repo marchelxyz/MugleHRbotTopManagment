@@ -70,15 +70,28 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
-    sender = await get_user(db, tr.sender_id)
-    receiver = await get_user(db, tr.receiver_id)
+
+    # Выбираем отправителя и получателя с блокировкой FOR UPDATE
+    # Это гарантирует, что никто другой не сможет изменить эти строки, пока транзакция не завершится
+    sender_stmt = select(models.User).where(models.User.id == tr.sender_id).with_for_update()
+    receiver_stmt = select(models.User).where(models.User.id == tr.receiver_id).with_for_update()
+
+    sender_result = await db.execute(sender_stmt)
+    sender = sender_result.scalars().first()
+    
+    receiver_result = await db.execute(receiver_stmt)
+    receiver = receiver_result.scalars().first()
+
     if not sender or not receiver:
         raise ValueError("Sender or Receiver not found")
+        
+    # Теперь эта проверка абсолютно надежна
     if sender.balance < tr.amount:
         raise ValueError("Insufficient balance")
 
     sender.balance -= tr.amount
     receiver.balance += tr.amount
+    
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
         receiver_id=tr.receiver_id,
