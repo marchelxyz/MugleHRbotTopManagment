@@ -36,7 +36,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
         </button>
       </div>
       <div className={styles.header}>
-        <h1>{user.first_name}, добро пожаловать!</h1>
+        <h1>{user.last_name}, добро пожаловать!</h1>
         <p className={styles.balance}>Ваш баланс: <strong>{user.balance}</strong> баллов</p>
       </div>
       
