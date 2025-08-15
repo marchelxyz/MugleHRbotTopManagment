@@ -1,8 +1,9 @@
 # backend/crud.py
 from sqlalchemy.future import select
 from sqlalchemy import func, update
+# 1. Добавляем новый импорт
+from sqlalchemy.orm import noload 
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, datetime, timedelta
 import models, schemas
 from bot import send_telegram_message
 from database import settings
@@ -151,11 +152,24 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
 
 # Маркет
 async def get_market_items(db: AsyncSession):
-    # Возвращаемся к простому запросу. Проблему решим в schemas.py.
-    result = await db.execute(select(models.MarketItem))
-    return result.scalars().all()
+    """
+    Получает список всех товаров из магазина.
+    """
+    # --- НАЧАЛО ИЗМЕНЕНИЙ (ФИНАЛЬНАЯ ВЕРСИЯ) ---
     
+    # Мы создаем запрос и с помощью .options(noload(...))
+    # явно указываем SQLAlchemy НЕ загружать связь 'purchases'.
+    # Это самый надежный способ предотвратить любые проблемы с рекурсией
+    # или "ленивой" загрузкой на этапе обработки данных.
+    query = select(models.MarketItem).options(noload(models.MarketItem.purchases))
+    
+    result = await db.execute(query)
+    return result.scalars().all()
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
+    # ... (эта функция остается без изменений)
     db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
     await db.commit()
