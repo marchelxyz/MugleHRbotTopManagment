@@ -1,9 +1,11 @@
 # backend/crud.py
 from sqlalchemy.future import select
 from sqlalchemy import func, update
-from sqlalchemy.orm import noload
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import date, datetime, timedelta
 import models, schemas
+from bot import send_telegram_message
+from database import settings
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
