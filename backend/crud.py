@@ -1,12 +1,9 @@
 # backend/crud.py
 from sqlalchemy.future import select
 from sqlalchemy import func, update
-# 1. Добавляем новый импорт
-from sqlalchemy.orm import noload 
+from sqlalchemy.orm import noload
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
-from bot import send_telegram_message
-from database import settings
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -155,16 +152,28 @@ async def get_market_items(db: AsyncSession):
     """
     Получает список всех товаров из магазина.
     """
-    # --- НАЧАЛО ИЗМЕНЕНИЙ (ФИНАЛЬНАЯ ВЕРСИЯ) ---
-    
-    # Мы создаем запрос и с помощью .options(noload(...))
-    # явно указываем SQLAlchemy НЕ загружать связь 'purchases'.
-    # Это самый надежный способ предотвратить любые проблемы с рекурсией
-    # или "ленивой" загрузкой на этапе обработки данных.
-    query = select(models.MarketItem).options(noload(models.MarketItem.purchases))
-    
-    result = await db.execute(query)
-    return result.scalars().all()
+    # --- НАЧАЛО ИЗМЕНЕНИЙ (САМАЯ НАДЕЖНАЯ ВЕРСИЯ) ---
+
+    # 1. Мы делаем простой запрос к базе данных, чтобы получить все товары.
+    result = await db.execute(select(models.MarketItem))
+    items_from_db = result.scalars().all()
+
+    # 2. Ключевой шаг: Мы не возвращаем объекты SQLAlchemy напрямую.
+    # Вместо этого мы создаем новый список, содержащий только те данные,
+    # которые нам нужны. Это полностью разрывает связь с базой данных
+    # и предотвращает любые циклические зависимости.
+    items_for_response = [
+        {
+            "id": item.id,
+            "name": item.name,
+            "description": item.description,
+            "price": item.price,
+            "stock": item.stock,
+        }
+        for item in items_from_db
+    ]
+
+    return items_for_response
     # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 
@@ -175,7 +184,7 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     await db.commit()
     await db.refresh(db_item)
     return db_item
-
+    
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
     user = await db.get(models.User, pr.user_id)
