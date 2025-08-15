@@ -63,6 +63,10 @@ function App() {
   const handleRegistrationSuccess = () => window.location.reload();
   const navigate = (targetPage) => setPage(targetPage);
 
+  const updateUser = (newUserData) => {
+    setUser(prevUser => ({ ...prevUser, ...newUserData }));
+  };
+  
   // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
   // Заменяем всю функцию renderPage на эту чистую версию
   const renderPage = () => {
