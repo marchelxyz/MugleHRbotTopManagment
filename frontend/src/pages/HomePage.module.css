@@ -1,13 +1,34 @@
 /* frontend/src/pages/HomePage.module.css */
 
-/* --- СТИЛИ ДЛЯ НОВОГО БЛОКА --- */
-.userHeader {
+/* --- ОБЩИЙ КОНТЕЙНЕР СТРАНИЦЫ --- */
+.page {
+  padding: 0; /* Убираем старые отступы, чтобы шапка прилегала к краю */
+  background-color: #F4F4F8;
+  padding-bottom: 100px; /* Добавляем отступ снизу, чтобы контент не перекрывался меню */
+}
+
+/* --- ВЕРХНЯЯ ШАПКА --- */
+.header {
+  height: 200px; /* Высота фона */
+  background-image: url('https://postimg.cc/PPfM7wHN');
+  background-size: cover;
+  background-position: center;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  position: relative;
+  color: white;
+}
+
+/* --- БЛОК ПОЛЬЗОВАТЕЛЯ --- */
+.userBlock {
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
-  background-color: #f0f2f5;
-  padding: 15px;
+  background-color: #FFFFFF;
   border-radius: 12px;
+  padding: 15px;
+  margin: -50px 20px 20px 20px; /* Отрицательный отступ для наложения на шапку */
+  position: relative;
+  z-index: 2;
 }
 
 .userPhoto {
@@ -20,74 +41,109 @@
 
 .userInfo {
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
 }
 
 .userName {
   font-weight: bold;
   font-size: 16px;
-}
-
-.userPosition {
-  font-size: 14px;
-  color: #65676b;
+  color: #000;
 }
 
 .thankYouButton {
-  background-color: #007bff;
+  background-color: #5CA14A;
   color: white;
   border: none;
-  border-radius: 20px;
-  padding: 10px 15px;
-  font-size: 14px;
+  border-radius: 40px;
+  padding: 12px 18px;
+  font-family: 'Arial', sans-serif;
   font-weight: bold;
+  font-size: 14px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
-.page {
-  padding: 20px;
+.thankYouLogo {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 20px;
+/* --- БАННЕР --- */
+.banner {
+  margin: 0 20px 20px 20px;
 }
 
-.balance {
-  font-size: 24px;
-  margin: 10px 0;
-}
-
-.transferButton {
+.bannerImage {
   width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  margin-bottom: 30px;
-  border: none;
-  border-radius: 8px;
-  background-color: #007bff;
-  color: white;
-  cursor: pointer;
+  border-radius: 20px;
+  box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
+}
+
+/* --- ЛЕНТА С ФОТО (ЗАГЛУШКИ) --- */
+.photoFeed {
+  display: flex;
+  overflow-x: auto; /* Для скролла */
+  gap: 10px;
+  padding: 0 20px 20px 20px; /* Отступы по бокам и снизу */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.photoFeed::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.photoPlaceholder {
+  flex: 0 0 150px; /* Не сжиматься, не растягиваться, базовая ширина 150px */
+  height: 150px;
+  background-color: #5CA14A; /* Зеленый цвет, как договорились */
+  border-radius: 20px;
+  box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
+}
+
+/* --- ПОСЛЕДНЯЯ АКТИВНОСТЬ --- */
+.feedContainer {
+  padding: 0 20px;
+}
+
+.feedTitle {
+  color: #408200;
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 15px;
 }
 
 .feedItem {
-  border: 1px solid #eee;
-  padding: 15px;
-  border-radius: 8px;
+  background-color: #FFFFFF;
+  border-radius: 40px;
+  box-shadow: 0px 4px 22px rgba(0, 0, 0, 0.2);
+  padding: 20px;
   margin-bottom: 10px;
-  background-color: #f9f9f9;
+  display: flex;
+  align-items: center;
+}
+
+.feedItemLogo {
+  width: 97px;
+  height: 97px;
+  margin-right: 27px;
+}
+
+.feedContent {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
 }
 
 .feedTransaction {
-  margin: 0;
-  font-size: 16px;
+  font-size: 23px;
+  color: #000;
+  margin: 0 0 5px 0;
 }
 
 .feedMessage {
-  margin: 8px 0 0 0;
-  font-style: italic;
-  color: #555;
-  border-left: 3px solid #007bff;
-  padding-left: 10px;
+  font-size: 19px;
+  color: #6E7A85;
+  margin: 0;
 }
