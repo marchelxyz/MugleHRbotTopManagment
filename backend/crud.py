@@ -158,7 +158,7 @@ async def get_market_items(db: AsyncSession):
 
     # 2. КЛЮЧЕВОЙ ШАГ: Вручную создаем "плоский" список данных для ответа.
     # Этот метод полностью исключает возможность возникновения бесконечного цикла,
-    # так как мы передаем не объекты с их связями, а простые данные.
+    # так как мы передаем не объекты SQLAlchemy с их связями, а простые словари.
     items_for_response = [
         {
             "id": item.id,
@@ -171,7 +171,7 @@ async def get_market_items(db: AsyncSession):
     ]
 
     return items_for_response
-
+    
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     # ... (эта функция остается без изменений)
     db_item = models.MarketItem(**item.model_dump())
