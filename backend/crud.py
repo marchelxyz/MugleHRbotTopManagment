@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from bot import send_telegram_message
 from database import settings
+from datetime import datetime, timedelta, date
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
