@@ -1,6 +1,5 @@
 # backend/routers/market.py
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud
 import schemas
@@ -8,7 +7,11 @@ from database import get_db
 
 router = APIRouter()
 
-@router.get("/market/items", response_model=list[schemas.MarketItemResponse])
+# --- НАЧАЛО ГЛАВНОГО ИСПРАВЛЕНИЯ ---
+# Мы убираем `response_model` из декоратора.
+# Теперь FastAPI просто возьмет "плоский" список из crud.py и отправит его
+# как есть, не пытаясь анализировать модели SQLAlchemy и не попадая в цикл.
+@router.get("/market/items")
 async def list_items(db: AsyncSession = Depends(get_db)):
     return await crud.get_market_items(db)
 
