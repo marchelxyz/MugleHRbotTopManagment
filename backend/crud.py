@@ -150,17 +150,10 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
 
 # Маркет
 async def get_market_items(db: AsyncSession):
+    # Теперь можно просто вернуть объекты SQLAlchemy,
+    # Pydantic сам преобразует их согласно response_model в роутере.
     result = await db.execute(select(models.MarketItem))
-    items_from_db = result.scalars().all()
-    
-    items_for_response = [
-        {
-            "id": item.id, "name": item.name, "description": item.description,
-            "price": item.price, "stock": item.stock,
-        }
-        for item in items_from_db
-    ]
-    return items_for_response
+    return result.scalars().all()
 
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     db_item = models.MarketItem(**item.model_dump())
