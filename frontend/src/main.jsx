@@ -2,8 +2,8 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-// Убедитесь, что этот путь правильный
-import App from './App.jsx' 
+import App from './App.jsx'
+import './index.css' // <-- ДОБАВЛЯЕМ ИМПОРТ ГЛОБАЛЬНЫХ СТИЛЕЙ
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
