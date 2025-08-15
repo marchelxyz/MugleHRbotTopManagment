@@ -29,8 +29,6 @@ async def create_new_market_item(
     admin_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Создает новый товар в магазине. Доступно только для админов."""
-    # crud.create_market_item уже возвращает безопасный словарь
     return await crud.create_market_item(db=db, item=item)
 
 @router.post("/admin/reset-balances")
