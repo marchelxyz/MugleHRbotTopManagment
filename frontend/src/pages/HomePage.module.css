@@ -2,15 +2,16 @@
 
 /* --- ОБЩИЙ КОНТЕЙНЕР СТРАНИЦЫ --- */
 .page {
-  padding: 0; /* Убираем старые отступы, чтобы шапка прилегала к краю */
+  padding: 0;
   background-color: #F4F4F8;
-  padding-bottom: 100px; /* Добавляем отступ снизу, чтобы контент не перекрывался меню */
+  padding-bottom: 100px;
 }
 
 /* --- ВЕРХНЯЯ ШАПКА --- */
 .header {
-  height: 200px; /* Высота фона */
-  background-image: url('https://postimg.cc/PPfM7wHN');
+  height: 200px;
+  /* --- ИЗМЕНЕНИЕ: Новая ссылка на фон --- */
+  background-image: url('https://i.postimg.cc/ncBwC4wK/Frame-2131328055.webp');
   background-size: cover;
   background-position: center;
   border-bottom-left-radius: 20px;
@@ -26,7 +27,7 @@
   background-color: #FFFFFF;
   border-radius: 12px;
   padding: 15px;
-  margin: -50px 20px 20px 20px; /* Отрицательный отступ для наложения на шапку */
+  margin: -50px 20px 20px 20px;
   position: relative;
   z-index: 2;
 }
@@ -49,23 +50,25 @@
   color: #000;
 }
 
+/* --- ИЗМЕНЕНИЕ: Уменьшаем кнопку --- */
 .thankYouButton {
   background-color: #5CA14A;
   color: white;
   border: none;
   border-radius: 40px;
-  padding: 12px 18px;
+  padding: 10px 16px; /* Уменьшили отступы */
   font-family: 'Arial', sans-serif;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 13px; /* Уменьшили шрифт */
   cursor: pointer;
   display: flex;
   align-items: center;
+  /* flex-shrink: 0; убираем, чтобы кнопка могла сжиматься если нужно */
 }
 
 .thankYouLogo {
-  width: 24px;
-  height: 24px;
+  width: 22px; /* Уменьшили лого */
+  height: 22px;
   margin-right: 8px;
 }
 
@@ -83,21 +86,22 @@
 /* --- ЛЕНТА С ФОТО (ЗАГЛУШКИ) --- */
 .photoFeed {
   display: flex;
-  overflow-x: auto; /* Для скролла */
+  overflow-x: auto;
   gap: 10px;
-  padding: 0 20px 20px 20px; /* Отступы по бокам и снизу */
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  padding: 0 20px 20px 20px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .photoFeed::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
 }
 
+/* --- ИЗМЕНЕНИЕ: Делаем блок меньше и прямоугольнее --- */
 .photoPlaceholder {
-  flex: 0 0 150px; /* Не сжиматься, не растягиваться, базовая ширина 150px */
-  height: 150px;
-  background-color: #5CA14A; /* Зеленый цвет, как договорились */
+  flex: 0 0 160px; /* Ширина */
+  height: 120px; /* Высота */
+  background-color: #5CA14A;
   border-radius: 20px;
   box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
 }
