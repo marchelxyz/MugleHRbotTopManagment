@@ -1,7 +1,7 @@
 # backend/routers/market.py
-# backend/routers/market.py
 
-from fastapi import APIRouter, Depends
+# 1. Добавляем импорт для response_model
+from fastapi import APIRouter, Depends, HTTPException, status # <-- Добавляем HTTPException и status
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud
 import schemas
@@ -9,7 +9,8 @@ from database import get_db
 
 router = APIRouter()
 
-@router.get("/market/items")
+# 2. Указываем response_model и возвращаем список по схеме MarketItemResponse
+@router.get("/market/items", response_model=list[schemas.MarketItemResponse])
 async def list_items(db: AsyncSession = Depends(get_db)):
     return await crud.get_market_items(db)
 
@@ -18,7 +19,6 @@ async def list_items(db: AsyncSession = Depends(get_db)):
 async def purchase_item(
     request: schemas.PurchaseRequest, db: AsyncSession = Depends(get_db)
 ):
-    # Эта функция остается без изменений
     try:
         new_balance = await crud.create_purchase(db, request)
         return {"message": "Purchase successful", "new_balance": new_balance}
