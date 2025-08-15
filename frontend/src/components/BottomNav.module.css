@@ -2,14 +2,15 @@
 
 .nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 20px; /* Отступ снизу */
+  left: 20px; /* Отступ слева */
+  right: 20px; /* Отступ справа */
   display: flex;
   justify-content: space-around;
-  background-color: #fff;
-  border-top: 1px solid #eee;
-  padding: 5px 0;
+  background-color: #5CA14A; /* Новый фон */
+  border-radius: 20px; /* Скругление */
+  padding: 10px 0;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.25); /* Тень для объема */
 }
 
 .navButton {
@@ -22,14 +23,15 @@
   background: none;
   padding: 5px 0;
   cursor: pointer;
-  color: #888; /* Цвет неактивной иконки по умолчанию */
+  color: #3F7132; /* Цвет неактивной иконки */
 }
 
 .navButton.active {
-  color: #007bff; /* Цвет активной иконки */
+  color: #FFFFFF; /* Цвет активной иконки */
 }
 
 .navLabel {
+  font-family: 'Inter', sans-serif;
   font-size: 12px;
   margin-top: 4px;
 }
