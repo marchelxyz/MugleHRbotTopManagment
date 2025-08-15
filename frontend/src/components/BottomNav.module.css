@@ -2,15 +2,23 @@
 
 .nav {
   position: fixed;
-  bottom: 20px; /* Отступ снизу */
-  left: 20px; /* Отступ слева */
-  right: 20px; /* Отступ справа */
+  /* --- ИЗМЕНЕНИЯ --- */
+  bottom: 0; /* Прижимаем к низу */
+  left: 0; /* Растягиваем до левого края */
+  right: 0; /* Растягиваем до правого края */
+  
   display: flex;
   justify-content: space-around;
-  background-color: #5CA14A; /* Новый фон */
-  border-radius: 20px; /* Скругление */
+  background-color: #5CA14A;
+  
+  /* Убираем радиус, т.к. меню теперь по всей ширине */
+  border-radius: 0; 
+  
   padding: 10px 0;
-  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.25); /* Тень для объема */
+  
+  /* Тень можно убрать или заменить на верхнюю границу */
+  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.15); 
+  border-top: 1px solid rgba(0, 0, 0, 0.1); /* Добавляем тонкую линию сверху */
 }
 
 .navButton {
