@@ -150,15 +150,12 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
 # Маркет
 async def get_market_items(db: AsyncSession):
     """
-    Получает список всех товаров из магазина.
+    Получает список всех товаров из магазина в безопасном формате.
     """
-    # 1. Выполняем простой запрос к базе, чтобы получить объекты товаров
     result = await db.execute(select(models.MarketItem))
     items_from_db = result.scalars().all()
-
-    # 2. КЛЮЧЕВОЙ ШАГ: Вручную создаем "плоский" список данных для ответа.
-    # Этот метод полностью исключает возможность возникновения бесконечного цикла,
-    # так как мы передаем не объекты SQLAlchemy с их связями, а простые словари.
+    
+    # Создаем "плоский" список словарей для ответа
     items_for_response = [
         {
             "id": item.id,
@@ -169,16 +166,25 @@ async def get_market_items(db: AsyncSession):
         }
         for item in items_from_db
     ]
-
     return items_for_response
-    
+
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    # ... (эта функция остается без изменений)
+    """
+    Создает новый товар и возвращает его в безопасном формате.
+    """
     db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
-    return db_item
+    
+    # Возвращаем не объект SQLAlchemy, а "плоский" словарь
+    return {
+        "id": db_item.id,
+        "name": db_item.name,
+        "description": db_item.description,
+        "price": db_item.price,
+        "stock": db_item.stock,
+    }
     
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
