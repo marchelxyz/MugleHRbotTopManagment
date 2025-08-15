@@ -151,41 +151,27 @@ async def get_leaderboard(db: AsyncSession, limit: int = 10):
 
 # Маркет
 async def get_market_items(db: AsyncSession):
-    """
-    Получает список всех товаров из магазина в безопасном формате.
-    """
     result = await db.execute(select(models.MarketItem))
     items_from_db = result.scalars().all()
     
-    # Создаем "плоский" список словарей для ответа
     items_for_response = [
         {
-            "id": item.id,
-            "name": item.name,
-            "description": item.description,
-            "price": item.price,
-            "stock": item.stock,
+            "id": item.id, "name": item.name, "description": item.description,
+            "price": item.price, "stock": item.stock,
         }
         for item in items_from_db
     ]
     return items_for_response
 
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    """
-    Создает новый товар и возвращает его в безопасном формате.
-    """
     db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
     
-    # Возвращаем не объект SQLAlchemy, а "плоский" словарь
     return {
-        "id": db_item.id,
-        "name": db_item.name,
-        "description": db_item.description,
-        "price": db_item.price,
-        "stock": db_item.stock,
+        "id": db_item.id, "name": db_item.name, "description": db_item.description,
+        "price": db_item.price, "stock": db_item.stock,
     }
     
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
