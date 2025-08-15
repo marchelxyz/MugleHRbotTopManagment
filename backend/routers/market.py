@@ -9,9 +9,6 @@ from database import get_db
 
 router = APIRouter()
 
-# Мы убираем `response_model` из декоратора.
-# Это заставит FastAPI просто отправить те "плоские" данные,
-# которые мы подготовили в crud.py, не пытаясь запустить сложную обработку.
 @router.get("/market/items")
 async def list_items(db: AsyncSession = Depends(get_db)):
     return await crud.get_market_items(db)
