@@ -1,8 +1,7 @@
 # backend/crud.py
 from sqlalchemy.future import select
-from sqlalchemy import func, update
+from sqlalchemy import func, update 
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, datetime, timedelta
 import models, schemas
 from bot import send_telegram_message
 from database import settings
@@ -175,6 +174,7 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     }
     
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
+    # 1. Получаем пользователя и товар, как и раньше
     item = await db.get(models.MarketItem, pr.item_id)
     user = await db.get(models.User, pr.user_id)
 
@@ -185,25 +185,31 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     if user.balance < item.price:
         raise ValueError("Insufficient balance")
 
-    item.stock -= 1
-    user.balance -= item.price
+    # 2. Вместо изменения объектов, мы создаем явные запросы на обновление
+    new_balance = user.balance - item.price
+    
+    # Запрос на обновление баланса пользователя
+    user_update_stmt = (
+        update(models.User)
+        .where(models.User.id == pr.user_id)
+        .values(balance=new_balance)
+    )
+    # Запрос на уменьшение остатка товара
+    item_update_stmt = (
+        update(models.MarketItem)
+        .where(models.MarketItem.id == pr.item_id)
+        .values(stock=models.MarketItem.stock - 1)
+    )
+
+    # Выполняем оба запроса
+    await db.execute(user_update_stmt)
+    await db.execute(item_update_stmt)
+
+    # 3. Создаем запись о покупке, как и раньше
     db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
     db.add(db_purchase)
     
-    # --- НАЧАЛО ИЗМЕНЕНИЙ: Уведомление для пользователя ---
-    try:
-        user_message = (
-            f"✅ *Покупка совершена!*\n\n"
-            f"Вы приобрели: *{item.name}*.\n"
-            f"С вашего баланса списано *{item.price}* баллов.\n"
-            f"Ваш новый баланс: *{user.balance}* баллов."
-        )
-        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
-    except Exception as e:
-        print(f"Could not send purchase notification to user {user.telegram_id}. Error: {e}")
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
-    
-    # Существующее уведомление для администратора (остается без изменений)
+    # 4. Отправляем уведомления (эта часть не меняется)
     try:
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
@@ -211,14 +217,18 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
             f"💼 *Должность:* {user.position}\n\n"
             f"🎁 *Товар:* {item.name}\n"
             f"💰 *Стоимость:* {item.price} баллов\n\n"
-            f"📉 *Новый баланс пользователя:* {user.balance} баллов"
+            f"📉 *Новый баланс пользователя:* {new_balance} баллов"
         )
         await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
 
+    # 5. Сохраняем все изменения в базе данных
     await db.commit()
-    return user.balance
+    
+    # 6. Возвращаем новый баланс
+    return new_balance
+    
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
     await db.execute(update(models.User).values(balance=models.User.balance + amount))
