@@ -12,6 +12,9 @@
   background-position: center;
   position: sticky;
   top: 0;
+  /* --- ИСПРАВЛЕНИЕ: Добавляем left и right для корректного позиционирования --- */
+  left: 0;
+  right: 0;
   z-index: 1;
 }
 
@@ -34,17 +37,17 @@
 }
 
 .userAvatar {
-  width: 80px;
-  height: 80px;
+  width: 64px;  /* Было 80px */
+  height: 64px; /* Было 80px */
   border-radius: 50%;
   object-fit: cover;
 }
 
 .userName {
   font-family: 'Arial', sans-serif;
-  font-size: 22px;
+  font-size: 18px; /* Было 22px */
   color: #6E7A85;
-  margin-left: 20px;
+  margin-left: 16px; /* Было 20px */
   flex-grow: 1;
 }
 
