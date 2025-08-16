@@ -110,11 +110,18 @@ function App() {
   if (error) return <div>Ошибка: {error}</div>;
 
   return (
-     <div className="app-wrapper"> 
-      <div style={{ paddingBottom: '70px' }}>
+    <div className="app-wrapper"> 
+      {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
+
+      {/* 1. Создаем отдельный блок для контента, который будет скроллиться */}
+      <div className="content-scrollable">
         {renderPage()}
-        {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       </div>
+
+      {/* 2. Меню навигации теперь находится ВНЕ скролл-блока */}
+      {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
+
+      {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
     </div>
   );
 }
