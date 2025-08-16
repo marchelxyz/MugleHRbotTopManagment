@@ -25,46 +25,33 @@
 .userBlock {
   display: flex;
   align-items: center;
-  background-color: #FFFFFF;
-  border-radius: 12px;
-  padding: 15px;
-  margin: -50px 20px 20px 20px;
-  position: relative;
-  z-index: 2;
+  padding: 0 26px; 
+  margin-bottom: 30px; 
 }
 
-.userPhoto {
-  width: 50px;
-  height: 50px;
+/* --- ИЗМЕНЕНИЕ: Уменьшаем аватар --- */
+.userAvatar {
+  width: 80px; /* Было 114px */
+  height: 80px; /* Было 114px */
   border-radius: 50%;
-  margin-right: 15px;
   object-fit: cover;
 }
 
-.userInfo {
-  flex-grow: 1;
-}
-
+/* --- ИЗМЕНЕНИЕ: Уменьшаем шрифт имени --- */
 .userName {
-  font-weight: bold;
-  font-size: 16px;
-  color: #000;
+  font-family: 'Arial', sans-serif;
+  font-size: 22px; /* Было 27px */
+  color: #6E7A85;
+  margin-left: 20px; /* Немного уменьшили отступ */
+  flex-grow: 1; 
 }
 
 /* --- ИЗМЕНЕНИЕ: Уменьшаем кнопку --- */
 .thankYouButton {
-  background-color: #5CA14A;
-  color: white;
-  border: none;
-  border-radius: 40px;
-  padding: 10px 16px; /* Уменьшили отступы */
-  font-family: 'Arial', sans-serif;
-  font-weight: bold;
-  font-size: 13px; /* Уменьшили шрифт */
+  max-height: 50px; /* Ограничиваем высоту кнопки */
+  width: auto; 
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  /* flex-shrink: 0; убираем, чтобы кнопка могла сжиматься если нужно */
+  flex-shrink: 0;
 }
 
 .thankYouLogo {
@@ -108,6 +95,13 @@
 }
 
 /* --- ПОСЛЕДНЯЯ АКТИВНОСТЬ --- */
+.feedSection {
+  background-color: #FFFFFF;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
+  padding: 35px 21px 21px 21px; 
+
 .feedContainer {
   padding: 0 20px;
 }
@@ -116,8 +110,8 @@
   color: #408200;
   font-family: 'Arial', sans-serif;
   font-weight: bold;
-  font-size: 18px;
-  margin-bottom: 15px;
+  font-size: 24px; /* Было 30px */
+  margin: 0 0 24px 5px; 
 }
 
 .feedItem {
