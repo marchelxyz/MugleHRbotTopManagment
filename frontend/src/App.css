@@ -13,3 +13,8 @@
   position: relative; /* Нужно для корректной работы дочерних position: fixed */
   background-color: #F4F4F8; /* Фоновый цвет, если основной фон body другой */
 }
+
+.content-scrollable {
+  /* Отступ снизу, равный высоте меню навигации, чтобы оно не перекрывало контент */
+  padding-bottom: 80px; 
+}
