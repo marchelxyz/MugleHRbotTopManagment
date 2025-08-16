@@ -1,12 +1,12 @@
 /* frontend/src/components/BottomNav.module.css */
 
 .nav {
-  position: fixed; /* <- Это самое главное свойство */
+  position: fixed; /* ГЛАВНОЕ СВОЙСТВО */
+  z-index: 100; /* Ставим поверх всего остального контента */
   bottom: 0;
   left: 0;
   right: 0;
   
-  /* Для .app-wrapper нам нужно ограничить ширину меню */
   margin: 0 auto;
   max-width: 450px;
 
