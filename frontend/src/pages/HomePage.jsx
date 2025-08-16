@@ -9,7 +9,6 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // ... useEffect остается без изменений ...
     const fetchData = async () => {
       try {
         const feedResponse = await getFeed();
@@ -26,32 +25,30 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
   const photoPlaceholders = [1, 2, 3];
 
   return (
-    // Теперь у нас есть общий контейнер для parallax-эффекта
     <div className={styles.pageContainer}>
-      {/* Шапка теперь зафиксирована на фоне */}
       <div className={styles.header}></div>
 
-      {/* Основной контент, который будет скроллиться поверх шапки */}
       <div className={styles.contentArea}>
         
-        {/* Блок пользователя теперь без своей подложки */}
         <div className={styles.userBlock}>
           <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
           <span className={styles.userName}>{user.last_name}</span>
-          <img src="https://i.postimg.cc/ncfzjKGc/image.webp" alt="Отправить спасибки" className={styles.thankYouButton} onClick={() => onNavigate('transfer')} />
+          <img 
+            src="https://i.postimg.cc/ncfzjKGc/image.webp" 
+            alt="Отправить спасибки" 
+            className={styles.thankYouButton} 
+            onClick={() => onNavigate('transfer')} 
+          />
         </div>
 
-        {/* Баннер */}
         <div className={styles.banner}>
           <img src="https://i.postimg.cc/kD31TGDt/234.webp" alt="Banner" className={styles.bannerImage} />
         </div>
 
-        {/* Лента фото */}
         <div className={styles.photoFeed}>
           {photoPlaceholders.map(p => <div key={p} className={styles.photoPlaceholder}></div>)}
         </div>
 
-        {/* Блок последней активности */}
         <div className={styles.feedSection}>
           <h3 className={styles.feedTitle}>Последняя активность</h3>
           <div className={styles.feedGrid}>
