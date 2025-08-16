@@ -9,6 +9,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // ... useEffect остается без изменений ...
     const fetchData = async () => {
       try {
         const feedResponse = await getFeed();
@@ -25,48 +26,50 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
   const photoPlaceholders = [1, 2, 3];
 
   return (
-    <div className={styles.page}>
+    // Теперь у нас есть общий контейнер для parallax-эффекта
+    <div className={styles.pageContainer}>
+      {/* Шапка теперь зафиксирована на фоне */}
       <div className={styles.header}></div>
 
-      <div className={styles.userBlock}>
-        {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.userPhoto} />}
-        <div className={styles.userInfo}>
+      {/* Основной контент, который будет скроллиться поверх шапки */}
+      <div className={styles.contentArea}>
+        
+        {/* Блок пользователя теперь без своей подложки */}
+        <div className={styles.userBlock}>
+          <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
           <span className={styles.userName}>{user.last_name}</span>
+          <img src="https://i.postimg.cc/ncfzjKGc/image.webp" alt="Отправить спасибки" className={styles.thankYouButton} onClick={() => onNavigate('transfer')} />
         </div>
-        {/* --- ИЗМЕНЕНИЕ: Новая ссылка на логотип в кнопке --- */}
-        <button onClick={() => onNavigate('transfer')} className={styles.thankYouButton}>
-          <img src="https://i.postimg.cc/wxbwWWnQ/image.webp" alt="logo" className={styles.thankYouLogo} />
-          Отправить спасибки
-        </button>
-      </div>
 
-      <div className={styles.banner}>
-        {/* --- ИЗМЕНЕНИЕ: Новая ссылка на баннер --- */}
-        <img src="https://i.postimg.cc/kD31TGDt/234.webp" alt="Banner" className={styles.bannerImage} />
-      </div>
+        {/* Баннер */}
+        <div className={styles.banner}>
+          <img src="https://i.postimg.cc/kD31TGDt/234.webp" alt="Banner" className={styles.bannerImage} />
+        </div>
 
-      <div className={styles.photoFeed}>
-        {photoPlaceholders.map(p => <div key={p} className={styles.photoPlaceholder}></div>)}
-      </div>
+        {/* Лента фото */}
+        <div className={styles.photoFeed}>
+          {photoPlaceholders.map(p => <div key={p} className={styles.photoPlaceholder}></div>)}
+        </div>
 
-      <div className={styles.feedContainer}>
-        <h3 className={styles.feedTitle}>Последняя активность</h3>
-        {isLoading ? <p>Загрузка ленты...</p> : (
-          feed.length > 0 ? (
-            feed.map((item) => (
-              <div key={item.id} className={styles.feedItem}>
-                {/* --- ИЗМЕНЕНИЕ: Новая ссылка на логотип в ленте --- */}
-                <img src="https://i.postimg.cc/FRbVhpK1/Frame-2131328056.webp" alt="feed item logo" className={styles.feedItemLogo} />
-                <div className={styles.feedContent}>
-                  <p className={styles.feedTransaction}>
-                    <strong>@{item.sender.username || item.sender.last_name}</strong> &rarr; <strong>@{item.receiver.username || item.receiver.last_name}</strong>
-                  </p>
-                  <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
+        {/* Блок последней активности */}
+        <div className={styles.feedSection}>
+          <h3 className={styles.feedTitle}>Последняя активность</h3>
+          <div className={styles.feedGrid}>
+            {isLoading ? <p>Загрузка...</p> : (
+              feed.map((item) => (
+                <div key={item.id} className={styles.feedItem}>
+                  <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
+                  <div className={styles.feedItemContent}>
+                    <p className={styles.feedTransaction}>
+                      @{item.sender.username || item.sender.last_name} <span className={styles.arrow}>&rarr;</span> @{item.receiver.username || item.receiver.last_name}
+                    </p>
+                    <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : <p>Пока не было переводов.</p>
-        )}
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
