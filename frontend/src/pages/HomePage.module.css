@@ -136,19 +136,31 @@
   margin-right: 27px;
 }
 
-.feedContent {
+.feedItemContent {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
+  overflow: hidden; 
 }
 
 .feedTransaction {
   font-size: 23px;
-  color: #000;
-  margin: 0 0 5px 0;
+  color: #408200;
+  margin: 0;
+  /* --- ИЗМЕНЕНИЯ --- */
+  white-space: normal; /* Разрешаем перенос текста */
+  word-break: break-word; /* Позволяем разрывать длинные слова, если нужно */
+  overflow: visible;
+  text-overflow: initial;
 }
+.arrow { color: #6E7A85; }
 
 .feedMessage {
   font-size: 19px;
   color: #6E7A85;
-  margin: 0;
+  margin-top: 13px;
+  /* --- ИЗМЕНЕНИЯ --- */
+  white-space: normal; /* Разрешаем перенос текста */
+  word-break: break-word; /* Позволяем разрывать длинные слова */
+  overflow: visible;
+  text-overflow: initial;
 }
