@@ -2,23 +2,23 @@
 
 .nav {
   position: fixed;
-  /* --- ИЗМЕНЕНИЯ --- */
-  bottom: 0; /* Прижимаем к низу */
-  left: 0; /* Растягиваем до левого края */
-  right: 0; /* Растягиваем до правого края */
+  bottom: 0;
+  left: 0;
+  right: 0;
   
   display: flex;
   justify-content: space-around;
   background-color: #5CA14A;
   
-  /* Убираем радиус, т.к. меню теперь по всей ширине */
-  border-radius: 0; 
+  /* --- ИЗМЕНЕНИЯ --- */
+  height: 60px; /* Уменьшили высоту, оставив место для padding */
+  padding: 5px 0; /* Уменьшаем вертикальные паддинги, чтобы уложиться в высоту */
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
   
-  padding: 10px 0;
-  
-  /* Тень можно убрать или заменить на верхнюю границу */
   box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.15); 
-  border-top: 1px solid rgba(0, 0, 0, 0.1); /* Добавляем тонкую линию сверху */
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .navButton {
@@ -29,13 +29,13 @@
   flex-grow: 1;
   border: none;
   background: none;
-  padding: 5px 0;
   cursor: pointer;
-  color: #3F7132; /* Цвет неактивной иконки */
+  color: #3F7132;
+  height: 100%; /* Растягиваем кнопку на всю высоту */
 }
 
 .navButton.active {
-  color: #FFFFFF; /* Цвет активной иконки */
+  color: #FFFFFF;
 }
 
 .navLabel {
