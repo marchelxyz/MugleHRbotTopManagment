@@ -114,9 +114,10 @@
   justify-content: center;
 }
 
+/* --- ИЗМЕНЕНИЕ: Уменьшаем ширину карточки --- */
 .feedItem {
   width: 100%;
-  max-width: 400px;
+  max-width: 360px; /* Было 400px, делаем карточку уже */
   background-color: #FFFFFF;
   border-radius: 40px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
@@ -126,9 +127,10 @@
   box-sizing: border-box;
 }
 
+/* --- ИЗМЕНЕНИЕ: Уменьшаем логотип --- */
 .feedItemLogo {
-  width: 96px;
-  height: 96px;
+  width: 75px; /* Было 96px */
+  height: 75px; /* Было 96px */
   margin-right: 15px;
   flex-shrink: 0;
 }
@@ -136,29 +138,28 @@
 .feedItemContent {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  overflow: hidden;
+  overflow: hidden; 
 }
 
+/* --- ИЗМЕНЕНИЕ: Уменьшаем текст транзакции --- */
 .feedTransaction {
-  font-size: 23px;
+  font-size: 18px; /* Было 23px */
   color: #408200;
   margin: 0;
-  white-space: normal;
-  word-break: break-word;
+  white-space: normal; 
+  word-break: break-word; 
   overflow: visible;
   text-overflow: initial;
 }
+.arrow { color: #6E7A85; }
 
-.arrow {
-  color: #6E7A85;
-}
-
+/* --- ИЗМЕНЕНИЕ: Уменьшаем текст сообщения --- */
 .feedMessage {
-  font-size: 19px;
+  font-size: 15px; /* Было 19px */
   color: #6E7A85;
-  margin-top: 13px;
-  white-space: normal;
-  word-break: break-word;
+  margin-top: 8px; /* Было 13px */
+  white-space: normal; 
+  word-break: break-word; 
   overflow: visible;
   text-overflow: initial;
 }
