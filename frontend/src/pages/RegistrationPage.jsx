@@ -59,7 +59,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
           type="text"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          placeholder="Ваша фамилия"
+          placeholder="Ваше имя"
           className={styles.input}
           required
         />
