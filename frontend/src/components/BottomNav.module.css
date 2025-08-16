@@ -1,21 +1,23 @@
 /* frontend/src/components/BottomNav.module.css */
 
 .nav {
-  position: fixed;
+  position: fixed; /* <- Это самое главное свойство */
   bottom: 0;
   left: 0;
   right: 0;
   
+  /* Для .app-wrapper нам нужно ограничить ширину меню */
+  margin: 0 auto;
+  max-width: 450px;
+
   display: flex;
   justify-content: space-around;
   background-color: #5CA14A;
   
-  /* --- ИЗМЕНЕНИЯ --- */
-  height: 60px; /* Уменьшили высоту, оставив место для padding */
-  padding: 5px 0; /* Уменьшаем вертикальные паддинги, чтобы уложиться в высоту */
+  height: 60px;
+  padding: 5px 0;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
-  /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
   
   box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.15); 
   border-top: 1px solid rgba(0, 0, 0, 0.1);
