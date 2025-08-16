@@ -16,6 +16,7 @@ import AdminPage from './pages/AdminPage';
 // Убедитесь, что вы импортировали новые страницы
 import SettingsPage from './pages/SettingsPage';
 import FaqPage from './pages/FaqPage';
+import './App.css';
 
 const tg = window.Telegram.WebApp;
 
@@ -109,9 +110,11 @@ function App() {
   if (error) return <div>Ошибка: {error}</div>;
 
   return (
-    <div style={{ paddingBottom: '70px' }}>
-      {renderPage()}
-      {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
+     <div className="app-wrapper"> 
+      <div style={{ paddingBottom: '70px' }}>
+        {renderPage()}
+        {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
+      </div>
     </div>
   );
 }
