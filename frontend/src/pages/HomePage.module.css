@@ -165,7 +165,7 @@
   height: 120px;
   background-color: #5CA14A;
   border-radius: 20px;
-  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+  /* box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);  <-- ЭТА СТРОКА УДАЛЕНА */
   cursor: pointer;
 }
 
