@@ -197,6 +197,18 @@ function AdminPanel() {
             placeholder="URL для перехода (необязательно)"
             className={styles.input}
           />
+
+{/* --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем выбор позиции --- */}
+          <select
+            name="position"
+            value={bannerForm.position}
+            onChange={handleBannerFormChange}
+            className={styles.input}
+          >
+            <option value="feed">Баннер в ленте (горизонтальный)</option>
+            <option value="main">Главный баннер (верхний)</option>
+          </select>
+          
           <label className={styles.checkboxLabel}>
             <input
               type="checkbox"
