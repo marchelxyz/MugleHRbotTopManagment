@@ -62,10 +62,50 @@
   margin-bottom: 30px;
 }
 
+.sliderContainer {
+  margin: 0 26px 30px 26px;
+  overflow: hidden; /* Прячем все слайды, кроме одного */
+  position: relative;
+  border-radius: 20px;
+}
+
+.sliderTrack {
+  display: flex;
+  transition: transform 0.5s ease-in-out; /* Плавная анимация */
+}
+
+.slide {
+  flex: 0 0 100%; /* Каждый слайд занимает 100% ширины контейнера */
+  width: 100%;
+}
+
 .bannerImage {
   width: 100%;
   border-radius: 20px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
+  display: block; /* Убирает лишний отступ у картинки */
+}
+
+.sliderDots {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.dotActive {
+  background-color: white;
 }
 
 /* --- ИЗМЕНЕНИЕ: Стили для бесконечной прокрутки ВПРАВО --- */
