@@ -8,6 +8,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
   const [feed, setFeed] = useState([]);
   const [banners, setBanners] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,16 +28,26 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
     fetchData();
   }, []);
 
- // --- ИЗМЕНЕНИЕ: Фильтруем баннеры по полю position ---
-  const mainBanner = banners.find(b => b.position === 'main') || null;
-  const photoFeedBanners = banners.filter(b => b.position === 'feed');
+  // --- НОВЫЙ ЭФФЕКТ: Логика для авто-переключения слайдов ---
+  const mainBanners = banners.filter(b => b.position === 'main');
+  
+  useEffect(() => {
+    if (mainBanners.length > 1) {
+      const timer = setTimeout(() => {
+        setCurrentSlide((prevSlide) => (prevSlide + 1) % mainBanners.length);
+      }, 5000); // Переключаем каждые 5 секунд
+      return () => clearTimeout(timer); // Очищаем таймер при смене компонента
+    }
+  }, [currentSlide, mainBanners.length]);
 
+  const photoFeedBanners = banners.filter(b => b.position === 'feed');
+  
   const handleBannerClick = (url) => {
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
-
+  
   return (
     <div className={styles.pageContainer}>
       <div className={styles.header}></div>
@@ -54,10 +65,30 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
           />
         </div>
 
-        {/* Основной баннер */}
-        {mainBanner && (
-          <div className={styles.banner} onClick={() => handleBannerClick(mainBanner.link_url)}>
-            <img src={mainBanner.image_url} alt="Banner" className={styles.bannerImage} />
+{/* --- ИЗМЕНЕНИЕ: Переделываем блок в слайдер --- */}
+        {mainBanners.length > 0 && (
+          <div className={styles.sliderContainer}>
+            <div 
+              className={styles.sliderTrack}
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {mainBanners.map(banner => (
+                <div key={banner.id} className={styles.slide} onClick={() => handleBannerClick(banner.link_url)}>
+                  <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
+                </div>
+              ))}
+            </div>
+            {mainBanners.length > 1 && (
+              <div className={styles.sliderDots}>
+                {mainBanners.map((_, index) => (
+                  <div 
+                    key={index} 
+                    className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
+                    onClick={() => setCurrentSlide(index)}
+                  ></div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
