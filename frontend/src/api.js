@@ -57,3 +57,38 @@ export const createMarketItem = (itemData) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+// Получение активных баннеров для главной страницы
+export const getBanners = () => apiClient.get('/banners');
+
+// Получение всех баннеров для админ-панели
+export const getAllBanners = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/banners', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Создание нового баннера
+export const createBanner = (bannerData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/banners', bannerData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Обновление баннера
+export const updateBanner = (bannerId, bannerData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/banners/${bannerId}`, bannerData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Удаление баннера
+export const deleteBanner = (bannerId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/banners/${bannerId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
