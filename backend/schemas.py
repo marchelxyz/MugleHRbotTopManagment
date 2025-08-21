@@ -107,3 +107,17 @@ class UserUpdate(BaseModel):
     position: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
+
+class BannerBase(OrmBase):
+    image_url: str
+    link_url: Optional[str] = None
+    is_active: bool
+
+class BannerCreate(BannerBase):
+    pass
+
+class BannerUpdate(BannerBase):
+    pass
+
+class BannerResponse(BannerBase):
+    id: int
