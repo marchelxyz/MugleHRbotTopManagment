@@ -117,8 +117,11 @@ class BannerBase(OrmBase):
 class BannerCreate(BannerBase):
     pass
 
-class BannerUpdate(BannerBase):
-    pass
+class BannerUpdate(BaseModel):
+    image_url: Optional[str] = None
+    link_url: Optional[str] = None
+    is_active: Optional[bool] = None
+    position: Optional[str] = None
 
 class BannerResponse(BannerBase):
     id: int
