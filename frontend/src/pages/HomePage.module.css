@@ -13,7 +13,6 @@
   background-position: center;
   position: sticky;
   top: 0;
-  /* --- ИСПРАВЛЕНИЕ: Добавляем left и right для корректного позиционирования --- */
   left: 0;
   right: 0;
   z-index: 1;
@@ -37,17 +36,17 @@
 }
 
 .userAvatar {
-  width: 64px;  /* Было 80px */
-  height: 64px; /* Было 80px */
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .userName {
   font-family: 'Arial', sans-serif;
-  font-size: 18px; /* Было 22px */
+  font-size: 18px;
   color: #6E7A85;
-  margin-left: 16px; /* Было 20px */
+  margin-left: 16px;
   flex-grow: 1;
 }
 
@@ -71,16 +70,26 @@
 
 .photoFeed {
   display: flex;
-  overflow-x: auto;
-  gap: 10px;
-  padding: 0 26px;
+  overflow: hidden;
+  padding: 0;
   margin-bottom: 30px;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
 }
 
-.photoFeed::-webkit-scrollbar {
-  display: none;
+.photoFeedTrack {
+  display: flex;
+  gap: 10px;
+  animation: marquee 40s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 .photoPlaceholder {
@@ -88,7 +97,15 @@
   height: 120px;
   background-color: #5CA14A;
   border-radius: 20px;
-  box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+.photoFeedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 20px;
 }
 
 .feedSection {
@@ -103,7 +120,7 @@
   color: #408200;
   font-family: 'Arial', sans-serif;
   font-weight: bold;
-  font-size: 19px;
+  font-size: 24px;
   margin: 0 0 24px 5px;
 }
 
@@ -114,23 +131,21 @@
   justify-content: center;
 }
 
-/* --- ИЗМЕНЕНИЕ: Уменьшаем ширину и внутренние отступы --- */
 .feedItem {
   width: 100%;
-  max-width: 340px; /* Еще немного уменьшаем ширину */
+  max-width: 340px;
   background-color: #FFFFFF;
-  border-radius: 20px;
+  border-radius: 40px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
-  padding: 15px; /* Уменьшаем внутренние отступы для компактности */
+  padding: 15px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
 }
 
-/* --- ИЗМЕНЕНИЕ: Уменьшаем логотип на 20% --- */
 .feedItemLogo {
-  width: 60px;  /* Было 75px */
-  height: 60px; /* Было 75px */
+  width: 60px;
+  height: 60px;
   margin-right: 15px;
   flex-shrink: 0;
 }
@@ -138,35 +153,29 @@
 .feedItemContent {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  overflow: hidden; 
+  overflow: hidden;
 }
 
-/* --- ИЗМЕНЕНИЕ: Уменьшаем текст на 20% --- */
 .feedTransaction {
-  font-size: 14px; /* Было 18px */
+  font-size: 14px;
   color: #408200;
   margin: 0;
-  white-space: normal; 
-  word-break: break-word; 
+  white-space: normal;
+  word-break: break-word;
   overflow: visible;
   text-overflow: initial;
 }
-.arrow { color: #6E7A85; }
 
-/* --- ИЗМЕНЕНИЕ: Уменьшаем текст на 20% --- */
-.feedMessage {
-  font-size: 12px; /* Было 15px */
+.arrow {
   color: #6E7A85;
-  margin-top: 6px; /* Было 8px */
-  white-space: normal; 
-  word-break: break-word; 
-  overflow: visible;
-  text-overflow: initial;
 }
 
-.photoFeedImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* Картинка будет полностью заполнять блок */
-  border-radius: 20px; /* Скругление, как у родителя */
+.feedMessage {
+  font-size: 12px;
+  color: #6E7A85;
+  margin-top: 6px;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: initial;
 }
