@@ -1,134 +1,151 @@
 /* frontend/src/pages/HomePage.module.css */
 
-/* --- НОВЫЙ ОБЩИЙ КОНТЕЙНЕР ДЛЯ ЭФФЕКТА СКРОЛЛА --- */
 .pageContainer {
   background-color: #F4F4F8;
-  position: relative; /* Необходимо для позиционирования дочерних элементов */
+  position: relative;
+  padding-bottom: 80px;
 }
 
-/* --- ШАПКА --- */
 .header {
-  height: 220px; /* Увеличили на 20px */
+  height: 220px;
   background-image: url('https://i.postimg.cc/ncBwC4wK/Frame-2131328055.webp');
   background-size: cover;
   background-position: center;
-  position: sticky; /* Прилипает к верху */
+  position: sticky;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1;
-  border-bottom-left-radius: 0; /* Убрали скругления */
-  border-bottom-right-radius: 0;
 }
 
-/* --- ОСНОВНАЯ ПОДЛОЖКА ДЛЯ КОНТЕНТА --- */
 .contentArea {
   background-color: #F4F4F8;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   position: relative;
   z-index: 2;
-  margin-top: -20px; /* Наезжает на шапку */
-  padding-top: 30px; /* Отступ от верхнего края подложки */
-  padding-bottom: 100px; /* Отступ для навигации */
+  margin-top: -20px;
+  padding-top: 30px;
 }
 
-/* --- БЛОК ПОЛЬЗОВАТЕЛЯ --- */
 .userBlock {
   display: flex;
   align-items: center;
-  padding: 0 26px; /* Отступы слева и справа */
-  margin-bottom: 30px; /* Отступ до баннера */
+  padding: 0 26px;
+  margin-bottom: 30px;
 }
 
 .userAvatar {
-  width: 114px;
-  height: 114px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   object-fit: cover;
 }
 
 .userName {
   font-family: 'Arial', sans-serif;
-  font-size: 27px;
+  font-size: 18px;
   color: #6E7A85;
-  margin-left: 22px;
-  flex-grow: 1; /* Занимает все доступное место */
+  margin-left: 16px;
+  flex-grow: 1;
 }
 
 .thankYouButton {
-  width: auto; /* Ширина по контенту */
-  height: auto; /* Высота по контенту */
+  max-height: 50px;
+  width: auto;
   cursor: pointer;
-  flex-shrink: 0; /* Не сжиматься */
+  flex-shrink: 0;
 }
 
-/* --- БАННЕРЫ И ЛЕНТА ФОТО --- */
 .banner {
   padding: 0 26px;
-  margin-bottom: 30px; /* Уменьшили расстояние */
+  margin-bottom: 30px;
 }
+
 .bannerImage {
   width: 100%;
   border-radius: 20px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
 }
+
 .photoFeed {
   display: flex;
-  overflow-x: auto;
-  gap: 10px;
-  padding: 0 26px;
-  margin-bottom: 30px; /* Уменьшили расстояние */
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  overflow: hidden;
+  padding: 0;
+  margin-bottom: 30px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
 }
-.photoFeed::-webkit-scrollbar { display: none; }
+
+.photoFeedTrack {
+  display: flex;
+  gap: 10px;
+  animation: marquee 40s linear infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 .photoPlaceholder {
   flex: 0 0 160px;
   height: 120px;
   background-color: #5CA14A;
   border-radius: 20px;
-  box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
 
-/* --- СЕКЦИЯ ПОСЛЕДНЕЙ АКТИВНОСТИ --- */
+.photoFeedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 20px;
+}
+
 .feedSection {
   background-color: #FFFFFF;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
-  padding: 35px 21px 21px 21px; /* Внутренние отступы */
+  padding: 35px 21px 21px 21px;
 }
 
 .feedTitle {
   color: #408200;
   font-family: 'Arial', sans-serif;
   font-weight: bold;
-  font-size: 30px;
-  margin: 0 0 24px 5px; /* Отступ от края подложки (26-21=5) */
+  font-size: 24px;
+  margin: 0 0 24px 5px;
 }
 
-/* Сетка для карточек уведомлений */
 .feedGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px; /* Расстояние между карточками */
-  justify-content: center; /* Центрируем карточки */
+  gap: 15px;
+  justify-content: center;
 }
 
 .feedItem {
-  width: 100%; /* По умолчанию на всю ширину */
-  max-width: 400px; /* Максимальная ширина, чтобы на больших экранах не растягивалось */
+  width: 100%;
+  max-width: 340px;
   background-color: #FFFFFF;
   border-radius: 40px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
-  padding: 20px;
+  padding: 15px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
 }
 
 .feedItemLogo {
-  width: 96px;
-  height: 96px;
+  width: 60px;
+  height: 60px;
   margin-right: 15px;
   flex-shrink: 0;
 }
@@ -136,24 +153,29 @@
 .feedItemContent {
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  overflow: hidden; /* Чтобы текст не вылезал */
+  overflow: hidden;
 }
 
 .feedTransaction {
-  font-size: 23px;
+  font-size: 14px;
   color: #408200;
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: initial;
 }
-.arrow { color: #6E7A85; }
+
+.arrow {
+  color: #6E7A85;
+}
 
 .feedMessage {
-  font-size: 19px;
+  font-size: 12px;
   color: #6E7A85;
-  margin-top: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-top: 6px;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: initial;
 }
