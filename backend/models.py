@@ -59,3 +59,10 @@ class Purchase(Base):
     user = relationship("User", back_populates="purchases")
     # Убираем lazy='selectin' и отсюда
     item = relationship("MarketItem", back_populates="purchases")
+
+class Banner(Base):
+    __tablename__ = "banners"
+    id = Column(Integer, primary_key=True, index=True)
+    image_url = Column(String, nullable=False)
+    link_url = Column(String, nullable=True) # Ссылка для перехода по клику
+    is_active = Column(Boolean, default=True, nullable=False)
