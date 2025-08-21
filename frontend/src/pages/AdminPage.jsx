@@ -17,6 +17,7 @@ const initialBannerState = {
   image_url: '',
   link_url: '',
   is_active: true,
+  position: 'feed', // 'main' или 'feed'
 };
 
 function AdminPanel() {
@@ -94,12 +95,14 @@ function AdminPanel() {
   // Включение режима редактирования
   const handleEditBanner = (banner) => {
     setEditingBannerId(banner.id);
+    // --- ИЗМЕНЕНИЕ: Устанавливаем position при редактировании ---
     setBannerForm({
       image_url: banner.image_url,
       link_url: banner.link_url || '',
       is_active: banner.is_active,
+      position: banner.position || 'feed', // Устанавливаем позицию
     });
-    window.scrollTo(0, document.body.scrollHeight); // Прокручиваем к форме
+    window.scrollTo(0, document.body.scrollHeight); 
   };
 
   // Отмена редактирования
