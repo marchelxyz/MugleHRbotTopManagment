@@ -27,9 +27,9 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
     fetchData();
   }, []);
 
-  // Логика остаётся прежней: первый баннер — основной, остальные — в карусель.
-  const mainBanner = banners.length > 0 ? banners[0] : null;
-  const photoFeedBanners = banners.length > 1 ? banners.slice(1) : [];
+ // --- ИЗМЕНЕНИЕ: Фильтруем баннеры по полю position ---
+  const mainBanner = banners.find(b => b.position === 'main') || null;
+  const photoFeedBanners = banners.filter(b => b.position === 'feed');
 
   const handleBannerClick = (url) => {
     if (url) {
