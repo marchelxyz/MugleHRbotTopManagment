@@ -110,12 +110,35 @@
 
 /* --- ИЗМЕНЕНИЕ: Стили для бесконечной прокрутки ВПРАВО --- */
 .photoFeed {
+  position: relative; /* Необходимо для позиционирования псевдо-элементов */
   display: flex;
   overflow: hidden;
   padding: 0;
   margin-bottom: 30px;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
-  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+/* Создаем левое затухание */
+.photoFeed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50px; /* Ширина области затухания */
+  background: linear-gradient(to right, #F4F4F8, transparent);
+  z-index: 2; /* Размещаем поверх ленты */
+}
+
+/* Создаем правое затухание */
+.photoFeed::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 50px; /* Ширина области затухания */
+  background: linear-gradient(to left, #F4F4F8, transparent);
+  z-index: 2; /* Размещаем поверх ленты */
 }
 
 .photoFeedTrack {
