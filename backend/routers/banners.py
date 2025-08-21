@@ -1,6 +1,6 @@
 # backend/routers/banners.py
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -59,4 +59,5 @@ async def delete_banner_route(
     success = await crud.delete_banner(db, banner_id)
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Banner not found")
-    return {"ok": True}
+    # --- ИЗМЕНЕНИЕ: Возвращаем правильный пустой ответ ---
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
