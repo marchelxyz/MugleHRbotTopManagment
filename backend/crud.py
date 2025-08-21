@@ -233,3 +233,49 @@ async def reset_balances(db: AsyncSession):
     await db.execute(update(models.User).values(balance=0))
     await db.commit()
     return True
+
+# --- CRUD ДЛЯ БАННЕРОВ ---
+
+async def get_active_banners(db: AsyncSession):
+    """Получает все активные баннеры."""
+    result = await db.execute(
+        select(models.Banner).where(models.Banner.is_active == True)
+    )
+    return result.scalars().all()
+
+async def get_all_banners(db: AsyncSession):
+    """Получает абсолютно все баннеры (для админки)."""
+    result = await db.execute(select(models.Banner))
+    return result.scalars().all()
+
+async def create_banner(db: AsyncSession, banner: schemas.BannerCreate):
+    """Создает новый баннер."""
+    db_banner = models.Banner(**banner.model_dump())
+    db.add(db_banner)
+    await db.commit()
+    await db.refresh(db_banner)
+    return db_banner
+
+async def update_banner(db: AsyncSession, banner_id: int, banner_data: schemas.BannerUpdate):
+    """Обновляет баннер."""
+    result = await db.execute(select(models.Banner).where(models.Banner.id == banner_id))
+    db_banner = result.scalars().first()
+    if not db_banner:
+        return None
+    
+    for key, value in banner_data.model_dump(exclude_unset=True).items():
+        setattr(db_banner, key, value)
+        
+    await db.commit()
+    await db.refresh(db_banner)
+    return db_banner
+
+async def delete_banner(db: AsyncSession, banner_id: int):
+    """Удаляет баннер."""
+    result = await db.execute(select(models.Banner).where(models.Banner.id == banner_id))
+    db_banner = result.scalars().first()
+    if db_banner:
+        await db.delete(db_banner)
+        await db.commit()
+        return True
+    return False
