@@ -57,3 +57,72 @@
 .buttonGreen:disabled {
   background-color: #a3d9b1;
 }
+
+/* ... (существующие стили) ... */
+
+.checkboxLabel {
+  display: block;
+  margin: 15px 0;
+  cursor: pointer;
+}
+
+.buttonGrey {
+  composes: button;
+  background-color: #6c757d;
+  margin-top: 10px;
+}
+
+.buttonGrey:disabled {
+  background-color: #a1a6ab;
+}
+
+.list {
+  margin-top: 20px;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.listItem:last-child {
+  border-bottom: none;
+}
+
+.listItemImage {
+  width: 80px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-right: 15px;
+}
+
+.listItemContent {
+  flex-grow: 1;
+  font-size: 14px;
+}
+.listItemContent p {
+  margin: 2px 0;
+  word-break: break-all;
+}
+
+.listItemActions {
+  display: flex;
+  gap: 10px;
+}
+
+.buttonSmall {
+  padding: 8px 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+}
+.buttonSmallRed {
+  composes: buttonSmall;
+  background-color: #dc3545;
+}
