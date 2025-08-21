@@ -108,17 +108,44 @@
   background-color: white;
 }
 
+/* --- ИЗМЕНЕНИЕ: Стили для бесконечной прокрутки ВПРАВО --- */
 .photoFeed {
+  position: relative; /* Необходимо для позиционирования псевдо-элементов */
   display: flex;
-  overflow: hidden; /* Просто прячем все, что выходит за рамки */
-  padding: 0 10px; /* Небольшой боковой отступ, чтобы баннеры не прилипали к краям */
+  overflow: hidden;
+  padding: 0;
   margin-bottom: 30px;
+}
+
+/* Создаем левое затухание */
+.photoFeed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50px; /* Ширина области затухания */
+  background: linear-gradient(to right, #F4F4F8, transparent);
+  z-index: 2; /* Размещаем поверх ленты */
+}
+
+/* Создаем правое затухание */
+.photoFeed::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 50px; /* Ширина области затухания */
+  background: linear-gradient(to left, #F4F4F8, transparent);
+  z-index: 2; /* Размещаем поверх ленты */
 }
 
 .photoFeedTrack {
   display: flex;
   gap: 10px;
-  animation: marqueeRight 20s linear infinite;
+  /* Используем новую анимацию marqueeRight */
+  animation: marqueeRight 30s linear infinite;
 }
 
 /* Ключевые кадры для движения ВПРАВО */
