@@ -66,3 +66,4 @@ class Banner(Base):
     image_url = Column(String, nullable=False)
     link_url = Column(String, nullable=True) # Ссылка для перехода по клику
     is_active = Column(Boolean, default=True, nullable=False)
+    position = Column(String, default='feed', nullable=False) # 'main' или 'feed'
