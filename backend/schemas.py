@@ -112,6 +112,7 @@ class BannerBase(OrmBase):
     image_url: str
     link_url: Optional[str] = None
     is_active: bool
+    position: str
 
 class BannerCreate(BannerBase):
     pass
