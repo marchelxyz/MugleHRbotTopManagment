@@ -163,3 +163,10 @@
   overflow: visible;
   text-overflow: initial;
 }
+
+.photoFeedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Картинка будет полностью заполнять блок */
+  border-radius: 20px; /* Скругление, как у родителя */
+}
