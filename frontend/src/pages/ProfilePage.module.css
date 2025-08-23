@@ -1,9 +1,6 @@
 /* frontend/src/pages/ProfilePage.module.css */
 
-.page {
-  padding: 20px;
-  background-color: #F4F4F8; /* Общий фон */
-}
+.page {}
 
 /* --- Стили шапки профиля --- */
 .profileHeader {
