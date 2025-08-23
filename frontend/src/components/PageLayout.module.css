@@ -1,0 +1,42 @@
+/* frontend/src/components/PageLayout.module.css */
+
+.pageContainer {
+  background-color: #F4F4F8;
+  position: relative;
+  min-height: 100vh; /* Чтобы фон был на всю высоту */
+}
+
+.header {
+  height: 120px; /* Новая, уменьшенная высота шапки */
+  background-image: url('https://i.postimg.cc/fTRHTcDT/image.webp');
+  background-size: cover;
+  background-position: center;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.headerTitle {
+  color: white;
+  font-family: 'Arial', sans-serif;
+  font-size: 28px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.contentArea {
+  background-color: #F4F4F8;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  position: relative;
+  z-index: 2;
+  margin-top: -20px;
+  padding: 20px;
+  min-height: calc(100vh - 100px); /* Чтобы контент занимал минимум весь экран */
+}
