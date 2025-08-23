@@ -1,8 +1,17 @@
 /* frontend/src/App.css */
 
 .app-wrapper {
-  /* --- Центрирование на ПК --- */
-  margin: 0 auto; /* Автоматические отступы слева и справа для центрирования */
+  margin: 0 auto;
+  max-width: 450px;
+  min-height: 100vh;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  background-color: #F4F4F8;
+
+  /* --- ДОБАВЛЯЕМ ЭТО СВОЙСТВО --- */
+  user-select: none; /* Запрещаем выделение текста */
+  -webkit-user-select: none; /* Для поддержки Safari */
+}
   
   /* --- Ограничение ширины --- */
   max-width: 450px; /* Максимальная ширина, как у телефона */
