@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers, transferPoints } from '../api';
 import styles from './TransferPage.module.css';
+import PageLayout from '../components/PageLayout';
 
 const tg = window.Telegram.WebApp;
 
@@ -72,10 +73,10 @@ function TransferPage({ user, onBack }) {
   };
 
   return (
-    <div className={styles.page}>
+    <PageLayout title="Отправить спасибки">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
-      <h1>Передать баллы</h1>
-      <p>Ваш баланс: {user?.balance} баллов</p>
+      <h1>Передать спасибки</h1>
+      <p>Ваш баланс: {user?.balance} спасибок</p>
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
           <label className={styles.label}>Кому:</label>
@@ -89,7 +90,7 @@ function TransferPage({ user, onBack }) {
           </select>
         </div>
         <div className={styles.formGroup}>
-          <label className={styles.label}>Сколько баллов:</label>
+          <label className={styles.label}>Сколько спасибок:</label>
           <input
             type="number"
             value={amount}
@@ -115,7 +116,7 @@ function TransferPage({ user, onBack }) {
         {error && <p className={styles.error}>{error}</p>}
         {success && <p className={styles.success}>{success}</p>}
       </form>
-    </div>
+    </PageLayout>
   );
 }
 
