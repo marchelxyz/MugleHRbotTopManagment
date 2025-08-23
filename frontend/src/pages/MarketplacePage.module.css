@@ -1,8 +1,6 @@
 /* frontend/src/pages/MarketplacePage.module.css */
 
-.page {
-  padding: 20px;
-}
+.page {}
 
 .itemsGrid {
   display: grid;
