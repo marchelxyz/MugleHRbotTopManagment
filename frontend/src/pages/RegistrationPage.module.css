@@ -1,9 +1,6 @@
 /* frontend/src/pages/RegistrationPage.module.css */
 
-.page {
-  padding: 20px;
-  text-align: center;
-}
+.page {}
 
 .form {
   margin-top: 20px;
