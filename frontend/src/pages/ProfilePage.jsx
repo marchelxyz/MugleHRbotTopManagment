@@ -3,18 +3,17 @@
 import React from 'react';
 import styles from './ProfilePage.module.css';
 import { FaCog } from 'react-icons/fa';
+import PageLayout from '../components/PageLayout';
 
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
   return (
-    <div className={styles.page}>
+    <PageLayout title="Профиль">
+      {/* Старый div с классом .page больше не нужен, его содержимое теперь здесь */}
       <div className={styles.settingsIconContainer}>
-        {/* Эта кнопка вызывает переход на страницу 'settings' */}
         <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
           <FaCog size={22} />
         </button>
       </div>
-
-      <h1>👤 Профиль</h1>
 
       <div className={styles.profileHeader}>
         {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.profilePhoto} />}
@@ -23,7 +22,6 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
       </div>
 
       <div className={styles.card}>
-        {/* ... остальная информация профиля без изменений ... */}
         <p className={styles.infoItem}>
           <span className={styles.label}>Подразделение:</span>
           {user.department}
@@ -48,7 +46,7 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
       >
         История транзакций
       </button>
-    </div>
+    </PageLayout>
   );
 }
 
