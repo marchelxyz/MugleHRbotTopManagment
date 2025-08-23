@@ -1,9 +1,7 @@
 /* frontend/src/pages/TransferPage.module.css */
 
-.page {
-  padding: 20px;
-  background-color: #F4F4F8;
-}
+.page {}
+
 .backButton {
   margin-bottom: 20px;
   background: none;
