@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
+import PageLayout from '../components/PageLayout';
 
 // 1. Принимаем новую функцию onPurchaseSuccess в пропсах
 function MarketplacePage({ user, onPurchaseSuccess }) {
@@ -54,8 +55,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   };
   
   return (
-    <div className={styles.page}>
-      <h1>🛒 Магазин</h1>
+  <PageLayout title="Кофетерий">
       <p>Ваш баланс: <strong>{user?.balance}</strong> баллов</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
@@ -76,7 +76,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
           ))}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }
 
