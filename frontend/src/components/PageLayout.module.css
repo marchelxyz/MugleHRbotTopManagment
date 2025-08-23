@@ -9,7 +9,7 @@
 .header {
   height: 120px; /* Новая, уменьшенная высота шапки */
   background-image: url('https://i.postimg.cc/fTRHTcDT/image.webp');
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   position: sticky;
   top: 0;
