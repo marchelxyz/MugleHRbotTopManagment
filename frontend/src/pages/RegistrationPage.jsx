@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { registerUser } from '../api';
 import styles from './RegistrationPage.module.css';
+import PageLayout from '../components/PageLayout';
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const [lastName, setLastName] = useState('');
@@ -49,8 +50,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   };
 
   return (
-    <div className={styles.page}>
-      <h1>Добро пожаловать!</h1>
+      <PageLayout title="Регистрация">
       <p>
         Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
       </p>
@@ -104,7 +104,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         </button>
         {error && <p className={styles.error}>{error}</p>}
       </form>
-    </div>
+    </PageLayout>
   );
 }
 
