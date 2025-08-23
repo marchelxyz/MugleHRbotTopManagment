@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { getLastMonthLeaderboard } from '../api';
 import styles from './LeaderboardPage.module.css'; // 1. Импортируем стили
+import PageLayout from '../components/PageLayout';
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -22,10 +23,8 @@ function LeaderboardPage() {
     fetchLeaderboard();
   }, []);
 
-  return (
-    // 2. Применяем классы
-    <div className={styles.page}>
-      <h1>🏆 Рейтинг</h1>
+return (
+  <PageLayout title="Лидерборд">
       <h3 className={styles.subtitle}>Лидеры прошлого месяца по полученным баллам</h3>
       
       {isLoading ? <p>Загрузка рейтинга...</p> : (
@@ -41,7 +40,7 @@ function LeaderboardPage() {
           </ol>
         ) : <p>В прошлом месяце не было активности.</p>
       )}
-    </div>
+    </PageLayout>
   );
 }
 
