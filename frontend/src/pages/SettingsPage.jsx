@@ -3,6 +3,7 @@
 import React from 'react';
 import styles from './SettingsPage.module.css';
 import { FaQuestionCircle, FaHeadset, FaFileContract } from 'react-icons/fa';
+import PageLayout from '../components/PageLayout';
 
 // onBack - для возврата на страницу профиля
 // onNavigate - для перехода на страницу FAQ
@@ -12,7 +13,7 @@ function SettingsPage({ onBack, onNavigate }) {
   const supportUrl = 'https://t.me/your_support_account'; // <-- ЗАМЕНИТЕ НА ВАШ АККАУНТ
 
   return (
-    <div className={styles.page}>
+    <PageLayout title=" ">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад в профиль</button>
       <h1>Настройки и помощь</h1>
 
@@ -34,7 +35,7 @@ function SettingsPage({ onBack, onNavigate }) {
           <span>Юридическая документация</span>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
 
