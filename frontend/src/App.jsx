@@ -17,6 +17,8 @@ import SettingsPage from './pages/SettingsPage';
 import FaqPage from './pages/FaqPage';
 // Предзагрузка
 import { preloadInitialData, clearCache } from './preloader';
+import PendingPage from './pages/PendingPage';
+import RejectedPage from './pages/RejectedPage';
 
 // Стили
 import './App.css'; 
@@ -94,34 +96,42 @@ function App() {
       }
       return <div>Что-то пошло не так. Пожалуйста, перезапустите приложение.</div>;
     }
-    
-    switch (page) {
-      case 'leaderboard': return <LeaderboardPage />;
-      case 'marketplace':
-      return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
-      case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
-      case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
-      case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
-      case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
-      case 'transfer':
-      // --- ИЗМЕНЕНИЕ: Передаем новый обработчик в TransferPage ---
-      return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
-      case 'admin': return <AdminPage />;
-      case 'home':
-      default:
-        return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+    // --- НАЧАЛО ИЗМЕНЕНИЙ: Проверяем статус пользователя ---
+    if (user.status === 'pending') {
+      return <PendingPage />;
     }
+    
+    if (user.status === 'rejected') {
+      return <RejectedPage />;
+    }
+    
+    // Если статус 'approved', показываем приложение как обычно
+    if (user.status === 'approved') {
+      switch (page) {
+        case 'leaderboard': return <LeaderboardPage />;
+        case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
+        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+        case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
+        case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
+        case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
+        case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
+        case 'admin': return <AdminPage />;
+        case 'home':
+        default:
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+      }
+    }
+    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+    // На всякий случай, если статус будет каким-то другим
+    return <div>Неизвестный статус пользователя.</div>;
   };
 
-  if (error) return <div>Ошибка: {error}</div>;
-
+  // --- ИЗМЕНЕНИЕ: Не показываем навигацию, если пользователь не одобрен ---
   return (
     <div className="app-wrapper">
-      {/* Весь контент теперь просто рендерится здесь */}
       {renderPage()}
-      
-      {/* Меню навигации находится на том же уровне и будет закреплено стилями */}
-      {user && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
+      {user && user.status === 'approved' && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
     </div>
   );
 }
