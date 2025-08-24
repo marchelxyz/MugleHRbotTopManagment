@@ -11,6 +11,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     telegram_id = Column(BigInteger, unique=True, index=True, nullable=False)
     position = Column(String, nullable=False)
+    first_name = Column(String, nullable=True) # Поле для имени
     last_name = Column(String, nullable=False)
     department = Column(String, nullable=False)
     username = Column(String, nullable=True)
