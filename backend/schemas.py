@@ -40,6 +40,8 @@ class PurchaseForMarketResponse(OrmBase):
 # Финальная схема для Пользователя, которая включает его покупки
 class UserResponse(UserBase):
     balance: int
+    transfer_balance: int
+    daily_transfer_count: int
     is_admin: bool
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
