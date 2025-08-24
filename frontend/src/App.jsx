@@ -65,6 +65,13 @@ function App() {
     fetchUser();
   }, []);
 
+  const handleTransferSuccess = () => {
+    // Очищаем кэш ленты, чтобы при возвращении она обновилась
+    clearCache('feed');
+    // Возвращаем пользователя на главную
+    navigate('home');
+  };
+  
     // --- ИЗМЕНЕНИЕ: Добавляем эту функцию ---
   // Она будет обновлять баланс и очищать кэш магазина, чтобы при следующем заходе он загрузился заново
   const handlePurchaseAndUpdate = (newUserData) => {
@@ -96,7 +103,9 @@ function App() {
       case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
       case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
       case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
-      case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} />;
+      case 'transfer':
+      // --- ИЗМЕНЕНИЕ: Передаем новый обработчик в TransferPage ---
+      return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
       case 'admin': return <AdminPage />;
       case 'home':
       default:
