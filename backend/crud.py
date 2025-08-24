@@ -20,14 +20,11 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
     is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
     
-    # --- ИЗМЕНЕНИЕ: ПРАВИЛЬНОЕ ПРЕОБРАЗОВАНИЕ ДАТЫ ---
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():
         try:
-            # Преобразуем строку "YYYY-MM-DD" в объект date
             dob = date.fromisoformat(user.date_of_birth)
         except (ValueError, TypeError):
-            # Если формат даты неверный или пустой, оставляем None
             dob = None
 
     db_user = models.User(
@@ -38,7 +35,9 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         username=user.username,
         is_admin=is_admin,
         phone_number=user.phone_number,
-        date_of_birth=dob
+        date_of_birth=dob,
+        # --- ИЗМЕНЕНИЕ: Начисляем стартовый баланс для переводов ---
+        transfer_balance=930 
     )
     db.add(db_user)
     await db.commit()
