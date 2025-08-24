@@ -21,6 +21,7 @@ class UserBase(OrmBase):
     id: int
     telegram_id: int
     position: str
+    first_name: Optional[str] = None
     last_name: str
     department: str
     username: Optional[str] = None
@@ -43,6 +44,7 @@ class UserResponse(UserBase):
     transfer_balance: int
     daily_transfer_count: int
     is_admin: bool
+    status: str # Добавляем это поле
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
@@ -63,8 +65,9 @@ class MarketItemResponse(MarketItemBase):
 
 class RegisterRequest(BaseModel):
     telegram_id: str
-    position: str
+    first_name: str # Добавляем это поле
     last_name: str
+    position: str
     department: str
     username: Optional[str] = None
     phone_number: Optional[str] = None
