@@ -3,31 +3,37 @@
 import React, { useState, useEffect } from 'react';
 import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
+import { getPreloadedData } from '../preloader';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl }) {
-  const [feed, setFeed] = useState([]);
+  // --- ИЗМЕНЕНИЕ: Пытаемся сразу получить ленту из кэша ---
+  const [feed, setFeed] = useState(() => getPreloadedData('feed'));
   const [banners, setBanners] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- ИЗМЕНЕНИЕ: Не показываем загрузку, если лента уже есть ---
+  const [isLoading, setIsLoading] = useState(!feed);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
+    // --- ИЗМЕНЕНИЕ: Загружаем ленту, только если ее не было в кэше ---
     const fetchData = async () => {
-      try {
-        const [feedResponse, bannersResponse] = await Promise.all([
-          getFeed(),
-          getBanners()
-        ]);
-        setFeed(feedResponse.data);
-        setBanners(bannersResponse.data);
-      } catch (error) {
-        console.error("Failed to fetch data for home page", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+      // Загружаем баннеры в любом случае
+      const bannersResponse = await getBanners();
+      setBanners(bannersResponse.data);
 
+      // А ленту - только если ее нет
+      if (!feed) {
+        const feedResponse = await getFeed();
+        setFeed(feedResponse.data);
+      }
+      setIsLoading(false); // Убираем индикатор загрузки
+    };
+
+    fetchData().catch(error => {
+      console.error("Failed to fetch data for home page", error);
+      setIsLoading(false);
+    });
+  }, [feed]);
+  
   // --- НОВЫЙ ЭФФЕКТ: Логика для авто-переключения слайдов ---
   const mainBanners = banners.filter(b => b.position === 'main');
   
