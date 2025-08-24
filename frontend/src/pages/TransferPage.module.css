@@ -71,3 +71,16 @@
   margin-top: 10px;
   font-weight: bold;
 }
+
+.balanceInfo {
+  text-align: center;
+  margin-bottom: 20px;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+.balanceInfo p {
+  margin: 5px 0;
+  font-size: 16px;
+}
