@@ -12,7 +12,18 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
     existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already registered")
-    return await crud.create_user(db, request)
+    
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем обработку ошибок ---
+    try:
+        new_user = await crud.create_user(db, request)
+        # Явно преобразуем модель SQLAlchemy в схему Pydantic перед отправкой
+        return schemas.UserResponse.model_validate(new_user)
+    except Exception as e:
+        # Если что-то пошло не так (например, отправка уведомления),
+        # мы отправим корректную ошибку, а не уроним сервер.
+        print(f"An error occurred during user creation process: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete registration process.")
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 @router.get("/users", response_model=list[schemas.UserResponse])
 async def list_users(db: AsyncSession = Depends(get_db)):
