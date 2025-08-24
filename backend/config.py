@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_CHAT_ID: int
     TELEGRAM_ADMIN_ID: int
+    TELEGRAM_ADMIN_TOPIC_ID: int
 
     class Config:
         env_file = ".env"
