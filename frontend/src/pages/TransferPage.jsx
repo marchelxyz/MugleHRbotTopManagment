@@ -34,7 +34,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
     }
   }, [currentUserId]);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -42,8 +42,9 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       setError('Пожалуйста, заполните все поля.');
       return;
     }
-    if (user.balance < amount) {
-        setError('У вас недостаточно баллов для этого перевода.');
+    // --- ИСПРАВЛЕНИЕ: Проверяем правильный баланс ---
+    if (user.transfer_balance < amount) { // Было user.balance
+        setError('У вас недостаточно спасибок для этого перевода.');
         return;
     }
     setIsLoading(true);
