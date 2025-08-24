@@ -81,6 +81,10 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   return (
     <PageLayout title="Отправить спасибки">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
+       <div className={styles.balanceInfo}>
+        <p>Для переводов: <strong>{user?.transfer_balance}</strong> спасибок</p>
+        <p>Переводов сегодня: <strong>{user?.daily_transfer_count || 0} / 3</strong></p>
+      </div>
       <p>Ваш баланс: {user?.balance} спасибок</p>
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
@@ -103,6 +107,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             placeholder="Например, 20"
             className={styles.input}
             min="1"
+            max="10"
           />
         </div>
         <div className={styles.formGroup}>
