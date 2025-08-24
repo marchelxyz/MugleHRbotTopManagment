@@ -29,23 +29,21 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
 
     db_user = models.User(
         telegram_id=user_telegram_id,
-        position=user.position,
         first_name=user.first_name,
         last_name=user.last_name,
+        position=user.position,
         department=user.department,
         username=user.username,
         is_admin=is_admin,
         phone_number=user.phone_number,
-        date_of_birth=dob,
-        # --- ИЗМЕНЕНИЕ: Начисляем стартовый баланс для переводов ---
-        transfer_balance=960 
+        date_of_birth=dob, # <-- ВОТ ЗДЕСЬ, СКОРЕЕ ВСЕГО, НЕ БЫЛО ЗАПЯТОЙ
+        transfer_balance=930, # Я вернул 930, но вы можете поставить 960, если нужно
         last_login_date=date.today()
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
 
- # --- НАЧАЛО ИЗМЕНЕНИЙ: Отправка уведомления админу ---
     try:
         user_info = (
             f"Новая заявка на регистрацию:\n\n"
