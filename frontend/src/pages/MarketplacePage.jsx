@@ -3,25 +3,27 @@ import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
+import { getPreloadedData } from '../preloader';
 
 // 1. Принимаем новую функцию onPurchaseSuccess в пропсах
 function MarketplacePage({ user, onPurchaseSuccess }) {
-  const [items, setItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- ИЗМЕНЕНИЕ: Пытаемся сразу получить данные из кэша ---
+  const [items, setItems] = useState(() => getPreloadedData('market'));
+  const [isLoading, setIsLoading] = useState(!items); // Не грузим, если данные уже есть
   
   useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const response = await getMarketItems();
-        setItems(response.data);
-      } catch (error) {
-        console.error("Failed to fetch market items", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchItems();
-  }, []);
+    // Если данные не были предзагружены, загружаем их как обычно
+    if (!items) {
+      const fetchItems = async () => {
+        try {
+          const response = await getMarketItems();
+          setItems(response.data);
+        } catch (error) { console.error("Failed to fetch market items", error); } 
+        finally { setIsLoading(false); }
+      };
+      fetchItems();
+    }
+  }, [items]);
 
 // frontend/src/pages/MarketplacePage.jsx
 
