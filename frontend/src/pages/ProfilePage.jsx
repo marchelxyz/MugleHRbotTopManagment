@@ -4,8 +4,16 @@ import React from 'react';
 import styles from './ProfilePage.module.css';
 import { FaCog } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
+import { preloadHistoryData } from '../preloader';
 
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
+
+  useEffect(() => {
+    if (user) {
+      preloadHistoryData(user.id);
+    }
+  }, [user]);
+  
   return (
     <PageLayout title="Профиль">
       {/* Старый div с классом .page больше не нужен, его содержимое теперь здесь */}
