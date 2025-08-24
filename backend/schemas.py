@@ -44,7 +44,7 @@ class UserResponse(UserBase):
     transfer_balance: int
     daily_transfer_count: int
     is_admin: bool
-    status: str # Добавляем это поле
+    status: Optional[str] = 'approved' 
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
