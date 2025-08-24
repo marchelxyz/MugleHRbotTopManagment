@@ -1,6 +1,6 @@
 // frontend/src/pages/ProfilePage.jsx
 
-import React from 'react';
+import React, { useEffect } from 'react'; // --- ИСПРАВЛЕНИЕ: Добавляем импорт useEffect ---
 import styles from './ProfilePage.module.css';
 import { FaCog } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
@@ -16,7 +16,6 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
   
   return (
     <PageLayout title="Профиль">
-      {/* Старый div с классом .page больше не нужен, его содержимое теперь здесь */}
       <div className={styles.settingsIconContainer}>
         <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
           <FaCog size={22} />
