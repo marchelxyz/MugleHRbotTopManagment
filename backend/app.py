@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
-from routers import users, transactions, market, admin, banners
+from routers import users, transactions, market, admin, banners, scheduler
 
 app = FastAPI()
 
