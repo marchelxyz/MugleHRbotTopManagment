@@ -8,7 +8,7 @@ import PageLayout from '../components/PageLayout';
 const tg = window.Telegram.WebApp;
 
 // 1. Принимаем полного 'user' в пропсах
-function TransferPage({ user, onBack }) {
+function TransferPage({ user, onBack, onTransferSuccess }) {
   const [users, setUsers] = useState([]);
   const [receiverId, setReceiverId] = useState('');
   const [amount, setAmount] = useState('');
@@ -64,6 +64,12 @@ function TransferPage({ user, onBack }) {
       setAmount('');
       setMessage('');
       // Тут можно добавить логику для обновления баланса на фронте
+      // --- ИЗМЕНЕНИЕ: Вызываем колбэк после успешной отправки ---
+      // Он вернет нас на главную и очистит кэш ленты
+      setTimeout(() => {
+      onTransferSuccess();
+      }, 1000); // Небольшая задержка, чтобы пользователь успел увидеть сообщение
+      
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
       setError(errorMessage);
