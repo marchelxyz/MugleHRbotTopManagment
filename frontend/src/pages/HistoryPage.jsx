@@ -3,31 +3,31 @@
 import React, { useState, useEffect } from 'react';
 import { getUserTransactions } from '../api';
 import styles from './HistoryPage.module.css';
+import { getPreloadedData } from '../preloader';
 
 function HistoryPage({ user, onBack }) {
-  const [transactions, setTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
+  // --- ИЗМЕНЕНИЕ: Пытаемся сразу получить данные из кэша ---
+  const [transactions, setTransactions] = useState(() => getPreloadedData('history'));
+  const [isLoading, setIsLoading] = useState(!transactions);
+  
   useEffect(() => {
-    if (user) {
+    // Если данные не были предзагружены, загружаем их как обычно
+    if (!transactions && user) {
       const fetchTransactions = async () => {
         try {
           const response = await getUserTransactions(user.id);
           setTransactions(response.data);
-        } catch (error) {
-          console.error("Failed to fetch transactions", error);
-        } finally {
-          setIsLoading(false);
-        }
+        } catch (error) { console.error("Failed to fetch transactions", error); } 
+        finally { setIsLoading(false); }
       };
       fetchTransactions();
     }
-  }, [user]);
+  }, [transactions, user]);
 
   return (
     <div className={styles.page}>
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
-      <h1>📜 История транзакций</h1>
+      <h1>История транзакций</h1>
       {isLoading ? <p>Загрузка...</p> : (
         transactions.length > 0 ? (
           <div className={styles.list}>
