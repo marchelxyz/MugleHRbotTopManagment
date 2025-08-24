@@ -1,0 +1,29 @@
+/* frontend/src/pages/StatusPages.module.css */
+.statusPage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #F4F4F8;
+}
+
+.icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+}
+
+.statusPage h1 {
+  font-family: 'Arial', sans-serif;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.statusPage p {
+  font-size: 16px;
+  color: #6E7A85;
+  max-width: 300px;
+}
