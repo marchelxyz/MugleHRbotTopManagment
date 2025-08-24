@@ -81,7 +81,6 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   return (
     <PageLayout title="Отправить спасибки">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
-      <h1>Передать спасибки</h1>
       <p>Ваш баланс: {user?.balance} спасибок</p>
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
