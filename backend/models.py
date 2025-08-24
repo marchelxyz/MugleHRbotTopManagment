@@ -18,6 +18,9 @@ class User(Base):
     date_of_birth = Column(Date, nullable=True)
     balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
+    transfer_balance = Column(Integer, default=0) # Баланс для переводов
+    daily_transfer_count = Column(Integer, default=0) # Счетчик переводов за сегодня
+    last_login_date = Column(Date, default=datetime.utcnow, nullable=False) # Отслеживание нового дня
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
     received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
     purchases = relationship("Purchase", back_populates="user")
