@@ -15,6 +15,8 @@ import HistoryPage from './pages/HistoryPage';
 import AdminPage from './pages/AdminPage';
 import SettingsPage from './pages/SettingsPage';
 import FaqPage from './pages/FaqPage';
+// Предзагрузка
+import { preloadInitialData, clearCache } from './preloader';
 
 // Стили
 import './App.css'; 
@@ -46,6 +48,8 @@ function App() {
       try {
         const response = await checkUserStatus(telegramUser.id);
         setUser(response.data);
+// --- ИЗМЕНЕНИЕ: Запускаем предзагрузку ПОСЛЕ получения пользователя ---
+        preloadInitialData();
       } catch (err) {
         if (err.response && err.response.status === 404) {
           console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
@@ -60,6 +64,13 @@ function App() {
 
     fetchUser();
   }, []);
+
+    // --- ИЗМЕНЕНИЕ: Добавляем эту функцию ---
+  // Она будет обновлять баланс и очищать кэш магазина, чтобы при следующем заходе он загрузился заново
+  const handlePurchaseAndUpdate = (newUserData) => {
+    updateUser(newUserData);
+    clearCache('market'); // Очищаем кэш магазина
+  }
 
   const handleRegistrationSuccess = () => window.location.reload();
   const navigate = (targetPage) => setPage(targetPage);
@@ -79,7 +90,8 @@ function App() {
     
     switch (page) {
       case 'leaderboard': return <LeaderboardPage />;
-      case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={updateUser} />;
+      case 'marketplace':
+      return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
       case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
       case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
       case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
