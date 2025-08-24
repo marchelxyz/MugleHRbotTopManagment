@@ -37,7 +37,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         phone_number=user.phone_number,
         date_of_birth=dob,
         # --- ИЗМЕНЕНИЕ: Начисляем стартовый баланс для переводов ---
-        transfer_balance=930 
+        transfer_balance=960 
     )
     db.add(db_user)
     await db.commit()
