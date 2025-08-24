@@ -70,26 +70,32 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
+    today = date.today()
 
-    # Выбираем отправителя и получателя с блокировкой FOR UPDATE
-    # Это гарантирует, что никто другой не сможет изменить эти строки, пока транзакция не завершится
-    sender_stmt = select(models.User).where(models.User.id == tr.sender_id).with_for_update()
-    receiver_stmt = select(models.User).where(models.User.id == tr.receiver_id).with_for_update()
+    sender = await db.get(models.User, tr.sender_id)
+    if not sender:
+        raise ValueError("Sender not found")
 
-    sender_result = await db.execute(sender_stmt)
-    sender = sender_result.scalars().first()
-    
-    receiver_result = await db.execute(receiver_stmt)
-    receiver = receiver_result.scalars().first()
+    # Проверяем, наступил ли новый день, и сбрасываем счетчик, если да
+    if sender.last_login_date < today:
+        sender.daily_transfer_count = 0
+        sender.last_login_date = today
 
-    if not sender or not receiver:
-        raise ValueError("Sender or Receiver not found")
-        
-    # Теперь эта проверка абсолютно надежна
-    if sender.balance < tr.amount:
-        raise ValueError("Insufficient balance")
+    # Проверка лимитов
+    if tr.amount > 10:
+        raise ValueError("Amount cannot exceed 10")
+    if sender.daily_transfer_count >= 3:
+        raise ValueError("Daily transfer limit reached (3 per day)")
+    if sender.transfer_balance < tr.amount:
+        raise ValueError("Insufficient transfer balance")
 
-    sender.balance -= tr.amount
+    receiver = await db.get(models.User, tr.receiver_id)
+    if not receiver:
+        raise ValueError("Receiver not found")
+
+    # Списываем с баланса для переводов, начисляем на основной баланс получателя
+    sender.transfer_balance -= tr.amount
+    sender.daily_transfer_count += 1
     receiver.balance += tr.amount
     
     db_tr = models.Transaction(
@@ -279,3 +285,30 @@ async def delete_banner(db: AsyncSession, banner_id: int):
         await db.commit()
         return True
     return False
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ АВТОМАТИЗАЦИИ ---
+async def process_birthday_bonuses(db: AsyncSession):
+    """Начисляет 300 баллов всем, у кого сегодня день рождения."""
+    today = date.today()
+    users_with_birthday = await db.execute(
+        select(models.User).where(
+            func.extract('month', models.User.date_of_birth) == today.month,
+            func.extract('day', models.User.date_of_birth) == today.day
+        )
+    )
+    users = users_with_birthday.scalars().all()
+    
+    for user in users:
+        user.balance += 300
+        # Можно добавить отправку поздравительного сообщения в ТГ
+        
+    await db.commit()
+    return len(users)
+
+async def reset_monthly_balances(db: AsyncSession):
+    """Сбрасывает transfer_balance всем пользователям до 930."""
+    await db.execute(
+        update(models.User).values(transfer_balance=930)
+    )
+    await db.commit()
+    return True
