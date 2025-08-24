@@ -6,6 +6,7 @@ const preloadedData = {
   market: null,
   leaderboard: null,
   history: null,
+  feed: null,
 };
 
 // Функция для предзагрузки данных Магазина и Рейтинга
@@ -27,6 +28,11 @@ export const preloadInitialData = () => {
       console.log('Leaderboard data preloaded.');
     })
     .catch(err => console.error('Failed to preload leaderboard data:', err));
+};
+
+ getFeed()
+    .then(response => { preloadedData.feed = response.data; console.log('Feed data preloaded.'); })
+    .catch(err => console.error('Failed to preload feed data:', err));
 };
 
 // Функция для предзагрузки истории транзакций пользователя
