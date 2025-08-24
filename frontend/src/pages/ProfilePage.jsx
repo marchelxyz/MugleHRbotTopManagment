@@ -42,8 +42,12 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
           {user.date_of_birth || 'Не указана'}
         </p>
         <p className={styles.infoItem}>
-          <span className={styles.label}>Баланс:</span>
-          {user.balance} баллов
+            <span className={styles.label}>Накоплено (для трат):</span>
+            {user.balance} баллов
+        </p>
+        <p className={styles.infoItem}>
+            <span className={styles.label}>Для переводов (в этом месяце):</span>
+            {user.transfer_balance} баллов
         </p>
       </div>
 
