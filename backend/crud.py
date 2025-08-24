@@ -30,6 +30,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db_user = models.User(
         telegram_id=user_telegram_id,
         position=user.position,
+        first_name=user.first_name,
         last_name=user.last_name,
         department=user.department,
         username=user.username,
@@ -42,6 +43,42 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+
+ # --- НАЧАЛО ИЗМЕНЕНИЙ: Отправка уведомления админу ---
+    try:
+        user_info = (
+            f"Новая заявка на регистрацию:\n\n"
+            f"👤 **Имя:** {db_user.first_name} {db_user.last_name}\n"
+            f"🏢 **Подразделение:** {db_user.department}\n"
+            f"💼 **Должность:** {db_user.position}\n"
+            f"📞 **Телефон:** {db_user.phone_number or 'не указан'}\n"
+            f"🎂 **Дата рождения:** {db_user.date_of_birth or 'не указана'}\n"
+            f"🆔 **Telegram ID:** {db_user.telegram_id}"
+        )
+
+        # Создаем кнопки
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
+                    {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
+                ],
+                [
+                    {"text": "💬 Связаться", "url": f"tg://user?id={db_user.telegram_id}"}
+                ]
+            ]
+        }
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=user_info,
+            reply_markup=keyboard,
+            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
+        )
+    except Exception as e:
+        print(f"Could not send admin notification for new user. Error: {e}")
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
     return db_user
 
 async def get_users(db: AsyncSession):
@@ -311,3 +348,14 @@ async def reset_monthly_balances(db: AsyncSession):
     )
     await db.commit()
     return True
+
+# --- ДОБАВЬТЕ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
+async def update_user_status(db: AsyncSession, user_id: int, status: str):
+    """Обновляет статус пользователя."""
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    user = result.scalars().first()
+    if user:
+        user.status = status
+        await db.commit()
+        await db.refresh(user)
+    return user
