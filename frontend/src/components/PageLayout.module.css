@@ -7,7 +7,7 @@
 }
 
 .header {
-  height: 72px; /* Новая, уменьшенная высота шапки */
+  height: 65px; /* Новая, уменьшенная высота шапки */
   background-image: url('https://i.postimg.cc/28jH8PnZ/image.webp');
   background-size: contain;
   background-position: center;
