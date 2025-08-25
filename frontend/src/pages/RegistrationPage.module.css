@@ -2,10 +2,17 @@
 
 .page {}
 
+/* Добавляем стиль для подзаголовка, чтобы он выглядел аккуратно */
+.subtitle {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
 .form {
   margin-top: 20px;
 }
-
 .input {
   display: block;
   width: 80%;
