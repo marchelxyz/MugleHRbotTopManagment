@@ -62,7 +62,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
         
         <div className={styles.userBlock}>
           <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
-          <span className={styles.userName}>{user.last_name}</span>
+          <span className={styles.userName}>{user.first_name}</span>
           <img 
             src="https://i.postimg.cc/ncfzjKGc/image.webp" 
             alt="Отправить спасибки" 
