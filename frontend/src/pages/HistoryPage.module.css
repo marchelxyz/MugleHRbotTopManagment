@@ -1,17 +1,14 @@
 /* frontend/src/pages/HistoryPage.module.css */
 
-.page {
-  padding: 20px;
-}
-
 .backButton {
   margin-bottom: 20px;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
-  color: #007bff;
+  color: #5CA14A;
   padding: 0;
+  font-weight: bold;
 }
 
 .list {
@@ -19,12 +16,22 @@
 }
 
 .transactionItem {
-  background-color: #f9f9f9;
-  border-radius: 8px;
+  background-color: #ffffff;
+  border-radius: 12px;
   padding: 15px;
   margin-bottom: 10px;
   border-left: 5px solid;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
+
+/* Новые классы для цвета рамки */
+.outgoingBorder {
+  border-left-color: #d9534f;
+}
+.incomingBorder {
+  border-left-color: #5cb85c;
+}
+
 
 .transactionItem p {
   margin: 0;
@@ -44,6 +51,8 @@
   margin-top: 8px !important;
   font-style: italic;
   color: #555;
+  border-left: 3px solid #eee;
+  padding-left: 10px;
 }
 
 .timestamp {
