@@ -84,3 +84,14 @@
   margin: 5px 0;
   font-size: 16px;
 }
+
+.fixedAmount {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  font-size: 16px;
+  box-sizing: border-box;
+  background-color: #f9f9f9; /* Слегка серый фон, чтобы показать, что поле неактивно */
+  color: #333;
+  font-weight: bold;
