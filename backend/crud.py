@@ -36,8 +36,8 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         username=user.username,
         is_admin=is_admin,
         phone_number=user.phone_number,
-        date_of_birth=dob, # <-- ВОТ ЗДЕСЬ, СКОРЕЕ ВСЕГО, НЕ БЫЛО ЗАПЯТОЙ
-        transfer_balance=930, # Я вернул 930, но вы можете поставить 960, если нужно
+        date_of_birth=dob,
+        transfer_balance=930,
         last_login_date=date.today()
     )
     db.add(db_user)
@@ -55,14 +55,13 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             f"🆔 **Telegram ID:** {db_user.telegram_id}"
         )
 
-        # Создаем кнопки
+        # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
         keyboard = {
             "inline_keyboard": [
                 [
                     {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
                     {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
                 ]
-                // Строка с кнопкой "Связаться" была удалена
             ]
         }
         
@@ -73,8 +72,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
         )
     except Exception as e:
-        print(f"Could not send admin notification for new user. Error: {e}")
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+        print(f"FAILED to send admin notification. Error: {e}")
     
     return db_user
 
