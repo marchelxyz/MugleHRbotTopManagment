@@ -1,128 +1,34 @@
-/* frontend/src/pages/AdminPage.module.css */
-.page {
-  padding: 20px;
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
 }
-.card {
+
+.gridButton {
   background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.input {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-  box-sizing: border-box;
-  margin: 10px 0;
-}
-.button {
-  width: 100%;
-  padding: 12px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  background-color: #dc3545;
-  color: white;
-  cursor: pointer;
-}
-.button:disabled {
-  background-color: #f28b95;
-}
-.message {
-  margin-top: 15px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 30px 20px;
+  font-size: 18px;
   font-weight: bold;
-}
-
-.textarea {
-  width: 100%;
-  min-height: 80px;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-  box-sizing: border-box;
-  margin: 10px 0;
-  resize: vertical;
-}
-
-.buttonGreen {
-  /* Копируем стили основной кнопки и меняем цвет */
-  composes: button; 
-  background-color: #28a745;
-}
-
-.buttonGreen:disabled {
-  background-color: #a3d9b1;
-}
-
-/* ... (существующие стили) ... */
-
-.checkboxLabel {
-  display: block;
-  margin: 15px 0;
   cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
 
-.buttonGrey {
-  composes: button;
-  background-color: #6c757d;
-  margin-top: 10px;
+.gridButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  color: #5CA14A;
 }
 
-.buttonGrey:disabled {
-  background-color: #a1a6ab;
-}
-
-.list {
-  margin-top: 20px;
-}
-
-.listItem {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #eee;
-  padding: 10px 0;
-}
-
-.listItem:last-child {
-  border-bottom: none;
-}
-
-.listItemImage {
-  width: 80px;
-  height: 50px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-right: 15px;
-}
-
-.listItemContent {
-  flex-grow: 1;
-  font-size: 14px;
-}
-.listItemContent p {
-  margin: 2px 0;
-  word-break: break-all;
-}
-
-.listItemActions {
-  display: flex;
-  gap: 10px;
-}
-
-.buttonSmall {
-  padding: 8px 10px;
-  font-size: 16px;
+.backButton {
+  margin-bottom: 20px;
+  background: none;
   border: none;
-  border-radius: 8px;
+  font-size: 16px;
   cursor: pointer;
-  background-color: #007bff;
-  color: white;
-}
-.buttonSmallRed {
-  composes: buttonSmall;
-  background-color: #dc3545;
+  color: #5CA14A;
+  padding: 0;
+  font-weight: bold;
 }
