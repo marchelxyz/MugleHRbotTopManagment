@@ -8,6 +8,12 @@ import json # Добавляем импорт json
 
 router = APIRouter()
 
+@router.get("/telegram/test")
+async def telegram_test():
+    """Простой эндпоинт для проверки доступности сервера."""
+    print("--- DEBUG: TEST ENDPOINT WAS CALLED SUCCESSFULLY! ---")
+    return {"status": "ok"}
+
 @router.post("/telegram/webhook")
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     # --- НАЧАЛО ДИАГНОСТИКИ ---
