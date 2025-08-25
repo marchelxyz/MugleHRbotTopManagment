@@ -24,7 +24,7 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
 
       <div className={styles.profileHeader}>
         {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.profilePhoto} />}
-        <div className={styles.profileName}>{user.last_name}</div>
+        <div className={styles.profileName}>{user.first_name}</div>
         <div className={styles.profilePosition}>{user.position}</div>
       </div>
 
