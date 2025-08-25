@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import styles from './AdminPage.module.css';
 import PageLayout from '../components/PageLayout';
 // Импортируем компоненты управления, которые мы сейчас создадим
-// import BannerManager from './admin/BannerManager'; 
-// import ItemManager from './admin/ItemManager';
+import BannerManager from './admin/BannerManager'; 
+import ItemManager from './admin/ItemManager';
 
 // Пока используем заглушки
-const BannerManager = () => <div>Раздел управления баннерами в разработке...</div>;
-const ItemManager = () => <div>Раздел управления товарами в разработке...</div>;
 const UserManager = () => <div>Раздел управления пользователями в разработке...</div>;
 const StatsManager = () => <div>Раздел статистики в разработке...</div>;
 
