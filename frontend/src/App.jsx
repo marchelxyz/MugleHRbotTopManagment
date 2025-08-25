@@ -15,13 +15,11 @@ import HistoryPage from './pages/HistoryPage';
 import AdminPage from './pages/AdminPage';
 import SettingsPage from './pages/SettingsPage';
 import FaqPage from './pages/FaqPage';
-// Предзагрузка
-import { preloadInitialData, clearCache } from './preloader';
 import PendingPage from './pages/PendingPage';
 import RejectedPage from './pages/RejectedPage';
 
 // Стили
-import './App.css'; 
+import './App.css';
 
 const tg = window.Telegram.WebApp;
 
@@ -50,8 +48,6 @@ function App() {
       try {
         const response = await checkUserStatus(telegramUser.id);
         setUser(response.data);
-// --- ИЗМЕНЕНИЕ: Запускаем предзагрузку ПОСЛЕ получения пользователя ---
-        preloadInitialData();
       } catch (err) {
         if (err.response && err.response.status === 404) {
           console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
@@ -66,42 +62,36 @@ function App() {
 
     fetchUser();
   }, []);
-  
-  const handleTransferSuccess = () => {
-    // Очищаем кэш ленты, чтобы при возвращении она обновилась
-    clearCache('feed');
-    // Возвращаем пользователя на главную
-    navigate('home');
+
+  // --- ИСПРАВЛЕНИЕ: Возвращаем простую перезагрузку ---
+  const handleRegistrationSuccess = () => {
+    // Эта функция теперь снова просто перезагружает страницу.
+    // После перезагрузки useEffect снова выполнится и получит
+    // пользователя уже с новым статусом 'pending'.
+    window.location.reload();
   };
   
-    // --- ИЗМЕНЕНИЕ: Добавляем эту функцию ---
-  // Она будет обновлять баланс и очищать кэш магазина, чтобы при следующем заходе он загрузился заново
+  const navigate = (targetPage) => setPage(targetPage);
+  
+  const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
   const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
-    clearCache('market'); // Очищаем кэш магазина
-  }
-
-  // --- ИЗМЕНЕНИЕ: Функция теперь принимает нового пользователя и обновляет состояние ---
-  const handleRegistrationSuccess = (newUser) => {
-    setUser(newUser);
+    // clearCache('market'); // Логику кэша пока уберем для упрощения
+  };
+  const handleTransferSuccess = () => {
+    // clearCache('feed'); // Логику кэша пока уберем для упрощения
+    navigate('home');
   };
 
-  const navigate = (targetPage) => setPage(targetPage);
-
-  const updateUser = (newUserData) => {
-    setUser(prevUser => ({ ...prevUser, ...newUserData }));
-  };
-  
   const renderPage = () => {
+    if (loading) {
+      return <div>Загрузка...</div>;
+    }
+    
     if (!user) {
-      if (loading) return <div>Загрузка...</div>;
-      if (tg.initDataUnsafe?.user) {
-// --- ИЗМЕНЕНИЕ: Передаем правильный обработчик ---
       return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
-      return <div>Что-то пошло не так. Пожалуйста, перезапустите приложение.</div>;
-    }
-// --- НАЧАЛО ИЗМЕНЕНИЙ: Проверяем статус пользователя ---
+    
     if (user.status === 'pending') {
       return <PendingPage />;
     }
@@ -110,7 +100,6 @@ function App() {
       return <RejectedPage />;
     }
     
-    // Если статус 'approved', показываем приложение как обычно
     if (user.status === 'approved') {
       switch (page) {
         case 'leaderboard': return <LeaderboardPage />;
@@ -126,13 +115,10 @@ function App() {
           return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
       }
     }
-    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
     
-    // На всякий случай, если статус будет каким-то другим
     return <div>Неизвестный статус пользователя.</div>;
   };
 
-  // --- ИЗМЕНЕНИЕ: Не показываем навигацию, если пользователь не одобрен ---
   return (
     <div className="app-wrapper">
       {renderPage()}
