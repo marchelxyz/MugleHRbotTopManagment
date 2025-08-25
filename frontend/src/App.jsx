@@ -66,7 +66,7 @@ function App() {
 
     fetchUser();
   }, []);
-
+  
   const handleTransferSuccess = () => {
     // Очищаем кэш ленты, чтобы при возвращении она обновилась
     clearCache('feed');
@@ -81,7 +81,11 @@ function App() {
     clearCache('market'); // Очищаем кэш магазина
   }
 
-  const handleRegistrationSuccess = () => window.location.reload();
+  // --- ИЗМЕНЕНИЕ: Функция теперь принимает нового пользователя и обновляет состояние ---
+  const handleRegistrationSuccess = (newUser) => {
+    setUser(newUser);
+  };
+
   const navigate = (targetPage) => setPage(targetPage);
 
   const updateUser = (newUserData) => {
@@ -92,11 +96,12 @@ function App() {
     if (!user) {
       if (loading) return <div>Загрузка...</div>;
       if (tg.initDataUnsafe?.user) {
-        return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
-      }
+// --- ИЗМЕНЕНИЕ: Передаем правильный обработчик ---
+      return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
+    }
       return <div>Что-то пошло не так. Пожалуйста, перезапустите приложение.</div>;
     }
-    // --- НАЧАЛО ИЗМЕНЕНИЙ: Проверяем статус пользователя ---
+// --- НАЧАЛО ИЗМЕНЕНИЙ: Проверяем статус пользователя ---
     if (user.status === 'pending') {
       return <PendingPage />;
     }
