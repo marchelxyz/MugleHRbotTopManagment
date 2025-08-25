@@ -8,7 +8,8 @@
   height: 100vh;
   padding: 20px;
   box-sizing: border-box;
-  background-color: #F4F4F8;
+  background-color: #e9eef2;
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 70px);
 }
 
 .icon {
