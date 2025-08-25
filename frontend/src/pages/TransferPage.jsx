@@ -11,7 +11,7 @@ const tg = window.Telegram.WebApp;
 function TransferPage({ user, onBack, onTransferSuccess }) {
   const [users, setUsers] = useState([]);
   const [receiverId, setReceiverId] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(10); 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -51,12 +51,12 @@ const handleSubmit = async (e) => {
 
     try {
       // 2. Формируем правильный объект с sender_id
-      const transferData = {
-        sender_id: currentUserId,
-        receiver_id: parseInt(receiverId, 10),
-        amount: parseInt(amount, 10),
-        message: message,
-      };
+    const transferData = {
+      sender_id: currentUserId,
+      receiver_id: parseInt(receiverId, 10),
+      amount: 10, // Всегда отправляем 10
+      message: message,
+    };
       
       await transferPoints(transferData);
       setSuccess('Баллы успешно отправлены!');
@@ -101,15 +101,7 @@ const handleSubmit = async (e) => {
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label}>Сколько спасибок:</label>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Например, 20"
-            className={styles.input}
-            min="1"
-            max="10"
-          />
+          <div className={styles.fixedAmount}>10</div>
         </div>
         <div className={styles.formGroup}>
           <label className={styles.label}>За что (обязательно):</label>
