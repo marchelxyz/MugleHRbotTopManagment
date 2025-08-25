@@ -25,18 +25,22 @@
 
 .submitButton {
   width: 85%;
-  padding: 12px;
+  padding: 15px; /* Увеличим отступ для солидности */
   border: none;
-  border-radius: 8px;
-  background-color: #007bff;
+  border-radius: 20px; /* Сделаем скругление как у других кнопок */
+  /* --- ИСПРАВЛЕНИЕ: Меняем цвет --- */
+  background-color: #5CA14A; 
   color: white;
   font-size: 16px;
   cursor: pointer;
-  margin-top: 10px;
+  margin: 10px auto 0 auto; /* Центрируем кнопку */
+  display: block; /* Необходимо для работы auto margin */
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
 }
 
 .submitButton:disabled {
-  background-color: #a0cffc;
+  background-color: #a3d9b1; /* Цвет для неактивной кнопки */
   cursor: not-allowed;
 }
 
