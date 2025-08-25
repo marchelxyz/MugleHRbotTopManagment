@@ -1,20 +1,19 @@
 # backend/models.py
-
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
 Base = declarative_base()
 
+# --- ЗАМЕНИТЕ ВЕСЬ КЛАСС USER НА ЭТОТ ---
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     telegram_id = Column(BigInteger, unique=True, index=True, nullable=False)
     
-    # --- Полный и правильный набор полей ---
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=False)
-    status = Column(String, default='pending', nullable=False) # 'pending', 'approved', 'rejected'
+    status = Column(String, default='pending', nullable=False)
     
     position = Column(String, nullable=False)
     department = Column(String, nullable=False)
@@ -22,12 +21,17 @@ class User(Base):
     phone_number = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
     
-    balance = Column(Integer, default=0) # Накопленный баланс
+    balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
     
-    transfer_balance = Column(Integer, default=0) # Баланс для переводов
+    transfer_balance = Column(Integer, default=0)
     daily_transfer_count = Column(Integer, default=0)
     last_login_date = Column(Date, default=datetime.utcnow, nullable=False)
+
+    # --- ВОТ ЭТИ СТРОКИ, СКОРЕЕ ВСЕГО, ПРОПАЛИ ---
+    sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
+    received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
+    purchases = relationship("Purchase", back_populates="user")
 
 class Transaction(Base):
     __tablename__ = "transactions"
