@@ -61,10 +61,8 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
                 [
                     {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
                     {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
-                ],
-                [
-                    {"text": "💬 Связаться", "url": f"tg://user?id={db_user.telegram_id}"}
                 ]
+                // Строка с кнопкой "Связаться" была удалена
             ]
         }
         
