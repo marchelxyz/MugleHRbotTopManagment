@@ -36,9 +36,12 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         date_of_birth: dateOfBirth,
       };
 
-      await registerUser(telegramUser.id, userData);
+      const response = await registerUser(telegramUser.id, userData);
+      
       alert('Ваша заявка отправлена на рассмотрение!');
-      onRegistrationSuccess();
+      // --- ИЗМЕНЕНИЕ: Передаем нового пользователя в колбэк ---
+      onRegistrationSuccess(response.data); 
+
     } catch (err) {
       setError('Не удалось отправить заявку. Попробуйте снова.');
       console.error(err);
