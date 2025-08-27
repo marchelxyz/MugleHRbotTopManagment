@@ -92,3 +92,45 @@ export const deleteBanner = (bannerId) => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ ТОВАРАМИ ---
+
+// Получение всех активных товаров для админки (может понадобиться)
+export const getAllMarketItems = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/market-items', { // Предполагаем, что такой эндпоинт есть или будет
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Обновление товара
+export const updateMarketItem = (itemId, itemData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/market-items/${itemId}`, itemData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Архивация (удаление) товара
+export const archiveMarketItem = (itemId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/market-items/${itemId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Получение списка архивированных товаров
+export const getArchivedMarketItems = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/market-items/archived', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Восстановление товара из архива
+export const restoreMarketItem = (itemId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post(`/admin/market-items/${itemId}/restore`, {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
