@@ -8,12 +8,12 @@ class OrmBase(BaseModel):
 
 # --- НОВЫЕ И ПЕРЕРАБОТАННЫЕ СХЕМЫ ---
 
-# Базовая схема для товара (без связей)
+# --- ИЗМЕНЕНИЕ: Базовая схема для товара ---
 class MarketItemBase(OrmBase):
     id: int
     name: str
     description: Optional[str]
-    price: int
+    price: int # Цена в спасибках для отображения пользователю
     stock: int
 
 # Базовая схема для пользователя (без связей)
@@ -55,11 +55,11 @@ class UserResponse(UserBase):
             return None
         return dob.isoformat()
 
-# Финальная схема для Товара, которая НЕ вызывает рекурсию
+# --- ИЗМЕНЕНИЕ: Финальная схема ответа для API ---
+# Она будет включать все поля для удобства
 class MarketItemResponse(MarketItemBase):
-    # Мы не включаем сюда поле 'purchases', так как для списка товаров оно не нужно.
-    # Если бы было нужно, мы бы использовали `List[PurchaseForMarketResponse] = []`
-    pass
+    price_rub: int
+    is_archived: bool
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
@@ -100,11 +100,19 @@ class PurchaseResponse(BaseModel):
     message: str
     new_balance: int
 
+# --- ИЗМЕНЕНИЕ: Схема для СОЗДАНИЯ товара (принимаем только рубли) ---
 class MarketItemCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: int
+    price_rub: int
     stock: int
+
+# --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
+class MarketItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price_rub: Optional[int] = None
+    stock: Optional[int] = None
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None

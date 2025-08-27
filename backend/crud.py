@@ -1,4 +1,6 @@
 # backend/crud.py
+import math # Добавьте этот импорт вверху
+from datetime import datetime # Добавьте этот импорт вверху
 from sqlalchemy.future import select
 from sqlalchemy import func, update 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -201,6 +203,11 @@ async def get_market_items(db: AsyncSession):
     result = await db.execute(select(models.MarketItem))
     return result.scalars().all()
 
+async def get_active_items(db: AsyncSession):
+    """Получает список активных товаров для магазина."""
+    result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == False))
+    return result.scalars().all()
+
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
@@ -362,3 +369,77 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         await db.commit()
         await db.refresh(user)
     return user
+
+# --- НОВАЯ СЕКЦИЯ: ЛОГИКА ДЛЯ МАРКЕТА ---
+
+def calculate_spasibki_price(price_rub: int) -> int:
+    """Рассчитывает стоимость в 'спасибках' по вашей формуле."""
+    if price_rub <= 0: return 0
+    if price_rub <= 1000: return price_rub
+    ln_1000 = math.log(1000)
+    ln_150000 = math.log(150000)
+    try:
+        ln_a2 = math.log(price_rub)
+        price_spasibki = price_rub / (1 + 4 * (ln_a2 - ln_1000) / (ln_150000 - ln_1000))
+        return round(price_spasibki)
+    except ValueError:
+        return price_rub
+
+def calculate_accumulation_forecast(price_spasibki: int) -> str:
+    """Рассчитывает примерный прогноз накопления."""
+    # Это очень упрощенная модель, основанная на ваших примерах.
+    # Предполагаем, что средний пользователь получает около 1000 спасибок в месяц.
+    months_needed = price_spasibki / 1000
+    
+    if months_needed <= 1:
+        return "около 1 месяца"
+    elif months_needed <= 18: # до 1.5 лет
+        return f"около {round(months_needed)} мес."
+    else:
+        years = round(months_needed / 12, 1)
+        return f"около {years} лет"
+
+# Мы переименуем старую функцию create_market_item
+async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
+    """Создает новый товар с расчетом цены в спасибках."""
+    price_spasibki = calculate_spasibki_price(item.price_rub)
+    db_item = models.MarketItem(
+        name=item.name,
+        description=item.description,
+        price_rub=item.price_rub,
+        price=price_spasibki,
+        stock=item.stock,
+        is_archived=False
+    )
+    db.add(db_item)
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+
+async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
+    """Обновляет товар, пересчитывая цену, если нужно."""
+    db_item = await db.get(models.MarketItem, item_id)
+    if not db_item: return None
+    update_data = item_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_item, key, value)
+    if 'price_rub' in update_data:
+        db_item.price = calculate_spasibki_price(update_data['price_rub'])
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+    
+async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = False):
+    """Архивирует или восстанавливает товар."""
+    db_item = await db.get(models.MarketItem, item_id)
+    if db_item:
+        db_item.is_archived = not restore
+        db_item.archived_at = datetime.utcnow() if not restore else None
+        await db.commit()
+        return True
+    return False
+
+async def get_archived_items(db: AsyncSession):
+    """Получает список архивированных товаров."""
+    result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
+    return result.scalars().all()
