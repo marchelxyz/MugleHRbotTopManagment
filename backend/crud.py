@@ -369,18 +369,16 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
 
 def calculate_spasibki_price(price_rub: int) -> int:
     """Рассчитывает стоимость в 'спасибках' по вашей формуле."""
-    if price_rub <= 1000:
-        return price_rub
-    
+    if price_rub <= 0: return 0
+    if price_rub <= 1000: return price_rub
     ln_1000 = math.log(1000)
     ln_150000 = math.log(150000)
-    
     try:
         ln_a2 = math.log(price_rub)
         price_spasibki = price_rub / (1 + 4 * (ln_a2 - ln_1000) / (ln_150000 - ln_1000))
         return round(price_spasibki)
     except ValueError:
-        return price_rub # Возвращаем исходную цену, если логарифм не удался
+        return price_rub
 
 def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
