@@ -18,7 +18,15 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
-    is_admin = (user_telegram_id == settings.TELEGRAM_ADMIN_ID)
+    
+    # --- ИЗМЕНЕНИЕ: Новая логика проверки на админа ---
+    # 1. Получаем строку с ID из настроек: "727331113,12345678"
+    admin_ids_str = settings.TELEGRAM_ADMIN_IDS
+    # 2. Превращаем строку в список чисел: [727331113, 12345678]
+    admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
+    # 3. Проверяем, есть ли ID пользователя в этом списке
+    is_admin = user_telegram_id in admin_ids
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():
