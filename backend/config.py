@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Настройки Telegram
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_CHAT_ID: int
-    TELEGRAM_ADMIN_ID: int
+    TELEGRAM_ADMIN_IDS: str 
     TELEGRAM_ADMIN_TOPIC_ID: int
 
     class Config:
