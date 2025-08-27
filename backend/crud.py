@@ -203,6 +203,11 @@ async def get_market_items(db: AsyncSession):
     result = await db.execute(select(models.MarketItem))
     return result.scalars().all()
 
+async def get_active_items(db: AsyncSession):
+    """Получает список активных товаров для магазина."""
+    result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == False))
+    return result.scalars().all()
+
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     db_item = models.MarketItem(**item.model_dump())
     db.add(db_item)
@@ -397,15 +402,14 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     """Создает новый товар с расчетом цены в спасибках."""
-    
     price_spasibki = calculate_spasibki_price(item.price_rub)
-    
     db_item = models.MarketItem(
         name=item.name,
         description=item.description,
         price_rub=item.price_rub,
-        price=price_spasibki, # Сохраняем рассчитанную цену
-        stock=item.stock
+        price=price_spasibki,
+        stock=item.stock,
+        is_archived=False
     )
     db.add(db_item)
     await db.commit()
@@ -415,28 +419,22 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
 async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
     """Обновляет товар, пересчитывая цену, если нужно."""
     db_item = await db.get(models.MarketItem, item_id)
-    if not db_item:
-        return None
-        
+    if not db_item: return None
     update_data = item_data.model_dump(exclude_unset=True)
-    
     for key, value in update_data.items():
         setattr(db_item, key, value)
-        
-    # Если цена в рублях изменилась, пересчитываем цену в спасибках
     if 'price_rub' in update_data:
         db_item.price = calculate_spasibki_price(update_data['price_rub'])
-        
     await db.commit()
     await db.refresh(db_item)
     return db_item
-
-async def archive_market_item(db: AsyncSession, item_id: int):
-    """Архивирует товар (мягкое удаление)."""
+    
+async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = False):
+    """Архивирует или восстанавливает товар."""
     db_item = await db.get(models.MarketItem, item_id)
     if db_item:
-        db_item.is_archived = True
-        db_item.archived_at = datetime.utcnow()
+        db_item.is_archived = not restore
+        db_item.archived_at = datetime.utcnow() if not restore else None
         await db.commit()
         return True
     return False
