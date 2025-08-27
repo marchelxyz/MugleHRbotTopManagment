@@ -57,7 +57,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   };
   
   return (
-  <PageLayout title="Кофетерий">
+  <PageLayout title="Кафетерий">
       <p>Ваш баланс: <strong>{user?.balance}</strong> баллов</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
