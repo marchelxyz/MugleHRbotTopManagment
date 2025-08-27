@@ -73,6 +73,14 @@ async def get_archived_items_route(
     # Добавляем расчетную цену для каждого элемента
     return [{**item.__dict__, "price_spasibki": item.price} for item in items]
 
+# --- НОВЫЙ ЭНДПОИНТ: Получение всех активных товаров для админки ---
+@router.get("/admin/market-items", response_model=List[schemas.MarketItemResponse])
+async def get_all_active_items_route(
+    admin_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await crud.get_active_items(db)
+
 @router.post("/admin/reset-balances")
 async def reset_balances_route(
     admin_user: User = Depends(get_current_admin_user),
