@@ -3,6 +3,7 @@
 # 1. Добавляем импорт для response_model
 from fastapi import APIRouter, Depends, HTTPException, status # <-- Добавляем HTTPException и status
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List 
 import crud
 import schemas
 from database import get_db
