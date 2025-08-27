@@ -1,58 +1,187 @@
 // frontend/src/pages/admin/ItemManager.jsx
 
-import React, { useState } from 'react';
-import { createMarketItem } from '../../api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
+import { FaArchive } from 'react-icons/fa'; // Импортируем иконку
+
+// --- Выносим логику расчета на фронтенд для динамического отображения ---
+function calculateSpasibkiPrice(priceRub) {
+    if (!priceRub || priceRub <= 0) return 0;
+    if (priceRub <= 1000) return priceRub;
+    
+    const ln1000 = Math.log(1000);
+    const ln150000 = Math.log(150000);
+    const lnA2 = Math.log(priceRub);
+    
+    const priceSpasibki = priceRub / (1 + 4 * (lnA2 - ln1000) / (ln150000 - ln1000));
+    return Math.round(priceSpasibki);
+}
+
+function calculateAccumulationForecast(priceSpasibki) {
+    if (!priceSpasibki || priceSpasibki <= 0) return "-";
+    const monthsNeeded = priceSpasibki / 1000;
+    if (monthsNeeded <= 1) return "около 1 месяца";
+    if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
+    const years = (monthsNeeded / 12).toFixed(1);
+    return `около ${years} лет`;
+}
+// --------------------------------------------------------------------
+
+const initialItemState = { name: '', description: '', price_rub: '', stock: 1 };
 
 function ItemManager() {
-  const [newItem, setNewItem] = useState({
-    name: '',
-    description: '',
-    price: 10,
-    stock: 1,
-  });
-  const [createItemLoading, setCreateItemLoading] = useState(false);
-  const [createItemMessage, setCreateItemMessage] = useState('');
+  const [view, setView] = useState('active'); // 'active' или 'archived'
+  const [items, setItems] = useState([]);
+  const [archivedItems, setArchivedItems] = useState([]);
+  
+  const [form, setForm] = useState(initialItemState);
+  const [editingItemId, setEditingItemId] = useState(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const handleItemChange = (e) => {
+  // Загружаем все данные при старте
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+      const [activeRes, archivedRes] = await Promise.all([
+        getAllMarketItems(),
+        getArchivedMarketItems()
+      ]);
+      setItems(activeRes.data);
+      setArchivedItems(archivedRes.data);
+    } catch (error) {
+      setMessage('Ошибка загрузки списка товаров.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Динамический расчет для отображения в форме
+  const calculatedPrice = useMemo(() => calculateSpasibkiPrice(form.price_rub), [form.price_rub]);
+  const forecast = useMemo(() => calculateAccumulationForecast(calculatedPrice), [calculatedPrice]);
+
+  const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setNewItem(prev => ({ ...prev, [name]: value }));
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateItem = async (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setCreateItemLoading(true);
-    setCreateItemMessage('');
+    setLoading(true);
+    setMessage('');
+    const itemData = {
+      ...form,
+      price_rub: parseInt(form.price_rub, 10),
+      stock: parseInt(form.stock, 10),
+    };
     try {
-      const itemData = {
-        ...newItem,
-        price: parseInt(newItem.price, 10),
-        stock: parseInt(newItem.stock, 10),
-      };
-      await createMarketItem(itemData);
-      setCreateItemMessage(`Товар "${newItem.name}" успешно создан!`);
-      setNewItem({ name: '', description: '', price: 10, stock: 1 });
+      if (editingItemId) {
+        await updateMarketItem(editingItemId, itemData);
+        setMessage('Товар успешно обновлен!');
+      } else {
+        await createMarketItem(itemData);
+        setMessage('Товар успешно создан!');
+      }
+      resetForm();
+      fetchItems();
     } catch (error) {
-      setCreateItemMessage('Ошибка при создании товара.');
+      setMessage('Произошла ошибка.');
     } finally {
-      setCreateItemLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingItemId(item.id);
+    setForm({
+      name: item.name,
+      description: item.description,
+      price_rub: item.price_rub,
+      stock: item.stock,
+    });
+    window.scrollTo(0, 0);
+  };
+
+  const resetForm = () => {
+    setForm(initialItemState);
+    setEditingItemId(null);
+  };
+
+  const handleArchive = async (itemId) => {
+    if (window.confirm('Вы уверены, что хотите архивировать этот товар?')) {
+      await archiveMarketItem(itemId);
+      fetchItems();
+    }
+  };
+
+  const handleRestore = async (itemId) => {
+    if (window.confirm('Вы уверены, что хотите восстановить этот товар?')) {
+      await restoreMarketItem(itemId);
+      fetchItems();
     }
   };
 
   return (
-    <div className={styles.card}>
-      <h2>Создать новый товар</h2>
-      <form onSubmit={handleCreateItem}>
-        <input type="text" name="name" value={newItem.name} onChange={handleItemChange} placeholder="Название товара" className={styles.input} required />
-        <textarea name="description" value={newItem.description} onChange={handleItemChange} placeholder="Описание товара" className={styles.textarea} />
-        <input type="number" name="price" value={newItem.price} onChange={handleItemChange} placeholder="Цена в баллах" className={styles.input} required min="0" />
-        <input type="number" name="stock" value={newItem.stock} onChange={handleItemChange} placeholder="Количество на складе" className={styles.input} required min="0" />
-        <button type="submit" disabled={createItemLoading} className={styles.buttonGreen}>
-          {createItemLoading ? 'Создание...' : 'Создать товар'}
-        </button>
-        {createItemMessage && <p className={styles.message}>{createItemMessage}</p>}
-      </form>
-    </div>
+    <>
+      <div className={styles.card}>
+        <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
+        <form onSubmit={handleFormSubmit}>
+          <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
+          <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
+          <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
+          
+          {form.price_rub > 0 && (
+            <div className={styles.pricePreview}>
+              <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
+              <p>Прогноз накопления: <strong>{forecast}</strong></p>
+            </div>
+          )}
+          
+          <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
+          <button type="submit" disabled={loading} className={styles.buttonGreen}>
+            {editingItemId ? 'Сохранить' : 'Создать'}
+          </button>
+          {editingItemId && <button type="button" onClick={resetForm} className={styles.buttonGrey}>Отмена</button>}
+          {message && <p className={styles.message}>{message}</p>}
+        </form>
+      </div>
+      
+      <div className={styles.tabs}>
+        <button onClick={() => setView('active')} className={view === 'active' ? styles.tabActive : styles.tab}>Активные ({items.length})</button>
+        <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
+      </div>
+
+      <div className={styles.card}>
+        <h2>{view === 'active' ? 'Активные товары' : 'Архив товаров'}</h2>
+        <div className={styles.list}>
+          {(view === 'active' ? items : archivedItems).map(item => (
+            <div key={item.id} className={styles.listItem}>
+              <div className={styles.listItemContent}>
+                <p><strong>{item.name}</strong></p>
+                <p>Цена: {item.price} спасибок ({item.price_rub} ₽)</p>
+                <p>Остаток: {item.stock} шт.</p>
+              </div>
+              <div className={styles.listItemActions}>
+                {view === 'active' ? (
+                  <>
+                    <button onClick={() => handleEdit(item)} className={styles.buttonSmall}>✏️</button>
+                    <button onClick={() => handleArchive(item.id)} className={styles.buttonSmallRed}>🗑️</button>
+                  </>
+                ) : (
+                  <button onClick={() => handleRestore(item.id)} className={styles.buttonSmall}><FaArchive /> Восстановить</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
