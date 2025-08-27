@@ -10,9 +10,10 @@ from database import get_db
 router = APIRouter()
 
 # 2. Указываем response_model и возвращаем список по схеме MarketItemResponse
-@router.get("/market/items", response_model=list[schemas.MarketItemResponse])
+@router.get("/market/items", response_model=List[schemas.MarketItemResponse])
 async def list_items(db: AsyncSession = Depends(get_db)):
-    return await crud.get_market_items(db)
+    # --- ИЗМЕНЕНИЕ: Получаем только активные товары ---
+    return await crud.get_active_items(db)
 
 
 @router.post("/market/purchase", response_model=schemas.PurchaseResponse)
