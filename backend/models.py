@@ -56,10 +56,13 @@ class MarketItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    price = Column(Integer, nullable=False)
+    
+    price = Column(Integer, nullable=False) # Цена в спасибках (рассчитывается автоматически)
+    price_rub = Column(Integer, nullable=False) # Цена в рублях (вводится админом)
+    
     stock = Column(Integer, default=0)
-    # Убираем lazy='selectin' отсюда
-    purchases = relationship("Purchase", back_populates="item")
+    is_archived = Column(Boolean, default=False, nullable=False)
+    archived_at = Column(DateTime, nullable=True)
 
 class Purchase(Base):
     __tablename__ = "purchases"
