@@ -63,6 +63,7 @@ class MarketItem(Base):
     stock = Column(Integer, default=0)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
+    purchases = relationship("Purchase", back_populates="item")
 
 class Purchase(Base):
     __tablename__ = "purchases"
