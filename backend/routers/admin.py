@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List
 import crud
 import schemas
 from dependencies import get_current_admin_user
