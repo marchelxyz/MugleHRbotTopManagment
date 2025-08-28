@@ -373,23 +373,42 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
 # --- НОВАЯ СЕКЦИЯ: ЛОГИКА ДЛЯ МАРКЕТА ---
 
 def calculate_spasibki_price(price_rub: int) -> int:
-    """Рассчитывает стоимость в 'спасибках' по вашей формуле."""
-    if price_rub <= 0: return 0
-    if price_rub <= 1000: return price_rub
-    ln_1000 = math.log(1000)
-    ln_150000 = math.log(150000)
-    try:
-        ln_a2 = math.log(price_rub)
-        price_spasibki = price_rub / (1 + 4 * (ln_a2 - ln_1000) / (ln_150000 - ln_1000))
-        return round(price_spasibki)
-    except ValueError:
-        return price_rub
+    """Рассчитывает стоимость в 'спасибках' по плавающему курсу."""
+    if price_rub <= 0:
+        return 0
+    
+    # Новые опорные точки
+    min_rub, max_rub = 100, 150000
+    min_rate, max_rate = 10, 50 # Курс (рублей за 1 спасибку)
 
+    # Если цена ниже или равна минимальной, курс фиксированный
+    if price_rub <= min_rub:
+        return round(price_rub / min_rate)
+
+    # Логарифмы для расчета
+    ln_min_rub = math.log(min_rub)
+    ln_max_rub = math.log(max_rub)
+    
+    try:
+        ln_price_rub = math.log(price_rub)
+        
+        # Рассчитываем долю "прогресса" цены по логарифмической шкале
+        progress = (ln_price_rub - ln_min_rub) / (ln_max_rub - ln_min_rub)
+        
+        # Рассчитываем текущий курс
+        current_rate = min_rate + (max_rate - min_rate) * progress
+        
+        price_spasibki = price_rub / current_rate
+        return round(price_spasibki)
+        
+    except ValueError:
+        return round(price_rub / min_rate)
+        
 def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
     # Это очень упрощенная модель, основанная на ваших примерах.
     # Предполагаем, что средний пользователь получает около 1000 спасибок в месяц.
-    months_needed = price_spasibki / 1000
+    months_needed = price_spasibki / 30
     
     if months_needed <= 1:
         return "около 1 месяца"
