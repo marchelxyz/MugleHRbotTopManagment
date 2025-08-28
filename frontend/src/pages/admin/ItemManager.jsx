@@ -8,19 +8,30 @@ import { FaArchive } from 'react-icons/fa'; // Импортируем иконк
 // --- Выносим логику расчета на фронтенд для динамического отображения ---
 function calculateSpasibkiPrice(priceRub) {
     if (!priceRub || priceRub <= 0) return 0;
-    if (priceRub <= 1000) return priceRub;
-    
-    const ln1000 = Math.log(1000);
-    const ln150000 = Math.log(150000);
-    const lnA2 = Math.log(priceRub);
-    
-    const priceSpasibki = priceRub / (1 + 4 * (lnA2 - ln1000) / (ln150000 - ln1000));
+
+    const minRub = 100;
+    const maxRub = 150000;
+    const minRate = 10;
+    const maxRate = 50;
+
+    if (priceRub <= minRub) {
+        return Math.round(priceRub / minRate);
+    }
+
+    const lnMinRub = Math.log(minRub);
+    const lnMaxRub = Math.log(maxRub);
+    const lnPriceRub = Math.log(priceRub);
+
+    const progress = (lnPriceRub - lnMinRub) / (lnMaxRub - lnMinRub);
+    const currentRate = minRate + (maxRate - minRate) * progress;
+    const priceSpasibki = priceRub / currentRate;
+
     return Math.round(priceSpasibki);
 }
 
 function calculateAccumulationForecast(priceSpasibki) {
     if (!priceSpasibki || priceSpasibki <= 0) return "-";
-    const monthsNeeded = priceSpasibki / 1000;
+    const monthsNeeded = priceSpasibki / 30;
     if (monthsNeeded <= 1) return "около 1 месяца";
     if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
     const years = (monthsNeeded / 12).toFixed(1);
