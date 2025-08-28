@@ -371,39 +371,34 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
     return user
 
 def calculate_spasibki_price(price_rub: int) -> int:
-    """Рассчитывает стоимость в 'спасибках' по уточненной кривой."""
+    """Рассчитывает стоимость в 'спасибках' по новой формуле."""
     if not isinstance(price_rub, (int, float)) or price_rub <= 0:
         return 0
     
-    min_rub, max_rub = 150, 150000
-    min_rate, max_rate = 30, 150 # Опорные курсы (рублей за 1 спасибку)
+    # Константы из вашей формулы
+    min_rub, max_rub = 100, 150000
+    base_rate, rate_multiplier = 30, 120
 
+    # Если цена ниже минимальной, считаем по базовому курсу
     if price_rub <= min_rub:
-        return round(price_rub / min_rate)
-    if price_rub >= max_rub:
-        return round(price_rub / max_rate)
+        return round(price_rub / base_rate)
 
-    # Логарифмы для расчета "прогресса"
+    # Логарифмы для расчета
     ln_min_rub = math.log(min_rub)
     ln_max_rub = math.log(max_rub)
     
     try:
         ln_price_rub = math.log(price_rub)
-        progress = (ln_price_rub - ln_min_rub) / (ln_max_rub - ln_min_rub)
         
-        # Коэффициенты для кривой, которая проходит через ваши точки
-        a = -72.55
-        b = 112.55
-        c = 10
-        
-        # Рассчитываем текущий курс по новой, более точной кривой
-        current_rate = a * (progress**2) + b * progress + c
+        # Реализация формулы: =A2 / (30 + 120 * (LN(A2) - LN(100)) / (LN(150000) - LN(100)))
+        current_rate = base_rate + rate_multiplier * (ln_price_rub - ln_min_rub) / (ln_max_rub - ln_min_rub)
         
         price_spasibki = price_rub / current_rate
         return round(price_spasibki)
         
-    except ValueError:
-        return round(price_rub / min_rate)
+    except (ValueError, ZeroDivisionError):
+        # На случай непредвиденных ошибок возвращаем расчет по базовому курсу
+        return round(price_rub / base_rate)
 
 def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
