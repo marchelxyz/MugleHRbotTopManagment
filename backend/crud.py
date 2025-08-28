@@ -379,7 +379,7 @@ def calculate_spasibki_price(price_rub: int) -> int:
     
     # Новые опорные точки
     min_rub, max_rub = 100, 150000
-    min_rate, max_rate = 10, 50 # Курс (рублей за 1 спасибку)
+    min_rate, max_rate = 30, 150 # Курс (рублей за 1 спасибку)
 
     # Если цена ниже или равна минимальной, курс фиксированный
     if price_rub <= min_rub:
@@ -408,7 +408,7 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
     # Это очень упрощенная модель, основанная на ваших примерах.
     # Предполагаем, что средний пользователь получает около 1000 спасибок в месяц.
-    months_needed = price_spasibki / 30
+    months_needed = price_spasibki / 15
     
     if months_needed <= 1:
         return "около 1 месяца"
