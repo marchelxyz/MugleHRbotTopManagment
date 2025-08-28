@@ -17,6 +17,9 @@ function calculateSpasibkiPrice(priceRub) {
     if (priceRub <= minRub) {
         return Math.round(priceRub / minRate);
     }
+    if (priceRub >= maxRub) {
+        return Math.round(priceRub / maxRate);
+    }
 
     const lnMinRub = Math.log(minRub);
     const lnMaxRub = Math.log(maxRub);
