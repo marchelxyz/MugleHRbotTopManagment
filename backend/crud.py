@@ -371,34 +371,33 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
     return user
 
 def calculate_spasibki_price(price_rub: int) -> int:
-    """Рассчитывает стоимость в 'спасибках' по плавающему курсу."""
-    if price_rub <= 0:
+    """Рассчитывает стоимость в 'спасибках' по уточненной кривой."""
+    if not isinstance(price_rub, (int, float)) or price_rub <= 0:
         return 0
     
-    # --- Все параметры теперь в одном месте ---
-    min_rub, max_rub = 100, 150000
-    min_rate, max_rate = 30, 150 # Курс (рублей за 1 спасибку)
+    min_rub, max_rub = 150, 150000
+    min_rate, max_rate = 30, 150 # Опорные курсы (рублей за 1 спасибку)
 
-    # Если цена ниже минимальной, курс фиксированный
     if price_rub <= min_rub:
         return round(price_rub / min_rate)
-
-    # Если цена выше максимальной, курс тоже фиксированный
     if price_rub >= max_rub:
         return round(price_rub / max_rate)
 
-    # Логарифмы для расчета (теперь они всегда соответствуют min_rub и max_rub)
+    # Логарифмы для расчета "прогресса"
     ln_min_rub = math.log(min_rub)
     ln_max_rub = math.log(max_rub)
     
     try:
         ln_price_rub = math.log(price_rub)
-        
-        # Рассчитываем "прогресс" цены по логарифмической шкале
         progress = (ln_price_rub - ln_min_rub) / (ln_max_rub - ln_min_rub)
         
-        # Рассчитываем текущий курс
-        current_rate = min_rate + (max_rate - min_rate) * progress
+        # Коэффициенты для кривой, которая проходит через ваши точки
+        a = -72.55
+        b = 112.55
+        c = 10
+        
+        # Рассчитываем текущий курс по новой, более точной кривой
+        current_rate = a * (progress**2) + b * progress + c
         
         price_spasibki = price_rub / current_rate
         return round(price_spasibki)
@@ -406,7 +405,6 @@ def calculate_spasibki_price(price_rub: int) -> int:
     except ValueError:
         return round(price_rub / min_rate)
 
-        
 def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
     # Это очень упрощенная модель, основанная на ваших примерах.
