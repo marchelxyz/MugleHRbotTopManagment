@@ -9,34 +9,24 @@ import { FaArchive } from 'react-icons/fa'; // Импортируем иконк
 function calculateSpasibkiPrice(priceRub) {
     if (!priceRub || priceRub <= 0) return 0;
 
-    const minRub = 150;
+    const minRub = 100;
     const maxRub = 150000;
-    const minRate = 30;
-    const maxRate = 150;
+    const baseRate = 30;
+    const rateMultiplier = 120;
 
     if (priceRub <= minRub) {
-        return Math.round(priceRub / minRate);
-    }
-    if (priceRub >= maxRub) {
-        return Math.round(priceRub / maxRate);
+        return Math.round(priceRub / baseRate);
     }
 
     const lnMinRub = Math.log(minRub);
     const lnMaxRub = Math.log(maxRub);
     const lnPriceRub = Math.log(priceRub);
-
-    const progress = (lnPriceRub - lnMinRub) / (lnMaxRub - lnMinRub);
-
-    const a = -72.55;
-    const b = 112.55;
-    const c = 10;
-
-    const currentRate = a * Math.pow(progress, 2) + b * progress + c;
+    
+    const currentRate = baseRate + rateMultiplier * (lnPriceRub - lnMinRub) / (lnMaxRub - lnMinRub);
     const priceSpasibki = priceRub / currentRate;
 
     return Math.round(priceSpasibki);
 }
-
 function calculateAccumulationForecast(priceSpasibki) {
     if (!priceSpasibki || priceSpasibki <= 0) return "-";
     const monthsNeeded = priceSpasibki / 15;
