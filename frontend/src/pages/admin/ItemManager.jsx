@@ -11,8 +11,8 @@ function calculateSpasibkiPrice(priceRub) {
 
     const minRub = 100;
     const maxRub = 150000;
-    const minRate = 10;
-    const maxRate = 50;
+    const minRate = 30;
+    const maxRate = 150;
 
     if (priceRub <= minRub) {
         return Math.round(priceRub / minRate);
@@ -31,7 +31,7 @@ function calculateSpasibkiPrice(priceRub) {
 
 function calculateAccumulationForecast(priceSpasibki) {
     if (!priceSpasibki || priceSpasibki <= 0) return "-";
-    const monthsNeeded = priceSpasibki / 30;
+    const monthsNeeded = priceSpasibki / 15;
     if (monthsNeeded <= 1) return "около 1 месяца";
     if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
     const years = (monthsNeeded / 12).toFixed(1);
