@@ -370,29 +370,31 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         await db.refresh(user)
     return user
 
-# --- НОВАЯ СЕКЦИЯ: ЛОГИКА ДЛЯ МАРКЕТА ---
-
 def calculate_spasibki_price(price_rub: int) -> int:
     """Рассчитывает стоимость в 'спасибках' по плавающему курсу."""
     if price_rub <= 0:
         return 0
     
-    # Новые опорные точки
+    # --- Все параметры теперь в одном месте ---
     min_rub, max_rub = 100, 150000
     min_rate, max_rate = 30, 150 # Курс (рублей за 1 спасибку)
 
-    # Если цена ниже или равна минимальной, курс фиксированный
+    # Если цена ниже минимальной, курс фиксированный
     if price_rub <= min_rub:
         return round(price_rub / min_rate)
 
-    # Логарифмы для расчета
+    # Если цена выше максимальной, курс тоже фиксированный
+    if price_rub >= max_rub:
+        return round(price_rub / max_rate)
+
+    # Логарифмы для расчета (теперь они всегда соответствуют min_rub и max_rub)
     ln_min_rub = math.log(min_rub)
     ln_max_rub = math.log(max_rub)
     
     try:
         ln_price_rub = math.log(price_rub)
         
-        # Рассчитываем долю "прогресса" цены по логарифмической шкале
+        # Рассчитываем "прогресс" цены по логарифмической шкале
         progress = (ln_price_rub - ln_min_rub) / (ln_max_rub - ln_min_rub)
         
         # Рассчитываем текущий курс
@@ -403,6 +405,7 @@ def calculate_spasibki_price(price_rub: int) -> int:
         
     except ValueError:
         return round(price_rub / min_rate)
+
         
 def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
