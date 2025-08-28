@@ -9,7 +9,7 @@ import { FaArchive } from 'react-icons/fa'; // Импортируем иконк
 function calculateSpasibkiPrice(priceRub) {
     if (!priceRub || priceRub <= 0) return 0;
 
-    const minRub = 100;
+    const minRub = 150;
     const maxRub = 150000;
     const minRate = 30;
     const maxRate = 150;
@@ -26,7 +26,12 @@ function calculateSpasibkiPrice(priceRub) {
     const lnPriceRub = Math.log(priceRub);
 
     const progress = (lnPriceRub - lnMinRub) / (lnMaxRub - lnMinRub);
-    const currentRate = minRate + (maxRate - minRate) * progress;
+
+    const a = -72.55;
+    const b = 112.55;
+    const c = 10;
+
+    const currentRate = a * Math.pow(progress, 2) + b * progress + c;
     const priceSpasibki = priceRub / currentRate;
 
     return Math.round(priceSpasibki);
