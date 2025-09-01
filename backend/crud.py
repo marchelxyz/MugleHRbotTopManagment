@@ -47,7 +47,6 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         is_admin=is_admin,
         phone_number=user.phone_number,
         date_of_birth=dob,
-        transfer_balance=930,
         last_login_date=date.today()
     )
     db.add(db_user)
