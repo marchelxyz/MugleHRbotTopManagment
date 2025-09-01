@@ -11,7 +11,6 @@ const tg = window.Telegram.WebApp;
 function TransferPage({ user, onBack, onTransferSuccess }) {
   const [users, setUsers] = useState([]);
   const [receiverId, setReceiverId] = useState('');
-  const [amount, setAmount] = useState(10); 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -51,10 +50,9 @@ const handleSubmit = async (e) => {
 
     try {
       // 2. Формируем правильный объект с sender_id
-    const transferData = {
-      sender_id: currentUserId,
+  const transferData = {
+      sender_id: user.id,
       receiver_id: parseInt(receiverId, 10),
-      amount: 10, // Всегда отправляем 10
       message: message,
     };
       
@@ -82,11 +80,9 @@ const handleSubmit = async (e) => {
   return (
     <PageLayout title="Отправить спасибки">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
-       <div className={styles.balanceInfo}>
-        <p>Для переводов: <strong>{user?.transfer_balance}</strong> спасибок</p>
+         <div className={styles.balanceInfo}>
         <p>Переводов сегодня: <strong>{user?.daily_transfer_count || 0} / 3</strong></p>
       </div>
-      <p>Ваш баланс: {user?.balance} спасибок</p>
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
           <label className={styles.label}>Кому:</label>
