@@ -8,25 +8,9 @@ import { FaArchive } from 'react-icons/fa'; // Импортируем иконк
 // --- Выносим логику расчета на фронтенд для динамического отображения ---
 function calculateSpasibkiPrice(priceRub) {
     if (!priceRub || priceRub <= 0) return 0;
-
-    const minRub = 100;
-    const maxRub = 150000;
-    const baseRate = 30;
-    const rateMultiplier = 120;
-
-    if (priceRub <= minRub) {
-        return Math.round(priceRub / baseRate);
-    }
-
-    const lnMinRub = Math.log(minRub);
-    const lnMaxRub = Math.log(maxRub);
-    const lnPriceRub = Math.log(priceRub);
-    
-    const currentRate = baseRate + rateMultiplier * (lnPriceRub - lnMinRub) / (lnMaxRub - lnMinRub);
-    const priceSpasibki = priceRub / currentRate;
-
-    return Math.round(priceSpasibki);
+    return Math.round(priceRub / 50);
 }
+
 function calculateAccumulationForecast(priceSpasibki) {
     if (!priceSpasibki || priceSpasibki <= 0) return "-";
     const monthsNeeded = priceSpasibki / 15;
