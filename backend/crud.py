@@ -112,37 +112,31 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     today = date.today()
-
     sender = await db.get(models.User, tr.sender_id)
     if not sender:
-        raise ValueError("Sender not found")
+        raise ValueError("Отправитель не найден")
 
-    # Проверяем, наступил ли новый день, и сбрасываем счетчик, если да
     if sender.last_login_date < today:
         sender.daily_transfer_count = 0
         sender.last_login_date = today
-
-    # Проверка лимитов
-    if tr.amount > 10:
-        raise ValueError("Amount cannot exceed 10")
-    if sender.daily_transfer_count >= 3:
-        raise ValueError("Daily transfer limit reached (3 per day)")
-    if sender.transfer_balance < tr.amount:
-        raise ValueError("Insufficient transfer balance")
+    
+    # --- Новые лимиты ---
+    fixed_amount = 1 # Сумма перевода теперь всегда 1
+    if sender.daily_transfer_count >= 3: # Лимит - 3 перевода в день
+        raise ValueError("Дневной лимит переводов исчерпан (3 в день)")
 
     receiver = await db.get(models.User, tr.receiver_id)
     if not receiver:
-        raise ValueError("Receiver not found")
+        raise ValueError("Получатель не найден")
 
-    # Списываем с баланса для переводов, начисляем на основной баланс получателя
-    sender.transfer_balance -= tr.amount
+    # Увеличиваем счетчик и начисляем на основной баланс получателя
     sender.daily_transfer_count += 1
-    receiver.balance += tr.amount
+    receiver.balance += fixed_amount
     
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
         receiver_id=tr.receiver_id,
-        amount=tr.amount,
+        amount=fixed_amount,
         message=tr.message
     )
     db.add(db_tr)
@@ -350,14 +344,6 @@ async def process_birthday_bonuses(db: AsyncSession):
         
     await db.commit()
     return len(users)
-
-async def reset_monthly_balances(db: AsyncSession):
-    """Сбрасывает transfer_balance всем пользователям до 930."""
-    await db.execute(
-        update(models.User).values(transfer_balance=930)
-    )
-    await db.commit()
-    return True
 
 # --- ДОБАВЬТЕ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
 async def update_user_status(db: AsyncSession, user_id: int, status: str):
