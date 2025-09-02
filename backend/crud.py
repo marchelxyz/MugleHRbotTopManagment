@@ -8,6 +8,8 @@ import models, schemas
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
+import random # Добавьте этот импорт
+from dateutil.relativedelta import relativedelta # Добавьте этот импорт
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -420,3 +422,85 @@ async def get_archived_items(db: AsyncSession):
     """Получает список архивированных товаров."""
     result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
     return result.scalars().all()
+
+# --- ИЗМЕНЕНИЕ: Добавляем начисление части билетика при переводе ---
+async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
+    # ... (код до sender.daily_transfer_count += 1)
+    sender.daily_transfer_count += 1
+    # --- НАЧАЛО ДОБАВЛЕНИЙ ---
+    sender.ticket_parts += 1 # Начисляем 1 часть билетика за перевод
+    # --- КОНЕЦ ДОБАВЛЕНИЙ ---
+    receiver.balance += fixed_amount
+    # ... (остальной код функции)
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
+
+async def assemble_tickets(db: AsyncSession, user_id: int):
+    """Собирает части билетиков в целые билеты (2 к 1)."""
+    user = await db.get(models.User, user_id)
+    if not user or user.ticket_parts < 2:
+        raise ValueError("Недостаточно частей для сборки билета.")
+    
+    new_tickets = user.ticket_parts // 2
+    user.tickets += new_tickets
+    user.ticket_parts %= 2 # Оставляем остаток (0 или 1)
+    
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def spin_roulette(db: AsyncSession, user_id: int):
+    """Прокручивает рулетку, рассчитывает и начисляет выигрыш."""
+    user = await db.get(models.User, user_id)
+    if not user or user.tickets < 1:
+        raise ValueError("Недостаточно билетов для прокрутки.")
+
+    user.tickets -= 1
+
+    # Логика взвешенного шанса
+    rand = random.random() # Случайное число от 0.0 до 1.0
+    if rand < 0.05: # 5% шанс
+        prize = random.randint(16, 30)
+    elif rand < 0.35: # 30% шанс (0.05 + 0.30)
+        prize = random.randint(6, 15)
+    else: # 65% шанс
+        prize = random.randint(1, 5)
+
+    user.balance += prize
+
+    # Записываем выигрыш в историю
+    win_record = models.RouletteWin(user_id=user_id, amount=prize)
+    db.add(win_record)
+    
+    await db.commit()
+    await db.refresh(user)
+    return {"prize_won": prize, "new_balance": user.balance, "new_tickets": user.tickets}
+
+async def get_roulette_history(db: AsyncSession, limit: int = 20):
+    """Получает историю последних выигрышей."""
+    result = await db.execute(
+        select(models.RouletteWin).order_by(models.RouletteWin.timestamp.desc()).limit(limit)
+    )
+    return result.scalars().all()
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ ПЛАНИРОВЩИКА (CRON) ---
+
+async def reset_ticket_parts(db: AsyncSession):
+    """Сбрасывает части билетиков у пользователей, если прошло 3 месяца."""
+    three_months_ago = date.today() - relativedelta(months=3)
+    await db.execute(
+        update(models.User)
+        .where(models.User.last_ticket_part_reset <= three_months_ago)
+        .values(ticket_parts=0, last_ticket_part_reset=date.today())
+    )
+    await db.commit()
+
+async def reset_tickets(db: AsyncSession):
+    """Сбрасывает билетики у пользователей, если прошло 4 месяца."""
+    four_months_ago = date.today() - relativedelta(months=4)
+    await db.execute(
+        update(models.User)
+        .where(models.User.last_ticket_reset <= four_months_ago)
+        .values(tickets=0, last_ticket_reset=date.today())
+    )
+    await db.commit()
