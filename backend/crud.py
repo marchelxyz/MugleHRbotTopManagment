@@ -113,31 +113,36 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     today = date.today()
+    
+    # --- ИСПРАВЛЕНИЕ: Эта строка, скорее всего, отсутствовала ---
     sender = await db.get(models.User, tr.sender_id)
     if not sender:
         raise ValueError("Отправитель не найден")
 
+    # Проверяем, наступил ли новый день, и сбрасываем счетчик, если да
     if sender.last_login_date < today:
         sender.daily_transfer_count = 0
         sender.last_login_date = today
     
-    # --- Новые лимиты ---
-    fixed_amount = 1 # Сумма перевода теперь всегда 1
-    if sender.daily_transfer_count >= 3: # Лимит - 3 перевода в день
+    # Проверяем лимит (3 перевода в день)
+    if sender.daily_transfer_count >= 3:
         raise ValueError("Дневной лимит переводов исчерпан (3 в день)")
 
     receiver = await db.get(models.User, tr.receiver_id)
     if not receiver:
         raise ValueError("Получатель не найден")
 
-    # Увеличиваем счетчик и начисляем на основной баланс получателя
+    # Увеличиваем счетчик переводов и начисляем 1 спасибку получателю
     sender.daily_transfer_count += 1
-    receiver.balance += fixed_amount
+    receiver.balance += 1 # Сумма всегда равна 1
+    
+    # Начисляем 1 часть билетика за перевод
+    sender.ticket_parts += 1 
     
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
         receiver_id=tr.receiver_id,
-        amount=fixed_amount,
+        amount=1, # Сумма всегда равна 1
         message=tr.message
     )
     db.add(db_tr)
@@ -145,8 +150,8 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     await db.refresh(db_tr)
     
     try:
-        message_text = (f"🎉 Вам начислено *{tr.amount}* баллов!\n"
-                        f"От: *{sender.last_name}*\n"
+        message_text = (f"🎉 Вам начислена 1 спасибка!\n"
+                        f"От: *{sender.first_name} {sender.last_name}*\n"
                         f"Сообщение: _{tr.message}_")
         await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
