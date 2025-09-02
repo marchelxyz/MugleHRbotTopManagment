@@ -17,6 +17,7 @@ import SettingsPage from './pages/SettingsPage';
 import FaqPage from './pages/FaqPage';
 import PendingPage from './pages/PendingPage';
 import RejectedPage from './pages/RejectedPage';
+import RoulettePage from './pages/RoulettePage';
 
 // Стили
 import './App.css';
@@ -115,6 +116,8 @@ function App() {
     if (user.status === 'approved') {
       switch (page) {
         case 'leaderboard': return <LeaderboardPage />;
+        case 'roulette': // 2. Добавляем новый case
+        return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
