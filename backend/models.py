@@ -21,10 +21,9 @@ class User(Base):
     phone_number = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
     
-    balance = Column(Integer, default=0)
+    balance = Column(Integer, default=0) # Накопленный баланс для магазина
     is_admin = Column(Boolean, default=False, nullable=False)
     
-    transfer_balance = Column(Integer, default=0)
     daily_transfer_count = Column(Integer, default=0)
     last_login_date = Column(Date, default=datetime.utcnow, nullable=False)
 
