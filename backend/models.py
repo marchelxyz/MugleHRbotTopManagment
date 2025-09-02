@@ -27,6 +27,12 @@ class User(Base):
     daily_transfer_count = Column(Integer, default=0)
     last_login_date = Column(Date, default=datetime.utcnow, nullable=False)
 
+    ticket_parts = Column(Integer, default=0) # Части билетиков
+    tickets = Column(Integer, default=0)      # Целые билетики
+    last_ticket_part_reset = Column(Date, default=datetime.utcnow) # Дата сброса частей
+    last_ticket_reset = Column(Date, default=datetime.utcnow)      # Дата сброса билетиков
+    # --- КОНЕЦ ДОБАВЛЕНИЙ ---
+    
     # --- ВОТ ЭТИ СТРОКИ, СКОРЕЕ ВСЕГО, ПРОПАЛИ ---
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
     received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
@@ -82,3 +88,13 @@ class Banner(Base):
     link_url = Column(String, nullable=True) # Ссылка для перехода по клику
     is_active = Column(Boolean, default=True, nullable=False)
     position = Column(String, default='feed', nullable=False) # 'main' или 'feed'
+
+# --- ДОБАВЬТЕ ЭТОТ НОВЫЙ КЛАСС В КОНЕЦ ФАЙЛА ---
+class RouletteWin(Base):
+    __tablename__ = "roulette_wins"
+    id = Column(Integer, primary_key=True, index=True)
+    amount = Column(Integer, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User")
