@@ -3,8 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import crud, schemas
 from database import get_db
-from dependencies import get_current_user # Предполагаем, что такая зависимость есть
+# --- ИЗМЕНЕНИЕ: Убираем лишний комментарий, импорт теперь корректен ---
+from dependencies import get_current_user 
+from models import User # Добавим импорт User на всякий случай
 
+router = APIRouter(prefix="/roulette", tags=["roulette"])
 router = APIRouter(prefix="/roulette", tags=["roulette"])
 
 @router.post("/assemble", response_model=schemas.UserResponse)
