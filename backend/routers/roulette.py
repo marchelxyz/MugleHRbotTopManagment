@@ -3,10 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import crud, schemas
 from database import get_db
-# --- ИЗМЕНЕНИЕ: Убираем лишний комментарий, импорт теперь корректен ---
-from dependencies import get_current_user 
-from models 
-import User # Добавим импорт User на всякий случай
+from dependencies import get_current_user
+import models # --- ИСПРАВЛЕНИЕ: Добавляем этот импорт ---
 
 router = APIRouter(prefix="/roulette", tags=["roulette"])
 router = APIRouter(prefix="/roulette", tags=["roulette"])
