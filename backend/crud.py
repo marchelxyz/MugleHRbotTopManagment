@@ -112,6 +112,9 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
+    # --- ДИАГНОСТИЧЕСКИЙ PRINT ---
+    print("--- RUNNING NEW TRANSACTION LOGIC V2 ---")
+    
     today = date.today()
     
     # --- ИСПРАВЛЕНИЕ: Эта строка, скорее всего, отсутствовала ---
