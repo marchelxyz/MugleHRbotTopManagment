@@ -15,6 +15,7 @@ async def verify_cron_secret(x_cron_secret: str = Header(...)):
 async def run_daily_tasks(db: AsyncSession = Depends(get_db)):
     """Выполняет ежедневные задачи: начисление бонусов на ДР."""
     birthdays_processed = await crud.process_birthday_bonuses(db)
+    await crud.reset_tickets(db)
     return {"status": "ok", "birthdays_processed": birthdays_processed}
 
 @router.post("/scheduler/run-monthly-tasks", dependencies=[Depends(verify_cron_secret)])
