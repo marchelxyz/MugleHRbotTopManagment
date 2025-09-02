@@ -8,8 +8,6 @@ import models, schemas
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
-import random # Добавьте этот импорт
-from dateutil.relativedelta import relativedelta # Добавьте этот импорт
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -112,40 +110,33 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
-    # --- ДИАГНОСТИЧЕСКИЙ PRINT ---
-    print("--- RUNNING NEW TRANSACTION LOGIC V2 ---")
-    
     today = date.today()
-    
-    # --- ИСПРАВЛЕНИЕ: Эта строка, скорее всего, отсутствовала ---
     sender = await db.get(models.User, tr.sender_id)
     if not sender:
         raise ValueError("Отправитель не найден")
 
-    # Проверяем, наступил ли новый день, и сбрасываем счетчик, если да
     if sender.last_login_date < today:
         sender.daily_transfer_count = 0
         sender.last_login_date = today
     
-    # Проверяем лимит (3 перевода в день)
-    if sender.daily_transfer_count >= 3:
+    # --- Новые лимиты ---
+    fixed_amount = 1 # Сумма перевода теперь всегда 1
+    if sender.daily_transfer_count >= 3: # Лимит - 3 перевода в день
         raise ValueError("Дневной лимит переводов исчерпан (3 в день)")
 
     receiver = await db.get(models.User, tr.receiver_id)
     if not receiver:
         raise ValueError("Получатель не найден")
 
-    # Увеличиваем счетчик переводов и начисляем 1 спасибку получателю
+    # Увеличиваем счетчик и начисляем на основной баланс получателя
     sender.daily_transfer_count += 1
-    receiver.balance += 1 # Сумма всегда равна 1
-    
-    # Начисляем 1 часть билетика за перевод
-    sender.ticket_parts += 1 
+    receiver.balance += fixed_amount
+    sender.ticket_parts += 1 # <-- ДОБАВИТЬ ЭТУ СТРОКУ
     
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
         receiver_id=tr.receiver_id,
-        amount=1, # Сумма всегда равна 1
+        amount=fixed_amount,
         message=tr.message
     )
     db.add(db_tr)
@@ -153,8 +144,8 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     await db.refresh(db_tr)
     
     try:
-        message_text = (f"🎉 Вам начислена 1 спасибка!\n"
-                        f"От: *{sender.first_name} {sender.last_name}*\n"
+        message_text = (f"🎉 Вам начислено *{tr.amount}* баллов!\n"
+                        f"От: *{sender.last_name}*\n"
                         f"Сообщение: _{tr.message}_")
         await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
@@ -337,7 +328,7 @@ async def delete_banner(db: AsyncSession, banner_id: int):
 
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ АВТОМАТИЗАЦИИ ---
 async def process_birthday_bonuses(db: AsyncSession):
-    """Начисляет 300 баллов всем, у кого сегодня день рождения."""
+    """Начисляет 15 баллов всем, у кого сегодня день рождения."""
     today = date.today()
     users_with_birthday = await db.execute(
         select(models.User).where(
@@ -348,9 +339,13 @@ async def process_birthday_bonuses(db: AsyncSession):
     users = users_with_birthday.scalars().all()
     
     for user in users:
-        user.balance += 300
+        user.balance += 15
         # Можно добавить отправку поздравительного сообщения в ТГ
-        
+    
+    # --- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ ---
+    await reset_ticket_parts(db)
+    await reset_tickets(db)
+    
     await db.commit()
     return len(users)
 
@@ -431,16 +426,6 @@ async def get_archived_items(db: AsyncSession):
     result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
     return result.scalars().all()
 
-# --- ИЗМЕНЕНИЕ: Добавляем начисление части билетика при переводе ---
-async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
-    # ... (код до sender.daily_transfer_count += 1)
-    sender.daily_transfer_count += 1
-    # --- НАЧАЛО ДОБАВЛЕНИЙ ---
-    sender.ticket_parts += 1 # Начисляем 1 часть билетика за перевод
-    # --- КОНЕЦ ДОБАВЛЕНИЙ ---
-    receiver.balance += fixed_amount
-    # ... (остальной код функции)
-
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
 
 async def assemble_tickets(db: AsyncSession, user_id: int):
@@ -466,7 +451,7 @@ async def spin_roulette(db: AsyncSession, user_id: int):
     user.tickets -= 1
 
     # Логика взвешенного шанса
-    rand = random.random() # Случайное число от 0.0 до 1.0
+    rand = random.random()
     if rand < 0.05: # 5% шанс
         prize = random.randint(16, 30)
     elif rand < 0.35: # 30% шанс (0.05 + 0.30)
