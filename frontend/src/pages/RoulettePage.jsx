@@ -7,7 +7,7 @@ import styles from './RoulettePage.module.css';
 import { FaInfoCircle } from 'react-icons/fa';
 
 // Возможные призы для отображения в ленте
-const PRIZES = [1, 5, 2, 10, 1, 20, 3, 15, 2, 30, 1, 5, 10, 2, 25, 4];
+const PRIZES = [1, 5, 2, 10, 1, 20, 3, 15, 2, 30, 1, 5, 10, 2, 25, 4, 5, 2, 10, 1, 20, 3, 15, 2, 30, 1, 5, 10, 2, 25, 4];
 
 function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUser для обновления баланса
   const [localUser, setLocalUser] = useState(user);
@@ -37,8 +37,8 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
     setIsSpinning(true);
     setSpinResult(null);
     
-    // Запускаем анимацию
     const track = rouletteTrackRef.current;
+    // Сбрасываем анимацию в начальное положение
     track.style.transition = 'none';
     track.style.transform = 'translateX(0)';
 
@@ -46,26 +46,49 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
       const response = await spinRoulette();
       const { prize_won, new_balance, new_tickets } = response.data;
       
-      // Обновляем данные пользователя
       const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
       setLocalUser(updatedUser);
       onUpdateUser(updatedUser);
 
-      // Логика для остановки на "правильном" призе
+      // --- НАЧАЛО ИСПРАВЛЕНИЙ: Логика для остановки на правильном призе ---
       setTimeout(() => {
-        track.style.transition = 'transform 4s ease-out';
-        // Это примерная остановка, для красоты
-        const randomOffset = Math.random() * 80 - 40;
-        const targetPosition = 1500 + randomOffset;
-        track.style.transform = `translateX(-${targetPosition}px)`;
+        const prizeItemWidth = 80; // Ширина одного элемента рулетки из CSS
+        const prizeArrayForAnimation = [...PRIZES, ...PRIZES, ...PRIZES];
+
+        // Ищем индекс нужного приза где-то в середине ленты для красоты
+        let targetIndex = -1;
+        for (let i = PRIZES.length; i < PRIZES.length * 2; i++) {
+            if (prizeArrayForAnimation[i] === prize_won) {
+                targetIndex = i;
+                break;
+            }
+        }
+        // Если вдруг не нашли (на всякий случай), ищем первое вхождение
+        if (targetIndex === -1) {
+            targetIndex = prizeArrayForAnimation.indexOf(prize_won);
+        }
+
+        // Рассчитываем точную позицию для остановки
+        // (Индекс * Ширину) - (Ширина контейнера / 2) + (Ширина элемента / 2)
+        const containerWidth = track.parentElement.offsetWidth;
+        const stopPosition = (targetIndex * prizeItemWidth) - (containerWidth / 2) + (prizeItemWidth / 2);
         
+        // Добавляем небольшой случайный сдвиг, чтобы выглядело естественно
+        const randomOffset = Math.random() * 40 - 20;
+        const finalPosition = stopPosition + randomOffset;
+
+        // Запускаем плавную анимацию до рассчитанной точки
+        track.style.transition = 'transform 4s cubic-bezier(.15,.56,.33,1.03)';
+        track.style.transform = `translateX(-${finalPosition}px)`;
+        
+        // Показываем результат после окончания анимации
         setTimeout(() => {
           setSpinResult(prize_won);
           setIsSpinning(false);
-          // Обновляем историю победителей
           getRouletteHistory().then(res => setHistory(res.data));
-        }, 4000);
+        }, 4100); // Чуть дольше, чем анимация
       }, 100);
+      // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
     } catch (error) {
       alert(error.response?.data?.detail || 'Ошибка прокрутки');
