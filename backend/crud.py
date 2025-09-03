@@ -1,6 +1,7 @@
 # backend/crud.py
 import math # Добавьте этот импорт вверху
 from datetime import datetime # Добавьте этот импорт вверху
+import random
 from sqlalchemy.future import select
 from sqlalchemy import func, update 
 from sqlalchemy.ext.asyncio import AsyncSession
