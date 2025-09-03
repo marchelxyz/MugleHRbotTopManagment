@@ -29,7 +29,7 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(SEND_MESSAGE_URL, json=payload)
-        response.raise_for_status()
+            response.raise_for_status()
             print(f"Successfully sent message to chat_id: {chat_id}")
         except httpx.HTTPStatusError as e:
             print(f"Error sending message to {chat_id}: {e.response.json()}")
