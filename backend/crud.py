@@ -276,6 +276,14 @@ async def add_points_to_all_users(db: AsyncSession, amount: int):
     await db.commit()
     return True
 
+# --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем новую функцию ---
+async def add_tickets_to_all_users(db: AsyncSession, amount: int):
+    """Начисляет указанное количество билетов для рулетки всем пользователям."""
+    await db.execute(update(models.User).values(tickets=models.User.tickets + amount))
+    await db.commit()
+    return True
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 async def reset_balances(db: AsyncSession):
     await db.execute(update(models.User).values(balance=0))
     await db.commit()
