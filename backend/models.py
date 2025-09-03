@@ -76,4 +76,4 @@ class RouletteWin(Base):
     amount = Column(Integer, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    user = relationship("User")
+    user = relationship("User", lazy='selectin')
