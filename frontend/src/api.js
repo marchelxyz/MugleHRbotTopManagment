@@ -155,3 +155,11 @@ export const spinRoulette = () => {
 
 // Получить историю последних выигрышей
 export const getRouletteHistory = () => apiClient.get('/roulette/history');
+
+// --- НОВАЯ ФУНКЦИЯ ---
+export const addTicketsToAll = (data) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/add-tickets', data, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
