@@ -4,7 +4,7 @@ from database import settings
 import json # Добавляем импорт json
 
 # URL для отправки сообщений через API Telegram
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
