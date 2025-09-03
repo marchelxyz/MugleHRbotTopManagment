@@ -7,7 +7,6 @@ from dependencies import get_current_user
 import models # --- ИСПРАВЛЕНИЕ: Добавляем этот импорт ---
 
 router = APIRouter(prefix="/roulette", tags=["roulette"])
-router = APIRouter(prefix="/roulette", tags=["roulette"])
 
 @router.post("/assemble", response_model=schemas.UserResponse)
 async def assemble_tickets_route(user: models.User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
