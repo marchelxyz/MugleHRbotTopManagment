@@ -5,6 +5,7 @@ import Barcode from 'react-barcode';
 import PageLayout from '../components/PageLayout';
 import { deleteUserCard } from '../api';
 import styles from './BonusCardPage.module.css';
+import BonusCard from '../components/BonusCard';
 
 function BonusCardPage({ user, onBack, onUpdateUser }) {
   
@@ -27,10 +28,8 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
 
       {user.card_barcode ? (
         <div className={styles.cardContainer}>
-          <p className={styles.infoText}>Предъявите этот штрих-код для получения скидки</p>
-          <div className={styles.barcodeWrapper}>
-            <Barcode value={user.card_barcode} />
-          </div>
+          {/* --- ИЗМЕНЕНИЕ: Используем новый компонент BonusCard --- */}
+          <BonusCard user={user} />
           <button onClick={handleDelete} className={styles.deleteButton}>Удалить карту</button>
         </div>
       ) : (
