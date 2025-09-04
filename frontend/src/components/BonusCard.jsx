@@ -15,6 +15,16 @@ function BonusCard({ user }) {
       </div>
       {/* --- ИЗМЕНЕНИЕ: Заменяем картинку на div --- */}
       <div className={styles.swoosh}></div>
+
+      {/* --- НАЧАЛО ДОБАВЛЕНИЙ: Изображение в центре карты --- */}
+      <div className={styles.centerImageContainer}>
+        {/* Замените этот URL на ваш фактический URL изображения */}
+        <img 
+          src="https://i.postimg.cc/L8rxGLYz/Chat-GPT-Image-5-2025-00-30-17.webp" 
+          alt="Card Center" 
+          className={styles.centerImage} 
+        />
+      </div>
       
       <div className={styles.content}>
         <div className={styles.owner}>
