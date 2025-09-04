@@ -7,7 +7,7 @@ import styles from './RoulettePage.module.css';
 import { FaInfoCircle } from 'react-icons/fa';
 
 // Возможные призы для отображения в ленте
-const PRIZES = [1, 5, 2, 10, 1, 20, 3, 15, 2, 30, 1, 5, 10, 2, 25, 4, 5, 2, 10, 1, 20, 3, 15, 2, 30, 1, 5, 10, 2, 25, 4];
+const PRIZES = [17, 5, 12, 1, 30, 8, 19, 3, 23, 28, 14, 9, 21, 4, 7, 20, 25, 10, 2, 29, 11, 18, 13, 6, 26, 27, 24, 15, 22, 16];
 
 function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUser для обновления баланса
   const [localUser, setLocalUser] = useState(user);
