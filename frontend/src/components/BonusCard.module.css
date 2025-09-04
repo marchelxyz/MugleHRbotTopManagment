@@ -5,7 +5,7 @@
   color: white;
   /* --- ИЗМЕНЕНИЕ: Увеличиваем ширину и высоту карты --- */
   max-width: 380px; /* Шире, чтобы соответствовать примеру */
-  height: 250px; /* Увеличиваем высоту */
+  height: 500px; /* Увеличиваем высоту */
   padding: 20px;
   font-family: 'Arial', sans-serif;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
