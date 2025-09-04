@@ -1,7 +1,4 @@
 # backend/models.py
-import io
-import zipfile
-import json
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
