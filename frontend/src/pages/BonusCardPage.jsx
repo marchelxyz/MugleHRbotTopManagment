@@ -1,0 +1,46 @@
+// frontend/src/pages/BonusCardPage.jsx
+
+import React from 'react';
+import Barcode from 'react-barcode';
+import PageLayout from '../components/PageLayout';
+import { deleteUserCard } from '../api';
+import styles from './BonusCardPage.module.css';
+
+function BonusCardPage({ user, onBack, onUpdateUser }) {
+  
+  const handleDelete = async () => {
+    if (window.confirm('Вы уверены, что хотите удалить карту из профиля?')) {
+      try {
+        const response = await deleteUserCard();
+        onUpdateUser(response.data); // Обновляем данные пользователя
+        alert('Карта успешно удалена.');
+        onBack(); // Возвращаемся в профиль
+      } catch (error) {
+        alert('Не удалось удалить карту.');
+      }
+    }
+  };
+
+  return (
+    <PageLayout title="Бонусная карта">
+      <button onClick={onBack} className={styles.backButton}>&larr; Назад в профиль</button>
+
+      {user.card_barcode ? (
+        <div className={styles.cardContainer}>
+          <p className={styles.infoText}>Предъявите этот штрих-код для получения скидки</p>
+          <div className={styles.barcodeWrapper}>
+            <Barcode value={user.card_barcode} />
+          </div>
+          <button onClick={handleDelete} className={styles.deleteButton}>Удалить карту</button>
+        </div>
+      ) : (
+        <div className={styles.cardContainer}>
+          <p className={styles.infoText}>У вас пока нет бонусной карты.</p>
+          <p className={styles.subText}>Чтобы добавить карту, отправьте файл `.pkpass` нашему боту в Telegram.</p>
+        </div>
+      )}
+    </PageLayout>
+  );
+}
+
+export default BonusCardPage;
