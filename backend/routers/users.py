@@ -54,3 +54,11 @@ async def update_me(
 @router.get("/{user_id}/transactions", response_model=list[schemas.FeedItem])
 async def get_user_transactions_route(user_id: int, db: AsyncSession = Depends(get_db)):
     return await crud.get_user_transactions(db, user_id=user_id)
+
+# --- ДОБАВЬТЕ ЭТОТ НОВЫЙ ЭНДПОИНТ В КОНЕЦ ФАЙЛА ---
+@router.delete("/users/me/card", response_model=schemas.UserResponse)
+async def delete_card(
+    user: models.User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    return await crud.delete_user_card(db, user.id)
