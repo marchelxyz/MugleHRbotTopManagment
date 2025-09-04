@@ -1,6 +1,6 @@
 /* frontend/src/components/BonusCard.module.css */
 .card {
-  background: linear-gradient(180deg, #5CA14A 0%, #5CA14A 100%);
+  background: linear-gradient(180deg, #00A98F 0%, #00817D 100%);
   border-radius: 20px;
   color: white;
   padding: 20px;
@@ -8,11 +8,15 @@
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   max-width: 350px;
   margin: 0 auto;
+  position: relative; /* Нужно для позиционирования узора */
+  overflow: hidden; /* Прячем части узора, выходящие за края */
 }
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  position: relative;
+  z-index: 2;
 }
 .brand {
   font-weight: bold;
@@ -30,21 +34,22 @@
   font-size: 28px;
   font-weight: bold;
 }
+
+/* --- ИЗМЕНЕНИЕ: Рисуем узор с помощью CSS --- */
 .swoosh {
-  margin: -30px -20px 0;
-  pointer-events: none; /* Allows clicks to pass through */
+  position: absolute;
+  top: -80px;
+  left: -80px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 10%, rgba(255,255,255,0) 70%);
+  z-index: 1;
 }
-.swoosh img {
-  width: 100%;
-  mix-blend-mode: screen; /* Режим смешивания, который осветляет фон */
-  opacity: 0.5; /* Делаем узор полупрозрачным для лучшего эффекта */
-}
+
 .content {
-  margin-top: -30px;
-  background-color: #00A98F;
-  padding: 20px;
-  margin: -30px -20px -20px -20px;
-  border-radius: 0 0 20px 20px;
+  position: relative;
+  z-index: 2;
+  margin-top: 10px; /* Скорректируем отступ */
 }
 .owner {
   margin-bottom: 20px;
@@ -61,4 +66,9 @@
   background-color: white;
   border-radius: 12px;
   padding: 15px 10px 10px 10px;
+}
+/* --- ИЗМЕНЕНИЕ: Стили для текста под штрих-кодом --- */
+.barcodeWrapper svg g {
+  text-align: center;
+  fill: #000; /* Цвет текста */
 }
