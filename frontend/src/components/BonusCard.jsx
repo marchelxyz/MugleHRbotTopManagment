@@ -10,13 +10,12 @@ function BonusCard({ user }) {
         <span className={styles.brand}>mugle rest</span>
         <div className={styles.balance}>
           <span>БАЛАНС</span>
-          {/* --- ИСПРАВЛЕНИЕ: Используем баланс карты --- */}
           <strong>{user.card_balance || 0}</strong>
         </div>
       </div>
-      <div className={styles.swoosh}>
-        <img src="https://i.postimg.cc/d1yYt4wW/art.png" alt="art" />
-      </div>
+      {/* --- ИЗМЕНЕНИЕ: Заменяем картинку на div --- */}
+      <div className={styles.swoosh}></div>
+      
       <div className={styles.content}>
         <div className={styles.owner}>
           <span>ВЛАДЕЛЕЦ КАРТЫ</span>
@@ -26,10 +25,13 @@ function BonusCard({ user }) {
           {user.card_barcode && (
             <Barcode 
               value={user.card_barcode}
-              displayValue={false}
+              // --- ИСПРАВЛЕНИЕ: Включаем отображение цифр ---
+              displayValue={true} 
               height={60}
               margin={0}
               background="transparent"
+              fontSize={16} // Управляем размером шрифта
+              lineColor="#000" // Цвет штрих-кода
             />
           )}
         </div>
