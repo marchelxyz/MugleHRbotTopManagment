@@ -47,6 +47,7 @@ class UserResponse(UserBase):
     ticket_parts: int
     tickets: int
     card_barcode: Optional[str] = None
+    card_balance: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
