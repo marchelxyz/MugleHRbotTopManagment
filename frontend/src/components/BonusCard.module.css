@@ -84,8 +84,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-left: -10px; /* компенсируем padding, чтобы было вровень с краями */
-  margin-right: -10px;
+  margin-left: -50px; /* компенсируем padding, чтобы было вровень с краями */
+  margin-right: -50px;
 }
 /* Стили для текста под штрих-кодом */
 .barcodeWrapper svg text {
