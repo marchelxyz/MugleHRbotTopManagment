@@ -76,7 +76,7 @@
   font-weight: bold;
 }
 .barcodeWrapper {
-  background-color: white;
+  background-color: #000000;
   border-radius: 12px;
   padding: 15px 10px;
   /* --- ИЗМЕНЕНИЕ: Выравниваем штрих-код по центру, если он занимает не всю ширину --- */
@@ -93,5 +93,5 @@
   font-family: 'Arial', sans-serif !important; /* Убедимся, что шрифт корректный */
 }
 .barcodeWrapper svg rect {
-  fill: #fff; /* Фон для штрих-кода, если нужно */
+  fill: #ffffff; /* Фон для штрих-кода, если нужно */
 }
