@@ -36,6 +36,8 @@
 }
 .swoosh img {
   width: 100%;
+  mix-blend-mode: screen; /* Режим смешивания, который осветляет фон */
+  opacity: 0.5; /* Делаем узор полупрозрачным для лучшего эффекта */
 }
 .content {
   margin-top: -30px;
