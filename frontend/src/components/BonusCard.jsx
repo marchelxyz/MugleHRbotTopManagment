@@ -7,7 +7,7 @@ function BonusCard({ user }) {
   return (
     <div className={styles.card}>
       <div className={styles.header}>
-        <span className={styles.brand}>mugle rest</span>
+        {/* <span className={styles.brand}>mugle rest</span> */} 
         <div className={styles.balance}>
           <span>БАЛАНС</span>
           <strong>{user.card_balance || 0}</strong>
