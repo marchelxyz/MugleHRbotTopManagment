@@ -1,4 +1,7 @@
 # backend/models.py
+import io
+import zipfile
+import json
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
@@ -78,3 +81,42 @@ class RouletteWin(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", lazy='selectin')
+
+# --- ДОБАВЬТЕ ЭТИ НОВЫЕ ФУНКЦИИ В КОНЕЦ ФАЙЛА ---
+async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: bytes):
+    """
+    Обрабатывает файл .pkpass, извлекает штрих-код и сохраняет его для пользователя.
+    """
+    user = await db.get(models.User, user_id)
+    if not user:
+        return None
+
+    try:
+        # Открываем архив из байтов в памяти
+        with zipfile.ZipFile(io.BytesIO(file_content), 'r') as pass_zip:
+            # Читаем файл pass.json
+            pass_json_bytes = pass_zip.read('pass.json')
+            pass_data = json.loads(pass_json_bytes)
+            
+            # Ищем данные штрих-кода (самое вероятное место)
+            barcode_data = pass_data.get('barcode', {}).get('message')
+            if not barcode_data:
+                raise ValueError("Barcode data not found in pass.json")
+            
+            user.card_barcode = barcode_data
+            await db.commit()
+            await db.refresh(user)
+            return user
+            
+    except Exception as e:
+        print(f"Error processing pkpass file: {e}")
+        return None
+
+async def delete_user_card(db: AsyncSession, user_id: int):
+    """Удаляет данные карты у пользователя."""
+    user = await db.get(models.User, user_id)
+    if user:
+        user.card_barcode = None
+        await db.commit()
+        await db.refresh(user)
+    return user
