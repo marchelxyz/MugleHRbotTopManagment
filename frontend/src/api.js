@@ -163,3 +163,10 @@ export const addTicketsToAll = (data) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+export const deleteUserCard = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.delete('/users/me/card', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
