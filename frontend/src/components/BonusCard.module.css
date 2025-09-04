@@ -3,39 +3,47 @@
   background: linear-gradient(180deg, #00A98F 0%, #00817D 100%);
   border-radius: 20px;
   color: white;
+  /* --- ИЗМЕНЕНИЕ: Увеличиваем ширину и высоту карты --- */
+  max-width: 380px; /* Шире, чтобы соответствовать примеру */
+  height: 250px; /* Увеличиваем высоту */
   padding: 20px;
   font-family: 'Arial', sans-serif;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  max-width: 350px;
   margin: 0 auto;
-  position: relative; /* Нужно для позиционирования узора */
-  overflow: hidden; /* Прячем части узора, выходящие за края */
+  position: relative;
+  overflow: hidden;
+  display: flex; /* Делаем flex-контейнером */
+  flex-direction: column; /* Элементы идут сверху вниз */
+  justify-content: space-between; /* Распределяем элементы по высоте */
 }
 .header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end; /* Перемещаем баланс вправо */
   align-items: flex-start;
   position: relative;
   z-index: 2;
+  /* --- ИЗМЕНЕНИЕ: Убираем отступ сверху, если нужно --- */
+  margin-top: -10px;
 }
-.brand {
+/* --- ИЗМЕНЕНИЕ: Убираем логотип (удаляем или закомментируем) --- */
+/* .brand {
   font-weight: bold;
   border: 1px solid white;
   padding: 5px 8px;
-}
+} */
 .balance {
   text-align: right;
 }
 .balance span {
   font-size: 12px;
   display: block;
+  text-transform: uppercase;
 }
 .balance strong {
   font-size: 28px;
   font-weight: bold;
 }
 
-/* --- ИЗМЕНЕНИЕ: Рисуем узор с помощью CSS --- */
 .swoosh {
   position: absolute;
   top: -80px;
@@ -49,14 +57,19 @@
 .content {
   position: relative;
   z-index: 2;
-  margin-top: 10px; /* Скорректируем отступ */
+  /* --- ИЗМЕНЕНИЕ: Добавляем внутренний отступ для сохранения внешнего вида --- */
+  padding-bottom: 0px; 
 }
 .owner {
   margin-bottom: 20px;
+  /* --- НОВЫЙ СТИЛЬ: Выравниваем текст по левому краю, если требуется --- */
+  text-align: left;
 }
 .owner span {
   font-size: 12px;
   display: block;
+  text-transform: uppercase;
+  margin-bottom: 5px;
 }
 .owner strong {
   font-size: 24px;
@@ -65,10 +78,20 @@
 .barcodeWrapper {
   background-color: white;
   border-radius: 12px;
-  padding: 15px 10px 10px 10px;
+  padding: 15px 10px;
+  /* --- ИЗМЕНЕНИЕ: Выравниваем штрих-код по центру, если он занимает не всю ширину --- */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: -10px; /* компенсируем padding, чтобы было вровень с краями */
+  margin-right: -10px;
 }
-/* --- ИЗМЕНЕНИЕ: Стили для текста под штрих-кодом --- */
-.barcodeWrapper svg g {
+/* Стили для текста под штрих-кодом */
+.barcodeWrapper svg text {
   text-align: center;
   fill: #000; /* Цвет текста */
+  font-family: 'Arial', sans-serif !important; /* Убедимся, что шрифт корректный */
+}
+.barcodeWrapper svg rect {
+  fill: #fff; /* Фон для штрих-кода, если нужно */
 }
