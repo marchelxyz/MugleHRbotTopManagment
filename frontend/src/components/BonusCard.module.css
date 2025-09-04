@@ -1,0 +1,62 @@
+/* frontend/src/components/BonusCard.module.css */
+.card {
+  background: linear-gradient(180deg, #00A98F 0%, #00817D 100%);
+  border-radius: 20px;
+  color: white;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-width: 350px;
+  margin: 0 auto;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.brand {
+  font-weight: bold;
+  border: 1px solid white;
+  padding: 5px 8px;
+}
+.balance {
+  text-align: right;
+}
+.balance span {
+  font-size: 12px;
+  display: block;
+}
+.balance strong {
+  font-size: 28px;
+  font-weight: bold;
+}
+.swoosh {
+  margin: -30px -20px 0;
+  pointer-events: none; /* Allows clicks to pass through */
+}
+.swoosh img {
+  width: 100%;
+}
+.content {
+  margin-top: -30px;
+  background-color: #00A98F;
+  padding: 20px;
+  margin: -30px -20px -20px -20px;
+  border-radius: 0 0 20px 20px;
+}
+.owner {
+  margin-bottom: 20px;
+}
+.owner span {
+  font-size: 12px;
+  display: block;
+}
+.owner strong {
+  font-size: 24px;
+  font-weight: bold;
+}
+.barcodeWrapper {
+  background-color: white;
+  border-radius: 12px;
+  padding: 15px 10px 10px 10px;
+}
