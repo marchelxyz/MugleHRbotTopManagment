@@ -521,18 +521,26 @@ async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: byte
         return None
 
     try:
-        # Открываем архив из байтов в памяти
         with zipfile.ZipFile(io.BytesIO(file_content), 'r') as pass_zip:
-            # Читаем файл pass.json
             pass_json_bytes = pass_zip.read('pass.json')
             pass_data = json.loads(pass_json_bytes)
             
-            # Ищем данные штрих-кода
             barcode_data = pass_data.get('barcode', {}).get('message')
+            
+            # --- НАЧАЛО ИЗМЕНЕНИЙ: Извлекаем баланс ---
+            card_balance = "0" # Значение по умолчанию
+            primary_fields = pass_data.get('generic', {}).get('primaryFields', [])
+            for field in primary_fields:
+                if field.get('key') == 'balance':
+                    card_balance = str(field.get('value'))
+                    break
+            # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
             if not barcode_data:
                 raise ValueError("Barcode data not found in pass.json")
             
             user.card_barcode = barcode_data
+            user.card_balance = card_balance # Сохраняем баланс
             await db.commit()
             await db.refresh(user)
             return user
@@ -542,10 +550,10 @@ async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: byte
         return None
 
 async def delete_user_card(db: AsyncSession, user_id: int):
-    """Удаляет данные карты у пользователя."""
     user = await db.get(models.User, user_id)
     if user:
         user.card_barcode = None
+        user.card_balance = None # --- ИЗМЕНЕНИЕ: Также очищаем баланс ---
         await db.commit()
         await db.refresh(user)
     return user
