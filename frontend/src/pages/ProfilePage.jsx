@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react'; // --- ИСПРАВЛЕНИЕ: Добавляем импорт useEffect ---
 import styles from './ProfilePage.module.css';
-import { FaCog } from 'react-icons/fa';
+import { FaCog, FaCreditCard } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
 import { preloadHistoryData } from '../preloader';
 
@@ -43,7 +43,7 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
         </p>
         <p className={styles.infoItem}>
             <span className={styles.label}>Накоплено:</span>
-            {user.balance} баллов
+            {user.balance} спасибок
         </p>
          {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
         <p className={styles.infoItem}><span className={styles.label}>Билеты для рулетки:</span> {user.tickets} шт.</p>
@@ -51,14 +51,17 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
         {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
       </div>
 
-      <button
-        onClick={() => onNavigate('history')}
-        className={styles.historyButton}
-      >
-        История транзакций
-      </button>
+       {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
+      <div className={styles.actionsGrid}>
+        <button onClick={() => onNavigate('history')} className={styles.actionButton}>История транзакций</button>
+        {/* Новая кнопка, которая ведет на страницу карты */}
+        <button onClick={() => onNavigate('bonus_card')} className={styles.actionButton}>
+          <FaCreditCard style={{ marginRight: '8px' }} />
+          Бонусная карта
+        </button>
+      </div>
+      {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
     </PageLayout>
   );
 }
-
 export default ProfilePage;
