@@ -1,6 +1,7 @@
 # backend/crud.py
 import math # Добавьте этот импорт вверху
 from datetime import datetime # Добавьте этот импорт вверху
+import random
 from sqlalchemy.future import select
 from sqlalchemy import func, update 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -131,6 +132,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     # Увеличиваем счетчик и начисляем на основной баланс получателя
     sender.daily_transfer_count += 1
     receiver.balance += fixed_amount
+    sender.ticket_parts += 1 # <-- ДОБАВИТЬ ЭТУ СТРОКУ
     
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
@@ -274,6 +276,14 @@ async def add_points_to_all_users(db: AsyncSession, amount: int):
     await db.commit()
     return True
 
+# --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем новую функцию ---
+async def add_tickets_to_all_users(db: AsyncSession, amount: int):
+    """Начисляет указанное количество билетов для рулетки всем пользователям."""
+    await db.execute(update(models.User).values(tickets=models.User.tickets + amount))
+    await db.commit()
+    return True
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 async def reset_balances(db: AsyncSession):
     await db.execute(update(models.User).values(balance=0))
     await db.commit()
@@ -327,7 +337,7 @@ async def delete_banner(db: AsyncSession, banner_id: int):
 
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ АВТОМАТИЗАЦИИ ---
 async def process_birthday_bonuses(db: AsyncSession):
-    """Начисляет 300 баллов всем, у кого сегодня день рождения."""
+    """Начисляет 15 баллов всем, у кого сегодня день рождения."""
     today = date.today()
     users_with_birthday = await db.execute(
         select(models.User).where(
@@ -338,9 +348,13 @@ async def process_birthday_bonuses(db: AsyncSession):
     users = users_with_birthday.scalars().all()
     
     for user in users:
-        user.balance += 300
+        user.balance += 15
         # Можно добавить отправку поздравительного сообщения в ТГ
-        
+    
+    # --- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ ---
+    await reset_ticket_parts(db)
+    await reset_tickets(db)
+    
     await db.commit()
     return len(users)
 
@@ -420,3 +434,75 @@ async def get_archived_items(db: AsyncSession):
     """Получает список архивированных товаров."""
     result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
     return result.scalars().all()
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
+
+async def assemble_tickets(db: AsyncSession, user_id: int):
+    """Собирает части билетиков в целые билеты (2 к 1)."""
+    user = await db.get(models.User, user_id)
+    if not user or user.ticket_parts < 2:
+        raise ValueError("Недостаточно частей для сборки билета.")
+    
+    new_tickets = user.ticket_parts // 2
+    user.tickets += new_tickets
+    user.ticket_parts %= 2 # Оставляем остаток (0 или 1)
+    
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def spin_roulette(db: AsyncSession, user_id: int):
+    """Прокручивает рулетку, рассчитывает и начисляет выигрыш."""
+    user = await db.get(models.User, user_id)
+    if not user or user.tickets < 1:
+        raise ValueError("Недостаточно билетов для прокрутки.")
+
+    user.tickets -= 1
+
+    # Логика взвешенного шанса
+    rand = random.random()
+    if rand < 0.05: # 5% шанс
+        prize = random.randint(16, 30)
+    elif rand < 0.35: # 30% шанс (0.05 + 0.30)
+        prize = random.randint(6, 15)
+    else: # 65% шанс
+        prize = random.randint(1, 5)
+
+    user.balance += prize
+
+    # Записываем выигрыш в историю
+    win_record = models.RouletteWin(user_id=user_id, amount=prize)
+    db.add(win_record)
+    
+    await db.commit()
+    await db.refresh(user)
+    return {"prize_won": prize, "new_balance": user.balance, "new_tickets": user.tickets}
+
+async def get_roulette_history(db: AsyncSession, limit: int = 20):
+    """Получает историю последних выигрышей."""
+    result = await db.execute(
+        select(models.RouletteWin).order_by(models.RouletteWin.timestamp.desc()).limit(limit)
+    )
+    return result.scalars().all()
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ ПЛАНИРОВЩИКА (CRON) ---
+
+async def reset_ticket_parts(db: AsyncSession):
+    """Сбрасывает части билетиков у пользователей, если прошло 3 месяца."""
+    three_months_ago = date.today() - relativedelta(months=3)
+    await db.execute(
+        update(models.User)
+        .where(models.User.last_ticket_part_reset <= three_months_ago)
+        .values(ticket_parts=0, last_ticket_part_reset=date.today())
+    )
+    await db.commit()
+
+async def reset_tickets(db: AsyncSession):
+    """Сбрасывает билетики у пользователей, если прошло 4 месяца."""
+    four_months_ago = date.today() - relativedelta(months=4)
+    await db.execute(
+        update(models.User)
+        .where(models.User.last_ticket_reset <= four_months_ago)
+        .values(tickets=0, last_ticket_reset=date.today())
+    )
+    await db.commit()

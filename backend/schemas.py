@@ -44,6 +44,8 @@ class UserResponse(UserBase):
     daily_transfer_count: int
     is_admin: bool
     status: Optional[str] = 'approved' 
+    ticket_parts: int
+    tickets: int
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
@@ -136,3 +138,15 @@ class BannerUpdate(BaseModel):
 
 class BannerResponse(BannerBase):
     id: int
+
+# --- НОВЫЕ СХЕМЫ ДЛЯ РУЛЕТКИ ---
+class RouletteWinResponse(OrmBase):
+    id: int
+    amount: int
+    timestamp: datetime
+    user: UserBase # Используем базовую схему пользователя, чтобы избежать лишних данных
+
+class SpinResponse(BaseModel):
+    prize_won: int
+    new_balance: int
+    new_tickets: int

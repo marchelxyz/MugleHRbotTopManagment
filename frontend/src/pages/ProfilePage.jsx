@@ -45,6 +45,10 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
             <span className={styles.label}>Накоплено:</span>
             {user.balance} баллов
         </p>
+         {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
+        <p className={styles.infoItem}><span className={styles.label}>Билеты для рулетки:</span> {user.tickets} шт.</p>
+        <p className={styles.infoItem}><span className={styles.label}>Части билетов:</span> {user.ticket_parts} / 2</p>
+        {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
       </div>
 
       <button

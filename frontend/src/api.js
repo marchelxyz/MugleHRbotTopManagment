@@ -134,3 +134,32 @@ export const restoreMarketItem = (itemId) => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
+
+// Собрать части билетиков в целый билет
+export const assembleTickets = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/roulette/assemble', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Прокрутить рулетку
+export const spinRoulette = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/roulette/spin', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// Получить историю последних выигрышей
+export const getRouletteHistory = () => apiClient.get('/roulette/history');
+
+// --- НОВАЯ ФУНКЦИЯ ---
+export const addTicketsToAll = (data) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/add-tickets', data, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};

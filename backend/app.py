@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
-from routers import users, transactions, market, admin, banners, scheduler, telegram
+from routers import users, transactions, market, admin, banners, scheduler, telegram, roulette
 
 app = FastAPI()
 
@@ -35,3 +35,4 @@ app.include_router(market.router)
 app.include_router(admin.router)
 app.include_router(banners.router)
 app.include_router(telegram.router)
+app.include_router(roulette.router)

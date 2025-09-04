@@ -14,6 +14,8 @@ router = APIRouter()
 
 class AddPointsRequest(BaseModel):
     amount: int
+class AddTicketsRequest(BaseModel):
+    amount: int
 
 @router.post("/admin/add-points")
 async def add_points(
@@ -23,6 +25,17 @@ async def add_points(
 ):
     await crud.add_points_to_all_users(db, amount=request.amount)
     return {"detail": f"Successfully added {request.amount} points to all users"}
+
+# --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем новый эндпоинт ---
+@router.post("/admin/add-tickets")
+async def add_tickets(
+    request: AddTicketsRequest,
+    admin_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    await crud.add_tickets_to_all_users(db, amount=request.amount)
+    return {"detail": f"Successfully added {request.amount} tickets to all users"}
+# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
 # backend/routers/admin.py
 # ... (импорты)
