@@ -18,6 +18,7 @@ import FaqPage from './pages/FaqPage';
 import PendingPage from './pages/PendingPage';
 import RejectedPage from './pages/RejectedPage';
 import RoulettePage from './pages/RoulettePage';
+import BonusCardPage from './pages/BonusCardPage';
 
 // Стили
 import './App.css';
@@ -120,6 +121,7 @@ function App() {
         return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+        case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
