@@ -26,6 +26,8 @@ class User(Base):
     last_ticket_part_reset = Column(Date, default=datetime.utcnow)
     last_ticket_reset = Column(Date, default=datetime.utcnow)
     card_barcode = Column(String, nullable=True) # Поле для хранения данных штрих-кода
+    card_balance = Column(String, nullable=True) # Поле для хранения баланса карты
+
 
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
     received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
