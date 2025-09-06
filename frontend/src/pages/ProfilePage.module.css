@@ -57,19 +57,29 @@
   margin-right: 8px;
 }
 
-/* --- Обновленный стиль кнопки --- */
-.historyButton {
+.actionButton {
   width: 100%;
   padding: 15px;
   font-size: 16px;
   border: none;
   border-radius: 20px;
-  background-color: #5CA14A; /* Основной зеленый */
+  background-color: #5CA14A;
   color: white;
   cursor: pointer;
   font-family: 'Arial', sans-serif;
   font-weight: bold;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- НОВЫЙ СТИЛЬ: Сетка для кнопок --- */
+.actionsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+  margin-top: 20px;
 }
 
 .settingsIconContainer {

@@ -1,4 +1,7 @@
 # backend/crud.py
+import io
+import zipfile
+import json
 import math # Добавьте этот импорт вверху
 from datetime import datetime # Добавьте этот импорт вверху
 import random
@@ -254,13 +257,19 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     try:
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.last_name} (@{user.username or user.telegram_id})\n"
+            f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
             f"💼 *Должность:* {user.position}\n\n"
             f"🎁 *Товар:* {item.name}\n"
             f"💰 *Стоимость:* {item.price} баллов\n\n"
             f"📉 *Новый баланс пользователя:* {new_balance} баллов"
         )
-        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
+        # Стало (добавляем ID топика для покупок):
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID, 
+            text=admin_message,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
 
@@ -506,3 +515,51 @@ async def reset_tickets(db: AsyncSession):
         .values(tickets=0, last_ticket_reset=date.today())
     )
     await db.commit()
+
+# --- ДОБАВЬТЕ ЭТИ НОВЫЕ ФУНКЦИИ В КОНЕЦ ФАЙЛА ---
+
+async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: bytes):
+    """
+    Обрабатывает файл .pkpass, извлекает штрих-код и сохраняет его для пользователя.
+    """
+    user = await db.get(models.User, user_id)
+    if not user:
+        return None
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_content), 'r') as pass_zip:
+            pass_json_bytes = pass_zip.read('pass.json')
+            pass_data = json.loads(pass_json_bytes)
+            
+            barcode_data = pass_data.get('barcode', {}).get('message')
+            
+            # --- НАЧАЛО ИЗМЕНЕНИЙ: Извлекаем баланс ---
+            card_balance = "0" # Значение по умолчанию
+            primary_fields = pass_data.get('generic', {}).get('primaryFields', [])
+            for field in primary_fields:
+                if field.get('key') == 'balance':
+                    card_balance = str(field.get('value'))
+                    break
+            # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+            if not barcode_data:
+                raise ValueError("Barcode data not found in pass.json")
+            
+            user.card_barcode = barcode_data
+            user.card_balance = card_balance # Сохраняем баланс
+            await db.commit()
+            await db.refresh(user)
+            return user
+            
+    except Exception as e:
+        print(f"Error processing pkpass file: {e}")
+        return None
+
+async def delete_user_card(db: AsyncSession, user_id: int):
+    user = await db.get(models.User, user_id)
+    if user:
+        user.card_barcode = None
+        user.card_balance = None # --- ИЗМЕНЕНИЕ: Также очищаем баланс ---
+        await db.commit()
+        await db.refresh(user)
+    return user
