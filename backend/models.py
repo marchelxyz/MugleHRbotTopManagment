@@ -1,5 +1,6 @@
 # backend/models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -32,6 +33,7 @@ class User(Base):
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
     received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
     purchases = relationship("Purchase", back_populates="user")
+    pending_updates = relationship("PendingUpdate", back_populates="user")
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -80,3 +82,14 @@ class RouletteWin(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", lazy='selectin')
+
+class PendingUpdate(Base):
+    __tablename__ = "pending_updates"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    old_data = Column(JSON, nullable=False) # JSON со старыми данными
+    new_data = Column(JSON, nullable=False) # JSON с новыми данными
+    status = Column(String, default='pending', nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="pending_updates")

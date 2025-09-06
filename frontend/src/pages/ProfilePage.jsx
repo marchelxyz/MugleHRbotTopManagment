@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react'; // --- ИСПРАВЛЕНИЕ: Добавляем импорт useEffect ---
 import styles from './ProfilePage.module.css';
-import { FaCog, FaCreditCard } from 'react-icons/fa';
+import { FaCog, FaCreditCard, FaPencilAlt } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
 import { preloadHistoryData } from '../preloader';
 
@@ -24,7 +24,15 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
 
       <div className={styles.profileHeader}>
         {telegramPhotoUrl && <img src={telegramPhotoUrl} alt="User" className={styles.profilePhoto} />}
-        <div className={styles.profileName}>{user.first_name} {user.last_name}</div>
+        {/* --- 2. ОБОРАЧИВАЕМ ИМЯ И КНОПКУ В КОНТЕЙНЕР --- */}
+        <div className={styles.profileNameContainer}> 
+            <div className={styles.profileName}>{user.first_name} {user.last_name}</div>
+            {/* --- 3. ДОБАВЛЯЕМ КНОПКУ (КАРАНДАШ) --- */}
+            <button onClick={() => onNavigate('edit_profile')} className={styles.editButton}>
+                <FaPencilAlt size={16} />
+            </button>
+        </div>
+
         <div className={styles.profilePosition}>{user.position}</div>
       </div>
 

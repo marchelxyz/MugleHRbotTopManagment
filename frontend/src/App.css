@@ -27,3 +27,18 @@
   /* Отступ снизу, равный высоте меню навигации, чтобы оно не перекрывало контент */
   padding-bottom: 80px; 
 }
+
+/* --- ДОБАВЬТЕ ЭТОТ СТИЛЬ В КОНЕЦ ФАЙЛА --- */
+.pending-update-banner {
+  background-color: #fffbe6; /* Светло-желтый */
+  border: 1px solid #ffe58f; /* Желтая рамка */
+  color: #594300; /* Темный текст */
+  padding: 15px;
+  text-align: center;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  /* Делаем его "липким" к верху экрана, чтобы пользователь точно увидел */
+  position: sticky; 
+  top: 0;
+  z-index: 999; /* Поверх всего */
+}

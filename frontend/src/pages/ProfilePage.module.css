@@ -97,3 +97,31 @@
 .settingsButton:hover {
   color: #5CA14A;
 }
+
+.profileNameContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Центрируем имя и кнопку */
+  gap: 10px; /* Отступ между именем и кнопкой */
+}
+
+/* Мы убираем центрирование из самого имени, т.к. теперь оно во flex-контейнере */
+.profileName {
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+  font-size: 24px;
+}
+
+.editButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888; /* Серый цвет для иконки */
+  padding: 5px;
+  /* Немного опускаем, чтобы визуально выровнять с текстом */
+  margin-top: 4px; 
+}
+
+.editButton:hover {
+  color: #5CA14A; /* Наш фирменный зеленый при наведении */
+}

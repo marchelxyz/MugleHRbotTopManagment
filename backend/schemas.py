@@ -123,6 +123,13 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
 
+class ProfileUpdateRequest(BaseModel):
+    last_name: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    phone_number: Optional[str] = None
+    date_of_birth: Optional[str] = None
+
 class BannerBase(OrmBase):
     image_url: str
     link_url: Optional[str] = None

@@ -563,3 +563,125 @@ async def delete_user_card(db: AsyncSession, user_id: int):
         await db.commit()
         await db.refresh(user)
     return user
+
+# ... (в самом конце файла, после delete_user_card)
+
+# --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ СОГЛАСОВАНИЯ ПРОФИЛЯ ---
+
+async def request_profile_update(db: AsyncSession, user: models.User, update_data: schemas.ProfileUpdateRequest):
+    """
+    Создает запрос на обновление профиля и отправляет уведомление админам.
+    """
+    
+    # 1. Собираем старые данные для сравнения
+    old_data = {
+        "last_name": user.last_name,
+        "department": user.department,
+        "position": user.position,
+        "phone_number": user.phone_number,
+        "date_of_birth": user.date_of_birth.isoformat() if user.date_of_birth else None
+    }
+    
+    # 2. Собираем запрошенные новые данные
+    # (exclude_unset=True важен, но фронтенд пришлет все поля, включая неизмененные)
+    new_data_raw = update_data.model_dump() 
+    
+    # 3. Сравниваем, чтобы найти только РЕАЛЬНЫЕ изменения
+    actual_new_data = {}
+    has_changes = False
+    for key, new_val in new_data_raw.items():
+        old_val = old_data.get(key)
+        if str(old_val or "") != str(new_val or ""): # Сравниваем как строки
+             actual_new_data[key] = new_val
+             has_changes = True
+
+    if not has_changes:
+        # Пользователь нажал "Сохранить", ничего не изменив
+        raise ValueError("Изменений не найдено.")
+
+    # 4. Создаем запись в таблице PendingUpdate
+    db_update_request = models.PendingUpdate(
+        user_id=user.id,
+        old_data=old_data, # Сохраняем все старые данные
+        new_data=actual_new_data # Сохраняем только то, что изменилось
+    )
+    db.add(db_update_request)
+    await db.commit()
+    await db.refresh(db_update_request)
+
+    # 5. Формируем красивое сообщение для админа (сравнение)
+    message_lines = [
+        f"👤 *Запрос на смену данных от:* @{user.username or user.first_name} ({user.last_name})\n"
+    ]
+    
+    for key, new_val in actual_new_data.items():
+        old_val = old_data.get(key)
+        field_name = key.replace('_', ' ').capitalize()
+        message_lines.append(f"*{field_name}*:\n  ↳ Старое: `{old_val or 'не указано'}`\n  ↳ Новое: `{new_val or 'не указано'}`\n")
+
+    # 6. Отправляем сообщение админу
+    admin_message_text = "\n".join(message_lines)
+    
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "✅ Одобрить", "callback_data": f"approve_update_{db_update_request.id}"},
+                {"text": "❌ Отклонить", "callback_data": f"reject_update_{db_update_request.id}"}
+            ]
+        ]
+    }
+
+    await send_telegram_message(
+        chat_id=settings.TELEGRAM_CHAT_ID,
+        text=admin_message_text,
+        reply_markup=keyboard,
+        message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID # <-- Используем новую переменную
+    )
+    
+    return db_update_request
+
+
+async def process_profile_update(db: AsyncSession, update_id: int, action: str):
+    """
+    Обрабатывает решение админа (Одобрить/Отклонить) по запросу на обновление.
+    Возвращает (user, status)
+    """
+    # 1. Находим сам запрос на обновление
+    result = await db.execute(select(models.PendingUpdate).where(models.PendingUpdate.id == update_id))
+    pending_update = result.scalars().first()
+    
+    if not pending_update or pending_update.status != 'pending':
+        # Этот запрос уже обработан
+        return None, None 
+
+    user = await get_user(db, pending_update.user_id)
+    if not user:
+        await db.delete(pending_update) # Пользователя нет, удаляем "мусорный" запрос
+        await db.commit()
+        return None, None
+
+    if action == "approve":
+        # 3. ОДОБРЕНО: Применяем изменения (которые хранятся в new_data) к пользователю
+        for key, value in pending_update.new_data.items():
+            if key == 'date_of_birth' and value:
+                try:
+                    value = date.fromisoformat(value)
+                except (ValueError, TypeError):
+                    value = None
+            setattr(user, key, value) # Обновляем поле пользователя
+
+        pending_update.status = "approved"
+        await db.delete(pending_update) # Удаляем запрос после выполнения
+        await db.commit() # Сохраняем и пользователя, и удаление запроса
+        
+        return user, "approved"
+        
+    elif action == "reject":
+        # 4. ОТКЛОНЕНО: Просто удаляем запрос
+        pending_update.status = "rejected"
+        await db.delete(pending_update)
+        await db.commit()
+        
+        return user, "rejected"
+
+    return None, None
