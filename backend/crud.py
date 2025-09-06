@@ -257,7 +257,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     try:
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.last_name} (@{user.username or user.telegram_id})\n"
+            f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
             f"💼 *Должность:* {user.position}\n\n"
             f"🎁 *Товар:* {item.name}\n"
             f"💰 *Стоимость:* {item.price} баллов\n\n"
