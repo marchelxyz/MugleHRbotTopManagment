@@ -575,6 +575,7 @@ async def request_profile_update(db: AsyncSession, user: models.User, update_dat
     
     # 1. Собираем старые данные для сравнения
     old_data = {
+        "first_name": user.first_name,
         "last_name": user.last_name,
         "department": user.department,
         "position": user.position,
