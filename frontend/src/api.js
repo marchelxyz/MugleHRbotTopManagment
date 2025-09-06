@@ -31,6 +31,14 @@ export const transferPoints = (transferData) => {
   return apiClient.post('/points/transfer', transferData);
 };
 
+export const requestProfileUpdate = (updateData) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Вызываем новый эндпоинт, который мы создали в users.py
+  return apiClient.post('/users/me/request-update', updateData, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
 export const getFeed = () => apiClient.get('/transactions/feed');
 export const getLastMonthLeaderboard = () => apiClient.get('/leaderboard/last-month');
 export const getMarketItems = () => apiClient.get('/market/items');
