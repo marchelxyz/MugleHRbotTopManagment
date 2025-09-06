@@ -19,6 +19,7 @@ import PendingPage from './pages/PendingPage';
 import RejectedPage from './pages/RejectedPage';
 import RoulettePage from './pages/RoulettePage';
 import BonusCardPage from './pages/BonusCardPage';
+import EditProfilePage from './pages/EditProfilePage';
 
 // Стили
 import './App.css';
@@ -31,6 +32,7 @@ function App() {
   const [error, setError] = useState('');
   const [page, setPage] = useState('home');
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
+  const [showPendingBanner, setShowPendingBanner] = useState(false);
 
   useEffect(() => {
     tg.ready();
@@ -85,7 +87,11 @@ function App() {
     window.location.reload();
   };
   
-  const navigate = (targetPage) => setPage(targetPage);
+  // --- 3. ОБНОВЛЯЕМ НАВИГАЦИЮ, ЧТОБЫ ОНА СКРЫВАЛА ПЛАШКУ ---
+  const navigate = (targetPage) => {
+    setShowPendingBanner(false); // Скрываем плашку при любом переходе
+    setPage(targetPage);
+  };
   
   const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
   const handlePurchaseAndUpdate = (newUserData) => {
@@ -97,6 +103,14 @@ function App() {
     navigate('home');
   };
 
+  // --- 4. НОВЫЙ ОБРАБОТЧИК ДЛЯ УСПЕШНОГО ЗАПРОСА НА РЕДАКТИРОВАНИЕ ---
+  const handleProfileSaveSuccess = () => {
+      // Показываем плашку
+      setShowPendingBanner(true);
+      // Возвращаем пользователя в профиль
+      setPage('profile');
+  };
+  
   const renderPage = () => {
     if (loading) {
       return <div>Загрузка...</div>;
@@ -122,6 +136,14 @@ function App() {
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
+        // --- 5. ДОБАВЛЯЕМ НОВЫЙ "CASE" ДЛЯ СТРАНИЦЫ РЕДАКТИРОВАНИЯ ---
+        case 'edit_profile': 
+          return <EditProfilePage 
+                    user={user} 
+                    onBack={() => navigate('profile')} 
+                    onSaveSuccess={handleProfileSaveSuccess} // Передаем новый обработчик
+                 />;
+                 
         case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
@@ -138,6 +160,14 @@ function App() {
 
   return (
     <div className="app-wrapper">
+
+      {/* --- 6. ДОБАВЛЯЕМ САМУ ПЛАШКУ (УВЕДОМЛЕНИЕ) --- */}
+      {showPendingBanner && (
+          <div className="pending-update-banner">
+              ⏳ Ваши изменения отправлены на согласование администраторам.
+          </div>
+      )}
+
       {renderPage()}
       {user && user.status === 'approved' && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
     </div>
