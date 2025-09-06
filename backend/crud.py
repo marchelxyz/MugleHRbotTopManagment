@@ -635,7 +635,7 @@ async def request_profile_update(db: AsyncSession, user: models.User, update_dat
         chat_id=settings.TELEGRAM_CHAT_ID,
         text=admin_message_text,
         reply_markup=keyboard,
-        message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID # Отправляем в топик для регистраций
+        message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID # <-- Используем новую переменную
     )
     
     return db_update_request
