@@ -124,6 +124,7 @@ class UserUpdate(BaseModel):
     date_of_birth: Optional[str] = None
 
 class ProfileUpdateRequest(BaseModel):
+    first_name: Optional[str] = None
     last_name: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
