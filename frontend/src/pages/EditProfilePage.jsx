@@ -10,6 +10,7 @@ import PageLayout from '../components/PageLayout';
 function EditProfilePage({ user, onBack, onSaveSuccess }) {
   
   // 1. Заполняем состояние текущими данными пользователя
+  const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
   const [department, setDepartment] = useState(user?.department || '');
   const [position, setPosition] = useState(user?.position || '');
@@ -22,8 +23,10 @@ function EditProfilePage({ user, onBack, onSaveSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!lastName || !department || !position) {
-      setError('Фамилия, подразделение и должность обязательны.');
+    
+    // 2. Добавляем Имя в проверку
+    if (!firstName || !lastName || !department || !position) { // <-- ИЗМЕНИТЬ
+      setError('Имя, Фамилия, подразделение и должность обязательны.'); // <-- ИЗМЕНИТЬ
       return;
     }
     setIsLoading(true);
@@ -31,14 +34,14 @@ function EditProfilePage({ user, onBack, onSaveSuccess }) {
 
     try {
       const updatedData = {
+        first_name: firstName, // <-- ДОБАВИТЬ
         last_name: lastName,
         department: department,
         position: position,
-        // Отправляем пустую строку, если поле пустое (чтобы "стереть" данные)
         phone_number: phoneNumber || "", 
         date_of_birth: dateOfBirth || "",
       };
-
+      
       // 2. Вызываем наш новый API эндпоинт
       await requestProfileUpdate(updatedData);
       
@@ -62,6 +65,7 @@ function EditProfilePage({ user, onBack, onSaveSuccess }) {
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
         {/* Имя (first_name) и Telegram ID/username мы не даем менять, они из ТГ */}
+        <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ваше имя" className={styles.input} required />
         <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Ваша фамилия" className={styles.input} required />
         <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Ваше подразделение" className={styles.input} required />
         <input type="text" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Ваша должность" className={styles.input} required />
