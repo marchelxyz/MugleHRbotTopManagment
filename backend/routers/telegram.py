@@ -61,12 +61,13 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                 
                 if user and status == "approved":
                     await send_telegram_message(user.telegram_id, "✅ Администратор одобрил ваши изменения в профиле!")
-                    await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{user.username or user.first_name} одобрены адм. @{admin_username}.", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
-                
+                    await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{user.username or user.first_name} одобрены адм. @{admin_username}.", 
+                                                message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
+                    
                 elif user and status == "rejected":
                     await send_telegram_message(user.telegram_id, "❌ Администратор отклонил ваши изменения в профиле.")
-                    await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{user.username or user.first_name} отклонены адм. @{admin_username}.", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
-                
+                    await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{user.username or user.first_name} отклонены адм. @{admin_username}.", 
+                                                message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
                 # Если status == None, значит запрос уже был обработан, ничего не делаем.
 
             # 2. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
