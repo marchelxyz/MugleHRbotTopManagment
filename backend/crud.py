@@ -263,7 +263,13 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
             f"💰 *Стоимость:* {item.price} баллов\n\n"
             f"📉 *Новый баланс пользователя:* {new_balance} баллов"
         )
-        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
+        # Стало (добавляем ID топика для покупок):
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID, 
+            text=admin_message,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
 
