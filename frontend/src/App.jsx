@@ -162,6 +162,25 @@ function App() {
   return (
     <div className="app-wrapper">
 
+      {/* --- НАЧАЛО: НОВЫЕ ПАНЕЛИ --- */}
+      {/* Левая верхняя панель (Выход + Название) */}
+      <div className="top-left-panel">
+        <button onClick={() => tg.close()} className="close-button">×</button>
+        <span className="app-title-text">СПАСИБО</span>
+      </div>
+
+      {/* Правая верхняя панель (Свернуть + Меню ТГ) */}
+      <div className="top-right-panel">
+        {/* Кнопка свернуть (Telegram WebApp Collapse) */}
+        <button onClick={() => tg.collapse()} className="telegram-icon-button">
+          <FaChevronDown />
+        </button>
+        {/* Кнопка Меню (Telegram WebApp Expand/Main Button) */}
+        <button onClick={() => tg.expand()} className="telegram-icon-button">
+          <FaBars />
+        </button>
+      </div>
+
       {/* --- 6. ДОБАВЛЯЕМ САМУ ПЛАШКУ (УВЕДОМЛЕНИЕ) --- */}
       {showPendingBanner && (
           <div className="pending-update-banner">
@@ -169,7 +188,14 @@ function App() {
           </div>
       )}
 
-      {renderPage()}
+      {/* Мы оборачиваем renderPage в дополнительный div, 
+        чтобы он занимал все оставшееся пространство 
+        и был скроллируемым, не конфликтуя с плавающими панелями.
+      */}
+      <div className="page-content-wrapper">
+        {renderPage()}
+      </div>
+      
       {user && user.status === 'approved' && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
     </div>
   );
