@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+python-dotenv
+gunicorn
+python-dateutil
+httpx
+pydantic-settings
+python-dateutil
+pyzipper
