@@ -1,0 +1,20 @@
+# Название нашего автоматического процесса
+name: Run Monthly Tasks
+
+# Условие запуска
+on:
+  schedule:
+    # Запускать 1-го числа каждого месяца в 00:05 по времени UTC
+    - cron: '5 0 1 * *'
+
+# Задачи, которые нужно выполнить
+jobs:
+  run-monthly-job:
+    # Запускаем на стандартной виртуальной машине
+    runs-on: ubuntu-latest
+    steps:
+      # Шаг 1: Отправляем запрос на наш сервер
+      - name: Call monthly tasks endpoint
+        run: |
+          curl -X POST "${{ secrets.BACKEND_URL }}/scheduler/run-monthly-tasks" \
+          -H "X-Cron-Secret: ${{ secrets.ADMIN_API_KEY }}"
