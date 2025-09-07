@@ -1,17 +1,21 @@
 // frontend/src/components/PageLayout.jsx
 
 import React from 'react';
-import './PageLayout.module.css'; // Убедитесь, что этот файл пуст или удален, т.к. стили для PageLayout больше не нужны
 
-// Мы убрали 'title', так как он теперь в App.jsx
-function PageLayout({ children }) { 
+// Мы БОЛЬШЕ НЕ ИМПОРТИРУЕМ PageLayout.module.css, так как он нам не нужен
+// import styles from './PageLayout.module.css';
+
+/**
+ * Этот компонент теперь является простой "прослойкой" (wrapper).
+ * Весь макет страницы (отступы, скроллинг) теперь 
+ * обрабатывается в App.jsx и App.css (класс .page-content-wrapper).
+ * Мы просто возвращаем дочерние элементы "как есть", НЕ добавляя старую шапку.
+ */
+function PageLayout({ children }) {
   return (
-    <div className="page-layout"> {/* Этот класс 'page-layout' по сути не нужен, т.к. стили теперь в .page-content-wrapper */}
-      {/* Раньше здесь был заголовок, но теперь он перемещен в App.jsx,
-        в верхнюю левую плавающую панель.
-      */}
+    <>
       {children}
-    </div>
+    </>
   );
 }
 
