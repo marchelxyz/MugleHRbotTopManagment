@@ -20,7 +20,8 @@ import RejectedPage from './pages/RejectedPage';
 import RoulettePage from './pages/RoulettePage';
 import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
-
+// --- 1. ИМПОРТИРУЕМ ИКОНКИ ДЛЯ ПРАВОЙ ПАНЕЛИ ---
+import { FaChevronDown, FaBars } from 'react-icons/fa';
 // Стили
 import './App.css';
 
