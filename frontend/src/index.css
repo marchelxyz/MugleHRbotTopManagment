@@ -2,7 +2,15 @@
 body {
   margin: 0;
   font-family: 'Inter', sans-serif; /* Устанавливаем Inter как основной шрифт */
-  background-color: #F4F4F8; /* Новый основной фон */
+  
+  /* --- ИЗМЕНЕНИЯ --- */
+  background-color: #418300; /* ВАШ НОВЫЙ ОСНОВНОЙ ФОН */
+  color: #FFFFFF; /* ОСНОВНОЙ ЦВЕТ ТЕКСТА ТЕПЕРЬ БЕЛЫЙ */
+  /* Компоненты с белым фоном (карточки, и т.д.) 
+    должны будут сами устанавливать свой темный цвет текста.
+  */
+  /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
