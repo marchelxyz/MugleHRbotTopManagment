@@ -1,34 +1,48 @@
 /* frontend/src/App.css */
+/*
+  Frontend styles for MugleHRbotTopManagment
+  Based on Telegram Mini Apps best practices.
+*/
 
+/* 1. Общие сбросы и базовые стили */
+html, body, #root, .app-wrapper {
+  margin: 0;
+  padding: 0;
+  height: 100%; /* Гарантируем, что приложение занимает всю высоту */
+  width: 100%;
+  box-sizing: border-box; /* Учитываем padding и border в размере */
+  overflow: hidden; /* Предотвращаем скролл на уровне тела/приложения */
+  font-family: 'Inter', sans-serif; /* Единый шрифт */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--tg-theme-bg-color, #f0f2f5); /* Фон по умолчанию из Telegram или серый */
+  color: var(--tg-theme-text-color, #000000); /* Цвет текста по умолчанию */
+}
+
+a {
+  color: var(--tg-theme-link-color, #007bff);
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+/* 2. Основной контейнер приложения */
 .app-wrapper {
-  margin: 0 auto;
-  max-width: 450px;
-  min-height: 100vh;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  position: relative;
-  background-color: #F4F4F8;
-
-  /* --- ДОБАВЛЯЕМ ЭТО СВОЙСТВО --- */
-  user-select: none; /* Запрещаем выделение текста */
-  -webkit-user-select: none; /* Для поддержки Safari */
-}
-  
-  /* --- Ограничение ширины --- */
-  max-width: 450px; /* Максимальная ширина, как у телефона */
-  min-height: 100vh; /* Минимальная высота на весь экран */
-  
-  /* --- Визуальное оформление (необязательно, но красиво) --- */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Тень для объема */
-  position: relative; /* Нужно для корректной работы дочерних position: fixed */
-  background-color: #F4F4F8; /* Фоновый цвет, если основной фон body другой */
+  display: flex;
+  flex-direction: column;
+  position: relative; /* Для позиционирования плавающих элементов */
 }
 
-.content-scrollable {
-  /* Отступ снизу, равный высоте меню навигации, чтобы оно не перекрывало контент */
-  padding-bottom: 80px; 
-}
-
-/* --- ДОБАВЬТЕ ЭТОТ СТИЛЬ В КОНЕЦ ФАЙЛА --- */
+/* Стили для баннера "Изменения отправлены на согласование" */
 .pending-update-banner {
   background-color: #fffbe6; /* Светло-желтый */
   border: 1px solid #ffe58f; /* Желтая рамка */
@@ -37,8 +51,200 @@
   text-align: center;
   font-weight: 500;
   font-family: 'Inter', sans-serif;
-  /* Делаем его "липким" к верху экрана, чтобы пользователь точно увидел */
   position: sticky; 
   top: 0;
-  z-index: 999; /* Поверх всего */
+  z-index: 999; 
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Легкая тень */
 }
+
+
+/* 3. Плавающие панели для кнопок */
+.top-left-panel,
+.top-right-panel {
+  position: absolute;
+  top: 10px; /* Отступ от верха */
+  background-color: rgba(255, 255, 255, 0.2); /* Полупрозрачный белый */
+  backdrop-filter: blur(5px); /* Эффект размытия под панелью */
+  border-radius: 12px; /* Скругленные углы */
+  padding: 8px 12px; /* Внутренние отступы */
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Отступ между элементами внутри панели */
+  z-index: 1000; /* Поверх всего */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Легкая тень для объема */
+}
+
+.top-left-panel {
+  left: 10px; /* Отступ слева */
+}
+
+.top-right-panel {
+  right: 10px; /* Отступ справа */
+}
+
+/* Стиль для названия приложения */
+.app-title-text {
+  font-weight: bold;
+  color: #333; /* Темный текст для контраста */
+  font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Легкая тень для текста */
+}
+
+/* Кнопка закрытия (X) */
+.close-button {
+  background: none;
+  border: none;
+  color: #666; /* Темно-серый цвет крестика */
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1; /* Чтобы крестик был по центру */
+  padding: 0;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+/* Иконки в правой панели (Telegram-стиль) */
+.telegram-icon-button {
+  background: none;
+  border: none;
+  color: #666; /* Темно-серый */
+  font-size: 18px; /* Размер иконок */
+  cursor: pointer;
+  display: flex; /* Для выравнивания иконки */
+  align-items: center;
+  justify-content: center;
+}
+.telegram-icon-button:hover {
+  color: #333;
+}
+
+
+/* 4. Навигационная панель внизу (BottomNav) */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0;
+  background-color: var(--tg-theme-bg-color, #ffffff);
+  border-top: 1px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  bottom: 0;
+  z-index: 998; /* Чуть ниже верхних панелей */
+}
+
+.nav-item {
+  flex: 1;
+  text-align: center;
+  color: var(--tg-theme-hint-color, #888);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 0;
+  transition: color 0.2s ease;
+}
+
+.nav-item.active {
+  color: var(--tg-theme-link-color, #5CA14A);
+  font-weight: bold;
+}
+
+.nav-item:hover {
+  color: var(--tg-theme-text-color, #333);
+}
+
+.nav-item svg {
+  font-size: 20px;
+}
+
+/* 5. Общие стили для страниц */
+.page-content-wrapper {
+  flex-grow: 1; /* Занимает все доступное место между верхней частью и нижним навом */
+  overflow-y: auto; /* Скролл только для контента страницы */
+  -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+  padding: 20px; /* Общие отступы для всех страниц */
+  padding-bottom: 80px; /* Отступ, чтобы контент не перекрывался нижним навом */
+  position: relative; /* Для дочерних абсолютных элементов */
+}
+
+
+/* 6. Стили для кнопок и форм (используются на многих страницах) */
+.primary-button, .backButton, .submitButton {
+  background-color: #5CA14A; /* Наш фирменный зеленый */
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  width: 100%;
+  text-align: center;
+  margin-top: 15px;
+}
+
+.primary-button:hover, .backButton:hover, .submitButton:hover {
+  background-color: #4CAF50; /* Чуть темнее при наведении */
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled, .submitButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.input {
+  width: calc(100% - 24px); /* Учитываем padding */
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  border-color: #5CA14A;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(92, 161, 74, 0.2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Отступ между элементами формы */
+  margin-top: 20px;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* 7. Общие стили для заголовков и подзаголовков страниц */
+.page-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--tg-theme-text-color, #333);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.page-subtitle {
+  font-size: 16px;
+  color: var(--tg-theme-hint-color, #666);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* 8. Utility classes */
+.text-center { text-align: center; }
+.mt-20 { margin-top: 20px; }
+.mb-20 { margin-bottom: 20px; }
