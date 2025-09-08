@@ -54,10 +54,10 @@
   overflow: hidden; 
 
   /* 3. Ваша маска-градиент: 
-     Мы говорим браузеру: "Покажи 80% контента (black), 
-     а затем плавно скрой оставшиеся 20% (transparent)" 
+     Мы говорим браузеру: "Покажи 85% контента (black), 
+     а затем плавно скрой оставшиеся 15% (transparent)" 
   */
-  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
   
   /* 4. То же самое для поддержки Safari (webkit) */
   -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
