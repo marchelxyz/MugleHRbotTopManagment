@@ -10,33 +10,55 @@
 
 .header {
   height: 110px;
-  /* Устанавливаем вашу картинку как фон */
-  background-image: url('https://i.postimg.cc/9M38nFL9/4.webp');
-  background-size: cover; /* Растягиваем на всю ширину/высоту */
-  background-position: center; /* Центрируем фон */
+  background-image: url('https://i.postimg.cc/28jH8PnZ/image.webp');
+  background-size: cover;
+  background-position: center;
+  background-color: #418300;
   
   position: sticky;
   top: 0;
   z-index: 1;
   
-  /* Используем flex для точного позиционирования текста */
   display: flex;
-  align-items: center; /* Центрируем текст по вертикали */
-  justify-content: center; /* Центрируем текст по горизонтали */
+  align-items: center;
+  justify-content: center;
 }
 
-/* Стили для заголовка (названия раздела) */
+/* Внутренний контейнер для всех трех элементов */
+.headerContent {
+  display: flex;
+  align-items: center; /* ГЛАВНОЕ: Выравниваем все по вертикальному центру */
+  justify-content: center;
+}
+
+/* Стили для логотипа "С" */
+.headerLogo {
+  height: 32px; /* Подбираем высоту для гармонии */
+  width: auto;
+}
+
+/* Стили для волнистой линии */
+.headerLine {
+  height: 38px; /* Высота линии */
+  width: auto;
+  margin-left: 5px; /* Небольшой отступ от "C" */
+}
+
+/* Стили для заголовка */
 .headerTitle {
   color: white;
   font-family: 'Inter', sans-serif;
-  font-size: 20px; /* Увеличим размер для соответствия картинке */
-  font-weight: 600;
-  margin: 0;
-  /* Небольшой сдвиг влево, чтобы текст был на своем месте 
-     (так как на фоновой картинке уже есть текст "Профиль") 
-  */
-  transform: translateX(-15px);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  
+  /* ВАШИ ТРЕБОВАНИЯ: */
+  font-size: 14px; /* Размер шрифта 14 */
+  margin-left: 7px; /* Отступ в 7px от линии */
+  
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  white-space: nowrap; /* Запрещаем перенос названия раздела */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
