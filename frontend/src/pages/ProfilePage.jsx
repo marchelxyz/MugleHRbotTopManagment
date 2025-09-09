@@ -15,8 +15,7 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
   }, [user]);
   
   return (
-{/* --- НАЗВАНИЕ СТРАНИЦЫ --- */}
-    <PageLayout title=".">
+    <PageLayout title="О">
       <div className={styles.settingsIconContainer}>
         <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
           <FaCog size={22} />
