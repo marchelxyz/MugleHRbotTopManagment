@@ -17,7 +17,7 @@ function DinoGame() {
     let gravity = 1;
     let obstacles = [];
     // --- ИЗМЕНЕНИЕ 1: Уменьшаем начальную скорость ---
-    let gameSpeed = 2; // Было: 5
+    let gameSpeed = 3; // Было: 5
     let keys = {};
     let isGameOver = false;
 
@@ -122,7 +122,7 @@ function DinoGame() {
         dino = new Dino(25, canvas.height - 170, 50, 50);
         obstacles = [];
         score = 0;
-        gameSpeed = 2;
+        gameSpeed = 3;
         isGameOver = false;
         requestAnimationFrame(gameLoop);
     }
