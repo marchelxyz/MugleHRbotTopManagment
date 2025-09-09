@@ -1,7 +1,19 @@
 /* frontend/src/pages/StatusPages.module.css */
 
-/* --- ИСПРАВЛЕНИЕ: Этот контейнер больше не нужен, убираем его стили --- */
-/* .pendingPageContainer { ... } */
+/* --- ИСПРАВЛЕНИЕ: Мы добавляем фоновый узор сюда --- */
+.pendingPageContainer {
+  min-height: 100vh; 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  
+  /* ВОТ ЭТИ СВОЙСТВА ВОЗВРАЩАЮТ ФОН */
+  background-color: #e9eef2;
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 70px);
+}
 
 /* Основной контейнер для текста */
 .statusPage {
@@ -10,11 +22,9 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  /* --- ИСПРАВЛЕНИЕ: Убираем 100vh, чтобы он не выталкивал игру --- */
-  /* height: 100vh; */ 
-  padding: 40px 20px 20px 20px; /* Добавляем отступ сверху */
+  /* Убираем отсюда фон, так как он теперь в родителе */
+  padding: 40px 20px 20px 20px;
   box-sizing: border-box;
-  background-color: transparent; /* Фон теперь общий для страницы */
 }
 
 .icon {
@@ -26,6 +36,7 @@
   font-family: 'Arial', sans-serif;
   font-size: 24px;
   margin-bottom: 10px;
+  color: #333; /* Убедимся, что текст темный */
 }
 
 .statusPage p {
@@ -34,7 +45,6 @@
   max-width: 300px;
 }
 
-/* --- Стили для подсказки и карточки игры остаются --- */
 .subtleHint {
   margin-top: 15px !important;
   font-size: 14px !important;
@@ -47,8 +57,8 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 1px solid #eee;
   padding: 10px;
-  margin: 0 auto; /* Центрируем карточку по горизонтали */
+  margin: 0 auto;
   width: 380px;
-  max-width: 90%; /* Адаптивность для маленьких экранов */
+  max-width: 90%;
   box-sizing: border-box;
 }
