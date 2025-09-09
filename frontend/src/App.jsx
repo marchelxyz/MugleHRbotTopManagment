@@ -47,10 +47,11 @@ function App() {
     
     // 3. Устанавливаем цвет верхней шапки, чтобы она сливалась с нашим дизайном
     tg.setHeaderColor('#408200'); // Наш темно-зеленый цвет
-    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+        // --- 2. ВЫЗЫВАЕМ ИНИЦИАЛИЗАЦИЮ НОВОГО КЭША ---
+    initializeCache(); 
     
     const telegramUser = tg.initDataUnsafe?.user;
-
     if (!telegramUser) {
       setError('Не удалось получить данные Telegram. Откройте приложение через бота.');
       setLoading(false);
@@ -95,12 +96,14 @@ function App() {
   };
   
   const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
+  // --- 3. ОБНОВЛЯЕМ ОБРАБОТЧИКИ, ЧТОБЫ ОНИ ОЧИЩАЛИ КЭШ ---
+  // (Вместо старого preloader'а)
   const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
-    // clearCache('market'); // Логику кэша пока уберем для упрощения
+    clearCache('market'); // Очищаем кэш магазина после покупки
   };
   const handleTransferSuccess = () => {
-    // clearCache('feed'); // Логику кэша пока уберем для упрощения
+    clearCache('feed'); // Очищаем кэш ленты после перевода
     navigate('home');
   };
 
