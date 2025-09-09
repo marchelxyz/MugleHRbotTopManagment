@@ -24,9 +24,9 @@ function DinoGame() {
     // --- АССЕТЫ ---
     const dinoImg = new Image();
     // --- ИСПРАВЛЕНИЕ: Используем спрайт-лист для анимации бега ---
-    dinoImg.src = 'https://i.postimg.cc/Nj4z32R7/dino-sprite.png'; 
+    dinoImg.src = 'https://i.postimg.cc/057W1bZV/Steve-Jumping-Dino.webp'; 
     const cactusImg = new Image();
-    cactusImg.src = 'https://i.postimg.cc/zX005Sts/cactus.png';
+    cactusImg.src = 'https://i.postimg.cc/GhYdFSS2/1-Cactus-Chrome-Dino-webp.png';
 
     // --- ОБРАБОТЧИКИ ВВОДА ---
     document.addEventListener('keydown', (e) => keys[e.code] = true);
