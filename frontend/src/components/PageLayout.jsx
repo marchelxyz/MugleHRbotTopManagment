@@ -7,22 +7,14 @@ function PageLayout({ title, children }) {
   return (
     <div className={styles.pageContainer}>
       
+      {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
+      {/* Теперь в шапке только один элемент - заголовок. 
+          Логотип и узоры теперь являются частью фона в CSS.
+      */}
       <div className={styles.header}>
-        <div className={styles.headerContent}>
-          
-          {/* --- НАЧАЛО ИЗМЕНЕНИЯ --- */}
-          <img 
-            // Было: src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp"
-            // Стало:
-            src="https://i.postimg.cc/YqcmJB37/6.webp" 
-            alt="Спасибо" 
-            className={styles.headerLogo} 
-          />
-          {/* --- КОНЕЦ ИЗМЕНЕНИЯ --- */}
-
           <h1 className={styles.headerTitle}>{title}</h1>
-        </div>
       </div>
+      {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
 
       <div className={styles.contentArea}>
         {children}
