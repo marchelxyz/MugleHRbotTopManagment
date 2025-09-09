@@ -37,8 +37,11 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
 
   // --- 2. ПРОВЕРЯЕМ ПЛАТФОРМУ ---
-  // Проверяем это сразу, вне useEffect, так как platform доступен синхронно
-  const isDesktop = tg.platform === 'tdesktop' || tg.platform === 'macos';
+  // Создаем массив десктопных платформ для проверки
+  const desktopPlatforms = ['tdesktop', 'macos', 'web'];
+  // Проверяем, входит ли текущая платформа в наш список
+  const isDesktop = desktopPlatforms.includes(tg.platform);
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
   useEffect(() => {
     // Если это десктоп, нам не нужно выполнять остальную логику
