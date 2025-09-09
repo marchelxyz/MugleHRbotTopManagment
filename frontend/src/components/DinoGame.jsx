@@ -20,11 +20,12 @@ function DinoGame() {
     let keys = {};
     let isGameOver = false;
 
-    // --- АССЕТЫ (подобранные бесплатные изображения) ---
+    // --- АССЕТЫ ---
     const dinoImg = new Image();
-    dinoImg.src = 'https://i.postimg.cc/T3s22T9G/dino-run.png'; // Динозавр
+    // --- ИСПРАВЛЕНИЕ: Используем спрайт-лист для анимации бега ---
+    dinoImg.src = 'https://i.postimg.cc/Nj4z32R7/dino-sprite.png'; 
     const cactusImg = new Image();
-    cactusImg.src = 'https://i.postimg.cc/zX005Sts/cactus.png'; // Кактус
+    cactusImg.src = 'https://i.postimg.cc/zX005Sts/cactus.png';
 
     // --- ОБРАБОТЧИКИ ВВОДА ---
     document.addEventListener('keydown', (e) => keys[e.code] = true);
