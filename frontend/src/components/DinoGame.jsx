@@ -24,7 +24,7 @@ function DinoGame() {
     // --- АССЕТЫ ---
     const dinoImg = new Image();
     // --- ИСПРАВЛЕНИЕ: Используем спрайт-лист для анимации бега ---
-    dinoImg.src = 'https://i.postimg.cc/057W1bZV/Steve-Jumping-Dino.webp'; 
+    dinoImg.src = 'https://i.postimg.cc/nz8pPXcv/Steve-Jumping-Dino1.webp'; 
     const cactusImg = new Image();
     cactusImg.src = 'https://i.postimg.cc/GhYdFSS2/1-Cactus-Chrome-Dino-webp.png';
 
@@ -42,7 +42,7 @@ function DinoGame() {
         this.w = w;
         this.h = h;
         this.dy = 0; // vertical velocity
-        this.jumpForce = 15; // Уменьшим силу прыжка для лучшей игры
+        this.jumpForce = 20; // Уменьшим силу прыжка для лучшей игры
         this.originalHeight = h;
         this.grounded = false;
         this.frame = 0; // Для анимации бега
