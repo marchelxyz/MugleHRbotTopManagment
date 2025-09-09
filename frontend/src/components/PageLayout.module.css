@@ -3,33 +3,59 @@
 .pageContainer {
   background-color: #F4F4F8;
   position: relative;
-  min-height: 100vh; /* Чтобы фон был на всю высоту */
+  min-height: 100vh;
 }
+
+/* --- НАЧАЛО ИЗМЕНЕНИЙ: Стили для новой шапки --- */
 
 .header {
-  height: 100px; /* Новая, уменьшенная высота шапки */
-  background-image: url('https://i.postimg.cc/qMPBdBdw/image.webp');
-  background-size: contain;
+  height: 110px; /* Новая высота */
+  background-color: #418300; /* Новый сплошной цвет фона */
+  /* Накладываем фоновый узор поверх сплошного цвета */
+  background-image: url('https://i.postimg.cc/28jH8PnZ/image.webp');
+  background-size: cover; /* Растягиваем узор на всю шапку */
   background-position: center;
+  
   position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 1;
+  
+  /* Делаем flex-контейнер для идеального центрирования контента */
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 20px;
+  align-items: center; /* Центрирование по вертикали */
+  justify-content: center; /* Центрирование по горизонтали */
+  
+  /* Убираем внутренние отступы, чтобы центрирование работало корректно */
+  padding: 0; 
 }
 
+/* Контейнер для логотипа и текста, чтобы расположить их друг под другом */
+.headerContent {
+  display: flex;
+  flex-direction: column; /* Элементы идут сверху вниз */
+  align-items: center; /* Центрируем их по горизонтали */
+  gap: 8px; /* Отступ между логотипом и текстом */
+}
+
+/* Стили для логотипа "Спасибо" */
+.headerLogo {
+  width: 50px; /* Размер логотипа */
+  height: 50px;
+}
+
+/* Стили для заголовка (названия раздела) */
 .headerTitle {
   color: white;
-  font-family: 'Arial', sans-serif;
-  font-size: 28px;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  font-family: 'Inter', sans-serif; /* Как вы и просили */
+  font-size: 14px; /* Как вы и просили */
+  font-weight: 500; /* Средняя жирность для лучшей читаемости */
+  margin: 0; /* Убираем стандартный отступ у h1 */
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Легкая тень для текста */
 }
 
+/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
+
+/* Стили для области контента остаются почти без изменений */
 .contentArea {
   background-color: #F4F4F8;
   border-top-left-radius: 20px;
@@ -38,8 +64,6 @@
   z-index: 2;
   margin-top: -20px;
   padding: 20px;
-  min-height: calc(100vh - 100px); /* Чтобы контент занимал минимум весь экран */
-  /* --- ИСПРАВЛЕНИЕ: Добавляем отступ для меню --- */
+  min-height: calc(100vh - 150px); /* Адаптируем под новую высоту шапки */
   padding-bottom: 100px; 
-  min-height: calc(100vh - 100px);
 }
