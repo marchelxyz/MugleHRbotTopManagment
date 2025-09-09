@@ -7,8 +7,8 @@
 }
 
 .header {
-  height: 220px;
-  background-image: url('https://i.postimg.cc/ncBwC4wK/Frame-2131328055.webp');
+  height: 250px;
+  background-image: url('https://i.postimg.cc/rw5Vy6Vk/1.webp');
   background-size: cover;
   background-position: center;
   position: sticky;
@@ -48,6 +48,25 @@
   color: #6E7A85;
   margin-left: 16px;
   flex-grow: 1;
+   /* 1. Запрещаем имени переноситься на новую строку */
+  white-space: nowrap;
+  /* 2. Обрезаем (скрываем) все, что не помещается в блок */
+  overflow: hidden; 
+
+  /* 3. Ваша маска-градиент: 
+     Мы говорим браузеру: "Покажи 85% контента (black), 
+     а затем плавно скрой оставшиеся 15% (transparent)" 
+  */
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  
+  /* 4. То же самое для поддержки Safari (webkit) */
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+
+  /* Примечание: так как .userName является flex-item, 
+    этих свойств достаточно, чтобы он не "выталкивал" 
+    соседние элементы.
+  */
+  /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
 }
 
 .thankYouButton {
