@@ -97,7 +97,7 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
   };
 
   return (
-    <PageLayout title="🎡 Рулетка">
+    <PageLayout title="Рулетка">
       <div className={styles.infoIcon} onClick={() => setInfoVisible(!infoVisible)}>
         <FaInfoCircle />
       </div>
