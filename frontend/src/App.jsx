@@ -56,9 +56,7 @@ function App() {
     tg.setHeaderColor('#408200');
     
     initializeCache(); 
-    
-    const telegramUser = tg.initDataUnsafe?.user; 
-    
+     
     const telegramUser = tg.initDataUnsafe?.user;
     if (!telegramUser) {
       setError('Не удалось получить данные Telegram. Откройте приложение через бота.');
