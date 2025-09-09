@@ -28,3 +28,9 @@
   color: #6E7A85;
   max-width: 300px;
 }
+
+.subtleHint {
+  margin-top: 15px !important;
+  font-size: 14px !important;
+  color: #888 !important;
+}
