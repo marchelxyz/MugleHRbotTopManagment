@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { checkUserStatus } from './api';
 import { initializeCache } from './storage';
+import UnsupportedDevicePage from './pages/UnsupportedDevicePage';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
@@ -35,21 +36,25 @@ function App() {
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
   const [showPendingBanner, setShowPendingBanner] = useState(false);
 
-  useEffect(() => {
-    tg.ready();
+  // --- 2. ПРОВЕРЯЕМ ПЛАТФОРМУ ---
+  // Проверяем это сразу, вне useEffect, так как platform доступен синхронно
+  const isDesktop = tg.platform === 'tdesktop' || tg.platform === 'macos';
 
-// --- НАЧАЛО ИЗМЕНЕНИЙ ---
-    // 1. Команда развернуть приложение на весь экран
+  useEffect(() => {
+    // Если это десктоп, нам не нужно выполнять остальную логику
+    if (isDesktop) {
+      setLoading(false); // Просто выключаем загрузчик
+      return;
+    }
+
+    tg.ready();
     tg.expand();
+    tg.setBackgroundColor('#F4F4F8');
+    tg.setHeaderColor('#408200');
     
-    // 2. Устанавливаем цвет фона для системной области за пределами нашего приложения
-    tg.setBackgroundColor('#F4F4F8'); // Наш светло-серый фон
-    
-    // 3. Устанавливаем цвет верхней шапки, чтобы она сливалась с нашим дизайном
-    tg.setHeaderColor('#408200'); // Наш темно-зеленый цвет
-    
-        // --- 2. ВЫЗЫВАЕМ ИНИЦИАЛИЗАЦИЮ НОВОГО КЭША ---
     initializeCache(); 
+    
+    const telegramUser = tg.initDataUnsafe?.user; 
     
     const telegramUser = tg.initDataUnsafe?.user;
     if (!telegramUser) {
@@ -114,6 +119,11 @@ function App() {
       // Возвращаем пользователя в профиль
       setPage('profile');
   };
+
+// --- 3. ДОБАВЛЯЕМ ПРОВЕРКУ ПЕРЕД ОСНОВНЫМ РЕНДЕРОМ ---
+  if (isDesktop) {
+    return <UnsupportedDevicePage />;
+  }
   
   const renderPage = () => {
     if (loading) {
