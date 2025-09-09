@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { checkUserStatus } from './api';
+import { initializeCache } from './storage';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
