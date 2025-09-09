@@ -6,56 +6,41 @@
   min-height: 100vh;
 }
 
-/* --- НАЧАЛО ИЗМЕНЕНИЙ: Стили для новой шапки --- */
+/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */
 
 .header {
-  height: 110px; /* Новая высота */
-  background-color: #418300; /* Новый сплошной цвет фона */
-  /* Накладываем фоновый узор поверх сплошного цвета */
-  background-image: url('https://i.postimg.cc/28jH8PnZ/image.webp');
-  background-size: cover; /* Растягиваем узор на всю шапку */
-  background-position: center;
+  height: 110px;
+  /* Устанавливаем вашу картинку как фон */
+  background-image: url('https://i.postimg.cc/9M38nFL9/4.webp');
+  background-size: cover; /* Растягиваем на всю ширину/высоту */
+  background-position: center; /* Центрируем фон */
   
   position: sticky;
   top: 0;
   z-index: 1;
   
-  /* Делаем flex-контейнер для идеального центрирования контента */
+  /* Используем flex для точного позиционирования текста */
   display: flex;
-  align-items: center; /* Центрирование по вертикали */
-  justify-content: center; /* Центрирование по горизонтали */
-  
-  /* Убираем внутренние отступы, чтобы центрирование работало корректно */
-  padding: 0; 
-}
-
-/* Контейнер для логотипа и текста, чтобы расположить их друг под другом */
-.headerContent {
-  display: flex;
-  flex-direction: column; /* Элементы идут сверху вниз */
-  align-items: center; /* Центрируем их по горизонтали */
-  gap: 8px; /* Отступ между логотипом и текстом */
-}
-
-/* Стили для логотипа "Спасибо" */
-.headerLogo {
-  width: 50px; /* Размер логотипа */
-  height: 50px;
+  align-items: center; /* Центрируем текст по вертикали */
+  justify-content: center; /* Центрируем текст по горизонтали */
 }
 
 /* Стили для заголовка (названия раздела) */
 .headerTitle {
   color: white;
-  font-family: 'Inter', sans-serif; /* Как вы и просили */
-  font-size: 14px; /* Как вы и просили */
-  font-weight: 500; /* Средняя жирность для лучшей читаемости */
-  margin: 0; /* Убираем стандартный отступ у h1 */
-  text-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Легкая тень для текста */
+  font-family: 'Inter', sans-serif;
+  font-size: 20px; /* Увеличим размер для соответствия картинке */
+  font-weight: 600;
+  margin: 0;
+  /* Небольшой сдвиг влево, чтобы текст был на своем месте 
+     (так как на фоновой картинке уже есть текст "Профиль") 
+  */
+  transform: translateX(-15px);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
 
-/* Стили для области контента остаются почти без изменений */
 .contentArea {
   background-color: #F4F4F8;
   border-top-left-radius: 20px;
@@ -64,6 +49,6 @@
   z-index: 2;
   margin-top: -20px;
   padding: 20px;
-  min-height: calc(100vh - 150px); /* Адаптируем под новую высоту шапки */
+  min-height: calc(100vh - 150px);
   padding-bottom: 100px; 
 }
