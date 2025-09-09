@@ -8,7 +8,7 @@ import PageLayout from '../components/PageLayout';
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
 
   return (
-    <PageLayout title="О">
+    <PageLayout title="Профиль">
       <div className={styles.settingsIconContainer}>
         <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
           <FaCog size={22} />
