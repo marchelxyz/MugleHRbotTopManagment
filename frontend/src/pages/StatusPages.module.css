@@ -1,15 +1,20 @@
 /* frontend/src/pages/StatusPages.module.css */
+
+/* --- ИСПРАВЛЕНИЕ: Этот контейнер больше не нужен, убираем его стили --- */
+/* .pendingPageContainer { ... } */
+
+/* Основной контейнер для текста */
 .statusPage {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  height: 100vh;
-  padding: 20px;
+  /* --- ИСПРАВЛЕНИЕ: Убираем 100vh, чтобы он не выталкивал игру --- */
+  /* height: 100vh; */ 
+  padding: 40px 20px 20px 20px; /* Добавляем отступ сверху */
   box-sizing: border-box;
-  background-color: #e9eef2;
-  background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 70px);
+  background-color: transparent; /* Фон теперь общий для страницы */
 }
 
 .icon {
@@ -29,34 +34,21 @@
   max-width: 300px;
 }
 
+/* --- Стили для подсказки и карточки игры остаются --- */
 .subtleHint {
   margin-top: 15px !important;
   font-size: 14px !important;
   color: #888 !important;
 }
 
-.pendingPageContainer {
-  /* Важно: это гарантирует, что контейнер займет всю доступную высоту 
-     и игра не "уедет" за пределы прокрутки
-  */
-  min-height: 100vh; 
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* Центрируем контент по вертикали */
-  align-items: center; /* Центрируем контент по горизонтали */
-  padding: 20px;
-  box-sizing: border-box; /* Важно для корректных размеров */
-}
-
-/* Стили для прямоугольника вокруг игры */
 .gameCard {
   background-color: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 1px solid #eee;
-  padding: 10px; /* Отступы внутри карточки */
-  margin-top: 20px; /* Отступ от текста выше */
-  width: 380px; /* Ширина карточки соответствует ширине канваса */
-  max-width: 100%; /* Чтобы не вылезала на маленьких экранах */
+  padding: 10px;
+  margin: 0 auto; /* Центрируем карточку по горизонтали */
+  width: 380px;
+  max-width: 90%; /* Адаптивность для маленьких экранов */
   box-sizing: border-box;
 }
