@@ -182,9 +182,10 @@ function DinoGame() {
 
       dino.update(canvas.height);
 
-      // Score
+ // Score
       score++;
-      gameSpeed += 0.003;
+// --- ИЗМЕНЕНИЕ 2: Значительно уменьшаем ускорение ---
+      gameSpeed += 0.001; // Было: 0.003
       ctx.font = "20px 'Inter', sans-serif";
       ctx.fillStyle = "black";
       ctx.textAlign = "left";
