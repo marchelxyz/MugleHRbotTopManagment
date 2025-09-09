@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { checkUserStatus } from './api';
+import { initializeCache } from './storage';
+import UnsupportedDevicePage from './pages/UnsupportedDevicePage';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
@@ -34,22 +36,28 @@ function App() {
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
   const [showPendingBanner, setShowPendingBanner] = useState(false);
 
+  // --- 2. ПРОВЕРЯЕМ ПЛАТФОРМУ ---
+  // Создаем массив десктопных платформ для проверки
+  const desktopPlatforms = ['tdesktop', 'macos', 'web'];
+  // Проверяем, входит ли текущая платформа в наш список
+  const isDesktop = desktopPlatforms.includes(tg.platform);
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
   useEffect(() => {
+    // Если это десктоп, нам не нужно выполнять остальную логику
+    if (isDesktop) {
+      setLoading(false); // Просто выключаем загрузчик
+      return;
+    }
+
     tg.ready();
-
-// --- НАЧАЛО ИЗМЕНЕНИЙ ---
-    // 1. Команда развернуть приложение на весь экран
     tg.expand();
+    tg.setBackgroundColor('#F4F4F8');
+    tg.setHeaderColor('#408200');
     
-    // 2. Устанавливаем цвет фона для системной области за пределами нашего приложения
-    tg.setBackgroundColor('#F4F4F8'); // Наш светло-серый фон
-    
-    // 3. Устанавливаем цвет верхней шапки, чтобы она сливалась с нашим дизайном
-    tg.setHeaderColor('#408200'); // Наш темно-зеленый цвет
-    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
-    
+    initializeCache(); 
+     
     const telegramUser = tg.initDataUnsafe?.user;
-
     if (!telegramUser) {
       setError('Не удалось получить данные Telegram. Откройте приложение через бота.');
       setLoading(false);
@@ -94,12 +102,14 @@ function App() {
   };
   
   const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
+  // --- 3. ОБНОВЛЯЕМ ОБРАБОТЧИКИ, ЧТОБЫ ОНИ ОЧИЩАЛИ КЭШ ---
+  // (Вместо старого preloader'а)
   const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
-    // clearCache('market'); // Логику кэша пока уберем для упрощения
+    clearCache('market'); // Очищаем кэш магазина после покупки
   };
   const handleTransferSuccess = () => {
-    // clearCache('feed'); // Логику кэша пока уберем для упрощения
+    clearCache('feed'); // Очищаем кэш ленты после перевода
     navigate('home');
   };
 
@@ -110,6 +120,11 @@ function App() {
       // Возвращаем пользователя в профиль
       setPage('profile');
   };
+
+// --- 3. ДОБАВЛЯЕМ ПРОВЕРКУ ПЕРЕД ОСНОВНЫМ РЕНДЕРОМ ---
+  if (isDesktop) {
+    return <UnsupportedDevicePage />;
+  }
   
   const renderPage = () => {
     if (loading) {

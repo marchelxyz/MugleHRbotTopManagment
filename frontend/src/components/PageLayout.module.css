@@ -3,32 +3,65 @@
 .pageContainer {
   background-color: #F4F4F8;
   position: relative;
-  min-height: 100vh; /* Чтобы фон был на всю высоту */
+  min-height: 100vh;
 }
 
+/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */
+
 .header {
-  height: 100px; /* Новая, уменьшенная высота шапки */
-  background-image: url('https://i.postimg.cc/qMPBdBdw/image.webp');
-  background-size: contain;
+  height: 110px;
+  background-image: url('https://i.postimg.cc/28jH8PnZ/image.webp');
+  background-size: cover;
   background-position: center;
+  background-color: #418300;
+  
   position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 1;
+  
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 20px;
 }
 
+/* Внутренний контейнер для всех трех элементов */
+.headerContent {
+  display: flex;
+  align-items: center; /* ГЛАВНОЕ: Выравниваем все по вертикальному центру */
+  justify-content: center;
+}
+
+/* Стили для логотипа "С" */
+.headerLogo {
+  height: 32px; /* Подбираем высоту для гармонии */
+  width: auto;
+}
+
+/* Стили для волнистой линии */
+.headerLine {
+  height: 38px; /* Высота линии */
+  width: auto;
+  margin-left: 5px; /* Небольшой отступ от "C" */
+}
+
+/* Стили для заголовка */
 .headerTitle {
   color: white;
-  font-family: 'Arial', sans-serif;
-  font-size: 28px;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  font-family: 'Inter', sans-serif;
+  
+  /* ВАШИ ТРЕБОВАНИЯ: */
+  font-size: 14px; /* Размер шрифта 14 */
+  margin-left: 7px; /* Отступ в 7px от линии */
+  
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-right: 0;
+  white-space: nowrap; /* Запрещаем перенос названия раздела */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
+
+/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
 
 .contentArea {
   background-color: #F4F4F8;
@@ -38,8 +71,6 @@
   z-index: 2;
   margin-top: -20px;
   padding: 20px;
-  min-height: calc(100vh - 100px); /* Чтобы контент занимал минимум весь экран */
-  /* --- ИСПРАВЛЕНИЕ: Добавляем отступ для меню --- */
+  min-height: calc(100vh - 150px);
   padding-bottom: 100px; 
-  min-height: calc(100vh - 100px);
 }

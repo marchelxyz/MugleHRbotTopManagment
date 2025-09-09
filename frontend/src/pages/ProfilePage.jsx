@@ -4,18 +4,11 @@ import React, { useEffect } from 'react'; // --- ИСПРАВЛЕНИЕ: Доб�
 import styles from './ProfilePage.module.css';
 import { FaCog, FaCreditCard, FaPencilAlt } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
-import { preloadHistoryData } from '../preloader';
 
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
 
-  useEffect(() => {
-    if (user) {
-      preloadHistoryData(user.id);
-    }
-  }, [user]);
-  
   return (
-    <PageLayout title="О">
+    <PageLayout title="Профиль">
       <div className={styles.settingsIconContainer}>
         <button onClick={() => onNavigate('settings')} className={styles.settingsButton}>
           <FaCog size={22} />

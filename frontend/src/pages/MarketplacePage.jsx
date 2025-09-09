@@ -3,16 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
-import { getPreloadedData } from '../preloader';
+import { getCachedData } from '../storage';
 
 // 1. Принимаем новую функцию onPurchaseSuccess в пропсах
 function MarketplacePage({ user, onPurchaseSuccess }) {
-  // --- ИЗМЕНЕНИЕ: Пытаемся сразу получить данные из кэша ---
-  const [items, setItems] = useState(() => getPreloadedData('market'));
-  const [isLoading, setIsLoading] = useState(!items); // Не грузим, если данные уже есть
+  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
+  const [items, setItems] = useState(() => getCachedData('market'));
+  const [isLoading, setIsLoading] = useState(!items); 
   
   useEffect(() => {
-    // Если данные не были предзагружены, загружаем их как обычно
+    // Если данные не были в кэше, загружаем их
     if (!items) {
       const fetchItems = async () => {
         try {

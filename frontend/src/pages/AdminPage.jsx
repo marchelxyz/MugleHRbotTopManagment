@@ -88,7 +88,7 @@ function AdminPanel() {
   };
 
   return (
-    <PageLayout title="⚙️ Админ-панель">
+    <PageLayout title="Админ">
       {activeSection && (
         <button onClick={() => setActiveSection(null)} className={styles.backButton}>
           &larr; Назад в меню

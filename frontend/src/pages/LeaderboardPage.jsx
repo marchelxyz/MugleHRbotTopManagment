@@ -3,15 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { getLastMonthLeaderboard } from '../api';
 import styles from './LeaderboardPage.module.css'; // 1. Импортируем стили
 import PageLayout from '../components/PageLayout';
-import { getPreloadedData } from '../preloader';
+import { getCachedData } from '../storage';
 
 function LeaderboardPage() {
-  // --- ИЗМЕНЕНИЕ: Пытаемся сразу получить данные из кэша ---
-  const [leaderboard, setLeaderboard] = useState(() => getPreloadedData('leaderboard'));
-  const [isLoading, setIsLoading] = useState(!leaderboard); // Не грузим, если данные уже есть
+  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
+  const [leaderboard, setLeaderboard] = useState(() => getCachedData('leaderboard'));
+  const [isLoading, setIsLoading] = useState(!leaderboard);
 
   useEffect(() => {
-    // Если данные не были предзагружены, загружаем их как обычно
+    // Если данные не были в кэше, загружаем их
     if (!leaderboard) {
       const fetchLeaderboard = async () => {
         try {
