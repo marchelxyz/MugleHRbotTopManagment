@@ -3,36 +3,38 @@
 import React, { useState, useEffect } from 'react';
 import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
-import { getPreloadedData } from '../preloader';
+import { getCachedData } from '../storage';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl }) {
-  // --- ИЗМЕНЕНИЕ: Пытаемся сразу получить ленту из кэша ---
-  const [feed, setFeed] = useState(() => getPreloadedData('feed'));
+  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
+  // Пытаемся сразу получить данные из кэша в памяти
+  const [feed, setFeed] = useState(() => getCachedData('feed'));
   const [banners, setBanners] = useState([]);
-  // --- ИЗМЕНЕНИЕ: Не показываем загрузку, если лента уже есть ---
-  const [isLoading, setIsLoading] = useState(!feed);
+  // Не показываем загрузку, если данные уже есть в кэше
+  const [isLoading, setIsLoading] = useState(!feed); 
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    // --- ИЗМЕНЕНИЕ: Загружаем ленту, только если ее не было в кэше ---
     const fetchData = async () => {
-      // Загружаем баннеры в любом случае
+      // Загружаем баннеры
       const bannersResponse = await getBanners();
       setBanners(bannersResponse.data);
 
-      // А ленту - только если ее нет
+      // Если в кэше ничего не было, загружаем ленту с сервера
       if (!feed) {
-        const feedResponse = await getFeed();
-        setFeed(feedResponse.data);
+        try {
+          const feedResponse = await getFeed();
+          setFeed(feedResponse.data);
+          // (Данные автоматически сохранятся в кэш через refreshAllData в App.jsx)
+        } catch (error) {
+          console.error("Failed to fetch feed", error);
+        }
       }
-      setIsLoading(false); // Убираем индикатор загрузки
+      setIsLoading(false);
     };
 
-    fetchData().catch(error => {
-      console.error("Failed to fetch data for home page", error);
-      setIsLoading(false);
-    });
-  }, [feed]);
+    fetchData();
+  }, [feed]); // Зависимость остается, чтобы среагировать, если feed был null
   
   // --- НОВЫЙ ЭФФЕКТ: Логика для авто-переключения слайдов ---
   const mainBanners = banners.filter(b => b.position === 'main');
