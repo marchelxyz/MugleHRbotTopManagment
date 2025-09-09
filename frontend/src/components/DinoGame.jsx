@@ -40,13 +40,19 @@ function DinoGame() {
         this.w = w;
         this.h = h;
         this.dy = 0; // vertical velocity
-        this.jumpForce = 20;
+        this.jumpForce = 15; // Уменьшим силу прыжка для лучшей игры
         this.originalHeight = h;
         this.grounded = false;
+        this.frame = 0; // Для анимации бега
+        this.frameRate = 5; // Скорость смены кадров
+        this.frameCounter = 0;
+        this.frames = 2; // Количество кадров анимации бега
       }
 
       draw() {
-        ctx.drawImage(dinoImg, this.x, this.y, this.w, this.h);
+        // Вырезаем нужный кадр из спрайта
+        const spriteX = this.frame * this.w; 
+        ctx.drawImage(dinoImg, spriteX, 0, this.w, this.h, this.x, this.y, this.w, this.h);
       }
 
       jump() {
@@ -57,7 +63,10 @@ function DinoGame() {
       }
 
       update(canvasHeight) {
-        this.jump();
+        // --- ИСПРАВЛЕНИЕ: Прыжок ТОЛЬКО если нажата кнопка "Space" ---
+        if (keys['Space']) {
+          this.jump();
+        }
         
         if (!this.grounded) {
           this.dy += gravity;
@@ -69,6 +78,14 @@ function DinoGame() {
           this.dy = 0;
           this.grounded = true;
         }
+        
+        // --- Анимация бега ---
+        this.frameCounter++;
+        if (this.frameCounter >= this.frameRate) {
+            this.frameCounter = 0;
+            this.frame = (this.frame + 1) % this.frames; // Переключаем кадры
+        }
+
         this.draw();
       }
     }
