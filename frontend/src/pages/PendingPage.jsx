@@ -2,13 +2,13 @@
 
 import React from 'react';
 import styles from './StatusPages.module.css';
-// --- 1. ИМПОРТИРУЕМ НАШУ ИГРУ ---
 import DinoGame from '../components/DinoGame';
 
 function PendingPage() {
   return (
-    // Используем React Fragment, чтобы не добавлять лишних div
-    <>
+    // Оборачиваем все содержимое в единый div, чтобы стили работали корректно
+    // Исключаем лишний Fragment, так как PageLayout не используется здесь
+    <div className={styles.pendingPageContainer}> {/* НОВЫЙ КОНТЕЙНЕР */}
       <div className={styles.statusPage}>
         <div className={styles.icon}>⏳</div>
         <h1>Заявка на рассмотрении</h1>
@@ -16,9 +16,11 @@ function PendingPage() {
         <p className={styles.subtleHint}>А пока можно поиграть:</p>
       </div>
 
-      {/* --- 2. ДОБАВЛЯЕМ КОМПОНЕНТ С ИГРОЙ --- */}
-      <DinoGame />
-    </>
+      {/* --- ИСПРАВЛЕНИЕ: Обёртка для игры в виде карточки --- */}
+      <div className={styles.gameCard}> {/* НОВЫЙ КЛАСС */}
+        <DinoGame />
+      </div>
+    </div>
   );
 }
 
