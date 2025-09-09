@@ -7,14 +7,25 @@ function PageLayout({ title, children }) {
   return (
     <div className={styles.pageContainer}>
       
-      {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
-      {/* Теперь в шапке только один элемент - заголовок. 
-          Логотип и узоры теперь являются частью фона в CSS.
-      */}
       <div className={styles.header}>
+        {/* Этот контейнер будет использовать flexbox для точного выравнивания */}
+        <div className={styles.headerContent}>
+          {/* 1. Логотип "C" */}
+          <img 
+            src="https://i.postimg.cc/YqcmJB37/6.webp" 
+            alt="Лого" 
+            className={styles.headerLogo} 
+          />
+          {/* 2. Волнистая линия */}
+          <img
+            src="https://i.postimg.cc/bvMHvzWv/Line-18.webp"
+            alt="Разделитель"
+            className={styles.headerLine}
+          />
+          {/* 3. Название раздела */}
           <h1 className={styles.headerTitle}>{title}</h1>
+        </div>
       </div>
-      {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
 
       <div className={styles.contentArea}>
         {children}
