@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
-import { getPreloadedData } from '../preloader';
+import { getCachedData } from '../storage';
 
 // 1. Принимаем новую функцию onPurchaseSuccess в пропсах
 function MarketplacePage({ user, onPurchaseSuccess }) {
