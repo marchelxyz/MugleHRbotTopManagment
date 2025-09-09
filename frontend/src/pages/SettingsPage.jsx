@@ -13,6 +13,12 @@ function SettingsPage({ onBack, onNavigate }) {
   const supportUrl = 'https://t.me/your_support_account'; // <-- ЗАМЕНИТЕ НА ВАШ АККАУНТ
 
   return (
+
+    <PageLayout title="Настройки">
+      <div className={styles.infoIcon} onClick={() => setInfoVisible(!infoVisible)}>
+        <FaInfoCircle />
+      </div>
+    
     <PageLayout title=" ">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад в профиль</button>
       <h1>Настройки и помощь</h1>
