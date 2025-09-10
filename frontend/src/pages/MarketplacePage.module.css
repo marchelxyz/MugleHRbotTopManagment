@@ -52,3 +52,22 @@
   background-color: #a3d9b1;
   cursor: not-allowed;
 }
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ ПОЛЗУНКА --- */
+.sliderContainer {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.quantitySlider {
+  width: 100%;
+  cursor: pointer;
+}
+
+.quantityLabel {
+  display: block;
+  margin-top: 5px;
+  font-size: 14px;
+  color: #555;
+  font-weight: bold;
+}
