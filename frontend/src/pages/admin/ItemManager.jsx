@@ -33,6 +33,7 @@ function ItemManager() {
   
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isStatix, setIsStatix] = useState(false);
 
   // Загружаем все данные при старте
   useEffect(() => {
@@ -72,6 +73,7 @@ function ItemManager() {
       ...form,
       price_rub: parseInt(form.price_rub, 10),
       stock: parseInt(form.stock, 10),
+      is_statix_bonus: isStatix,
     };
     try {
       if (editingItemId) {
@@ -98,12 +100,14 @@ function ItemManager() {
       price_rub: item.price_rub,
       stock: item.stock,
     });
+    setIsStatix(item.is_statix_bonus); // <-- 3. Устанавливаем состояние галочки при редактировании
     window.scrollTo(0, 0);
   };
-
+    
   const resetForm = () => {
     setForm(initialItemState);
     setEditingItemId(null);
+    setIsStatix(false);
   };
 
   const handleArchive = async (itemId) => {
@@ -128,7 +132,22 @@ function ItemManager() {
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
+
+          {/* --- 5. ДОБАВЬТЕ ЭТОТ БЛОК С ГАЛОЧКОЙ --- */}
+          <label className={styles.checkboxLabel}>
+            <input 
+              type="checkbox" 
+              name="is_statix_bonus" 
+              checked={isStatix} 
+              onChange={(e) => setIsStatix(e.target.checked)} 
+            />
+            Это Statix бонус (требует ручного начисления)
+          </label>
           
+          <button type="submit" disabled={loading} className={styles.buttonGreen}>
+            {editingItemId ? 'Сохранить' : 'Создать'}
+          </button>
+            
           {form.price_rub > 0 && (
             <div className={styles.pricePreview}>
               <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
