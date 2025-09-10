@@ -8,6 +8,7 @@ TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
+EDIT_MESSAGE_URL = f"{TELEGRAM_API_URL}editMessageText"
 
 # --- ИЗМЕНЕНИЕ: Функция теперь может принимать кнопки и ID темы ---
 async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None):
@@ -46,3 +47,17 @@ async def answer_callback_query(callback_query_id: str):
         except Exception as e:
             print(f"Could not answer callback query. Error: {e}")
 # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+async def edit_telegram_message(chat_id: int, message_id: int, text: str):
+    """Асинхронно редактирует текст существующего сообщения."""
+    payload = {
+        'chat_id': chat_id,
+        'message_id': message_id,
+        'text': text,
+        'parse_mode': 'Markdown'
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(EDIT_MESSAGE_URL, json=payload)
+        except Exception as e:
+            print(f"Could not edit message. Error: {e}")
