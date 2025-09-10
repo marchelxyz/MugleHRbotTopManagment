@@ -1,0 +1,50 @@
+/* frontend/src/pages/RegistrationPage.module.css */
+
+.page {}
+
+/* Добавляем стиль для подзаголовка, чтобы он выглядел аккуратно */
+.subtitle {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.form {
+  margin-top: 20px;
+}
+.input {
+  display: block;
+  width: 80%;
+  padding: 12px;
+  margin: 0 auto 10px auto; /* Центрируем и добавляем отступ снизу */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.submitButton {
+  width: 85%;
+  padding: 15px; /* Увеличим отступ для солидности */
+  border: none;
+  border-radius: 20px; /* Сделаем скругление как у других кнопок */
+  /* --- ИСПРАВЛЕНИЕ: Меняем цвет --- */
+  background-color: #5CA14A; 
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 10px auto 0 auto; /* Центрируем кнопку */
+  display: block; /* Необходимо для работы auto margin */
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+}
+
+.submitButton:disabled {
+  background-color: #a3d9b1; /* Цвет для неактивной кнопки */
+  cursor: not-allowed;
+}
+
+.error {
+  color: red;
+  margin-top: 15px;
+}
