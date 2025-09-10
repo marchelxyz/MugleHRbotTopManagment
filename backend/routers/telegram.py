@@ -4,7 +4,8 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, models, schemas
 from database import get_db, settings
-from bot import send_telegram_message, answer_callback_query
+# ДОБАВЛЕН НЕДОСТАЮЩИЙ ИМПОРТ
+from bot import send_telegram_message, answer_callback_query, edit_telegram_message 
 
 router = APIRouter()
 
@@ -13,7 +14,6 @@ async def telegram_test():
     print("--- DEBUG: TEST ENDPOINT WAS CALLED SUCCESSFULLY! ---")
     return {"status": "ok"}
 
-# --- ИСПРАВЛЕНИЕ: Оборачиваем всю функцию в правильный try/except ---
 @router.post("/telegram/webhook")
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     try:
@@ -40,7 +40,6 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         await send_telegram_message(user.telegram_id, "✅ Ваша бонусная карта успешно добавлена в профиль!")
 
         # Обработка нажатия на inline-кнопку
-        # Обработка нажатия на inline-кнопку
         elif "callback_query" in data:
             callback_query = data["callback_query"]
             await answer_callback_query(callback_query["id"]) # Сразу убираем "часики"
@@ -48,13 +47,12 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             callback_data = callback_query["data"] # например "approve_10" ИЛИ "approve_update_5"
             admin_username = callback_query["from"].get("username", "Администратор")
 
-            # --- НАЧАЛО ИЗМЕНЕНИЙ: Перестраиваем логику проверки ---
-
-            # 1. ПРОВЕРЯЕМ НОВЫЙ КОЛБЭК ДЛЯ STATIX
+            # ================= НАЧАЛО ИСПРАВЛЕННОГО БЛОКА ЛОГИКИ =================
+            
+            # Шаг 1: Проверяем самый уникальный колбэк для Statix
             if callback_data.startswith("statix_sent_"):
                 purchase_id = int(callback_data.split("_")[-1])
                 
-                # Вызываем нашу новую CRUD функцию
                 purchase = await crud.fulfill_statix_purchase(db, purchase_id)
                 
                 if purchase:
@@ -71,36 +69,26 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         text=new_admin_text
                     )
 
-            # 2. ПРОВЕРЯЕМ КОЛБЭКИ ОБНОВЛЕНИЯ ПРОФИЛЯ (уже есть)
+            # Шаг 2: Проверяем более конкретный колбэк для обновления профиля
             elif callback_data.startswith("approve_update_") or callback_data.startswith("reject_update_"):
-                # ... (существующая логика)
-
-            # 3. ПРОВЕРЯЕМ КОЛБЭКИ РЕГИСТРАЦИИ (уже есть)
-            elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
-    pass 
-            # 1. СНАЧАЛА ПРОВЕРЯЕМ НОВЫЕ КОЛБЭКИ (Обновление профиля)
-            if callback_data.startswith("approve_update_") or callback_data.startswith("reject_update_"):
-                
                 action_type = callback_data.split("_")[0] # "approve" или "reject"
                 update_id = int(callback_data.split("_")[-1]) # id из таблицы PendingUpdate
 
-                # Вызываем нашу новую CRUD функцию
                 (user, status) = await crud.process_profile_update(db, update_id, action_type)
                 
                 if user and status == "approved":
                     await send_telegram_message(user.telegram_id, "✅ Администратор одобрил ваши изменения в профиле!")
                     await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{user.username or user.first_name} одобрены адм. @{admin_username}.", 
-                                                message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
-                    
+                                                  message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID)
+                
                 elif user and status == "rejected":
                     await send_telegram_message(user.telegram_id, "❌ Администратор отклонил ваши изменения в профиле.")
                     await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{user.username or user.first_name} отклонены адм. @{admin_username}.", 
-                                                message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
+                                                  message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID)
                 # Если status == None, значит запрос уже был обработан, ничего не делаем.
 
-            # 2. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
+            # Шаг 3: Проверяем самый общий колбэк для регистрации (ОН ДОЛЖЕН БЫТЬ ПОСЛЕДНИМ)
             elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
-                # --- Это СТАРАЯ ЛОГИКА (оставляем ее) ---
                 user_id = int(callback_data.split("_")[1])
                 action = callback_data.split("_")[0]
 
@@ -117,11 +105,13 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     await send_telegram_message(user.telegram_id, "❌ В регистрации отказано.")
                     await send_telegram_message(settings.TELEGRAM_CHAT_ID, f"❌ Авторизация @{user.username or user.first_name} отклонена администратором @{admin_username}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
             
-            # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+            # ================= КОНЕЦ ИСПРАВЛЕННОГО БЛОКА ЛОГИКИ =================
 
     except Exception as e:
-        # ... (логирование ошибок)
-        print(f"Error in telegram webhook: {e}")
+        # Важно логировать ошибки, чтобы понимать, что пошло не так
+        print(f"!!! CRITICAL Error in telegram webhook: {e}")
+        # Можно также добавить отправку уведомления об ошибке администратору
+        # await send_telegram_message(YOUR_ADMIN_ID, f"Webhook Error: {e}")
 
-    # В любом случае возвращаем Telegram "ok"
+    # В любом случае возвращаем Telegram "ok", чтобы он не пытался повторить запрос
     return {"ok": True}
