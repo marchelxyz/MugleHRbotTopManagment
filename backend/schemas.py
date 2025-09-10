@@ -63,6 +63,7 @@ class UserResponse(UserBase):
 class MarketItemResponse(MarketItemBase):
     price_rub: int
     is_archived: bool
+    is_statix_bonus: bool
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
@@ -97,6 +98,7 @@ class TransferRequest(BaseModel):
 class PurchaseRequest(BaseModel):
     user_id: int
     item_id: int
+    quantity: int = 1
     
 class PurchaseResponse(BaseModel):
     message: str
@@ -108,6 +110,7 @@ class MarketItemCreate(BaseModel):
     description: Optional[str] = None
     price_rub: int
     stock: int
+    is_statix_bonus: bool = False
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
@@ -115,6 +118,7 @@ class MarketItemUpdate(BaseModel):
     description: Optional[str] = None
     price_rub: Optional[int] = None
     stock: Optional[int] = None
+    is_statix_bonus: Optional[bool] = None
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
