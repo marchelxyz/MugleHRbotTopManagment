@@ -3,16 +3,71 @@ import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
-import { getCachedData } from '../storage';
+import { getCachedData, clearCache } from '../storage'; // <-- Импортируем clearCache
 
-// 1. Принимаем новую функцию onPurchaseSuccess в пропсах
+// --- 1. СОЗДАЕМ ОТДЕЛЬНЫЙ КОМПОНЕНТ ДЛЯ КАРТОЧКИ ТОВАРА ---
+function ItemCard({ item, user, onPurchaseSuccess }) {
+  // Локальное состояние для количества, по умолчанию 1
+  const [quantity, setQuantity] = useState(1);
+  const totalCost = item.price * quantity;
+  const canAfford = user?.balance >= totalCost;
+
+  const handlePurchase = async () => {
+    if (!user) return;
+    if (!window.confirm(`Купить "${item.name}" (x${quantity}) за ${totalCost} спасибок?`)) return;
+    
+    try {
+      const response = await purchaseItem(user.id, item.id, quantity);
+      onPurchaseSuccess({ balance: response.data.new_balance });
+      alert(`Покупка совершена! Детали будут отправлены вам в чат с ботом.`);
+    } catch (error) {
+      alert(`Ошибка: ${error.response?.data?.detail || 'Не удалось совершить покупку.'}`);
+    }
+  };
+
+  return (
+    <div className={styles.itemCard}>
+      <h2 className={styles.itemName}>{item.name}</h2>
+      <p className={styles.itemDescription}>{item.description}</p>
+      
+      {/* --- 2. ЛОГИКА ОТОБРАЖЕНИЯ ПОЛЗУНКА --- */}
+      {item.is_statix_bonus && item.stock > 1 && (
+        <div className={styles.sliderContainer}>
+          <input 
+            type="range"
+            min="1"
+            max={Math.min(item.stock, 50)} // Ограничиваем максимальное значение для удобства
+            value={quantity}
+            onChange={(e) => setQuantity(parseInt(e.target.value, 10))}
+            className={styles.quantitySlider}
+          />
+          <span className={styles.quantityLabel}>Кол-во: {quantity}</span>
+        </div>
+      )}
+
+      <p className={styles.itemPrice}>
+        Цена: {totalCost} спасибок 
+        {quantity > 1 && ` (${item.price} за шт.)`}
+      </p>
+
+      <button 
+        onClick={handlePurchase} 
+        className={styles.purchaseButton}
+        disabled={!canAfford || item.stock < quantity}
+      >
+        {canAfford ? 'Купить' : 'Недостаточно средств'}
+      </button>
+    </div>
+  );
+}
+
+
+// --- 3. ГЛАВНЫЙ КОМПОНЕНТ СТРАНИЦЫ ---
 function MarketplacePage({ user, onPurchaseSuccess }) {
-  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
   const [items, setItems] = useState(() => getCachedData('market'));
-  const [isLoading, setIsLoading] = useState(!items); 
+  const [isLoading, setIsLoading] = useState(!items);
   
   useEffect(() => {
-    // Если данные не были в кэше, загружаем их
     if (!items) {
       const fetchItems = async () => {
         try {
@@ -25,56 +80,23 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     }
   }, [items]);
 
-// frontend/src/pages/MarketplacePage.jsx
-
-  const handlePurchase = async (itemId) => {
-    if (!user) {
-      alert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.");
-      return;
-    }
-    // Можно оставить confirm для подтверждения
-    if (!window.confirm("Вы уверены, что хотите купить этот товар?")) return;
-    
-    try {
-      const response = await purchaseItem(user.id, itemId);
-      
-      // --- НАЧАЛО ИЗМЕНЕНИЙ ---
-      // 2. Обновляем баланс пользователя в главном компоненте
-      onPurchaseSuccess({ balance: response.data.new_balance });
-
-      // 3. Показываем более приятное сообщение
-      alert(`Покупка совершена! Детали отправлены вам в чат с ботом.`);
-      
-      // Перезагрузка больше не нужна, так как баланс обновился
-      // window.location.reload();
-} catch (error) {
-      let errorMessage = 'Не удалось совершить покупку.';
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      }
-      alert(`Ошибка: ${errorMessage}`);
-    }
+  const handlePurchaseWrapper = (newUserData) => {
+    clearCache('market'); // Очищаем кэш после покупки
+    onPurchaseSuccess(newUserData);
   };
-  
+
   return (
-  <PageLayout title="Кафетерий">
-      <p>Ваш баланс: <strong>{user?.balance}</strong> баллов</p>
+    <PageLayout title="Кафетерий">
+      <p>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {items.map(item => (
-            <div key={item.id} className={styles.itemCard}>
-              <h2 className={styles.itemName}>{item.name}</h2>
-              <p className={styles.itemDescription}>{item.description}</p>
-              <p className={styles.itemPrice}>Цена: {item.price} баллов</p>
-              <button 
-                onClick={() => handlePurchase(item.id)} 
-                className={styles.purchaseButton}
-                // Не даем купить, если не хватает баллов
-                disabled={user?.balance < item.price} 
-              >
-                Купить
-              </button>
-            </div>
+            <ItemCard 
+              key={item.id} 
+              item={item} 
+              user={user} 
+              onPurchaseSuccess={handlePurchaseWrapper}
+            />
           ))}
         </div>
       )}
