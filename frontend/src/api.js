@@ -42,9 +42,13 @@ export const requestProfileUpdate = (updateData) => {
 export const getFeed = () => apiClient.get('/transactions/feed');
 export const getLastMonthLeaderboard = () => apiClient.get('/leaderboard/last-month');
 export const getMarketItems = () => apiClient.get('/market/items');
-export const purchaseItem = (userId, itemId) => {
-  // Отправляем и ID пользователя, и ID товара в теле запроса
-  return apiClient.post('/market/purchase', { user_id: userId, item_id: itemId });
+export const purchaseItem = (userId, itemId, quantity = 1) => { // <-- Добавляем quantity
+  // Отправляем все данные в теле запроса
+  return apiClient.post('/market/purchase', { 
+      user_id: userId, 
+      item_id: itemId,
+      quantity: quantity // <-- Добавляем quantity
+    });
 };
 
 export const getUserTransactions = (userId) => {
