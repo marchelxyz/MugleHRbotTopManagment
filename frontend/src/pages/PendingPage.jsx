@@ -1,4 +1,5 @@
 // frontend/src/pages/PendingPage.jsx
+
 import React from 'react';
 import styles from './StatusPages.module.css';
 
