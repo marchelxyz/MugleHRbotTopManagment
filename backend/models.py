@@ -54,15 +54,19 @@ class MarketItem(Base):
     price = Column(Integer, nullable=False)
     price_rub = Column(Integer, nullable=False) 
     stock = Column(Integer, default=0)
+    is_statix_bonus = Column(Boolean, default=False, nullable=False)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
     purchases = relationship("Purchase", back_populates="item")
+    
 
 class Purchase(Base):
     __tablename__ = "purchases"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
+    quantity = Column(Integer, default=1, nullable=False)
+    status = Column(String, default='completed', nullable=False) # 'completed' or 'pending_fulfillment'
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="purchases")
     item = relationship("MarketItem", back_populates="purchases")
