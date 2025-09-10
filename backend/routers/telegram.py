@@ -18,7 +18,7 @@ async def telegram_test():
 async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     try:
         data = await request.json()
-
+        
         # Обработка отправленного файла .pkpass
         if "message" in data and "document" in data["message"]:
             document = data["message"]["document"]
@@ -49,6 +49,34 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             admin_username = callback_query["from"].get("username", "Администратор")
 
             # --- НАЧАЛО ИЗМЕНЕНИЙ: Перестраиваем логику проверки ---
+
+            # 1. ПРОВЕРЯЕМ НОВЫЙ КОЛБЭК ДЛЯ STATIX
+            if callback_data.startswith("statix_sent_"):
+                purchase_id = int(callback_data.split("_")[-1])
+                
+                # Вызываем нашу новую CRUD функцию
+                purchase = await crud.fulfill_statix_purchase(db, purchase_id)
+                
+                if purchase:
+                    # Уведомляем пользователя
+                    user_message = f"✅ Ваши *{purchase.item.name}* (x{purchase.quantity}) были отправлены на вашу карту!"
+                    await send_telegram_message(purchase.user.telegram_id, user_message)
+                    
+                    # Редактируем сообщение в админ-чате
+                    original_message = callback_query["message"]["text"]
+                    new_admin_text = f"{original_message}\n\n*✅ Выполнено администратором @{admin_username}*"
+                    await edit_telegram_message(
+                        chat_id=callback_query["message"]["chat"]["id"],
+                        message_id=callback_query["message"]["message_id"],
+                        text=new_admin_text
+                    )
+
+            # 2. ПРОВЕРЯЕМ КОЛБЭКИ ОБНОВЛЕНИЯ ПРОФИЛЯ (уже есть)
+            elif callback_data.startswith("approve_update_") or callback_data.startswith("reject_update_"):
+                # ... (существующая логика)
+
+            # 3. ПРОВЕРЯЕМ КОЛБЭКИ РЕГИСТРАЦИИ (уже есть)
+            elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
             
             # 1. СНАЧАЛА ПРОВЕРЯЕМ НОВЫЕ КОЛБЭКИ (Обновление профиля)
             if callback_data.startswith("approve_update_") or callback_data.startswith("reject_update_"):
