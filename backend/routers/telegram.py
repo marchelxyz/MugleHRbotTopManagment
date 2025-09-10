@@ -77,7 +77,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
             # 3. ПРОВЕРЯЕМ КОЛБЭКИ РЕГИСТРАЦИИ (уже есть)
             elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
-            
+    pass 
             # 1. СНАЧАЛА ПРОВЕРЯЕМ НОВЫЕ КОЛБЭКИ (Обновление профиля)
             if callback_data.startswith("approve_update_") or callback_data.startswith("reject_update_"):
                 
