@@ -22,6 +22,7 @@ async def purchase_item(
     request: schemas.PurchaseRequest, db: AsyncSession = Depends(get_db)
 ):
     try:
+        # --- ИЗМЕНЕНИЕ: Просто передаем весь объект request ---
         new_balance = await crud.create_purchase(db, request)
         return {"message": "Purchase successful", "new_balance": new_balance}
     except ValueError as e:
