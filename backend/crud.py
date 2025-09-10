@@ -12,6 +12,7 @@ import models, schemas
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
+from bot import send_telegram_message, edit_telegram_message
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -218,66 +219,72 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     }
     
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
-    # 1. Получаем пользователя и товар, как и раньше
     item = await db.get(models.MarketItem, pr.item_id)
     user = await db.get(models.User, pr.user_id)
 
     if not item or not user:
-        raise ValueError("Item or User not found")
-    if item.stock <= 0:
-        raise ValueError("Item out of stock")
-    if user.balance < item.price:
-        raise ValueError("Insufficient balance")
-
-    # 2. Вместо изменения объектов, мы создаем явные запросы на обновление
-    new_balance = user.balance - item.price
+        raise ValueError("Товар или пользователь не найден")
+    if item.stock < pr.quantity:
+        raise ValueError("Товара нет в наличии в таком количестве")
     
-    # Запрос на обновление баланса пользователя
-    user_update_stmt = (
-        update(models.User)
-        .where(models.User.id == pr.user_id)
-        .values(balance=new_balance)
-    )
-    # Запрос на уменьшение остатка товара
-    item_update_stmt = (
-        update(models.MarketItem)
-        .where(models.MarketItem.id == pr.item_id)
-        .values(stock=models.MarketItem.stock - 1)
+    total_cost = item.price * pr.quantity
+    if user.balance < total_cost:
+        raise ValueError("Недостаточно средств")
+
+    # Списываем баланс и остатки
+    user.balance -= total_cost
+    item.stock -= pr.quantity
+    
+    # Создаем запись о покупке
+    db_purchase = models.Purchase(
+        user_id=pr.user_id, 
+        item_id=pr.item_id,
+        quantity=pr.quantity
     )
 
-    # Выполняем оба запроса
-    await db.execute(user_update_stmt)
-    await db.execute(item_update_stmt)
+    # Логика уведомлений
+    if item.is_statix_bonus:
+        # ЭТО STATIX БОНУС
+        db_purchase.status = 'pending_fulfillment'
+        db.add(db_purchase)
+        await db.commit() # Сохраняем, чтобы получить ID покупки
+        await db.refresh(db_purchase)
 
-    # 3. Создаем запись о покупке, как и раньше
-    db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
-    db.add(db_purchase)
-    
-    # 4. Отправляем уведомления (эта часть не меняется)
-    try:
+        admin_message = (
+            f"⚠️ *Новый заказ Statix бонусов!*\n\n"
+            f"👤 *Пользователь:* {user.first_name} {user.last_name}\n"
+            f"🎁 *Товар:* {item.name}\n"
+            f"🔢 *Количество:* {pr.quantity} шт.\n\n"
+            f"👉 *Задача:* Начислите бонусы вручную и нажмите кнопку ниже."
+        )
+        keyboard = {
+            "inline_keyboard": [[
+                {"text": "✅ Бонусы отправлены", "callback_data": f"statix_sent_{db_purchase.id}"}
+            ]]
+        }
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_PURCHASE_TOPIC_ID, 
+            text=admin_message,
+            reply_markup=keyboard
+        )
+
+    else:
+        # ЭТО ОБЫЧНЫЙ ТОВАР
+        db.add(db_purchase)
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
-            f"💼 *Должность:* {user.position}\n\n"
-            f"🎁 *Товар:* {item.name}\n"
-            f"💰 *Стоимость:* {item.price} баллов\n\n"
-            f"📉 *Новый баланс пользователя:* {new_balance} баллов"
+            f"👤 *Пользователь:* {user.first_name} {user.last_name}\n"
+            f"🎁 *Товар:* {item.name} (x{pr.quantity})\n"
+            f"💰 *Стоимость:* {total_cost} спасибок\n"
+            f"📉 *Новый баланс:* {user.balance} спасибок"
         )
-        # Стало (добавляем ID топика для покупок):
         await send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID, 
-            text=admin_message,
-            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+            chat_id=settings.TELEGRAM_PURCHASE_TOPIC_ID, 
+            text=admin_message
         )
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
-    except Exception as e:
-        print(f"Could not send admin notification. Error: {e}")
+        await db.commit()
 
-    # 5. Сохраняем все изменения в базе данных
-    await db.commit()
-    
-    # 6. Возвращаем новый баланс
-    return new_balance
+    return user.balance
     
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
@@ -685,3 +692,21 @@ async def process_profile_update(db: AsyncSession, update_id: int, action: str):
         return user, "rejected"
 
     return None, None
+
+async def fulfill_statix_purchase(db: AsyncSession, purchase_id: int):
+    """
+    Находит покупку и помечает ее как выполненную.
+    Возвращает саму покупку для дальнейшей обработки (отправки уведомления).
+    """
+    result = await db.execute(
+        select(models.Purchase)
+        .where(models.Purchase.id == purchase_id)
+    )
+    purchase = result.scalars().first()
+    
+    if purchase and purchase.status == 'pending_fulfillment':
+        purchase.status = 'completed'
+        await db.commit()
+        await db.refresh(purchase)
+        return purchase
+    return None # Если покупка не найдена или уже выполнена
