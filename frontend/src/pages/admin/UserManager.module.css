@@ -1,0 +1,97 @@
+/* frontend/src/pages/admin/UserManager.module.css (НОВЫЙ ФАЙЛ) */
+
+.userList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.userItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px 15px;
+  gap: 15px;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.userInfo strong {
+  font-size: 16px;
+}
+.userInfo span {
+  font-size: 13px;
+  color: #666;
+}
+
+.userStats {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.userActions {
+  flex-shrink: 0;
+}
+
+/* Стили для модального окна */
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modalContent {
+  background-color: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.modalActions {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.buttonRed {
+  background-color: #e74c3c;
+  color: white;
+}
+.buttonYellow {
+  background-color: #f1c40f;
+  color: #333;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 600px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
