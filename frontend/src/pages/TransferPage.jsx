@@ -1,65 +1,116 @@
 // frontend/src/pages/TransferPage.jsx
 
-import React, { useState, useEffect } from 'react';
-import { getAllUsers, transferPoints } from '../api';
+import React, { useState, useCallback } from 'react';
+import { searchUsers, transferPoints } from '../api'; // Добавляем searchUsers
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
+// --- НАЧАЛО: Новый компонент для поиска ---
+// Функция Debounce, чтобы не слать запрос на каждое нажатие
+const debounce = (func, delay) => {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), delay);
+  };
+};
+
+function UserSearch({ currentUser, onUserSelect }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const performSearch = async (searchQuery) => {
+    if (searchQuery.length < 2) {
+      setResults([]);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const response = await searchUsers(searchQuery);
+      // Фильтруем самого себя из результатов
+      setResults(response.data.filter(u => u.id !== currentUser.id));
+    } catch (error) {
+      console.error("Ошибка поиска:", error);
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const debouncedSearch = useCallback(debounce(performSearch, 300), [currentUser.id]);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+    setIsLoading(true);
+    debouncedSearch(value);
+  };
+
+  const handleUserClick = (user) => {
+    setQuery(`${user.first_name} ${user.last_name}`);
+    setResults([]);
+    onUserSelect(user);
+  };
+
+  return (
+    <div className={styles.searchContainer}> {/* Добавь searchContainer в CSS, если нужно */}
+      <input
+        type="text"
+        value={query}
+        onChange={handleInputChange}
+        placeholder="Введите имя, фамилию или @username..."
+        className={styles.input}
+      />
+      {isLoading && <div className={styles.loader}>Поиск...</div>}
+      {results.length > 0 && (
+        <div className={styles.searchResults}>
+          {results.map((user) => (
+            <div key={user.id} onClick={() => handleUserClick(user)} className={styles.searchResultItem}>
+              {user.first_name} {user.last_name} ({user.position})
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// --- КОНЕЦ: Новый компонент для поиска ---
+
+
 function TransferPage({ user, onBack, onTransferSuccess }) {
-  const [users, setUsers] = useState([]);
-  const [receiverId, setReceiverId] = useState('');
-  // --- ИЗМЕНЕНИЕ: Убираем состояние для суммы ---
-  // const [amount, setAmount] = useState('');
+  // Упрощаем состояния: теперь нам нужен только получатель, сообщение и ошибки
+  const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentUserId = user?.id;
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await getAllUsers();
-        setUsers(response.data.filter(u => u.id !== currentUserId));
-      } catch (error) {
-        setError('Не удалось загрузить список сотрудников.');
-      }
-    };
-    if (currentUserId) {
-      fetchUsers();
-    }
-  }, [currentUserId]);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    // --- ИЗМЕНЕНИЕ: Убираем проверку суммы ---
-    if (!receiverId || !message) {
-      setError('Пожалуйста, заполните все поля.');
+    
+    if (!receiver || !message) {
+      setError('Пожалуйста, выберите получателя и напишите сообщение.');
       return;
     }
-    // --- ИЗМЕНЕНИЕ: Убираем проверку баланса ---
-    // if (user.balance < amount) { ... }
     
     setIsLoading(true);
 
     try {
-      // --- ИЗМЕНЕНИЕ: Формируем объект без amount ---
       const transferData = {
-        sender_id: currentUserId,
-        receiver_id: parseInt(receiverId, 10),
+        sender_id: user.id,
+        receiver_id: receiver.id,
         message: message,
       };
       
       await transferPoints(transferData);
-      setSuccess('Баллы успешно отправлены!');
+      setSuccess('Спасибка успешно отправлена!');
       
-      setReceiverId('');
+      setReceiver(null);
       setMessage('');
       
-      // Вызываем колбэк для возврата на главную и обновления ленты
       setTimeout(() => {
         if(onTransferSuccess) onTransferSuccess();
       }, 1000);
@@ -76,7 +127,6 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
     <PageLayout title="Отправить спасибку">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
-      {/* Отображаем дневной лимит, если он есть в данных пользователя */}
       {user?.daily_transfer_count !== undefined && (
           <div className={styles.balanceInfo}>
               <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
@@ -86,17 +136,9 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
           <label className={styles.label}>Кому:</label>
-          <select value={receiverId} onChange={(e) => setReceiverId(e.target.value)} className={styles.select}>
-            <option value="">Выберите сотрудника</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.first_name} {u.last_name} ({u.position})
-              </option>
-            ))}
-          </select>
+          {/* Используем наш новый компонент поиска */}
+          <UserSearch currentUser={user} onUserSelect={setReceiver} />
         </div>
-
-        {/* --- ИЗМЕНЕНИЕ: Полностью удаляем блок для ввода суммы --- */}
 
         <div className={styles.formGroup}>
           <label className={styles.label}>За что (обязательно):</label>
@@ -108,7 +150,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             className={styles.textarea}
           ></textarea>
         </div>
-        <button type="submit" disabled={isLoading} className={styles.submitButton}>
+        <button type="submit" disabled={isLoading || !receiver} className={styles.submitButton}>
           {isLoading ? 'Отправка...' : 'Отправить спасибку'}
         </button>
         {error && <p className={styles.error}>{error}</p>}
