@@ -710,3 +710,58 @@ async def search_users_by_name(db: AsyncSession, query: str):
         ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
     )
     return result.scalars().all()
+
+# --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ АДМИН-ПАНЕЛИ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
+async def get_all_users_for_admin(db: AsyncSession):
+    """Получает всех пользователей для админ-панели."""
+    result = await db.execute(select(models.User).order_by(models.User.last_name))
+    return result.scalars().all()
+
+async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate):
+    """Обновляет данные пользователя от имени администратора."""
+    user = await get_user(db, user_id)
+    if not user:
+        return None
+    
+    update_data = user_data.model_dump(exclude_unset=True)
+    
+    for key, value in update_data.items():
+        # Конвертируем дату, если она пришла
+        if key == 'date_of_birth' and value:
+            try:
+                value = date.fromisoformat(value)
+            except (ValueError, TypeError):
+                value = None
+        setattr(user, key, value)
+        
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+async def admin_delete_user(db: AsyncSession, user_id: int):
+    """
+    "Мягкое" удаление: сбрасывает данные пользователя и отправляет его на регистрацию.
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        return False
+    
+    # Сбрасываем основные данные
+    user.last_name = "Удален"
+    user.department = "-"
+    user.position = "-"
+    user.phone_number = None
+    user.date_of_birth = None
+    user.balance = 0
+    user.tickets = 0
+    user.ticket_parts = 0
+    user.is_admin = False
+    user.card_barcode = None
+    user.card_balance = None
+    
+    # Главное: меняем статус, чтобы его выкинуло на регистрацию
+    user.status = 'pending' 
+    
+    await db.commit()
+    return True
