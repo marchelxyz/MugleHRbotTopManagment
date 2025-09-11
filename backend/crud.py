@@ -12,6 +12,7 @@ import models, schemas
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
+from sqlalchemy import or_
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
