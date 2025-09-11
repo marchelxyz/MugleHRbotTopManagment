@@ -178,3 +178,12 @@ export const deleteUserCard = () => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+export const searchUsers = (query) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Обращаемся к эндпоинту, который ты уже создал на бэкенде
+  return apiClient.get(`/users/search/?query=${query}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
