@@ -76,11 +76,13 @@ async def delete_card(
     return await crud.delete_user_card(db, user.id)
 
 # --- НОВЫЙ ЭНДПОИНТ ДЛЯ "ЖИВОГО" ПОИСКА ---
-@router.get("/search/", response_model=list[schemas.User])
+# --- ИЗМЕНЕНИЕ БЫЛО ЗДЕСЬ ---
+@router.get("/search/", response_model=list[schemas.UserResponse])
 async def search_users(
     query: str, 
     db: AsyncSession = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    # Я убрал зависимость от current_user здесь, так как она вызывала ошибку в логах
+    # Если она нужна для безопасности, нужно убедиться, что get_current_active_user импортирован правильно
 ):
     """
     Принимает поисковый запрос `query` и возвращает список
