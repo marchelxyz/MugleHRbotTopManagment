@@ -130,6 +130,20 @@ class ProfileUpdateRequest(BaseModel):
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
 
+# --- НОВАЯ СХЕМА ДЛЯ РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ АДМИНОМ ---
+class AdminUserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    phone_number: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    balance: Optional[int] = None
+    tickets: Optional[int] = None
+    ticket_parts: Optional[int] = None
+    status: Optional[str] = None # Позволяем менять статус ('approved', 'blocked')
+    is_admin: Optional[bool] = None
+
 class BannerBase(OrmBase):
     image_url: str
     link_url: Optional[str] = None
