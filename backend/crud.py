@@ -686,3 +686,27 @@ async def process_profile_update(db: AsyncSession, update_id: int, action: str):
         return user, "rejected"
 
     return None, None
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+async def search_users_by_name(db: AsyncSession, query: str):
+    """
+    Ищет пользователей по частичному совпадению в имени, фамилии или юзернейме.
+    Поиск регистронезависимый.
+    """
+    if not query:
+        return []
+    
+    # Создаем шаблон для поиска "внутри" строки (например, "ан" найдет "Иван")
+    search_query = f"%{query}%"
+    
+    result = await db.execute(
+        select(models.User).filter(
+            or_(
+                models.User.first_name.ilike(search_query),
+                # Если у тебя есть поле last_name, раскомментируй строку ниже
+                # models.User.last_name.ilike(search_query),
+                models.User.username.ilike(search_query)
+            )
+        ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
+    )
+    return result.scalars().all()
