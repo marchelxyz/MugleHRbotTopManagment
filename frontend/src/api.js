@@ -14,14 +14,14 @@ export const checkUserStatus = (telegramId) => {
 };
 
 export const registerUser = (telegramId, userData) => {
-  return apiClient.post('/auth/register', userData, {
+  return apiClient.post('/users/auth/register', userData, {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 // НОВАЯ ФУНКЦИЯ
 export const getAllUsers = (telegramId) => {
-  return apiClient.get('/users', {
+  return apiClient.get('/users/', {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
