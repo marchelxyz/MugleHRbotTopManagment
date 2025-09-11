@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, schemas, models
 from database import get_db
-# --- ИСПРАВЛЕНИЕ: Добавляем этот импорт ---
+# Импортируем нашу зависимость-"охранника"
 from dependencies import get_current_user 
 
 router = APIRouter(
@@ -43,22 +43,16 @@ async def update_me(
 ):
     return await crud.update_user_profile(db, user_id=user.id, data=user_data)
 
-# --- ДОБАВЬТЕ ЭТОТ НОВЫЙ ЭНДПОИНТ ---
 @router.post("/users/me/request-update", status_code=status.HTTP_202_ACCEPTED)
 async def request_profile_update_route(
-    update_request: schemas.ProfileUpdateRequest, # Используем новую схему
+    update_request: schemas.ProfileUpdateRequest,
     user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Пользователь отправляет запрос на изменение данных. 
-    Мы создаем PendingUpdate и отправляем уведомление админу.
-    """
     try:
         await crud.request_profile_update(db, user, update_request)
         return {"detail": "Update request submitted for approval."}
     except ValueError as e:
-        # Ловим ошибку "Изменений не найдено" из CRUD
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         print(f"Error requesting profile update: {e}")
@@ -75,14 +69,13 @@ async def delete_card(
 ):
     return await crud.delete_user_card(db, user.id)
 
-# --- НОВЫЙ ЭНДПОИНТ ДЛЯ "ЖИВОГО" ПОИСКА ---
-# --- ИЗМЕНЕНИЕ БЫЛО ЗДЕСЬ ---
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ "ЖИВОГО" ПОИСКА (ТЕПЕРЬ С ЗАЩИТОЙ) ---
 @router.get("/search/", response_model=list[schemas.UserResponse])
 async def search_users(
     query: str, 
     db: AsyncSession = Depends(get_db),
-    # Я убрал зависимость от current_user здесь, так как она вызывала ошибку в логах
-    # Если она нужна для безопасности, нужно убедиться, что get_current_active_user импортирован правильно
+    # ВОТ ОН, НАШ "ОХРАННИК". Он проверит, что запрос делает авторизованный пользователь
+    current_user: models.User = Depends(get_current_user)
 ):
     """
     Принимает поисковый запрос `query` и возвращает список
