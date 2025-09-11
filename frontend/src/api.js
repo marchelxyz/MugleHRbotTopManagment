@@ -187,3 +187,26 @@ export const searchUsers = (query) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
+export const adminGetAllUsers = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/users', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminUpdateUser = (userId, userData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/users/${userId}`, userData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminDeleteUser = (userId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/users/${userId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
