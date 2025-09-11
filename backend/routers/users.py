@@ -6,7 +6,10 @@ from database import get_db
 # --- ИСПРАВЛЕНИЕ: Добавляем этот импорт ---
 from dependencies import get_current_user 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+)
 
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -71,3 +74,20 @@ async def delete_card(
     db: AsyncSession = Depends(get_db)
 ):
     return await crud.delete_user_card(db, user.id)
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ "ЖИВОГО" ПОИСКА ---
+@router.get("/search/", response_model=list[schemas.User])
+async def search_users(
+    query: str, 
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    Принимает поисковый запрос `query` и возвращает список
+    пользователей, подходящих под критерии поиска.
+    """
+    if not query.strip():
+        return []
+    
+    users = await crud.search_users_by_name(db, query=query)
+    return users
