@@ -721,33 +721,63 @@ async def get_all_users_for_admin(db: AsyncSession):
 async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
     """
     Обновляет данные пользователя от имени администратора и отправляет лог.
+    (Версия с исправленной логикой сравнения)
     """
     user = await get_user(db, user_id)
     if not user:
         return None
     
     update_data = user_data.model_dump(exclude_unset=True)
-    
-    # Собираем лог изменений
     changes_log = []
+
+    # Проходим по всем полям, которые пришли с фронтенда
     for key, new_value in update_data.items():
         old_value = getattr(user, key, None)
-        if str(old_value) != str(new_value):
+        
+        # --- НАЧАЛО НОВОЙ, УМНОЙ ЛОГИКИ СРАВНЕНИЯ ---
+        is_changed = False
+        
+        # 1. Отдельно обрабатываем дату, т.к. сравниваем объект date и строку
+        if isinstance(old_value, date):
+            old_value_str = old_value.isoformat()
+            if old_value_str != new_value:
+                is_changed = True
+        # 2. Отдельно обрабатываем None и пустые строки для текстовых полей
+        elif (old_value is None and new_value != "") or \
+             (new_value is None and old_value != ""):
+            # Считаем изменением, если было "ничего", а стала пустая строка (и наоборот)
+            # Это можно закомментировать, если такое поведение не нужно
+            if str(old_value) != str(new_value):
+                 is_changed = True
+        # 3. Сравниваем все остальные типы (числа, строки, булевы) напрямую
+        elif type(old_value) != type(new_value) and old_value is not None:
+             # Если типы разные (например, int и str), пытаемся привести к типу из БД
+             try:
+                 if old_value != type(old_value)(new_value):
+                     is_changed = True
+             except (ValueError, TypeError):
+                 is_changed = True # Не смогли привести типы - точно изменение
+        elif old_value != new_value:
+            is_changed = True
+        # --- КОНЕЦ НОВОЙ ЛОГИКИ СРАВНЕНИЯ ---
+
+        if is_changed:
             changes_log.append(f"  - {key}: `{old_value}` -> `{new_value}`")
         
-        # Конвертируем дату, если она пришла
+        # Применяем изменения к объекту пользователя (конвертируя дату)
         if key == 'date_of_birth' and new_value:
             try:
-                new_value = date.fromisoformat(new_value)
+                setattr(user, key, date.fromisoformat(new_value))
             except (ValueError, TypeError):
-                new_value = None
-        setattr(user, key, new_value)
+                setattr(user, key, None)
+        else:
+            setattr(user, key, new_value)
     
-    await db.commit()
-    await db.refresh(user)
-
-    # Отправляем уведомление, если были изменения
+    # Отправляем уведомление, только если были реальные изменения
     if changes_log:
+        await db.commit()
+        await db.refresh(user)
+
         admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
         target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
         
@@ -763,6 +793,9 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             text=log_message,
             message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
         )
+    else:
+        # Если изменений не было, ничего не сохраняем и не отправляем
+        pass
 
     return user
 
