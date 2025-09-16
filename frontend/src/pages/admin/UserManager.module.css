@@ -1,4 +1,4 @@
-/* frontend/src/pages/admin/UserManager.module.css (НОВЫЙ ФАЙЛ) */
+/* frontend/src/pages/admin/UserManager.module.css */
 
 .userList {
   display: flex;
@@ -21,9 +21,13 @@
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  min-width: 0; /* Для правильного переноса текста, если нужно */
 }
 .userInfo strong {
   font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .userInfo span {
   font-size: 13px;
@@ -42,7 +46,15 @@
   flex-shrink: 0;
 }
 
-/* Стили для модального окна */
+/* --- НОВЫЙ СТИЛЬ ДЛЯ КНОПКИ-ИКОНКИ --- */
+.iconButton {
+  padding: 8px 10px; /* Делаем ее чуть крупнее */
+  font-size: 14px;
+}
+
+
+/* --- ИЗМЕНЕНИЯ В СТИЛЯХ МОДАЛЬНОГО ОКНА --- */
+
 .modalBackdrop {
   position: fixed;
   top: 0;
@@ -53,7 +65,10 @@
   z-index: 1000;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start; /* Выравниваем по верху */
+  padding-top: 120px; /* Опускаем содержимое на 120px */
+  overflow-y: auto; /* Добавляем скролл, если окно не помещается */
+  box-sizing: border-box;
 }
 
 .modalContent {
@@ -63,23 +78,52 @@
   width: 90%;
   max-width: 600px;
   box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  position: relative; /* Для позиционирования кнопки закрытия */
+}
+
+/* Кнопка-крестик для закрытия */
+.closeButton {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #888;
+    cursor: pointer;
 }
 
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
-  margin-bottom: 20px;
+  margin: 20px 0;
 }
 
+/* Располагаем кнопки друг под другом */
 .modalActions {
   margin-top: 15px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column; /* ГЛАВНОЕ ИЗМЕНЕНИЕ */
   gap: 10px;
-  justify-content: flex-end;
 }
 
+/* Общий стиль для всех кнопок в модалке */
+.modalButton {
+  width: 100%;
+  padding: 12px 25px;
+  font-size: 16px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  font-weight: bold;
+}
+.modalButton:hover {
+    opacity: 0.9;
+}
+
+/* Цвета для кнопок (наследуют общий стиль .modalButton) */
 .buttonRed {
   background-color: #e74c3c;
   color: white;
@@ -88,6 +132,7 @@
   background-color: #f1c40f;
   color: #333;
 }
+
 
 /* Адаптация для мобильных */
 @media (max-width: 600px) {
