@@ -12,6 +12,7 @@ import models, schemas
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
+from sqlalchemy import or_
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -685,3 +686,146 @@ async def process_profile_update(db: AsyncSession, update_id: int, action: str):
         return user, "rejected"
 
     return None, None
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+async def search_users_by_name(db: AsyncSession, query: str):
+    """
+    Ищет пользователей по частичному совпадению в имени, фамилии или юзернейме.
+    Поиск регистронезависимый.
+    """
+    if not query:
+        return []
+    
+    # Создаем шаблон для поиска "внутри" строки (например, "ан" найдет "Иван")
+    search_query = f"%{query}%"
+    
+    result = await db.execute(
+        select(models.User).filter(
+            or_(
+                models.User.first_name.ilike(search_query),
+                # Если у тебя есть поле last_name, раскомментируй строку ниже
+                # models.User.last_name.ilike(search_query),
+                models.User.username.ilike(search_query)
+            )
+        ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
+    )
+    return result.scalars().all()
+
+# --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ АДМИН-ПАНЕЛИ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
+async def get_all_users_for_admin(db: AsyncSession):
+    """Получает всех пользователей для админ-панели."""
+    result = await db.execute(select(models.User).order_by(models.User.last_name))
+    return result.scalars().all()
+
+async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
+    """
+    Обновляет данные пользователя от имени администратора и отправляет лог.
+    (Версия с исправленной логикой сравнения)
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        return None
+    
+    update_data = user_data.model_dump(exclude_unset=True)
+    changes_log = []
+
+    # Проходим по всем полям, которые пришли с фронтенда
+    for key, new_value in update_data.items():
+        old_value = getattr(user, key, None)
+        
+        # --- НАЧАЛО НОВОЙ, УМНОЙ ЛОГИКИ СРАВНЕНИЯ ---
+        is_changed = False
+        
+        # 1. Отдельно обрабатываем дату, т.к. сравниваем объект date и строку
+        if isinstance(old_value, date):
+            old_value_str = old_value.isoformat()
+            if old_value_str != new_value:
+                is_changed = True
+        # 2. Отдельно обрабатываем None и пустые строки для текстовых полей
+        elif (old_value is None and new_value != "") or \
+             (new_value is None and old_value != ""):
+            # Считаем изменением, если было "ничего", а стала пустая строка (и наоборот)
+            # Это можно закомментировать, если такое поведение не нужно
+            if str(old_value) != str(new_value):
+                 is_changed = True
+        # 3. Сравниваем все остальные типы (числа, строки, булевы) напрямую
+        elif type(old_value) != type(new_value) and old_value is not None:
+             # Если типы разные (например, int и str), пытаемся привести к типу из БД
+             try:
+                 if old_value != type(old_value)(new_value):
+                     is_changed = True
+             except (ValueError, TypeError):
+                 is_changed = True # Не смогли привести типы - точно изменение
+        elif old_value != new_value:
+            is_changed = True
+        # --- КОНЕЦ НОВОЙ ЛОГИКИ СРАВНЕНИЯ ---
+
+        if is_changed:
+            changes_log.append(f"  - {key}: `{old_value}` -> `{new_value}`")
+        
+        # Применяем изменения к объекту пользователя (конвертируя дату)
+        if key == 'date_of_birth' and new_value:
+            try:
+                setattr(user, key, date.fromisoformat(new_value))
+            except (ValueError, TypeError):
+                setattr(user, key, None)
+        else:
+            setattr(user, key, new_value)
+    
+    # Отправляем уведомление, только если были реальные изменения
+    if changes_log:
+        await db.commit()
+        await db.refresh(user)
+
+        admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+        target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+        
+        log_message = (
+            f"✏️ *Админ изменил профиль*\n\n"
+            f"👤 *Администратор:* {admin_name}\n"
+            f"🎯 *Пользователь:* {target_user_name}\n\n"
+            f"*Изменения:*\n" + "\n".join(changes_log)
+        )
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=log_message,
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        )
+    else:
+        # Если изменений не было, ничего не сохраняем и не отправляем
+        pass
+
+    return user
+
+# --- ЗАМЕНИ ЭТУ ФУНКЦИЮ ---
+async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.User):
+    """
+    "Жесткое" удаление: полностью удаляет пользователя из базы данных.
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        return False
+    
+    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+
+    # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Полностью удаляем пользователя ---
+    await db.delete(user)
+    await db.commit()
+
+    # Отправляем уведомление об удалении
+    log_message = (
+        f"🗑️ *Админ удалил пользователя*\n\n"
+        f"👤 *Администратор:* {admin_name}\n"
+        f"🎯 *Пользователь:* {target_user_name}\n\n"
+        f"Запись пользователя была полностью удалена из системы."
+    )
+    await send_telegram_message(
+        chat_id=settings.TELEGRAM_CHAT_ID,
+        text=log_message,
+        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+    )
+
+    return True

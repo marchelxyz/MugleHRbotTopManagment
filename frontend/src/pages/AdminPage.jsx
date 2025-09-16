@@ -4,10 +4,10 @@ import PageLayout from '../components/PageLayout';
 // Импортируем компоненты управления, которые мы сейчас создадим
 import BannerManager from './admin/BannerManager'; 
 import ItemManager from './admin/ItemManager';
+import UserManager from './admin/UserManager';
 import { addPointsToAll, addTicketsToAll } from '../api';
 
 // Пока используем заглушки
-const UserManager = () => <div>Раздел управления пользователями в разработке...</div>;
 const StatsManager = () => <div>Раздел статистики в разработке...</div>;
 
 // --- ИЗМЕНЕНИЕ: Создаем новый компонент для массовых начислений ---
@@ -75,13 +75,14 @@ function AdminPanel() {
       case 'banners': return <BannerManager />;
       case 'items': return <ItemManager />;
       case 'mass-actions': return <MassActions />; // Новый раздел
+      case 'users': return <UserManager />;
       default:
         return (
           <div className={styles.grid}>
             <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
             <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
             <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>
-            <button disabled className={styles.gridButton}>Пользователи (скоро)</button>
+            <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
           </div>
         );
     }

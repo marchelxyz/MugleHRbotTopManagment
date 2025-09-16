@@ -14,14 +14,14 @@ export const checkUserStatus = (telegramId) => {
 };
 
 export const registerUser = (telegramId, userData) => {
-  return apiClient.post('/auth/register', userData, {
+  return apiClient.post('/users/auth/register', userData, {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 // НОВАЯ ФУНКЦИЯ
 export const getAllUsers = (telegramId) => {
-  return apiClient.get('/users', {
+  return apiClient.get('/users/', {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
@@ -177,4 +177,36 @@ export const deleteUserCard = () => {
   return apiClient.delete('/users/me/card', {
     headers: { 'X-Telegram-Id': telegramId },
   });
+};
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+export const searchUsers = (query) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Обращаемся к эндпоинту, который ты уже создал на бэкенде
+  return apiClient.get(`/users/search/?query=${query}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
+export const adminGetAllUsers = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/users', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminUpdateUser = (userId, userData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/users/${userId}`, userData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminDeleteUser = (userId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/users/${userId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };

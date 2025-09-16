@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     TELEGRAM_ADMIN_TOPIC_ID: int
     TELEGRAM_PURCHASE_TOPIC_ID: int
     TELEGRAM_UPDATE_TOPIC_ID: int
+    TELEGRAM_ADMIN_LOG_TOPIC_ID: int
 
     class Config:
         env_file = ".env"

@@ -22,6 +22,7 @@ import RejectedPage from './pages/RejectedPage';
 import RoulettePage from './pages/RoulettePage';
 import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
+import BlockedPage from './pages/BlockedPage';
 
 // Стили
 import './App.css';
@@ -133,6 +134,11 @@ function App() {
     
     if (!user) {
       return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
+    }
+
+    // 2. ДОБАВЛЯЕМ ПРОВЕРКУ НА НОВЫЙ СТАТУС
+    if (user.status === 'blocked') {
+      return <BlockedPage />;
     }
     
     if (user.status === 'pending') {

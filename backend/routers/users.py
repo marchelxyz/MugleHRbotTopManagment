@@ -3,11 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, schemas, models
 from database import get_db
-# --- ИСПРАВЛЕНИЕ: Добавляем этот импорт ---
 from dependencies import get_current_user 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+)
 
+# Путь "/auth/register" правильный, так как он не дублирует префикс
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
@@ -21,18 +24,21 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
         print(f"An error occurred during user creation process: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete registration process.")
 
-@router.get("/users", response_model=list[schemas.UserResponse])
+# --- ИСПРАВЛЕНО: было "/users", стало "/" ---
+@router.get("/", response_model=list[schemas.UserResponse])
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await crud.get_users(db)
 
-@router.get("/users/me", response_model=schemas.UserResponse)
+# --- ИСПРАВЛЕНО: было "/users/me", стало "/me" ---
+@router.get("/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
     user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
 
-@router.put("/users/me", response_model=schemas.UserResponse)
+# --- ИСПРАВЛЕНО: было "/users/me", стало "/me" ---
+@router.put("/me", response_model=schemas.UserResponse)
 async def update_me(
     user_data: schemas.UserUpdate,
     user: models.User = Depends(get_current_user),
@@ -40,34 +46,44 @@ async def update_me(
 ):
     return await crud.update_user_profile(db, user_id=user.id, data=user_data)
 
-# --- ДОБАВЬТЕ ЭТОТ НОВЫЙ ЭНДПОИНТ ---
-@router.post("/users/me/request-update", status_code=status.HTTP_202_ACCEPTED)
+# --- ИСПРАВЛЕНО: было "/users/me/request-update", стало "/me/request-update" ---
+@router.post("/me/request-update", status_code=status.HTTP_202_ACCEPTED)
 async def request_profile_update_route(
-    update_request: schemas.ProfileUpdateRequest, # Используем новую схему
+    update_request: schemas.ProfileUpdateRequest,
     user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Пользователь отправляет запрос на изменение данных. 
-    Мы создаем PendingUpdate и отправляем уведомление админу.
-    """
     try:
         await crud.request_profile_update(db, user, update_request)
         return {"detail": "Update request submitted for approval."}
     except ValueError as e:
-        # Ловим ошибку "Изменений не найдено" из CRUD
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         print(f"Error requesting profile update: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to submit update request.")
 
+# Этот путь правильный, так как он использует user_id
 @router.get("/{user_id}/transactions", response_model=list[schemas.FeedItem])
 async def get_user_transactions_route(user_id: int, db: AsyncSession = Depends(get_db)):
     return await crud.get_user_transactions(db, user_id=user_id)
 
-@router.delete("/users/me/card", response_model=schemas.UserResponse)
+# --- ИСПРАВЛЕНО: было "/users/me/card", стало "/me/card" ---
+@router.delete("/me/card", response_model=schemas.UserResponse)
 async def delete_card(
     user: models.User = Depends(get_current_user), 
     db: AsyncSession = Depends(get_db)
 ):
     return await crud.delete_user_card(db, user.id)
+
+# Этот путь правильный, так как он не дублирует префикс
+@router.get("/search/", response_model=list[schemas.UserResponse])
+async def search_users(
+    query: str, 
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not query.strip():
+        return []
+    
+    users = await crud.search_users_by_name(db, query=query)
+    return users

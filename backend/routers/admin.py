@@ -9,6 +9,7 @@ import schemas
 from dependencies import get_current_admin_user
 from models import User
 from database import get_db
+from fastapi import Response
 
 router = APIRouter()
 
@@ -102,3 +103,41 @@ async def reset_balances_route(
 ):
     await crud.reset_balances(db)
     return {"detail": "Balances reset successfully"}
+
+# --- НАЧАЛО: НОВЫЕ ЭНДПОИНТЫ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ ---
+
+@router.get("/admin/users", response_model=List[schemas.UserResponse])
+async def get_all_users_for_admin_route(
+    admin_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить всех пользователей для админки."""
+    return await crud.get_all_users_for_admin(db)
+
+@router.put("/admin/users/{user_id}", response_model=schemas.UserResponse)
+async def admin_update_user_route(
+    user_id: int,
+    user_data: schemas.AdminUserUpdate,
+    admin_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Обновить профиль пользователя от имени админа."""
+    # Передаем admin_user в CRUD-функцию
+    updated_user = await crud.admin_update_user(db, user_id, user_data, admin_user)
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated_user
+
+# --- ЗАМЕНИ ЭТОТ ЭНДПОИНТ ---
+@router.delete("/admin/users/{user_id}", status_code=204)
+async def admin_delete_user_route(
+    user_id: int,
+    admin_user: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """'Мягкое' удаление пользователя (сброс до регистрации)."""
+    # Передаем admin_user в CRUD-функцию
+    success = await crud.admin_delete_user(db, user_id, admin_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return Response(status_code=204)
