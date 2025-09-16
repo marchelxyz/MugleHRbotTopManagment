@@ -56,8 +56,6 @@ function EditUserModal({ user, onClose, onSave }) {
             <input type="number" name="ticket_parts" value={formData.ticket_parts || 0} onChange={handleChange} placeholder="Части билетов" className={styles.input} />
             <select name="status" value={formData.status} onChange={handleChange} className={styles.select}>
               <option value="approved">Активен</option>
-              <option value="pending">В ожидании</option>
-              <option value="rejected">Отклонен</option>
               <option value="blocked">Заблокирован</option>
             </select>
           </div>
