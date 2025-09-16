@@ -802,37 +802,25 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
 # --- ЗАМЕНИ ЭТУ ФУНКЦИЮ ---
 async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.User):
     """
-    "Мягкое" удаление: сбрасывает данные пользователя и отправляет лог.
+    "Жесткое" удаление: полностью удаляет пользователя из базы данных.
     """
     user = await get_user(db, user_id)
     if not user:
         return False
     
     target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
 
-    # Сбрасываем основные данные
-    user.last_name = "Удален"
-    user.department = "-"
-    user.position = "-"
-    user.phone_number = None
-    user.date_of_birth = None
-    user.balance = 0
-    user.tickets = 0
-    user.ticket_parts = 0
-    user.is_admin = False
-    user.card_barcode = None
-    user.card_balance = None
-    user.status = 'pending' 
-    
+    # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Полностью удаляем пользователя ---
+    await db.delete(user)
     await db.commit()
 
-    # Отправляем уведомление о сбросе
-    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+    # Отправляем уведомление об удалении
     log_message = (
-        f"🗑️ *Админ сбросил пользователя*\n\n"
+        f"🗑️ *Админ удалил пользователя*\n\n"
         f"👤 *Администратор:* {admin_name}\n"
         f"🎯 *Пользователь:* {target_user_name}\n\n"
-        f"Данные пользователя были сброшены, он отправлен на повторную регистрацию."
+        f"Запись пользователя была полностью удалена из системы."
     )
     await send_telegram_message(
         chat_id=settings.TELEGRAM_CHAT_ID,
