@@ -143,7 +143,7 @@ function UserManager() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Начните вводить имя, фамилию или @username..."
+          placeholder="Начните вводить..."
           className={styles.input}
         />
       </div>
