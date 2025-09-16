@@ -1,9 +1,11 @@
-// frontend/src/pages/admin/UserManager.jsx (НОВЫЙ ФАЙЛ)
+// frontend/src/pages/admin/UserManager.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
+// --- 1. ИМПОРТИРУЕМ ИКОНКИ ---
+import { FaPencilAlt, FaTimes } from 'react-icons/fa';
 import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../api';
-import styles from '../AdminPage.module.css'; // Используем общие стили админки
-import userManagerStyles from './UserManager.module.css'; // Создадим свои стили
+import styles from '../AdminPage.module.css';
+import userManagerStyles from './UserManager.module.css';
 
 // Модальное окно для редактирования
 function EditUserModal({ user, onClose, onSave }) {
@@ -27,7 +29,7 @@ function EditUserModal({ user, onClose, onSave }) {
 
   const handleBlockToggle = () => {
     const newStatus = user.status === 'blocked' ? 'approved' : 'blocked';
-    const actionText = newStatus === 'blocked' ? 'заблокировать' : 'разблокировать';
+    const actionText = newStatus === 'blocked' ? 'разблокировать' : 'заблокировать';
     if (window.confirm(`Вы уверены, что хотите ${actionText} пользователя ${user.first_name}?`)) {
       onSave(user.id, { ...formData, status: newStatus });
     }
@@ -36,6 +38,9 @@ function EditUserModal({ user, onClose, onSave }) {
   return (
     <div className={userManagerStyles.modalBackdrop} onClick={onClose}>
       <div className={userManagerStyles.modalContent} onClick={e => e.stopPropagation()}>
+        {/* --- 2. ДОБАВЛЯЕМ КНОПКУ-КРЕСТИК ДЛЯ ЗАКРЫТИЯ --- */}
+        <button onClick={onClose} className={userManagerStyles.closeButton}><FaTimes /></button>
+        
         <h2>Редактирование: {user.first_name} {user.last_name}</h2>
         <form onSubmit={handleSave}>
           <div className={userManagerStyles.formGrid}>
@@ -54,12 +59,13 @@ function EditUserModal({ user, onClose, onSave }) {
             </select>
           </div>
           <div className={userManagerStyles.modalActions}>
-            <button type="submit" className={styles.buttonGreen}>Сохранить</button>
-            <button type="button" onClick={handleBlockToggle} className={userManagerStyles.buttonYellow}>
+            <button type="submit" className={`${userManagerStyles.modalButton} ${styles.buttonGreen}`}>Сохранить</button>
+            <button type="button" onClick={handleBlockToggle} className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonYellow}`}>
               {user.status === 'blocked' ? 'Разблокировать' : 'Заблокировать'}
             </button>
-            <button type="button" onClick={handleDelete} className={userManagerStyles.buttonRed}>Удалить</button>
-            <button type="button" onClick={onClose} className={styles.buttonGrey}>Закрыть</button>
+            <button type="button" onClick={handleDelete} className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonRed}`}>Удалить</button>
+            {/* --- 3. МЕНЯЕМ КНОПКУ ЗАКРЫТИЯ НА "ОТМЕНА" ДЛЯ ЕДИНООБРАЗИЯ --- */}
+            <button type="button" onClick={onClose} className={`${userManagerStyles.modalButton} ${styles.buttonGrey}`}>Отмена</button>
           </div>
         </form>
       </div>
@@ -71,7 +77,7 @@ function EditUserModal({ user, onClose, onSave }) {
 // Основной компонент
 function UserManager() {
   const [allUsers, setAllUsers] = useState([]);
-  const [view, setView] = useState('active'); // 'active' или 'blocked'
+  const [view, setView] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -104,7 +110,7 @@ function UserManager() {
         setMessage('Данные пользователя обновлены.');
       }
       setEditingUser(null);
-      fetchUsers(); // Обновляем список
+      fetchUsers();
     } catch (error) {
       setMessage('Произошла ошибка при сохранении.');
     }
@@ -161,7 +167,10 @@ function UserManager() {
                 <span>Билетов: {user.tickets} ({user.ticket_parts}/2)</span>
               </div>
               <div className={userManagerStyles.userActions}>
-                <button onClick={() => setEditingUser(user)} className={styles.buttonSmall}>Редактировать</button>
+                {/* --- 4. ЗАМЕНЯЕМ ТЕКСТОВУЮ КНОПКУ НА ИКОНКУ --- */}
+                <button onClick={() => setEditingUser(user)} className={`${styles.buttonSmall} ${userManagerStyles.iconButton}`}>
+                  <FaPencilAlt />
+                </button>
               </div>
             </div>
           ))}
