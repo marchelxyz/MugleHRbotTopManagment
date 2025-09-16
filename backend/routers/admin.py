@@ -122,11 +122,13 @@ async def admin_update_user_route(
     db: AsyncSession = Depends(get_db)
 ):
     """Обновить профиль пользователя от имени админа."""
-    updated_user = await crud.admin_update_user(db, user_id, user_data)
+    # Передаем admin_user в CRUD-функцию
+    updated_user = await crud.admin_update_user(db, user_id, user_data, admin_user)
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
     return updated_user
 
+# --- ЗАМЕНИ ЭТОТ ЭНДПОИНТ ---
 @router.delete("/admin/users/{user_id}", status_code=204)
 async def admin_delete_user_route(
     user_id: int,
@@ -134,9 +136,8 @@ async def admin_delete_user_route(
     db: AsyncSession = Depends(get_db)
 ):
     """'Мягкое' удаление пользователя (сброс до регистрации)."""
-    success = await crud.admin_delete_user(db, user_id)
+    # Передаем admin_user в CRUD-функцию
+    success = await crud.admin_delete_user(db, user_id, admin_user)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return Response(status_code=204)
-
-# --- КОНЕЦ: НОВЫЕ ЭНДПОИНТЫ ---
