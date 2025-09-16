@@ -718,35 +718,65 @@ async def get_all_users_for_admin(db: AsyncSession):
     result = await db.execute(select(models.User).order_by(models.User.last_name))
     return result.scalars().all()
 
-async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate):
-    """Обновляет данные пользователя от имени администратора."""
+async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
+    """
+    Обновляет данные пользователя от имени администратора и отправляет лог.
+    """
     user = await get_user(db, user_id)
     if not user:
         return None
     
     update_data = user_data.model_dump(exclude_unset=True)
     
-    for key, value in update_data.items():
-        # Конвертируем дату, если она пришла
-        if key == 'date_of_birth' and value:
-            try:
-                value = date.fromisoformat(value)
-            except (ValueError, TypeError):
-                value = None
-        setattr(user, key, value)
+    # Собираем лог изменений
+    changes_log = []
+    for key, new_value in update_data.items():
+        old_value = getattr(user, key, None)
+        if str(old_value) != str(new_value):
+            changes_log.append(f"  - {key}: `{old_value}` -> `{new_value}`")
         
+        # Конвертируем дату, если она пришла
+        if key == 'date_of_birth' and new_value:
+            try:
+                new_value = date.fromisoformat(new_value)
+            except (ValueError, TypeError):
+                new_value = None
+        setattr(user, key, new_value)
+    
     await db.commit()
     await db.refresh(user)
+
+    # Отправляем уведомление, если были изменения
+    if changes_log:
+        admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+        target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+        
+        log_message = (
+            f"✏️ *Админ изменил профиль*\n\n"
+            f"👤 *Администратор:* {admin_name}\n"
+            f"🎯 *Пользователь:* {target_user_name}\n\n"
+            f"*Изменения:*\n" + "\n".join(changes_log)
+        )
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=log_message,
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        )
+
     return user
 
-async def admin_delete_user(db: AsyncSession, user_id: int):
+# --- ЗАМЕНИ ЭТУ ФУНКЦИЮ ---
+async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.User):
     """
-    "Мягкое" удаление: сбрасывает данные пользователя и отправляет его на регистрацию.
+    "Мягкое" удаление: сбрасывает данные пользователя и отправляет лог.
     """
     user = await get_user(db, user_id)
     if not user:
         return False
     
+    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+
     # Сбрасываем основные данные
     user.last_name = "Удален"
     user.department = "-"
@@ -759,9 +789,22 @@ async def admin_delete_user(db: AsyncSession, user_id: int):
     user.is_admin = False
     user.card_barcode = None
     user.card_balance = None
-    
-    # Главное: меняем статус, чтобы его выкинуло на регистрацию
     user.status = 'pending' 
     
     await db.commit()
+
+    # Отправляем уведомление о сбросе
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+    log_message = (
+        f"🗑️ *Админ сбросил пользователя*\n\n"
+        f"👤 *Администратор:* {admin_name}\n"
+        f"🎯 *Пользователь:* {target_user_name}\n\n"
+        f"Данные пользователя были сброшены, он отправлен на повторную регистрацию."
+    )
+    await send_telegram_message(
+        chat_id=settings.TELEGRAM_CHAT_ID,
+        text=log_message,
+        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+    )
+
     return True
