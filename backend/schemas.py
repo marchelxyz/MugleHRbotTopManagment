@@ -137,6 +137,7 @@ class AdminUserUpdate(BaseModel):
     department: Optional[str] = None
     position: Optional[str] = None
     phone_number: Optional[str] = None
+    phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
     balance: Optional[int] = None
     tickets: Optional[int] = None
