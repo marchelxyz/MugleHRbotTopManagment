@@ -521,7 +521,8 @@ async def reset_tickets(db: AsyncSession):
 
 async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: bytes):
     """
-    Обрабатывает файл .pkpass, извлекает штрих-код и сохраняет его для пользователя.
+    Обрабатывает файл .pkpass, извлекает данные и СИНХРОНИЗИРУЕТ
+    имя и фамилию пользователя с данными карты.
     """
     user = await db.get(models.User, user_id)
     if not user:
@@ -532,22 +533,47 @@ async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: byte
             pass_json_bytes = pass_zip.read('pass.json')
             pass_data = json.loads(pass_json_bytes)
             
-            barcode_data = pass_data.get('barcode', {}).get('message')
+            # --- 1. Извлекаем все нужные данные ---
             
-            # --- НАЧАЛО ИЗМЕНЕНИЙ: Извлекаем баланс ---
-            card_balance = "0" # Значение по умолчанию
-            primary_fields = pass_data.get('generic', {}).get('primaryFields', [])
-            for field in primary_fields:
-                if field.get('key') == 'balance':
-                    card_balance = str(field.get('value'))
-                    break
-            # --- КОНЕЦ ИЗМЕНЕНИЙ ---
-
+            # Штрих-код (как и раньше)
+            barcode_data = pass_data.get('barcode', {}).get('message')
             if not barcode_data:
                 raise ValueError("Barcode data not found in pass.json")
+
+            # Баланс (как и раньше)
+            card_balance = "0"
+            header_fields = pass_data.get('storeCard', {}).get('headerFields', [])
+            for field in header_fields:
+                if field.get('key') == 'field0': # Судя по файлу, ключ баланса 'field0'
+                    card_balance = str(field.get('value'))
+                    break
             
+            # --- 2. НАЧАЛО НОВОЙ ЛОГИКИ: Извлекаем Имя и Фамилию ---
+            full_name_from_card = None
+            auxiliary_fields = pass_data.get('storeCard', {}).get('auxiliaryFields', [])
+            for field in auxiliary_fields:
+                # Ищем поле, где label "Владелец карты"
+                if field.get('label') == 'Владелец карты':
+                    full_name_from_card = field.get('value')
+                    break
+
+            # --- 3. Обновляем профиль пользователя, если имя найдено ---
+            if full_name_from_card:
+                # Делим "Виктория Никулина" на ["Виктория", "Никулина"]
+                name_parts = full_name_from_card.split()
+                first_name_from_card = name_parts[0] if len(name_parts) > 0 else ""
+                last_name_from_card = " ".join(name_parts[1:]) if len(name_parts) > 1 else ""
+
+                # Сравниваем и обновляем, если есть расхождения
+                if user.first_name != first_name_from_card and first_name_from_card:
+                    user.first_name = first_name_from_card
+                if user.last_name != last_name_from_card and last_name_from_card:
+                    user.last_name = last_name_from_card
+            
+            # --- 4. Сохраняем данные карты в профиль ---
             user.card_barcode = barcode_data
-            user.card_balance = card_balance # Сохраняем баланс
+            user.card_balance = card_balance
+            
             await db.commit()
             await db.refresh(user)
             return user
