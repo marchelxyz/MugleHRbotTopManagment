@@ -38,19 +38,22 @@ function EditUserModal({ user, onClose, onSave }) {
   return (
     <div className={userManagerStyles.modalBackdrop} onClick={onClose}>
       <div className={userManagerStyles.modalContent} onClick={e => e.stopPropagation()}>
-        {/* --- 2. ДОБАВЛЯЕМ КНОПКУ-КРЕСТИК ДЛЯ ЗАКРЫТИЯ --- */}
         <button onClick={onClose} className={userManagerStyles.closeButton}><FaTimes /></button>
         
         <h2>Редактирование: {user.first_name} {user.last_name}</h2>
         <form onSubmit={handleSave}>
           <div className={userManagerStyles.formGrid}>
-            <input name="first_name" value={formData.first_name} onChange={handleChange} placeholder="Имя" className={styles.input} />
-            <input name="last_name" value={formData.last_name} onChange={handleChange} placeholder="Фамилия" className={styles.input} />
-            <input name="department" value={formData.department} onChange={handleChange} placeholder="Подразделение" className={styles.input} />
-            <input name="position" value={formData.position} onChange={handleChange} placeholder="Должность" className={styles.input} />
-            <input type="number" name="balance" value={formData.balance} onChange={handleChange} placeholder="Баланс" className={styles.input} />
-            <input type="number" name="tickets" value={formData.tickets} onChange={handleChange} placeholder="Билеты" className={styles.input} />
-            <input type="number" name="ticket_parts" value={formData.ticket_parts} onChange={handleChange} placeholder="Части билетов" className={styles.input} />
+            <input name="first_name" value={formData.first_name || ''} onChange={handleChange} placeholder="Имя" className={styles.input} />
+            <input name="last_name" value={formData.last_name || ''} onChange={handleChange} placeholder="Фамилия" className={styles.input} />
+            <input name="department" value={formData.department || ''} onChange={handleChange} placeholder="Подразделение" className={styles.input} />
+            <input name="position" value={formData.position || ''} onChange={handleChange} placeholder="Должность" className={styles.input} />
+            
+            {/* --- ДОБАВЛЯЕМ ПОЛЕ ДЛЯ ТЕЛЕФОНА --- */}
+            <input type="tel" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} placeholder="Номер телефона" className={styles.input} />
+            
+            <input type="number" name="balance" value={formData.balance || 0} onChange={handleChange} placeholder="Баланс" className={styles.input} />
+            <input type="number" name="tickets" value={formData.tickets || 0} onChange={handleChange} placeholder="Билеты" className={styles.input} />
+            <input type="number" name="ticket_parts" value={formData.ticket_parts || 0} onChange={handleChange} placeholder="Части билетов" className={styles.input} />
             <select name="status" value={formData.status} onChange={handleChange} className={styles.select}>
               <option value="approved">Активен</option>
               <option value="pending">В ожидании</option>
@@ -64,7 +67,6 @@ function EditUserModal({ user, onClose, onSave }) {
               {user.status === 'blocked' ? 'Разблокировать' : 'Заблокировать'}
             </button>
             <button type="button" onClick={handleDelete} className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonRed}`}>Удалить</button>
-            {/* --- 3. МЕНЯЕМ КНОПКУ ЗАКРЫТИЯ НА "ОТМЕНА" ДЛЯ ЕДИНООБРАЗИЯ --- */}
             <button type="button" onClick={onClose} className={`${userManagerStyles.modalButton} ${styles.buttonGrey}`}>Отмена</button>
           </div>
         </form>
