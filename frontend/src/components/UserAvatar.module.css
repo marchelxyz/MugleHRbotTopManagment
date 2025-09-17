@@ -1,0 +1,19 @@
+/* frontend/src/components/UserAvatar.module.css */
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+  text-transform: uppercase;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.placeholder {
+  background-color: #ccc;
+}
