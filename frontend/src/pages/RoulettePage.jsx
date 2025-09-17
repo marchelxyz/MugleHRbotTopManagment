@@ -5,10 +5,12 @@ import PageLayout from '../components/PageLayout';
 import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
 import styles from './RoulettePage.module.css';
 import { FaInfoCircle } from 'react-icons/fa';
+import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
 
 const PRIZES = [17, 5, 12, 1, 30, 8, 19, 3, 23, 28, 14, 9, 21, 4, 7, 20, 25, 10, 2, 29, 11, 18, 13, 6, 26, 27, 24, 15, 22, 16];
 
 function RoulettePage({ user, onUpdateUser }) {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
   const [localUser, setLocalUser] = useState(user);
   const [history, setHistory] = useState([]);
   const [isSpinning, setIsSpinning] = useState(false);
