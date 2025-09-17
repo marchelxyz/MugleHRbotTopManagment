@@ -6,12 +6,14 @@ import BannerManager from './admin/BannerManager';
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import { addPointsToAll, addTicketsToAll } from '../api';
+import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
 
 // Пока используем заглушки
 const StatsManager = () => <div>Раздел статистики в разработке...</div>;
 
 // --- ИЗМЕНЕНИЕ: Создаем новый компонент для массовых начислений ---
 function MassActions() {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
   const [addPointsAmount, setAddPointsAmount] = useState(100);
   const [addTicketsAmount, setAddTicketsAmount] = useState(1);
   const [loading, setLoading] = useState(''); // 'points' or 'tickets'
@@ -23,23 +25,24 @@ function MassActions() {
     setMessage('');
     try {
       const response = await addPointsToAll({ amount: parseInt(addPointsAmount, 10) });
-      setMessage(response.data.detail);
+      showAlert(response.data.detail, 'success'); // 3. Используем новое уведомление
     } catch (error) {
-      setMessage(`Ошибка: ${error.response?.data?.detail || 'Не удалось выполнить операцию'}`);
+      const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+      showAlert(errorMsg, 'error'); // 3. Используем новое уведомление
     } finally {
       setLoading('');
     }
   };
-  
+ 
   const handleAddTickets = async () => {
-    if (!window.confirm(`Вы уверены?`)) return;
+    if (!window.confirm(`Вы уверены, что хотите начислить ${addTicketsAmount} билетов всем пользователям?`)) return;
     setLoading('tickets');
-    setMessage('');
     try {
       const response = await addTicketsToAll({ amount: parseInt(addTicketsAmount, 10) });
-      setMessage(response.data.detail);
+      showAlert(response.data.detail, 'success'); // 3. Используем новое уведомление
     } catch (error) {
-      setMessage(`Ошибка: ${error.response?.data?.detail || 'Не удалось выполнить операцию'}`);
+      const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+      showAlert(errorMsg, 'error'); // 3. Используем новое уведомление
     } finally {
       setLoading('');
     }
