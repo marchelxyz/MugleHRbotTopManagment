@@ -40,7 +40,22 @@ export const requestProfileUpdate = (updateData) => {
 };
 
 export const getFeed = () => apiClient.get('/transactions/feed');
-export const getLastMonthLeaderboard = () => apiClient.get('/leaderboard/last-month');
+
+export const getLeaderboard = ({ period, type }) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Динамически формируем запрос с параметрами
+  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+export const getMyRank = ({ period, type }) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
 export const getMarketItems = () => apiClient.get('/market/items');
 export const purchaseItem = (userId, itemId) => {
   // Отправляем и ID пользователя, и ID товара в теле запроса
