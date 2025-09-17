@@ -6,22 +6,26 @@ import PageLayout from '../components/PageLayout';
 import { deleteUserCard } from '../api';
 import styles from './BonusCardPage.module.css';
 import BonusCard from '../components/BonusCard';
+import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем наш хук
 
 function BonusCardPage({ user, onBack, onUpdateUser }) {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию для вызова уведомлений
   
   const handleDelete = async () => {
     if (window.confirm('Вы уверены, что хотите удалить карту из профиля?')) {
       try {
         const response = await deleteUserCard();
         onUpdateUser(response.data); // Обновляем данные пользователя
-        alert('Карта успешно удалена.');
-        onBack(); // Возвращаемся в профиль
+        // 3. Вызываем наше красивое уведомление вместо alert()
+        showAlert('Карта успешно удалена', 'success');
+        onBack();
       } catch (error) {
-        alert('Не удалось удалить карту.');
+        showAlert('Не удалось удалить карту', 'error');
       }
     }
   };
-
+  
+  return (
   return (
     <PageLayout title="Бонусная карта">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад в профиль</button>
