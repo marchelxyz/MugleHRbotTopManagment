@@ -55,4 +55,8 @@ async def get_my_rank(
     """
     return await crud.get_user_rank(db, user_id=user.id, period=period, leaderboard_type=type)
 
-# --- КОНЕЦ НОВЫХ ЭНДПОИНТОВ ---
+# --- ДОБАВЬ ЭТОТ НОВЫЙ ЭНДПОИНТ В КОНЕЦ ФАЙЛА ---
+@router.get("/leaderboard/status")
+async def get_leaderboards_status_route(db: AsyncSession = Depends(get_db)):
+    """Возвращает список рейтингов и информацию о том, есть ли в них данные."""
+    return await crud.get_leaderboards_status(db)
