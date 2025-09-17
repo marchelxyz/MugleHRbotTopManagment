@@ -3,10 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, getMyRank, getLeaderboardStatus } from '../api';
 import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
-// --- 1. ИМПОРТИРУЕМ ИКОНКИ ДЛЯ ВКЛАДОК И КОРОНЫ ---
 import { FaCrown, FaCalendarDay, FaCalendarAlt, FaGift, FaInfinity } from 'react-icons/fa';
 
-// --- 2. ДОБАВЛЯЕМ ИКОНКИ В КОНФИГУРАЦИЮ ВКЛАДОК ---
 const ALL_TABS = [
   { id: 'current_month_received', label: 'Этот месяц', icon: <FaCalendarDay />, params: { period: 'current_month', type: 'received' } },
   { id: 'last_month_received', label: 'Прошлый месяц', icon: <FaCalendarAlt />, params: { period: 'last_month', type: 'received' } },
@@ -21,7 +19,6 @@ function LeaderboardPage({ user }) {
   const [myRank, setMyRank] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Логика по загрузке и фильтрации вкладок остается без изменений
   useEffect(() => {
     if (user.is_admin) return;
     const fetchTabStatuses = async () => {
@@ -72,7 +69,6 @@ function LeaderboardPage({ user }) {
 
   return (
     <PageLayout title="Рейтинг">
-      {/* --- 3. ОБНОВЛЯЕМ РЕНДЕРИНГ ВКЛАДОК --- */}
       {visibleTabs.length > 0 && (
         <div className={styles.tabsContainer}>
           {visibleTabs.map(tab => (
@@ -93,13 +89,9 @@ function LeaderboardPage({ user }) {
           {myRank && myRank.rank !== null && (
             <div className={styles.myRankCard}>
               <p>Вы на <strong>{myRank.rank}-м</strong> месте</p>
-              <p className={styles.details}>
-                {myRank.total_received} баллов из {myRank.total_participants} участников
-              </p>
+              <p className={styles.details}>{myRank.total_received} баллов из {myRank.total_participants} участников</p>
             </div>
           )}
-
-          {/* --- 4. МЕНЯЕМ ИКОНКИ МЕДАЛЕЙ НА КОРОНЫ --- */}
           {top3.length > 0 && (
             <div className={styles.podium}>
               {top3[1] && (
@@ -129,19 +121,16 @@ function LeaderboardPage({ user }) {
             </div>
           )}
 
-          {/* --- НАЧАЛО ИЗМЕНЕНИЙ В СПИСКЕ 4+ МЕСТ --- */}
           {others.length > 0 && (
             <ol start="4" className={styles.list}>
               {others.map((item, index) => (
                 <li key={item.user.id} className={styles.listItem}>
                   <span className={styles.rank}>{index + 4}</span>
-                  {/* 1. Добавляем фото пользователя */}
                   <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} />
                   <div className={styles.userInfo}>
-                    <span className={styles.userName}>{item.user.first_name} {item.user.last_name}</span>
-                    {/* 2. Убираем должность */}
+                    {/* --- ИЗМЕНЕНИЕ ЗДЕСЬ --- */}
+                    <span className={styles.userName}>{item.user.first_name}</span>
                   </div>
-                  {/* 3. Оборачиваем баллы и логотип в контейнер */}
                   <div className={styles.pointsContainer}>
                     <span className={styles.points}>{item.total_received}</span>
                     <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="спасибо" className={styles.pointsLogo} />
@@ -150,7 +139,6 @@ function LeaderboardPage({ user }) {
               ))}
             </ol>
           )}
-          {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
           
           {leaderboard.length === 0 && visibleTabs.length > 0 && <p>В этом рейтинге пока нет данных.</p>}
           {visibleTabs.length === 0 && !user.is_admin && <p>Рейтинги пока пусты. Скоро здесь появится активность!</p>}
