@@ -13,6 +13,7 @@ from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
 from sqlalchemy import or_
+from sqlalchemy import text
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -173,27 +174,108 @@ async def get_user_transactions(db: AsyncSession, user_id: int):
     return result.scalars().all()
 
 # Лидерборд
-async def get_leaderboard(db: AsyncSession, limit: int = 10):
+async def get_leaderboard_data(db: AsyncSession, period: str, leaderboard_type: str):
+    """
+    Универсальная функция для получения данных рейтинга.
+    :param period: 'current_month', 'last_month', 'all_time'
+    :param leaderboard_type: 'received' (получатели) или 'sent' (отправители)
+    """
+    
+    # Определяем, по какому полю группировать
+    group_by_field = "receiver_id" if leaderboard_type == 'received' else "sender_id"
+    
+    # Определяем временной промежуток
+    start_date, end_date = None, None
     today = datetime.utcnow()
-    first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    last_day_of_last_month = first_day_of_current_month - timedelta(days=1)
-    first_day_of_last_month = last_day_of_last_month.replace(day=1)
+    
+    if period == 'current_month':
+        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = today
+    elif period == 'last_month':
+        first_day_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = first_day_current_month - timedelta(days=1)
+        start_date = end_date.replace(day=1)
+        end_date = end_date.replace(hour=23, minute=59, second=59) # Включаем весь последний день
 
-    result = await db.execute(
+    # Формируем запрос
+    query = (
         select(
             models.User,
-            func.sum(models.Transaction.amount).label("total_received"),
+            func.sum(models.Transaction.amount).label("total_amount"),
         )
-        .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
-        .where(models.Transaction.timestamp >= first_day_of_last_month)
-        .where(models.Transaction.timestamp < first_day_of_current_month)
+        .join(models.Transaction, models.User.id == getattr(models.Transaction, group_by_field))
         .group_by(models.User.id)
         .order_by(func.sum(models.Transaction.amount).desc())
-        .limit(limit)
+        .limit(100) # Ограничим вывод до 100 лидеров
     )
     
+    if start_date and end_date:
+        query = query.where(models.Transaction.timestamp.between(start_date, end_date))
+
+    result = await db.execute(query)
     leaderboard_data = result.all()
-    return [{"user": user, "total_received": total_received or 0} for user, total_received in leaderboard_data]
+
+    # Pydantic ожидает total_received, адаптируем ответ
+    return [{"user": user, "total_received": total_amount or 0} for user, total_amount in leaderboard_data]
+
+
+async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard_type: str):
+    """
+    Определяет ранг, количество очков и общее число участников для конкретного пользователя.
+    """
+    group_by_field = "receiver_id" if leaderboard_type == 'received' else "sender_id"
+    
+    start_date, end_date = None, None
+    today = datetime.utcnow()
+    
+    if period == 'current_month':
+        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
+        end_date = today.strftime('%Y-%m-%d %H:%M:%S')
+    elif period == 'last_month':
+        first_day_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = first_day_current_month - timedelta(days=1)
+        start_date = end_date.replace(day=1).strftime('%Y-%m-%d %H:%M:%S')
+        end_date = end_date.strftime('%Y-%m-%d %H:%M:%S')
+
+    # Используем сырой SQL с оконными функциями для эффективности
+    time_filter = ""
+    if start_date and end_date:
+        time_filter = f"WHERE t.timestamp BETWEEN '{start_date}' AND '{end_date}'"
+
+    raw_sql = text(f"""
+        WITH ranked_users AS (
+            SELECT
+                u.id as user_id,
+                SUM(t.amount) as total_amount,
+                RANK() OVER (ORDER BY SUM(t.amount) DESC) as rank
+            FROM users u
+            JOIN transactions t ON u.id = t.{group_by_field}
+            {time_filter}
+            GROUP BY u.id
+        ),
+        total_participants AS (
+            SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}
+        )
+        SELECT ru.rank, ru.total_amount, tp.count
+        FROM ranked_users ru, total_participants tp
+        WHERE ru.user_id = :user_id
+    """)
+
+    result = await db.execute(raw_sql, {"user_id": user_id})
+    user_rank_data = result.first()
+
+    if not user_rank_data:
+        # Если пользователь не участвовал, получаем только общее число участников
+        total_participants_sql = text(f"SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}")
+        total_result = await db.execute(total_participants_sql)
+        total_participants = total_result.scalar_one_or_none() or 0
+        return {"rank": None, "total_received": 0, "total_participants": total_participants}
+
+    return {
+        "rank": user_rank_data.rank,
+        "total_received": user_rank_data.total_amount,
+        "total_participants": user_rank_data.count
+    }
 
 # Маркет
 async def get_market_items(db: AsyncSession):
