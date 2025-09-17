@@ -73,6 +73,7 @@ class RegisterRequest(BaseModel):
     position: str
     department: str
     username: Optional[str] = None
+    telegram_photo_url: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
 
