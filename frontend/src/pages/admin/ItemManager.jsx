@@ -5,6 +5,7 @@ import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketIte
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa'; // Импортируем иконку
 import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
+import { useConfirmation } from '../../contexts/ConfirmationContext'; // 1. Импортируем
 
 // --- Выносим логику расчета на фронтенд для динамического отображения ---
 function calculateSpasibkiPrice(priceRub) {
@@ -26,6 +27,7 @@ const initialItemState = { name: '', description: '', price_rub: '', stock: 1 };
 
 function ItemManager() {
   const { showAlert } = useModalAlert(); // 2. Получаем функцию
+  const { confirm } = useConfirmation(); // 2. Получаем функцию
   const [view, setView] = useState('active'); // 'active' или 'archived'
   const [items, setItems] = useState([]);
   const [archivedItems, setArchivedItems] = useState([]);
@@ -109,15 +111,19 @@ function ItemManager() {
   };
 
   const handleArchive = async (itemId) => {
-    if (window.confirm('Вы уверены, что хотите архивировать этот товар?')) {
+    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите архивировать этот товар?');
+    if (isConfirmed) {
       await archiveMarketItem(itemId);
+      showAlert('Товар архивирован.', 'success');
       fetchItems();
     }
   };
 
   const handleRestore = async (itemId) => {
-    if (window.confirm('Вы уверены, что хотите восстановить этот товар?')) {
+    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите восстановить этот товар?');
+    if (isConfirmed) {
       await restoreMarketItem(itemId);
+      showAlert('Товар восстановлен.', 'success');
       fetchItems();
     }
   };
