@@ -932,3 +932,38 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
     )
 
     return True
+
+# --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
+async def get_leaderboards_status(db: AsyncSession):
+    """Проверяет, какие из рейтингов не пусты."""
+    
+    periods = {
+        'current_month': (
+            datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+            datetime.utcnow()
+        ),
+        'last_month': (
+            (datetime.utcnow().replace(day=1) - timedelta(days=1)).replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+            datetime.utcnow().replace(day=1) - timedelta(seconds=1)
+        ),
+        'all_time': (None, None)
+    }
+    
+    statuses = []
+    
+    for period_key, (start_date, end_date) in periods.items():
+        # Проверяем для "получателей"
+        query_received = select(func.count(models.Transaction.id))
+        if start_date and end_date:
+            query_received = query_received.where(models.Transaction.timestamp.between(start_date, end_date))
+        count_received = await db.scalar(query_received)
+        statuses.append({ "id": f"{period_key}_received", "has_data": count_received > 0 })
+
+        # Проверяем для "отправителей" (щедрость)
+        query_sent = select(func.count(models.Transaction.id))
+        if start_date and end_date:
+            query_sent = query_sent.where(models.Transaction.timestamp.between(start_date, end_date))
+        count_sent = await db.scalar(query_sent)
+        statuses.append({ "id": f"{period_key}_sent", "has_data": count_sent > 0 })
+            
+    return statuses
