@@ -89,7 +89,6 @@ function LeaderboardPage({ user }) {
           {myRank && myRank.rank !== null && (
             <div className={styles.myRankCard}>
               <p>Вы на <strong>{myRank.rank}-м</strong> месте</p>
-              <p className={styles.details}>{myRank.total_received} баллов из {myRank.total_participants} участников</p>
             </div>
           )}
           {top3.length > 0 && (
