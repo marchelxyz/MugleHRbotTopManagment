@@ -18,6 +18,13 @@ const COLORS = ['#e57373', '#81c784', '#64b5f6', '#ffb74d', '#9575cd', '#4db6ac'
 function UserAvatar({ user }) {
   if (!user) return <div className={`${styles.avatar} ${styles.placeholder}`} />;
 
+  // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+  // Если есть URL фото, показываем его
+  if (user.telegram_photo_url) {
+    return <img src={user.telegram_photo_url} alt={`${user.first_name}`} className={styles.avatarImage} />;
+  }
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
   const getInitials = (firstName, lastName) => {
     const first = firstName ? firstName[0] : '';
     const last = lastName ? lastName[0] : '';
@@ -28,8 +35,9 @@ function UserAvatar({ user }) {
   const colorIndex = FNV1a(user.id.toString()) % COLORS.length;
   const backgroundColor = COLORS[colorIndex];
 
+  // Если фото нет, показываем инициалы
   return (
-    <div className={styles.avatar} style={{ backgroundColor }}>
+    <div className={styles.avatarText} style={{ backgroundColor }}>
       {initials}
     </div>
   );
