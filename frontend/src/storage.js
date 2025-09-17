@@ -1,6 +1,7 @@
-// frontend/src/storage.js (НОВЫЙ ФАЙЛ)
+// frontend/src/storage.js
 
-import { getFeed, getMarketItems, getLastMonthLeaderboard, getUserTransactions } from './api';
+// --- 1. ИЗМЕНЯЕМ ИМПОРТЫ: убираем старый, добавляем новый ---
+import { getFeed, getMarketItems, getLeaderboard, getUserTransactions } from './api';
 
 // Получаем доступ к API хранилища
 const storage = window.Telegram.WebApp.CloudStorage;
@@ -72,10 +73,13 @@ export const getCachedData = (key) => {
 export const refreshAllData = async () => {
   console.log('Refreshing all data from API...');
   try {
+    // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Заменяем вызов функции ---
     const [feedRes, marketRes, leaderboardRes] = await Promise.all([
       getFeed(),
       getMarketItems(),
-      getLastMonthLeaderboard()
+      // Было: getLastMonthLeaderboard()
+      // Стало:
+      getLeaderboard({ period: 'current_month', type: 'received' })
     ]);
     
     // Обновляем ленту
