@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import { registerUser } from '../api';
 import styles from './RegistrationPage.module.css';
 import PageLayout from '../components/PageLayout'; // 1. Импортируем Layout
+import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
   const [firstName, setFirstName] = useState(telegramUser?.first_name || '');
   const [lastName, setLastName] = useState('');
   const [department, setDepartment] = useState('');
@@ -39,9 +41,13 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
 
       const response = await registerUser(telegramUser.id, userData);
       
-      alert('Ваша заявка отправлена на рассмотрение!');
-      // --- ИЗМЕНЕНИЕ: Передаем нового пользователя в колбэк ---
-      onRegistrationSuccess(response.data); 
+      // 3. Заменяем alert() на showAlert()
+      showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
+      
+      // Небольшая задержка, чтобы пользователь успел увидеть уведомление
+      setTimeout(() => {
+        onRegistrationSuccess(); 
+      }, 1500);
 
     } catch (err) {
       setError('Не удалось отправить заявку. Попробуйте снова.');
