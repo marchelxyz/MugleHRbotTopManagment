@@ -26,7 +26,6 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
   };
   
   return (
-  return (
     <PageLayout title="Бонусная карта">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад в профиль</button>
 
