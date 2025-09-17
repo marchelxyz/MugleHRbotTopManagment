@@ -1,12 +1,12 @@
 // frontend/src/pages/LeaderboardPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { getLeaderboard, getMyRank } from '../api';
+import { getLeaderboard, getMyRank, getLeaderboardStatus } from '../api';
 import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
-import { FaMedal } from 'react-icons/fa'; // Иконка для пьедестала
+import { FaCrown } from 'react-icons/fa'; // <-- 1. Иконка короны
 
-// Определяем наши вкладки
-const TABS = [
+// Конфигурация всех возможных вкладок
+const ALL_TABS = [
   { id: 'current_month_received', label: 'Этот месяц', params: { period: 'current_month', type: 'received' } },
   { id: 'last_month_received', label: 'Прошлый месяц', params: { period: 'last_month', type: 'received' } },
   { id: 'generosity', label: 'Щедрость', params: { period: 'current_month', type: 'sent' } },
@@ -14,16 +14,51 @@ const TABS = [
 ];
 
 function LeaderboardPage({ user }) {
-  const [activeTab, setActiveTab] = useState(TABS[0].id);
+  // Админам сразу показываем все вкладки, остальным — пустой массив, который заполнится
+  const [visibleTabs, setVisibleTabs] = useState(user.is_admin ? ALL_TABS : []);
+  const [activeTabId, setActiveTabId] = useState(ALL_TABS[0].id);
   const [leaderboard, setLeaderboard] = useState([]);
   const [myRank, setMyRank] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Эффект для загрузки статусов вкладок (определяет, какие показывать)
+  useEffect(() => {
+    if (user.is_admin) return; // Админам ничего проверять не нужно
+
+    const fetchTabStatuses = async () => {
+      try {
+        const response = await getLeaderboardStatus();
+        const activeTabs = ALL_TABS.filter(tab => {
+          const status = response.data.find(s => s.id === tab.id);
+          return status && status.has_data;
+        });
+        
+        setVisibleTabs(activeTabs);
+        
+        // Если текущая активная вкладка стала невидимой, переключаемся на первую видимую
+        if (activeTabs.length > 0 && !activeTabs.find(t => t.id === activeTabId)) {
+          setActiveTabId(activeTabs[0].id);
+        } else if (activeTabs.length === 0) {
+            setIsLoading(false); // Если видимых вкладок нет, выключаем загрузку
+        }
+      } catch (error) {
+        console.error("Failed to fetch tab statuses", error);
+        setIsLoading(false);
+      }
+    };
+    fetchTabStatuses();
+  }, [user.is_admin, activeTabId]);
+
+
+  // Эффект для загрузки данных активной вкладки
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const tabConfig = TABS.find(t => t.id === activeTab);
-      if (!tabConfig) return;
+      const tabConfig = ALL_TABS.find(t => t.id === activeTabId);
+      if (!tabConfig) {
+        setIsLoading(false);
+        return;
+      }
 
       const [leaderboardRes, myRankRes] = await Promise.all([
         getLeaderboard(tabConfig.params),
@@ -38,28 +73,32 @@ function LeaderboardPage({ user }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTabId]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (visibleTabs.length > 0) {
+      fetchData();
+    }
+  }, [fetchData, visibleTabs]);
 
   const top3 = leaderboard.slice(0, 3);
   const others = leaderboard.slice(3);
 
   return (
     <PageLayout title="Рейтинг">
-      <div className={styles.tabs}>
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={activeTab === tab.id ? styles.tabActive : styles.tab}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {visibleTabs.length > 0 && (
+        <div className={styles.tabs}>
+            {visibleTabs.map(tab => (
+            <button
+                key={tab.id}
+                onClick={() => setActiveTabId(tab.id)}
+                className={activeTabId === tab.id ? styles.tabActive : styles.tab}
+            >
+                {tab.label}
+            </button>
+            ))}
+        </div>
+      )}
 
       {isLoading ? <p>Загрузка рейтинга...</p> : (
         <>
@@ -74,30 +113,27 @@ function LeaderboardPage({ user }) {
 
           {top3.length > 0 && (
             <div className={styles.podium}>
-              {/* Второе место */}
               {top3[1] && (
                 <div className={`${styles.podiumItem} ${styles.place2}`}>
-                  <FaMedal className={styles.podiumIcon} color="#C0C0C0" />
+                  <FaCrown className={styles.podiumIcon} color="#C0C0C0" />
                   <img src={top3[1].user.telegram_photo_url || 'placeholder.png'} alt={top3[1].user.first_name} className={styles.podiumAvatar} />
-                  <div className={styles.podiumName}>{top3[1].user.first_name} {top3[1].user.last_name}</div>
+                  <div className={styles.podiumName}>{top3[1].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[1].total_received}</div>
                 </div>
               )}
-              {/* Первое место */}
               {top3[0] && (
                 <div className={`${styles.podiumItem} ${styles.place1}`}>
-                  <FaMedal className={styles.podiumIcon} color="#FFD700" />
+                  <FaCrown className={styles.podiumIcon} color="#FFD700" />
                   <img src={top3[0].user.telegram_photo_url || 'placeholder.png'} alt={top3[0].user.first_name} className={styles.podiumAvatar} />
-                  <div className={styles.podiumName}>{top3[0].user.first_name} {top3[0].user.last_name}</div>
+                  <div className={styles.podiumName}>{top3[0].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[0].total_received}</div>
                 </div>
               )}
-              {/* Третье место */}
               {top3[2] && (
                 <div className={`${styles.podiumItem} ${styles.place3}`}>
-                  <FaMedal className={styles.podiumIcon} color="#CD7F32" />
+                  <FaCrown className={styles.podiumIcon} color="#CD7F32" />
                   <img src={top3[2].user.telegram_photo_url || 'placeholder.png'} alt={top3[2].user.first_name} className={styles.podiumAvatar} />
-                  <div className={styles.podiumName}>{top3[2].user.first_name} {top3[2].user.last_name}</div>
+                  <div className={styles.podiumName}>{top3[2].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[2].total_received}</div>
                 </div>
               )}
@@ -118,8 +154,9 @@ function LeaderboardPage({ user }) {
               ))}
             </ol>
           )}
-
-          {leaderboard.length === 0 && <p>В этом рейтинге пока нет данных.</p>}
+          
+          {leaderboard.length === 0 && visibleTabs.length > 0 && <p>В этом рейтинге пока нет данных.</p>}
+          {visibleTabs.length === 0 && !user.is_admin && <p>Рейтинги пока пусты. Скоро здесь появится активность!</p>}
         </>
       )}
     </PageLayout>
