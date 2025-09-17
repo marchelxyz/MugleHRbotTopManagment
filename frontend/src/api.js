@@ -56,6 +56,14 @@ export const getMyRank = ({ period, type }) => {
   });
 };
 
+// --- ДОБАВЬ ЭТУ ФУНКЦИЮ ---
+export const getLeaderboardStatus = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get('/leaderboard/status', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
 export const getMarketItems = () => apiClient.get('/market/items');
 export const purchaseItem = (userId, itemId) => {
   // Отправляем и ID пользователя, и ID товара в теле запроса
