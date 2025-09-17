@@ -2,9 +2,12 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Literal
 import crud
 import schemas
 from database import get_db
+from dependencies import get_current_user # <-- Добавь этот импорт
+import models # <-- Добавь этот импорт
 
 router = APIRouter()
 
@@ -26,6 +29,30 @@ async def transfer_points(request: schemas.TransferRequest, db: AsyncSession = D
 async def get_feed(db: AsyncSession = Depends(get_db)):
     return await crud.get_feed(db)
 
-@router.get("/leaderboard/last-month", response_model=list[schemas.LeaderboardItem])
-async def get_leaderboard(db: AsyncSession = Depends(get_db)):
-    return await crud.get_leaderboard(db)
+# --- НАЧАЛО НОВЫХ ЭНДПОИНТОВ ДЛЯ РЕЙТИНГА ---
+
+@router.get("/leaderboard/", response_model=list[schemas.LeaderboardItem])
+async def get_leaderboard(
+    period: Literal['current_month', 'last_month', 'all_time'] = 'current_month',
+    type: Literal['received', 'sent'] = 'received',
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Получает данные рейтинга на основе периода и типа (полученные/отправленные).
+    """
+    return await crud.get_leaderboard_data(db, period=period, leaderboard_type=type)
+
+
+@router.get("/leaderboard/my-rank", response_model=schemas.MyRankResponse)
+async def get_my_rank(
+    period: Literal['current_month', 'last_month', 'all_time'] = 'current_month',
+    type: Literal['received', 'sent'] = 'received',
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Получает ранг текущего пользователя для заданного рейтинга.
+    """
+    return await crud.get_user_rank(db, user_id=user.id, period=period, leaderboard_type=type)
+
+# --- КОНЕЦ НОВЫХ ЭНДПОИНТОВ ---
