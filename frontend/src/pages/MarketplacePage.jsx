@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
+import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
 import { getCachedData } from '../storage';
 
 // 1. Принимаем новую функцию onPurchaseSuccess в пропсах
 function MarketplacePage({ user, onPurchaseSuccess }) {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
   // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
   const [items, setItems] = useState(() => getCachedData('market'));
   const [isLoading, setIsLoading] = useState(!items); 
