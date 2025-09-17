@@ -6,10 +6,9 @@ import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
 import styles from './RoulettePage.module.css';
 import { FaInfoCircle } from 'react-icons/fa';
 
-// Возможные призы для отображения в ленте
 const PRIZES = [17, 5, 12, 1, 30, 8, 19, 3, 23, 28, 14, 9, 21, 4, 7, 20, 25, 10, 2, 29, 11, 18, 13, 6, 26, 27, 24, 15, 22, 16];
 
-function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUser для обновления баланса
+function RoulettePage({ user, onUpdateUser }) {
   const [localUser, setLocalUser] = useState(user);
   const [history, setHistory] = useState([]);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -17,16 +16,37 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
   const [infoVisible, setInfoVisible] = useState(false);
   const rouletteTrackRef = useRef(null);
 
+  // --- НАЧАЛО НОВОЙ ЛОГИКИ: "ЖИВАЯ" ЛЕНТА ---
   useEffect(() => {
-    getRouletteHistory().then(res => setHistory(res.data));
-  }, []);
+    // 1. Функция для загрузки свежей истории
+    const fetchHistory = async () => {
+      try {
+        const res = await getRouletteHistory();
+        setHistory(res.data);
+      } catch (error) {
+        console.error("Не удалось обновить историю рулетки:", error);
+      }
+    };
+
+    // 2. Сразу загружаем историю при открытии страницы
+    fetchHistory();
+
+    // 3. Устанавливаем интервал: каждые 5 секунд будем запрашивать обновления
+    const intervalId = setInterval(fetchHistory, 5000); // 5000 миллисекунд = 5 секунд
+
+    // 4. Очищаем интервал, когда пользователь уходит со страницы.
+    // Это ОБЯЗАТЕЛЬНО, чтобы избежать утечек памяти.
+    return () => clearInterval(intervalId);
+  }, []); // Пустой массив зависимостей означает, что этот эффект запустится 1 раз
+
+  // --- КОНЕЦ НОВОЙ ЛОГИКИ ---
 
   const handleAssemble = async () => {
     if (localUser.ticket_parts < 2) return;
     try {
       const response = await assembleTickets();
-      setLocalUser(response.data); // Обновляем локальные данные пользователя
-      onUpdateUser(response.data); // Обновляем глобальные данные пользователя
+      setLocalUser(response.data);
+      onUpdateUser(response.data);
     } catch (error) {
       alert(error.response?.data?.detail || 'Ошибка сборки');
     }
@@ -38,7 +58,6 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
     setSpinResult(null);
     
     const track = rouletteTrackRef.current;
-    // Сбрасываем анимацию в начальное положение
     track.style.transition = 'none';
     track.style.transform = 'translateX(0)';
 
@@ -50,12 +69,9 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
       setLocalUser(updatedUser);
       onUpdateUser(updatedUser);
 
-      // --- НАЧАЛО ИСПРАВЛЕНИЙ: Логика для остановки на правильном призе ---
       setTimeout(() => {
-        const prizeItemWidth = 80; // Ширина одного элемента рулетки из CSS
+        const prizeItemWidth = 80;
         const prizeArrayForAnimation = [...PRIZES, ...PRIZES, ...PRIZES];
-
-        // Ищем индекс нужного приза где-то в середине ленты для красоты
         let targetIndex = -1;
         for (let i = PRIZES.length; i < PRIZES.length * 2; i++) {
             if (prizeArrayForAnimation[i] === prize_won) {
@@ -63,32 +79,25 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
                 break;
             }
         }
-        // Если вдруг не нашли (на всякий случай), ищем первое вхождение
         if (targetIndex === -1) {
             targetIndex = prizeArrayForAnimation.indexOf(prize_won);
         }
 
-        // Рассчитываем точную позицию для остановки
-        // (Индекс * Ширину) - (Ширина контейнера / 2) + (Ширина элемента / 2)
         const containerWidth = track.parentElement.offsetWidth;
         const stopPosition = (targetIndex * prizeItemWidth) - (containerWidth / 2) + (prizeItemWidth / 2);
-        
-        // Добавляем небольшой случайный сдвиг, чтобы выглядело естественно
         const randomOffset = Math.random() * 40 - 20;
         const finalPosition = stopPosition + randomOffset;
 
-        // Запускаем плавную анимацию до рассчитанной точки
         track.style.transition = 'transform 4s cubic-bezier(.15,.56,.33,1.03)';
         track.style.transform = `translateX(-${finalPosition}px)`;
         
-        // Показываем результат после окончания анимации
         setTimeout(() => {
           setSpinResult(prize_won);
           setIsSpinning(false);
+          // После своего спина можно принудительно обновить ленту, не дожидаясь интервала
           getRouletteHistory().then(res => setHistory(res.data));
-        }, 4100); // Чуть дольше, чем анимация
+        }, 4100);
       }, 100);
-      // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
     } catch (error) {
       alert(error.response?.data?.detail || 'Ошибка прокрутки');
@@ -139,12 +148,12 @@ function RoulettePage({ user, onUpdateUser }) { // Принимаем onUpdateUs
 
       <div className={styles.history}>
         <h3>Последние победители</h3>
-        {history.map(win => (
+        {history.length > 0 ? history.map(win => (
           <div key={win.id} className={styles.historyItem}>
             <span>{win.user.first_name} {win.user.last_name}</span>
             <strong>выиграл(а) {win.amount} спасибок</strong>
           </div>
-        ))}
+        )) : <p>Пока никто не выигрывал.</p>}
       </div>
     </PageLayout>
   );
