@@ -6,6 +6,7 @@ import { FaPencilAlt, FaTimes } from 'react-icons/fa';
 import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../api';
 import styles from '../AdminPage.module.css';
 import userManagerStyles from './UserManager.module.css';
+import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
 
 // Модальное окно для редактирования
 function EditUserModal({ user, onClose, onSave }) {
@@ -76,6 +77,7 @@ function EditUserModal({ user, onClose, onSave }) {
 
 // Основной компонент
 function UserManager() {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
   const [allUsers, setAllUsers] = useState([]);
   const [view, setView] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
