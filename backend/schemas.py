@@ -174,3 +174,9 @@ class SpinResponse(BaseModel):
     prize_won: int
     new_balance: int
     new_tickets: int
+
+# --- НОВАЯ СХЕМА ДЛЯ ОТВЕТА О РАНГЕ ПОЛЬЗОВАТЕЛЯ ---
+class MyRankResponse(BaseModel):
+    rank: Optional[int]
+    total_received: int
+    total_participants: int
