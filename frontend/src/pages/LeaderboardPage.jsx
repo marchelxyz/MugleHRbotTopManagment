@@ -5,16 +5,18 @@ import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { FaCrown, FaCalendarDay, FaCalendarAlt, FaGift, FaInfinity } from 'react-icons/fa';
 
+// --- ИЗМЕНЕНИЕ ЗДЕСЬ: "За всё время" теперь первая в списке ---
 const ALL_TABS = [
+  { id: 'all_time_received', label: 'За всё время', icon: <FaInfinity />, params: { period: 'all_time', type: 'received' } },
   { id: 'current_month_received', label: 'Этот месяц', icon: <FaCalendarDay />, params: { period: 'current_month', type: 'received' } },
   { id: 'last_month_received', label: 'Прошлый месяц', icon: <FaCalendarAlt />, params: { period: 'last_month', type: 'received' } },
   { id: 'generosity', label: 'Щедрость', icon: <FaGift />, params: { period: 'current_month', type: 'sent' } },
-  { id: 'all_time_received', label: 'За всё время', icon: <FaInfinity />, params: { period: 'all_time', type: 'received' } },
 ];
 
 function LeaderboardPage({ user }) {
-  const [visibleTabs, setVisibleTabs] = useState(user.is_admin ? ALL_TABS : []);
+  // Теперь по умолчанию будет выбрана первая вкладка из нового списка
   const [activeTabId, setActiveTabId] = useState(ALL_TABS[0].id);
+  const [visibleTabs, setVisibleTabs] = useState(user.is_admin ? ALL_TABS : []);
   const [leaderboard, setLeaderboard] = useState([]);
   const [myRank, setMyRank] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,19 +30,24 @@ function LeaderboardPage({ user }) {
           const status = response.data.find(s => s.id === tab.id);
           return status && status.has_data;
         });
+        
         setVisibleTabs(activeTabs);
-        if (activeTabs.length > 0 && !activeTabs.find(t => t.id === activeTabId)) {
-          setActiveTabId(activeTabs[0].id);
+        
+        // Проверяем, видима ли наша вкладка по умолчанию. Если нет, выбираем первую видимую.
+        const defaultTabIsVisible = activeTabs.some(t => t.id === ALL_TABS[0].id);
+        if (activeTabs.length > 0 && !defaultTabIsVisible) {
+            setActiveTabId(activeTabs[0].id);
         } else if (activeTabs.length === 0) {
-          setIsLoading(false);
+            setIsLoading(false);
         }
+
       } catch (error) {
         console.error("Failed to fetch tab statuses", error);
         setIsLoading(false);
       }
     };
     fetchTabStatuses();
-  }, [user.is_admin, activeTabId]);
+  }, [user.is_admin]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -61,8 +68,12 @@ function LeaderboardPage({ user }) {
   }, [activeTabId]);
 
   useEffect(() => {
-    if (visibleTabs.length > 0) fetchData();
-  }, [fetchData, visibleTabs]);
+    // Убедимся, что fetchData вызывается только если вкладка по умолчанию видима
+    const currentDefaultTab = ALL_TABS.find(t => t.id === activeTabId);
+    if (visibleTabs.includes(currentDefaultTab)) {
+      fetchData();
+    }
+  }, [fetchData, visibleTabs, activeTabId]);
 
   const top3 = leaderboard.slice(0, 3);
   const others = leaderboard.slice(3);
@@ -91,6 +102,7 @@ function LeaderboardPage({ user }) {
               <p>Вы на <strong>{myRank.rank}-м</strong> месте</p>
             </div>
           )}
+
           {top3.length > 0 && (
             <div className={styles.podium}>
               {top3[1] && (
@@ -127,7 +139,6 @@ function LeaderboardPage({ user }) {
                   <span className={styles.rank}>{index + 4}</span>
                   <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} />
                   <div className={styles.userInfo}>
-                    {/* --- ИЗМЕНЕНИЕ ЗДЕСЬ --- */}
                     <span className={styles.userName}>{item.user.first_name}</span>
                   </div>
                   <div className={styles.pointsContainer}>
