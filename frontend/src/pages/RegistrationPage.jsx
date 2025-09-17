@@ -32,6 +32,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         department: department,
         position: position,
         username: telegramUser.username,
+        telegram_photo_url: telegramUser.photo_url || null,
         phone_number: phoneNumber,
         date_of_birth: dateOfBirth,
       };
