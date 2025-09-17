@@ -7,9 +7,11 @@ import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../api';
 import styles from '../AdminPage.module.css';
 import userManagerStyles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
+import { useConfirmation } from '../../contexts/ConfirmationContext'; // 1. Импортируем
 
 // Модальное окно для редактирования
 function EditUserModal({ user, onClose, onSave }) {
+  const { confirm } = useConfirmation(); // 2. Получаем функцию
   const [formData, setFormData] = useState(user);
 
   const handleChange = (e) => {
@@ -22,16 +24,24 @@ function EditUserModal({ user, onClose, onSave }) {
     onSave(user.id, formData);
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`Вы уверены, что хотите сбросить пользователя ${user.first_name}? Он будет отправлен на повторную регистрацию.`)) {
+  const handleDelete = async () => {
+    const isConfirmed = await confirm(
+      'Сброс пользователя',
+      `Вы уверены, что хотите сбросить пользователя ${user.first_name}? Он будет отправлен на повторную регистрацию.`
+    );
+    if (isConfirmed) {
       onSave(user.id, { ...formData, id_to_delete: user.id, action: 'delete' });
     }
   };
 
-  const handleBlockToggle = () => {
+  const handleBlockToggle = async () => {
     const newStatus = user.status === 'blocked' ? 'approved' : 'blocked';
     const actionText = newStatus === 'blocked' ? 'разблокировать' : 'заблокировать';
-    if (window.confirm(`Вы уверены, что хотите ${actionText} пользователя ${user.first_name}?`)) {
+    const isConfirmed = await confirm(
+      'Изменение статуса',
+      `Вы уверены, что хотите ${actionText} пользователя ${user.first_name}?`
+    );
+    if (isConfirmed) {
       onSave(user.id, { ...formData, status: newStatus });
     }
   };
