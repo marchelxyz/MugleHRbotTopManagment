@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa'; // Импортируем иконку
+import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
 
 // --- Выносим логику расчета на фронтенд для динамического отображения ---
 function calculateSpasibkiPrice(priceRub) {
@@ -24,6 +25,7 @@ function calculateAccumulationForecast(priceSpasibki) {
 const initialItemState = { name: '', description: '', price_rub: '', stock: 1 };
 
 function ItemManager() {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
   const [view, setView] = useState('active'); // 'active' или 'archived'
   const [items, setItems] = useState([]);
   const [archivedItems, setArchivedItems] = useState([]);
