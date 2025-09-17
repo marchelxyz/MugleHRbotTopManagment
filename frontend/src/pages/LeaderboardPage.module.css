@@ -112,10 +112,64 @@
 .podiumIcon { font-size: 24px; }
 
 /* --- Стили для общего списка (без изменений) --- */
-.list { padding-left: 0; list-style: none; }
-.listItem { display: flex; align-items: center; margin-bottom: 10px; background-color: #ffffff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
-.listItem .rank { font-size: 16px; font-weight: bold; color: #888; width: 30px; }
-.listItem .userInfo { flex-grow: 1; margin-left: 15px; }
-.listItem .userName { font-weight: bold; }
-.listItem .userPosition { font-size: 12px; color: #6E7A85; }
-.listItem .points { font-weight: bold; color: #5CA14A; }
+.list {
+  padding-left: 0;
+  list-style: none;
+}
+.listItem {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  /* Добавляем градиент */
+  background: linear-gradient(to right, #ffffff 80%, #f1f8ee);
+  padding: 10px 15px;
+  border-radius: 12px; /* Увеличиваем скругление */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07); /* Делаем тень чуть заметнее */
+  transition: transform 0.2s ease-in-out;
+}
+.listItem:hover {
+  transform: scale(1.02); /* Легкое увеличение при наведении */
+}
+
+/* 1. Стиль для аватарки в списке */
+.listItemAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 12px; /* Отступ справа */
+}
+
+.listItem .rank {
+  font-size: 16px;
+  font-weight: bold;
+  color: #888;
+  width: 30px;
+}
+.listItem .userInfo {
+  flex-grow: 1;
+}
+.listItem .userName {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* 2. Стиль для контейнера с баллами и логотипом */
+.pointsContainer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  text-align: right;
+}
+.points {
+  font-weight: bold;
+  color: #5CA14A;
+  font-size: 16px;
+}
+
+/* 3. Стиль для логотипа "спасибо" */
+.pointsLogo {
+  width: 20px;
+  height: 20px;
+  margin-left: 5px;
+}
