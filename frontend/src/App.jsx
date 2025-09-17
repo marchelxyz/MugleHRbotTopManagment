@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { checkUserStatus } from './api';
-import { initializeCache } from './storage';
+import { initializeCache, clearCache } from './storage';
 import UnsupportedDevicePage from './pages/UnsupportedDevicePage';
 
 // Компоненты и страницы
@@ -151,7 +151,8 @@ function App() {
     
     if (user.status === 'approved') {
       switch (page) {
-        case 'leaderboard': return <LeaderboardPage />;
+        case 'leaderboard': 
+          return <LeaderboardPage user={user} />;
         case 'roulette': // 2. Добавляем новый case
         return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
