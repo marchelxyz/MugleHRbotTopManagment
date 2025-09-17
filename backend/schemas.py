@@ -44,6 +44,7 @@ class UserResponse(UserBase):
     daily_transfer_count: int
     is_admin: bool
     status: Optional[str] = 'approved' 
+    telegram_photo_url: Optional[str] = None
     ticket_parts: int
     tickets: int
     card_barcode: Optional[str] = None
