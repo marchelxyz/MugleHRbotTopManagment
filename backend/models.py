@@ -16,6 +16,7 @@ class User(Base):
     position = Column(String, nullable=False)
     department = Column(String, nullable=False)
     username = Column(String, nullable=True)
+    telegram_photo_url = Column(String, nullable=True)
     phone_number = Column(String, nullable=True)
     date_of_birth = Column(Date, nullable=True)
     balance = Column(Integer, default=0)
