@@ -3,28 +3,27 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getLeaderboard, getMyRank, getLeaderboardStatus } from '../api';
 import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
-import { FaCrown } from 'react-icons/fa'; // <-- 1. Иконка короны
+// --- 1. ИМПОРТИРУЕМ ИКОНКИ ДЛЯ ВКЛАДОК И КОРОНЫ ---
+import { FaCrown, FaCalendarDay, FaCalendarAlt, FaGift, FaInfinity } from 'react-icons/fa';
 
-// Конфигурация всех возможных вкладок
+// --- 2. ДОБАВЛЯЕМ ИКОНКИ В КОНФИГУРАЦИЮ ВКЛАДОК ---
 const ALL_TABS = [
-  { id: 'current_month_received', label: 'Этот месяц', params: { period: 'current_month', type: 'received' } },
-  { id: 'last_month_received', label: 'Прошлый месяц', params: { period: 'last_month', type: 'received' } },
-  { id: 'generosity', label: 'Щедрость', params: { period: 'current_month', type: 'sent' } },
-  { id: 'all_time_received', label: 'За всё время', params: { period: 'all_time', type: 'received' } },
+  { id: 'current_month_received', label: 'Этот месяц', icon: <FaCalendarDay />, params: { period: 'current_month', type: 'received' } },
+  { id: 'last_month_received', label: 'Прошлый месяц', icon: <FaCalendarAlt />, params: { period: 'last_month', type: 'received' } },
+  { id: 'generosity', label: 'Щедрость', icon: <FaGift />, params: { period: 'current_month', type: 'sent' } },
+  { id: 'all_time_received', label: 'За всё время', icon: <FaInfinity />, params: { period: 'all_time', type: 'received' } },
 ];
 
 function LeaderboardPage({ user }) {
-  // Админам сразу показываем все вкладки, остальным — пустой массив, который заполнится
   const [visibleTabs, setVisibleTabs] = useState(user.is_admin ? ALL_TABS : []);
   const [activeTabId, setActiveTabId] = useState(ALL_TABS[0].id);
   const [leaderboard, setLeaderboard] = useState([]);
   const [myRank, setMyRank] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Эффект для загрузки статусов вкладок (определяет, какие показывать)
+  // Логика по загрузке и фильтрации вкладок остается без изменений
   useEffect(() => {
-    if (user.is_admin) return; // Админам ничего проверять не нужно
-
+    if (user.is_admin) return;
     const fetchTabStatuses = async () => {
       try {
         const response = await getLeaderboardStatus();
@@ -32,14 +31,11 @@ function LeaderboardPage({ user }) {
           const status = response.data.find(s => s.id === tab.id);
           return status && status.has_data;
         });
-        
         setVisibleTabs(activeTabs);
-        
-        // Если текущая активная вкладка стала невидимой, переключаемся на первую видимую
         if (activeTabs.length > 0 && !activeTabs.find(t => t.id === activeTabId)) {
           setActiveTabId(activeTabs[0].id);
         } else if (activeTabs.length === 0) {
-            setIsLoading(false); // Если видимых вкладок нет, выключаем загрузку
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Failed to fetch tab statuses", error);
@@ -49,25 +45,17 @@ function LeaderboardPage({ user }) {
     fetchTabStatuses();
   }, [user.is_admin, activeTabId]);
 
-
-  // Эффект для загрузки данных активной вкладки
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const tabConfig = ALL_TABS.find(t => t.id === activeTabId);
-      if (!tabConfig) {
-        setIsLoading(false);
-        return;
-      }
-
+      if (!tabConfig) { setIsLoading(false); return; }
       const [leaderboardRes, myRankRes] = await Promise.all([
         getLeaderboard(tabConfig.params),
         getMyRank(tabConfig.params)
       ]);
-      
       setLeaderboard(leaderboardRes.data);
       setMyRank(myRankRes.data);
-
     } catch (error) {
       console.error("Failed to fetch leaderboard data", error);
     } finally {
@@ -76,9 +64,7 @@ function LeaderboardPage({ user }) {
   }, [activeTabId]);
 
   useEffect(() => {
-    if (visibleTabs.length > 0) {
-      fetchData();
-    }
+    if (visibleTabs.length > 0) fetchData();
   }, [fetchData, visibleTabs]);
 
   const top3 = leaderboard.slice(0, 3);
@@ -86,17 +72,19 @@ function LeaderboardPage({ user }) {
 
   return (
     <PageLayout title="Рейтинг">
+      {/* --- 3. ОБНОВЛЯЕМ РЕНДЕРИНГ ВКЛАДОК --- */}
       {visibleTabs.length > 0 && (
-        <div className={styles.tabs}>
-            {visibleTabs.map(tab => (
+        <div className={styles.tabsContainer}>
+          {visibleTabs.map(tab => (
             <button
-                key={tab.id}
-                onClick={() => setActiveTabId(tab.id)}
-                className={activeTabId === tab.id ? styles.tabActive : styles.tab}
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className={`${styles.tab} ${activeTabId === tab.id ? styles.tabActive : styles.tabCollapsed}`}
             >
-                {tab.label}
+              <span className={styles.tabIcon}>{tab.icon}</span>
+              <span className={styles.tabLabel}>{tab.label}</span>
             </button>
-            ))}
+          ))}
         </div>
       )}
 
@@ -111,6 +99,7 @@ function LeaderboardPage({ user }) {
             </div>
           )}
 
+          {/* --- 4. МЕНЯЕМ ИКОНКИ МЕДАЛЕЙ НА КОРОНЫ --- */}
           {top3.length > 0 && (
             <div className={styles.podium}>
               {top3[1] && (
