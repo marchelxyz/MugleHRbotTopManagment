@@ -1,5 +1,5 @@
 /* frontend/src/components/UserAvatar.module.css */
-.avatar {
+.avatarText, .avatarImage {
   width: 64px;
   height: 64px;
   border-radius: 50%;
@@ -12,6 +12,10 @@
   text-transform: uppercase;
   border: 3px solid white;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.avatarImage {
+  object-fit: cover; /* Чтобы фото не искажалось */
 }
 
 .placeholder {
