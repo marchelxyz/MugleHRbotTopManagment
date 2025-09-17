@@ -129,20 +129,28 @@ function LeaderboardPage({ user }) {
             </div>
           )}
 
+          {/* --- НАЧАЛО ИЗМЕНЕНИЙ В СПИСКЕ 4+ МЕСТ --- */}
           {others.length > 0 && (
             <ol start="4" className={styles.list}>
               {others.map((item, index) => (
                 <li key={item.user.id} className={styles.listItem}>
                   <span className={styles.rank}>{index + 4}</span>
+                  {/* 1. Добавляем фото пользователя */}
+                  <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} />
                   <div className={styles.userInfo}>
                     <span className={styles.userName}>{item.user.first_name} {item.user.last_name}</span>
-                    <span className={styles.userPosition}>{item.user.position}</span>
+                    {/* 2. Убираем должность */}
                   </div>
-                  <span className={styles.points}>{item.total_received}</span>
+                  {/* 3. Оборачиваем баллы и логотип в контейнер */}
+                  <div className={styles.pointsContainer}>
+                    <span className={styles.points}>{item.total_received}</span>
+                    <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="спасибо" className={styles.pointsLogo} />
+                  </div>
                 </li>
               ))}
             </ol>
           )}
+          {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
           
           {leaderboard.length === 0 && visibleTabs.length > 0 && <p>В этом рейтинге пока нет данных.</p>}
           {visibleTabs.length === 0 && !user.is_admin && <p>Рейтинги пока пусты. Скоро здесь появится активность!</p>}
