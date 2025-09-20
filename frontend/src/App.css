@@ -42,3 +42,23 @@
   top: 0;
   z-index: 999; /* Поверх всего */
 }
+
+/* Общий контейнер, который теперь может быть мобильным или десктопным */
+.app-container {
+  min-height: 100vh;
+}
+
+/* Мобильный вид (узкий, по центру) */
+.mobile-wrapper {
+  margin: 0 auto;
+  max-width: 450px;
+  min-height: 100vh;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  background-color: #F4F4F8;
+}
+
+/* Десктопный вид (широкий, с отступом слева) */
+.desktop-wrapper {
+  margin-left: 240px; /* Отступ, равный ширине бокового меню */
+}
