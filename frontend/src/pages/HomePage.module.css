@@ -266,3 +266,16 @@
   overflow: visible;
   text-overflow: initial;
 }
+
+/* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
+.headerDesktop {
+  height: 250px;
+  background-image: url('https://i.postimg.cc/9MvKPMj0/image.webp'); /* <-- Новая картинка */
+  background-size: cover;
+  background-position: center;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
