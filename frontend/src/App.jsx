@@ -126,7 +126,8 @@ function App() {
         case 'admin': return <AdminPage />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+          // --- ИЗМЕНЕНИЕ ЗДЕСЬ: Передаём isDesktop в HomePage ---
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} />;
       }
     }
     
