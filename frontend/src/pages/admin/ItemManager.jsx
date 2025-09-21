@@ -1,7 +1,7 @@
 // frontend/src/pages/admin/ItemManager.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage } from '../../api';
+import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage, API_BASE_URL } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
@@ -144,10 +144,11 @@ function ItemManager() {
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
           <div className={styles.imageUploader}>
+            {/* --- 2. СТРОИМ ПОЛНУЮ ССЫЛКУ НА ИЗОБРАЖЕНИЕ --- */}
             {form.image_url ? (
-              <img src={form.image_url} alt="Предпросмотр" className={styles.imagePreview} />
+              <img src={`${API_BASE_URL}${form.image_url}`} alt="Предпросмотр" className={styles.imagePreview} />
             ) : (
-              <div className={styles.imagePlaceholder}>100x100</div>
+              <div className={styles.imagePlaceholder}>300x300</div>
             )}
             <input type="file" id="imageUpload" onChange={handleImageUpload} accept="image/png, image/jpeg" style={{ display: 'none' }} />
             <label htmlFor="imageUpload" className={styles.buttonGrey}>
