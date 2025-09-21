@@ -1,13 +1,14 @@
 // frontend/src/pages/RegistrationPage.jsx
 
 import React, { useState } from 'react';
+import InputMask from 'react-input-mask'; // 1. Импортируем компонент маски
 import { registerUser } from '../api';
 import styles from './RegistrationPage.module.css';
-import PageLayout from '../components/PageLayout'; // 1. Импортируем Layout
-import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
+import PageLayout from '../components/PageLayout';
+import { useModalAlert } from '../contexts/ModalAlertContext';
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
-  const { showAlert } = useModalAlert(); // 2. Получаем функцию
+  const { showAlert } = useModalAlert();
   const [firstName, setFirstName] = useState(telegramUser?.first_name || '');
   const [lastName, setLastName] = useState('');
   const [department, setDepartment] = useState('');
@@ -19,10 +20,21 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!firstName || !lastName || !department || !position) {
-      setError('Пожалуйста, заполните все обязательные поля.');
+    // 2. Обновляем проверку на обязательные поля
+    if (!firstName || !lastName || !department || !position || !phoneNumber || !dateOfBirth) {
+      setError('Пожалуйста, заполните все поля.');
       return;
     }
+    // Проверка, что телефон и дата введены полностью
+    if (phoneNumber.includes('_')) {
+      setError('Пожалуйста, введите номер телефона полностью.');
+      return;
+    }
+    if (dateOfBirth.includes('_')) {
+      setError('Пожалуйста, введите дату рождения полностью.');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -39,12 +51,10 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         date_of_birth: dateOfBirth,
       };
 
-      const response = await registerUser(telegramUser.id, userData);
+      await registerUser(telegramUser.id, userData);
       
-      // 3. Заменяем alert() на showAlert()
       showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
       
-      // Небольшая задержка, чтобы пользователь успел увидеть уведомление
       setTimeout(() => {
         onRegistrationSuccess(); 
       }, 1500);
@@ -58,7 +68,6 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   };
 
   return (
-    // 2. Оборачиваем всё в PageLayout с заголовком
     <PageLayout title="Регистрация">
       <p className={styles.subtitle}>
         Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
@@ -68,8 +77,27 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Ваша фамилия" className={styles.input} required />
         <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Ваше подразделение" className={styles.input} required />
         <input type="text" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Ваша должность" className={styles.input} required />
-        <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Номер телефона (необязательно)" className={styles.input} />
-        <input type="text" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => e.target.type = 'text'} value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} placeholder="Дата рождения (необязательно)" className={styles.input} />
+        
+        {/* 3. Заменяем обычные input на InputMask */}
+        <InputMask
+          mask="+7 (999) 999-99-99"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          className={styles.input}
+          required
+        >
+          {(inputProps) => <input {...inputProps} type="tel" placeholder="Номер телефона" />}
+        </InputMask>
+
+        <InputMask
+          mask="9999-99-99"
+          value={dateOfBirth}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          className={styles.input}
+          required
+        >
+          {(inputProps) => <input {...inputProps} type="text" placeholder="Дата рождения (ГГГГ-ММ-ДД)" />}
+        </InputMask>
 
         <button type="submit" disabled={isLoading} className={styles.submitButton}>
           {isLoading ? 'Отправка...' : 'Отправить на рассмотрение'}
