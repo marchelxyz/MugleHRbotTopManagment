@@ -3,7 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
-from routers import users, transactions, market, admin, banners, scheduler, telegram, roulette
+from fastapi.staticfiles import StaticFiles
+from routers import users, transactions, market, admin, banners, scheduler, telegram, roulette, uploads # Добавляем uploads
 
 app = FastAPI()
 
@@ -14,6 +15,10 @@ app = FastAPI()
 #     print(f"!!! DEBUG: Incoming request with headers: {request.headers}")
 #     response = await call_next(request)
 #     return response
+
+# --- 2. ДОБАВЬ ЭТУ СТРОКУ, ЧТОБЫ СЕРВЕР МОГ ОТДАВАТЬ КАРТИНКИ ---
+# Все файлы из папки 'static' будут доступны по URL '/static'
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Конфигурация CORS (оставляем ее как есть)
 app.add_middleware(
@@ -36,3 +41,5 @@ app.include_router(admin.router)
 app.include_router(banners.router)
 app.include_router(telegram.router)
 app.include_router(roulette.router)
+# --- 3. ПОДКЛЮЧАЕМ НАШ НОВЫЙ РОУТЕР ---
+app.include_router(uploads.router)
