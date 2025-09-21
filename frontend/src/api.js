@@ -1,21 +1,16 @@
 import axios from 'axios';
 
+// 1. Сохраняем адрес бэкенда в переменную
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 console.log('Using API URL:', API_BASE_URL);
 
+// Создаем экземпляр axios с базовым URL
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// --- 2. ЭКСПОРТИРУЕМ ЕЁ, ЧТОБЫ ИСПОЛЬЗОВАТЬ В ДРУГИХ ФАЙЛАХ ---
+// 2. Экспортируем API_BASE_URL, чтобы использовать его в других файлах для картинок
 export { API_BASE_URL };
-
-// --- НАША ОТЛАДОЧНАЯ СТРОКА ---
-console.log('Using API URL:', import.meta.env.VITE_API_URL);
-
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-});
 
 export const checkUserStatus = (telegramId) => {
   return apiClient.get('/users/me', {
