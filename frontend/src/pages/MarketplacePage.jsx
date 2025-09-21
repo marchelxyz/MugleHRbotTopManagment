@@ -1,6 +1,6 @@
 // frontend/src/pages/MarketplacePage.jsx
 import React, { useState, useEffect } from 'react';
-import { getMarketItems, purchaseItem } from '../api';
+import { getMarketItems, purchaseItem, API_BASE_URL } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
 import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
@@ -65,10 +65,11 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         <div className={styles.itemsGrid}>
           {items.map(item => (
             <div key={item.id} className={styles.itemCard}>
-              {/* --- ДОБАВЛЯЕМ ОТОБРАЖЕНИЕ КАРТИНКИ --- */}
+              {/* --- 2. СТРОИМ ПОЛНУЮ ССЫЛКУ НА ИЗОБРАЖЕНИЕ --- */}
               {item.image_url && (
-                <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+                <img src={`${API_BASE_URL}${item.image_url}`} alt={item.name} className={styles.itemImage} />
               )}
+              <div className={styles.itemContent}>
               <h2 className={styles.itemName}>{item.name}</h2>
               <p className={styles.itemDescription}>{item.description}</p>
               <p className={styles.itemPrice}>Цена: {item.price} баллов</p>
