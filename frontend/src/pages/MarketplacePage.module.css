@@ -13,9 +13,10 @@
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 20px;
   display: flex;
-  flex-direction: column;
+  flex-direction: column;  
+  padding: 0; /* Убираем внутренний отступ, чтобы картинка прилегала к краям */
+  overflow: hidden; /* Скрываем части картинки, выходящие за скругленные углы */
 }
 
 .itemName {
@@ -51,4 +52,22 @@
 .purchaseButton:disabled {
   background-color: #a3d9b1;
   cursor: not-allowed;
+}
+
+/* --- НОВЫЙ СТИЛЬ ДЛЯ КАРТИНКИ ТОВАРА --- */
+.itemImage {
+  width: 100%;
+  height: 150px; /* Задаем фиксированную высоту */
+  object-fit: cover; /* Картинка заполнит блок без искажений */
+  margin-bottom: 15px;
+}
+
+/* Добавляем отступы для текстового контента, т.к. убрали их из .itemCard */
+.itemName, .itemDescription, .itemPrice, .purchaseButton {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+.purchaseButton {
+    margin-bottom: 20px;
+    width: calc(100% - 40px);
 }
