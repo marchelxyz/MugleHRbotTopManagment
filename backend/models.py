@@ -17,8 +17,8 @@ class User(Base):
     department = Column(String, nullable=False)
     username = Column(String, nullable=True)
     telegram_photo_url = Column(String, nullable=True)
-    phone_number = Column(String, nullable=True)
-    date_of_birth = Column(Date, nullable=True)
+    phone_number = Column(String, nullable=False) # Было nullable=True
+    date_of_birth = Column(Date, nullable=False)   # Было nullable=True
     balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
     daily_transfer_count = Column(Integer, default=0)
