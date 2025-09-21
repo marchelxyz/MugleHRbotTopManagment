@@ -1,6 +1,6 @@
 // frontend/src/pages/MarketplacePage.jsx
 
-import React, 'react';
+import React from 'react'; // <-- ИСПРАВЛЕНИЕ ЗДЕСЬ
 import { useState, useEffect } from 'react';
 // 1. Импортируем API_BASE_URL вместе с остальными функциями
 import { getMarketItems, purchaseItem, API_BASE_URL } from '../api';
