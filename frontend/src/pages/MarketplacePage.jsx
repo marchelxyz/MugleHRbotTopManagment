@@ -1,6 +1,6 @@
 // frontend/src/pages/MarketplacePage.jsx
 
-import React from 'react'; // <-- ИСПРАВЛЕНИЕ ЗДЕСЬ
+import React from 'react';
 import { useState, useEffect } from 'react';
 // 1. Импортируем API_BASE_URL вместе с остальными функциями
 import { getMarketItems, purchaseItem, API_BASE_URL } from '../api';
@@ -44,11 +44,8 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     
     try {
       const response = await purchaseItem(user.id, itemId);
-      
       onPurchaseSuccess({ balance: response.data.new_balance });
-
       showAlert(`Покупка совершена! Детали отправлены вам в чат с ботом.`, 'success');
-      
     } catch (error) {
       const errorMessage = error.response?.data?.detail || 'Не удалось совершить покупку.';
       showAlert(errorMessage, 'error');
@@ -57,7 +54,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   
   return (
     <PageLayout title="Кафетерий">
-      <p>Ваш баланс: <strong>{user?.balance}</strong> баллов</p>
+      <p>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {items.map(item => (
@@ -66,7 +63,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
               {item.image_url && (
                 <img src={`${API_BASE_URL}${item.image_url}`} alt={item.name} className={styles.itemImage} />
               )}
-              {/* 3. Оборачиваем контент для правильных отступов */}
               <div className={styles.itemContent}>
                 <h2 className={styles.itemName}>{item.name}</h2>
                 <p className={styles.itemDescription}>{item.description}</p>
