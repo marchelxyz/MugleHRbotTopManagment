@@ -233,3 +233,17 @@ export const adminDeleteUser = (userId) => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ И КОНВЕРТАЦИИ ИЗОБРАЖЕНИЙ ---
+export const uploadItemImage = (file) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiClient.post('/uploads/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      'X-Telegram-Id': telegramId, // Для авторизации, если потребуется
+    },
+  });
+};
