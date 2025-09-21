@@ -75,8 +75,8 @@ class RegisterRequest(BaseModel):
     department: str
     username: Optional[str] = None
     telegram_photo_url: Optional[str] = None
-    phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    phone_number: str
+    date_of_birth: str
 
 class FeedItem(OrmBase):
     id: int
