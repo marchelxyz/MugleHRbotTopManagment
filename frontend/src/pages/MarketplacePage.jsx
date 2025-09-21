@@ -69,7 +69,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
               {item.image_url && (
                 <img src={`${API_BASE_URL}${item.image_url}`} alt={item.name} className={styles.itemImage} />
               )}
-              <div className={styles.itemContent}>
               <h2 className={styles.itemName}>{item.name}</h2>
               <p className={styles.itemDescription}>{item.description}</p>
               <p className={styles.itemPrice}>Цена: {item.price} баллов</p>
