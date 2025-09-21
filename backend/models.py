@@ -1,7 +1,8 @@
 # backend/models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship
+from .database import Base # <-- Импортируем Base из правильного места
 from datetime import datetime
 
 Base = declarative_base()
