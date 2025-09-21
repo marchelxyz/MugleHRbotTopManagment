@@ -149,8 +149,13 @@ function ItemManager() {
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           
-          {form.price_rub > 0 && ( /* ... */ )}
-          
+          {form.price_rub > 0 && (
+            <div className={styles.pricePreview}>
+              <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
+              <p>Прогноз накопления: <strong>{forecast}</strong></p>
+            </div>
+          )}
+            
           <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
           <button type="submit" disabled={loading || uploading} className={styles.buttonGreen}>
             {editingItemId ? 'Сохранить' : 'Создать'}
