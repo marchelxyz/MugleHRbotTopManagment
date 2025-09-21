@@ -1,6 +1,7 @@
 // frontend/src/pages/admin/ItemManager.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { clearCache } from '../../storage'; 
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage, API_BASE_URL } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
@@ -96,6 +97,7 @@ function ItemManager() {
       }
       resetForm();
       fetchItems();
+      clearCache('market'); // 2. Очищаем кэш магазина!
     } catch (error) {
       showAlert('Произошла ошибка.', 'error');
     } finally {
