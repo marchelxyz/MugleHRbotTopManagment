@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage } from '../../api';
 import styles from '../AdminPage.module.css';
-import { FaArchive } from 'react-icons/fa'; // Импортируем иконку
-import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
-import { useConfirmation } from '../../contexts/ConfirmationContext'; // 1. Импортируем
+import { FaArchive } from 'react-icons/fa';
+import { useModalAlert } from '../../contexts/ModalAlertContext';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-// --- Выносим логику расчета на фронтенд для динамического отображения ---
+// --- НАЧАЛО ИСПРАВЛЕНИЯ: Возвращаем недостающие функции ---
 function calculateSpasibkiPrice(priceRub) {
     if (!priceRub || priceRub <= 0) return 0;
     return Math.round(priceRub / 50);
@@ -21,25 +21,21 @@ function calculateAccumulationForecast(priceSpasibki) {
     const years = (monthsNeeded / 12).toFixed(1);
     return `около ${years} лет`;
 }
-// --------------------------------------------------------------------
+// --- КОНЕЦ ИСПРАВЛЕНИЯ ---
 
 const initialItemState = { name: '', description: '', price_rub: '', stock: 1, image_url: '' };
 
 function ItemManager() {
-  const { showAlert } = useModalAlert(); // 2. Получаем функцию
-  const { confirm } = useConfirmation(); // 2. Получаем функцию
-  const [view, setView] = useState('active'); // 'active' или 'archived'
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
+  const [view, setView] = useState('active');
   const [items, setItems] = useState([]);
   const [archivedItems, setArchivedItems] = useState([]);
-  
   const [form, setForm] = useState(initialItemState);
   const [editingItemId, setEditingItemId] = useState(null);
-  
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false); // Состояние для загрузки картинки
-  const [message, setMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
 
-  // Загружаем все данные при старте
   useEffect(() => {
     fetchItems();
   }, []);
@@ -54,25 +50,26 @@ function ItemManager() {
       setItems(activeRes.data);
       setArchivedItems(archivedRes.data);
     } catch (error) {
-      setMessage('Ошибка загрузки списка товаров.');
+      showAlert('Ошибка загрузки списка товаров.', 'error');
     } finally {
       setLoading(false);
     }
   };
   
-  // Динамический расчет для отображения в форме
   const calculatedPrice = useMemo(() => calculateSpasibkiPrice(form.price_rub), [form.price_rub]);
   const forecast = useMemo(() => calculateAccumulationForecast(calculatedPrice), [calculatedPrice]);
 
- // --- 3. НОВАЯ ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ЗАГРУЗКИ ФАЙЛА ---
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
     setUploading(true);
     try {
       const response = await uploadItemImage(file);
-      // Сохраняем полученный URL в состояние формы
       setForm(prev => ({ ...prev, image_url: response.data.url }));
     } catch (error) {
       showAlert('Ошибка загрузки изображения.', 'error');
@@ -84,7 +81,6 @@ function ItemManager() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Убедимся, что image_url передается
     const itemData = {
       ...form,
       price_rub: parseInt(form.price_rub, 10),
@@ -114,7 +110,7 @@ function ItemManager() {
       description: item.description,
       price_rub: item.price_rub,
       stock: item.stock,
-      image_url: item.image_url || '', // Заполняем URL картинки
+      image_url: item.image_url || '',
     });
     window.scrollTo(0, 0);
   };
@@ -124,15 +120,29 @@ function ItemManager() {
     setEditingItemId(null);
   };
 
-  const handleArchive = async (itemId) => { /* ... */ };
-  const handleRestore = async (itemId) => { /* ... */ };
+  const handleArchive = async (itemId) => {
+    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите архивировать этот товар?');
+    if (isConfirmed) {
+      await archiveMarketItem(itemId);
+      showAlert('Товар архивирован.', 'success');
+      fetchItems();
+    }
+  };
+
+  const handleRestore = async (itemId) => {
+    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите восстановить этот товар?');
+    if (isConfirmed) {
+      await restoreMarketItem(itemId);
+      showAlert('Товар восстановлен.', 'success');
+      fetchItems();
+    }
+  };
 
   return (
     <>
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
-          {/* --- 4. ДОБАВЛЯЕМ ИНТЕРФЕЙС ЗАГРУЗКИ --- */}
           <div className={styles.imageUploader}>
             {form.image_url ? (
               <img src={form.image_url} alt="Предпросмотр" className={styles.imagePreview} />
@@ -144,7 +154,6 @@ function ItemManager() {
               {uploading ? 'Загрузка...' : 'Выбрать фото'}
             </label>
           </div>
-
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
@@ -174,6 +183,7 @@ function ItemManager() {
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
+              {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
                 <p>Цена: {item.price} спасибок ({item.price_rub} ₽)</p>
