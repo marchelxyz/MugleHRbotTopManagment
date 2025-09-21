@@ -1,7 +1,5 @@
 /* frontend/src/pages/MarketplacePage.module.css */
 
-.page {}
-
 .itemsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -11,63 +9,67 @@
 
 .itemCard {
   background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   display: flex;
-  flex-direction: column;  
-  padding: 0; /* Убираем внутренний отступ, чтобы картинка прилегала к краям */
+  flex-direction: column;
   overflow: hidden; /* Скрываем части картинки, выходящие за скругленные углы */
+}
+
+.itemImage {
+  width: 100%;
+  height: 150px;
+  object-fit: cover; /* Картинка заполнит блок без искажений */
+}
+
+.itemContent {
+  padding: 15px;
+  flex-grow: 1; /* Этот блок будет занимать все доступное пространство */
+  display: flex;
+  flex-direction: column;
 }
 
 .itemName {
   font-size: 18px;
   font-weight: bold;
   margin-top: 0;
-  flex-grow: 1; /* Pushes the price and button to the bottom */
+  margin-bottom: 10px;
 }
 
 .itemDescription {
   color: #555;
   font-size: 14px;
+  flex-grow: 1; /* Описание будет растягиваться, отодвигая цену вниз */
+  margin-bottom: 15px;
 }
 
 .itemPrice {
   font-size: 16px;
   font-weight: bold;
-  color: #007bff;
-  margin: 15px 0;
+  color: #5CA14A;
+}
+
+.buttonWrapper {
+  padding: 0 15px 15px 15px;
 }
 
 .purchaseButton {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: none;
   border-radius: 8px;
   background-color: #28a745;
   color: white;
   font-size: 16px;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.purchaseButton:hover {
+  background-color: #218838;
 }
 
 .purchaseButton:disabled {
   background-color: #a3d9b1;
   cursor: not-allowed;
-}
-
-/* --- НОВЫЙ СТИЛЬ ДЛЯ КАРТИНКИ ТОВАРА --- */
-.itemImage {
-  width: 100%;
-  height: 150px; /* Задаем фиксированную высоту */
-  object-fit: cover; /* Картинка заполнит блок без искажений */
-  margin-bottom: 15px;
-}
-
-/* Добавляем отступы для текстового контента, т.к. убрали их из .itemCard */
-.itemName, .itemDescription, .itemPrice, .purchaseButton {
-  margin-left: 20px;
-  margin-right: 20px;
-}
-.purchaseButton {
-    margin-bottom: 20px;
-    width: calc(100% - 40px);
 }
