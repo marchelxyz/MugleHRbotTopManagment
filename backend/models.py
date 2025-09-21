@@ -55,6 +55,7 @@ class MarketItem(Base):
     price = Column(Integer, nullable=False)
     price_rub = Column(Integer, nullable=False) 
     stock = Column(Integer, default=0)
+    image_url = Column(String, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
     purchases = relationship("Purchase", back_populates="item")
