@@ -27,7 +27,7 @@ async def upload_and_convert_image(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(contents))
 
         # 1. Изменяем размер до 100x100, сохраняя пропорции (thumbnail)
-        image.thumbnail((100, 100))
+        image.thumbnail((300, 300))
 
         # 2. Генерируем уникальное имя файла
         filename = f"{uuid.uuid4()}.webp"
