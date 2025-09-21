@@ -63,6 +63,7 @@ class UserResponse(UserBase):
 # Она будет включать все поля для удобства
 class MarketItemResponse(MarketItemBase):
     price_rub: int
+    image_url: Optional[str] = None
     is_archived: bool
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
@@ -110,6 +111,7 @@ class MarketItemCreate(BaseModel):
     description: Optional[str] = None
     price_rub: int
     stock: int
+    image_url: Optional[str] = None
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
@@ -117,6 +119,7 @@ class MarketItemUpdate(BaseModel):
     description: Optional[str] = None
     price_rub: Optional[int] = None
     stock: Optional[int] = None
+    image_url: Optional[str] = None
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
