@@ -1,5 +1,15 @@
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+console.log('Using API URL:', API_BASE_URL);
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+});
+
+// --- 2. ЭКСПОРТИРУЕМ ЕЁ, ЧТОБЫ ИСПОЛЬЗОВАТЬ В ДРУГИХ ФАЙЛАХ ---
+export { API_BASE_URL };
+
 // --- НАША ОТЛАДОЧНАЯ СТРОКА ---
 console.log('Using API URL:', import.meta.env.VITE_API_URL);
 
