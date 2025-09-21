@@ -59,23 +59,20 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   };
   
   return (
-  <PageLayout title="Кафетерий">
+    <PageLayout title="Кафетерий">
       <p>Ваш баланс: <strong>{user?.balance}</strong> баллов</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {items.map(item => (
             <div key={item.id} className={styles.itemCard}>
+              {/* --- ДОБАВЛЯЕМ ОТОБРАЖЕНИЕ КАРТИНКИ --- */}
+              {item.image_url && (
+                <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+              )}
               <h2 className={styles.itemName}>{item.name}</h2>
               <p className={styles.itemDescription}>{item.description}</p>
               <p className={styles.itemPrice}>Цена: {item.price} баллов</p>
-              <button 
-                onClick={() => handlePurchase(item.id)} 
-                className={styles.purchaseButton}
-                // Не даем купить, если не хватает баллов
-                disabled={user?.balance < item.price} 
-              >
-                Купить
-              </button>
+              <button onClick={() => handlePurchase(item.id)} /* ... */ >Купить</button>
             </div>
           ))}
         </div>
