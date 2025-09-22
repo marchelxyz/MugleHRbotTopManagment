@@ -2,11 +2,9 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
-from .database import Base # <-- Импортируем Base из правильного места
+# Стало
+from database import Base
 from datetime import datetime
-
-# Стало:
-from database import Base # <-- Абсолютный импорт без точки
 
 class User(Base):
     __tablename__ = "users"
