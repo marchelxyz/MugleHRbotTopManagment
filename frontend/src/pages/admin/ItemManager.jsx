@@ -1,8 +1,8 @@
 // frontend/src/pages/admin/ItemManager.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { clearCache } from '../../storage'; 
-// Убираем uploadItemImage, так как он больше не нужен
+import { clearCache } from '../../storage';
+// Убедитесь, что здесь НЕТ импорта uploadItemImage
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
@@ -21,7 +21,6 @@ function ItemManager() {
   const [editingItemId, setEditingItemId] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Функция для загрузки товаров (без изменений)
   const fetchItems = async () => {
     setLoading(true);
     try {
@@ -42,7 +41,6 @@ function ItemManager() {
     fetchItems();
   }, []);
   
-  // Логика расчета цены и прогноза (без изменений)
   const calculatedPrice = useMemo(() => {
       if (!form.price_rub || form.price_rub <= 0) return 0;
       return Math.round(form.price_rub / 50);
@@ -65,7 +63,7 @@ function ItemManager() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Убираем поле "price", Pydantic его больше не ждет
+    // Убедитесь, что здесь нет логики по загрузке файла (formData, append и т.д.)
     const { price, ...itemDataToSend } = {
       ...form,
       price_rub: parseInt(form.price_rub, 10),
@@ -99,7 +97,7 @@ function ItemManager() {
         stock: item.stock,
         image_url: item.image_url || ''
     });
-    window.scrollTo(0, 0); // Прокручиваем наверх к форме
+    window.scrollTo(0, 0);
   };
 
   const resetForm = () => {
@@ -141,14 +139,13 @@ function ItemManager() {
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
           
-          {/* --- НАЧАЛО ИЗМЕНЕНИЙ: Блок для URL и предпросмотра --- */}
+          {/* Вот новый блок, который должен появиться */}
           <div className={styles.imageUploader}>
             {form.image_url ? (
               <img 
                 src={form.image_url} 
                 alt="Предпросмотр" 
                 className={styles.imagePreview} 
-                // Если ссылка на картинку нерабочая, этот обработчик скроет иконку битого изображения
                 onError={(e) => { e.target.style.display = 'none'; }} 
                 onLoad={(e) => { e.target.style.display = 'block'; }}
               />
@@ -164,7 +161,7 @@ function ItemManager() {
             placeholder="Прямая ссылка на изображение (URL)" 
             className={styles.input} 
           />
-          {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
+          {/* Старого блока с <input type="file"> здесь быть не должно */}
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
@@ -185,6 +182,7 @@ function ItemManager() {
         </form>
       </div>
       
+      {/* Остальная часть компонента без изменений */}
       <div className={styles.tabs}>
         <button onClick={() => setView('active')} className={view === 'active' ? styles.tabActive : styles.tab}>Активные ({items.length})</button>
         <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
@@ -195,7 +193,6 @@ function ItemManager() {
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
-              {/* Используем image_url для отображения картинки в списке */}
               {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
