@@ -1,43 +1,47 @@
-# backend/routers/uploads.py (НОВЫЙ ФАЙЛ)
+# backend/routers/uploads.py
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from PIL import Image # Библиотека для обработки изображений
+from PIL import Image
 import io
 import os
 import uuid
+from pathlib import Path # 1. Импортируем pathlib для работы с путями
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
-# Указываем, куда сохранять обработанные картинки
-UPLOAD_DIR = "static/images"
-os.makedirs(UPLOAD_DIR, exist_ok=True) # Создаем папку, если ее нет
+# --- 2. НАЧАЛО ГЛАВНОГО ИСПРАВЛЕНИЯ ---
+# Создаем АБСОЛЮТНЫЙ путь к нашей папке для изображений.
+# Path(__file__) -> текущий файл (uploads.py)
+# .parent -> папка routers/
+# .parent -> папка backend/ (корень нашего приложения)
+# / "static" / "images" -> добавляем нужные папки
+UPLOAD_DIR = Path(__file__).parent.parent / "static" / "images"
+# --- КОНЕЦ ГЛАВНОГО ИСПРАВЛЕНИЯ ---
+
+# Убеждаемся, что директория существует
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/image")
 async def upload_and_convert_image(file: UploadFile = File(...)):
     """
-    Принимает изображение, изменяет размер до 100x100,
+    Принимает изображение, изменяет размер до 300x300,
     конвертирует в WebP и возвращает публичный URL.
     """
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File provided is not an image.")
 
     try:
-        # Читаем содержимое файла в память
         contents = await file.read()
         image = Image.open(io.BytesIO(contents))
-
-        # 1. Изменяем размер до 100x100, сохраняя пропорции (thumbnail)
         image.thumbnail((300, 300))
 
-        # 2. Генерируем уникальное имя файла
         filename = f"{uuid.uuid4()}.webp"
-        filepath = os.path.join(UPLOAD_DIR, filename)
+        # Теперь мы используем абсолютный путь для сохранения
+        filepath = UPLOAD_DIR / filename
         
-        # 3. Сохраняем в формате WebP с оптимизацией
         image.save(filepath, 'webp', quality=85)
 
-        # 4. Возвращаем публичный URL для доступа к файлу
-        # ВАЖНО: Убедись, что твой сервер настроен на раздачу статики из папки /static
+        # Публичный URL остается относительным, это правильно
         public_url = f"/static/images/{filename}"
         return {"url": public_url}
 
