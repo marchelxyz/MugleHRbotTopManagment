@@ -9,8 +9,6 @@ import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-// ... (вспомогательные функции)
-
 const initialItemState = { name: '', description: '', price_rub: '', stock: 1, image_url: '' };
 
 function ItemManager() {
@@ -24,10 +22,22 @@ function ItemManager() {
   const [loading, setLoading] = useState(false);
   // 2. Убираем состояние uploading
 
-  useEffect(() => { fetchItems(); }, []);
   const fetchItems = async () => { /* ... */ };
-  const calculatedPrice = useMemo(() => calculateSpasibkiPrice(form.price_rub), [form.price_rub]);
-  const forecast = useMemo(() => calculateAccumulationForecast(calculatedPrice), [calculatedPrice]);
+  useEffect(() => { fetchItems(); }, []);
+  
+  const calculatedPrice = useMemo(() => {
+      if (!form.price_rub || form.price_rub <= 0) return 0;
+      return Math.round(form.price_rub / 50);
+  }, [form.price_rub]);
+
+  const forecast = useMemo(() => {
+      if (!calculatedPrice || calculatedPrice <= 0) return "-";
+      const monthsNeeded = calculatedPrice / 15;
+      if (monthsNeeded <= 1) return "около 1 месяца";
+      if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
+      const years = (monthsNeeded / 12).toFixed(1);
+      return `около ${years} лет`;
+  }, [calculatedPrice]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -39,10 +49,9 @@ function ItemManager() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Теперь image_url приходит напрямую из текстового поля
     const itemData = {
       ...form,
-      price: calculateSpasibkiPrice(form.price_rub),
+      price: calculatedPrice,
       price_rub: parseInt(form.price_rub, 10),
       stock: parseInt(form.stock, 10),
     };
