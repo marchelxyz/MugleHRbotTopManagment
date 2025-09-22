@@ -10,17 +10,15 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
-        # await conn.run_sync(Base.metadata.drop_all) # Для удаления таблиц
         await conn.run_sync(Base.metadata.create_all)
     yield
 
 app = FastAPI(lifespan=lifespan)
 
 # --- 2. ДОБАВЛЯЕМ НАСТРОЙКУ CORS ---
-# Указываем, каким адресам разрешено обращаться к нашему API
-origins = [
-    "*" # Временно разрешаем всем, для безопасности лучше указать конкретный URL твоего фронтенда
-]
+# Указываем, каким адресам разрешено обращаться к нашему API.
+# "*" означает "разрешить всем", что хорошо для начала.
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
