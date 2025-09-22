@@ -158,7 +158,7 @@ function ItemManager() {
             name="image_url" 
             value={form.image_url} 
             onChange={handleFormChange} 
-            placeholder="Прямая ссылка на изображение (URL)" 
+            placeholder="Прямая ссылка на изображение (URL) 300х620px" 
             className={styles.input} 
           />
           {/* Старого блока с <input type="file"> здесь быть не должно */}
