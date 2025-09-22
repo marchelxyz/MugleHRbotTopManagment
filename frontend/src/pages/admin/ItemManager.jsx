@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage'; 
-// 1. Убираем uploadItemImage из импортов lf
+// Убираем uploadItemImage, так как он больше не нужен
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
@@ -20,11 +20,29 @@ function ItemManager() {
   const [form, setForm] = useState(initialItemState);
   const [editingItemId, setEditingItemId] = useState(null);
   const [loading, setLoading] = useState(false);
-  // 2. Убираем состояние uploading
 
-  const fetchItems = async () => { /* ... */ };
-  useEffect(() => { fetchItems(); }, []);
+  // Функция для загрузки товаров (без изменений)
+  const fetchItems = async () => {
+    setLoading(true);
+    try {
+        const [activeRes, archivedRes] = await Promise.all([
+            getAllMarketItems(),
+            getArchivedMarketItems()
+        ]);
+        setItems(activeRes.data);
+        setArchivedItems(archivedRes.data);
+    } catch (error) {
+        showAlert('Не удалось загрузить товары.', 'error');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
   
+  // Логика расчета цены и прогноза (без изменений)
   const calculatedPrice = useMemo(() => {
       if (!form.price_rub || form.price_rub <= 0) return 0;
       return Math.round(form.price_rub / 50);
@@ -44,23 +62,22 @@ function ItemManager() {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  // 3. Удаляем всю функцию handleImageUpload
-
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const itemData = {
+    // Убираем поле "price", Pydantic его больше не ждет
+    const { price, ...itemDataToSend } = {
       ...form,
-      price: calculatedPrice,
       price_rub: parseInt(form.price_rub, 10),
       stock: parseInt(form.stock, 10),
     };
+
     try {
       if (editingItemId) {
-        await updateMarketItem(editingItemId, itemData);
+        await updateMarketItem(editingItemId, itemDataToSend);
         showAlert('Товар успешно обновлен!', 'success');
       } else {
-        await createMarketItem(itemData);
+        await createMarketItem(itemDataToSend);
         showAlert('Товар успешно создан!', 'success');
       }
       resetForm();
@@ -73,20 +90,68 @@ function ItemManager() {
     }
   };
 
-  const handleEdit = (item) => { /* ... */ };
-  const resetForm = () => { /* ... */ };
-  const handleArchive = async (itemId) => { /* ... */ };
-  const handleRestore = async (itemId) => { /* ... */ };
+  const handleEdit = (item) => {
+    setEditingItemId(item.id);
+    setForm({
+        name: item.name,
+        description: item.description || '',
+        price_rub: item.price_rub,
+        stock: item.stock,
+        image_url: item.image_url || ''
+    });
+    window.scrollTo(0, 0); // Прокручиваем наверх к форме
+  };
+
+  const resetForm = () => {
+    setForm(initialItemState);
+    setEditingItemId(null);
+  };
+  
+  const handleArchive = async (itemId) => {
+    const isConfirmed = await confirm('Архивация', 'Вы уверены, что хотите архивировать этот товар?');
+    if (isConfirmed) {
+        try {
+            await archiveMarketItem(itemId);
+            showAlert('Товар архивирован.', 'success');
+            fetchItems();
+            clearCache('market');
+        } catch (error) {
+            showAlert('Ошибка архивации.', 'error');
+        }
+    }
+  };
+
+  const handleRestore = async (itemId) => {
+    const isConfirmed = await confirm('Восстановление', 'Вы уверены, что хотите восстановить этот товар?');
+    if (isConfirmed) {
+        try {
+            await restoreMarketItem(itemId);
+            showAlert('Товар восстановлен.', 'success');
+            fetchItems();
+            clearCache('market');
+        } catch (error) {
+            showAlert('Ошибка восстановления.', 'error');
+        }
+    }
+  };
 
   return (
     <>
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
-          {/* 4. Заменяем загрузчик на простое текстовое поле и предпросмотр */}
+          
+          {/* --- НАЧАЛО ИЗМЕНЕНИЙ: Блок для URL и предпросмотра --- */}
           <div className={styles.imageUploader}>
             {form.image_url ? (
-              <img src={form.image_url} alt="Предпросмотр" className={styles.imagePreview} onError={(e) => e.target.style.display='none'} onLoad={(e) => e.target.style.display='block'}/>
+              <img 
+                src={form.image_url} 
+                alt="Предпросмотр" 
+                className={styles.imagePreview} 
+                // Если ссылка на картинку нерабочая, этот обработчик скроет иконку битого изображения
+                onError={(e) => { e.target.style.display = 'none'; }} 
+                onLoad={(e) => { e.target.style.display = 'block'; }}
+              />
             ) : (
               <div className={styles.imagePlaceholder}>Фото</div>
             )}
@@ -96,9 +161,10 @@ function ItemManager() {
             name="image_url" 
             value={form.image_url} 
             onChange={handleFormChange} 
-            placeholder="Прямая ссылка на изображение" 
+            placeholder="Прямая ссылка на изображение (URL)" 
             className={styles.input} 
           />
+          {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
@@ -129,7 +195,7 @@ function ItemManager() {
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
-              {/* 3. Используем image_url НАПРЯМУЮ и здесь */}
+              {/* Используем image_url для отображения картинки в списке */}
               {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
