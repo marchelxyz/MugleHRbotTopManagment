@@ -6,7 +6,7 @@ from .database import Base # <-- Импортируем Base из правиль
 from datetime import datetime
 
 # Стало:
-from .database import Base # <-- Импортируем Base из правильного места
+from database import Base # <-- Абсолютный импорт без точки
 
 class User(Base):
     __tablename__ = "users"
