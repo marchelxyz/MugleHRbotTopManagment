@@ -3,7 +3,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 // 1. Импортируем API_BASE_URL вместе с остальными функциями
-import { getMarketItems, purchaseItem, API_BASE_URL } from '../api';
+import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
 import { getCachedData } from '../storage';
@@ -61,7 +61,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
             <div key={item.id} className={styles.itemCard}>
               {/* 2. Строим полную ссылку на изображение */}
               {item.image_url && (
-                <img src={`${API_BASE_URL}${item.image_url}`} alt={item.name} className={styles.itemImage} />
+                <img src={item.image_url}${item.image_url}`} alt={item.name} className={styles.itemImage} />
               )}
               <div className={styles.itemContent}>
                 <h2 className={styles.itemName}>{item.name}</h2>
