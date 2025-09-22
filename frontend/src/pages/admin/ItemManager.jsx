@@ -146,9 +146,9 @@ function ItemManager() {
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
           <div className={styles.imageUploader}>
-            {/* --- 2. СТРОИМ ПОЛНУЮ ССЫЛКУ НА ИЗОБРАЖЕНИЕ --- */}
+            {/* 2. Используем image_url НАПРЯМУЮ */}
             {form.image_url ? (
-              <img src={item.image_url}${form.image_url}`} alt="Предпросмотр" className={styles.imagePreview} />
+              <img src={form.image_url} alt="Предпросмотр" className={styles.imagePreview} />
             ) : (
               <div className={styles.imagePlaceholder}>300x300</div>
             )}
