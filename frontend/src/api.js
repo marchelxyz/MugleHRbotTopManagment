@@ -1,17 +1,13 @@
 // frontend/src/api.js
 import axios from 'axios';
 
-// 1. Сохраняем адрес бэкенда в переменную
+// API_BASE_URL используется только для apiClient, экспортировать его не нужно
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 console.log('Using API URL:', API_BASE_URL);
 
-// Создаем экземпляр axios с базовым URL
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
-
-// 2. Экспортируем API_BASE_URL, чтобы использовать его в других файлах для картинок
-export { API_BASE_URL };
 
 export const checkUserStatus = (telegramId) => {
   return apiClient.get('/users/me', {
