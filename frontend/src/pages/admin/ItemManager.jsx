@@ -186,6 +186,7 @@ function ItemManager() {
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
+              {/* 3. Используем image_url НАПРЯМУЮ и здесь */}
               {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
