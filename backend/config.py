@@ -23,3 +23,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+# --- ДОБАВЛЯЕМ ЭТУ СТРОКУ В КОНЕЦ ФАЙЛА ---
+# Создаем один экземпляр настроек для всего приложения
+settings = Settings()
