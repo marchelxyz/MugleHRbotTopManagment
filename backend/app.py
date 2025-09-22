@@ -1,9 +1,9 @@
 # backend/app.py
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-# --- 1. ДОБАВЛЯЕМ ИМПОРТ ДЛЯ CORS ---
+# --- УБИРАЕМ StaticFiles ---
 from fastapi.middleware.cors import CORSMiddleware
-from routers import users, transactions, market, admin, banners, scheduler, telegram, roulette, uploads
+# --- УБИРАЕМ uploads ИЗ ИМПОРТА ---
+from routers import users, transactions, market, admin, banners, scheduler, telegram, roulette
 from database import Base, engine
 from contextlib import asynccontextmanager
 
@@ -29,9 +29,6 @@ app.add_middleware(
 )
 # --- КОНЕЦ НАСТРОЙКИ CORS ---
 
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # Подключаем роутеры
 app.include_router(users.router)
 app.include_router(transactions.router)
@@ -41,4 +38,3 @@ app.include_router(banners.router)
 app.include_router(scheduler.router)
 app.include_router(telegram.router)
 app.include_router(roulette.router)
-app.include_router(uploads.router)
