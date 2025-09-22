@@ -59,7 +59,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         <div className={styles.itemsGrid}>
           {items.map(item => (
             <div key={item.id} className={styles.itemCard}>
-              {/* 2. Используем image_url НАПРЯМУЮ */}
+              {/* Используем image_url напрямую */}
               {item.image_url && (
                 <img src={item.image_url} alt={item.name} className={styles.itemImage} />
               )}
