@@ -1,3 +1,4 @@
+// frontend/src/api.js
 import axios from 'axios';
 
 // 1. Сохраняем адрес бэкенда в переменную
