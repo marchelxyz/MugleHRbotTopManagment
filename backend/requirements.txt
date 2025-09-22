@@ -11,4 +11,4 @@ python-dateutil
 pyzipper
 Pillow
 python-multipart
-pathlib
+cloudinary
