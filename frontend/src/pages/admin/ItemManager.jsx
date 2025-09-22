@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage'; 
-import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage, API_BASE_URL } from '../../api';
+import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
@@ -148,7 +148,7 @@ function ItemManager() {
           <div className={styles.imageUploader}>
             {/* --- 2. СТРОИМ ПОЛНУЮ ССЫЛКУ НА ИЗОБРАЖЕНИЕ --- */}
             {form.image_url ? (
-              <img src={`${API_BASE_URL}${form.image_url}`} alt="Предпросмотр" className={styles.imagePreview} />
+              <img src={item.image_url}${form.image_url}`} alt="Предпросмотр" className={styles.imagePreview} />
             ) : (
               <div className={styles.imagePlaceholder}>300x300</div>
             )}
