@@ -1,51 +1,51 @@
 # backend/routers/uploads.py
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from PIL import Image
-import io
-import os
-import uuid
-from pathlib import Path # 1. Импортируем pathlib для работы с путями
+import cloudinary
+import cloudinary.uploader
+from config import settings # Импортируем наши настройки
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
-# --- 2. НАЧАЛО ГЛАВНОГО ИСПРАВЛЕНИЯ ---
-# Создаем АБСОЛЮТНЫЙ путь к нашей папке для изображений.
-# Path(__file__) -> текущий файл (uploads.py)
-# .parent -> папка routers/
-# .parent -> папка backend/ (корень нашего приложения)
-# / "static" / "images" -> добавляем нужные папки
-UPLOAD_DIR = Path(__file__).parent.parent / "static" / "images"
-# --- КОНЕЦ ГЛАВНОГО ИСПРАВЛЕНИЯ ---
-
-# Убеждаемся, что директория существует
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Конфигурируем Cloudinary с нашими ключами
+cloudinary.config(
+  cloud_name = settings.CLOUDINARY_CLOUD_NAME, 
+  api_key = settings.CLOUDINARY_API_KEY, 
+  api_secret = settings.CLOUDINARY_API_SECRET,
+  secure = True
+)
 
 @router.post("/image")
-async def upload_and_convert_image(file: UploadFile = File(...)):
+async def upload_image_to_cloudinary(file: UploadFile = File(...)):
     """
-    Принимает изображение, изменяет размер до 300x300,
-    конвертирует в WebP и возвращает публичный URL.
+    Принимает изображение, загружает его в Cloudinary с автоматической
+    конвертацией и возвращает безопасный URL.
     """
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File provided is not an image.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is not an image.")
 
     try:
-        contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
-        image.thumbnail((300, 300))
-
-        filename = f"{uuid.uuid4()}.webp"
-        # Теперь мы используем абсолютный путь для сохранения
-        filepath = UPLOAD_DIR / filename
-        
-        image.save(filepath, 'webp', quality=85)
-
-        # Публичный URL остается относительным, это правильно
-        public_url = f"/static/images/{filename}"
-        return {"url": public_url}
+        # Загружаем файл в Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            file.file, 
+            # Задаем параметры для Cloudinary:
+            # - папка для хранения
+            # - автоматическое преобразование в webp лучшего качества
+            # - изменение размера до 300x300 (с сохранением пропорций и обрезкой)
+            folder="hr_bot_items",
+            transformation=[
+                {'width': 300, 'height': 300, 'crop': 'fill'},
+                {'fetch_format': 'auto', 'quality': 'auto'}
+            ]
+        )
+        # Cloudinary возвращает много данных, нам нужен безопасный URL
+        secure_url = upload_result.get('secure_url')
+        if not secure_url:
+            raise HTTPException(500, "Cloudinary did not return a URL.")
+            
+        # Теперь мы возвращаем ПОЛНЫЙ, АБСОЛЮТНЫЙ URL из облака
+        return {"url": secure_url}
 
     except Exception as e:
-        # Добавим вывод ошибки в лог для лучшей диагностики
-        print(f"!!! Ошибка при обработке изображения: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to process image: {e}")
+        print(f"!!! Ошибка при загрузке в Cloudinary: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to upload image: {e}")
