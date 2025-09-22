@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     TELEGRAM_UPDATE_TOPIC_ID: int
     TELEGRAM_ADMIN_LOG_TOPIC_ID: int
 
+        # --- ДОБАВЬ ЭТИ ТРИ СТРОКИ ---
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
