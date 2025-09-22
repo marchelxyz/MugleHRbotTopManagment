@@ -5,7 +5,8 @@ from sqlalchemy.orm import relationship
 from .database import Base # <-- Импортируем Base из правильного места
 from datetime import datetime
 
-Base = declarative_base()
+# Стало:
+from .database import Base # <-- Импортируем Base из правильного места
 
 class User(Base):
     __tablename__ = "users"
