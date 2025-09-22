@@ -5,12 +5,10 @@ import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
 
-function HomePage({ user, onNavigate, telegramPhotoUrl }) {
-  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
-  // Пытаемся сразу получить данные из кэша в памяти
+// 1. Принимаем новый пропс isDesktop
+function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
   const [feed, setFeed] = useState(() => getCachedData('feed'));
   const [banners, setBanners] = useState([]);
-  // Не показываем загрузку, если данные уже есть в кэше
   const [isLoading, setIsLoading] = useState(!feed); 
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -58,7 +56,8 @@ function HomePage({ user, onNavigate, telegramPhotoUrl }) {
   
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.header}></div>
+      {/* 2. Используем isDesktop для выбора нужного стиля */}
+      <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
 
       <div className={styles.contentArea}>
         

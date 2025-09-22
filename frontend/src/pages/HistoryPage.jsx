@@ -27,7 +27,7 @@ function HistoryPage({ user, onBack }) {
 
   return (
     // 2. Оборачиваем страницу в PageLayout
-    <PageLayout title="📜 История транзакций">
+    <PageLayout title="История">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
       {isLoading ? <p>Загрузка...</p> : (

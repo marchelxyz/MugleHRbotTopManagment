@@ -1,63 +1,59 @@
 // frontend/src/pages/admin/ItemManager.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { clearCache } from '../../storage';
+// Убедитесь, что здесь НЕТ импорта uploadItemImage
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
-import { FaArchive } from 'react-icons/fa'; // Импортируем иконку
+import { FaArchive } from 'react-icons/fa';
+import { useModalAlert } from '../../contexts/ModalAlertContext';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-// --- Выносим логику расчета на фронтенд для динамического отображения ---
-function calculateSpasibkiPrice(priceRub) {
-    if (!priceRub || priceRub <= 0) return 0;
-    return Math.round(priceRub / 50);
-}
-
-function calculateAccumulationForecast(priceSpasibki) {
-    if (!priceSpasibki || priceSpasibki <= 0) return "-";
-    const monthsNeeded = priceSpasibki / 15;
-    if (monthsNeeded <= 1) return "около 1 месяца";
-    if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
-    const years = (monthsNeeded / 12).toFixed(1);
-    return `около ${years} лет`;
-}
-// --------------------------------------------------------------------
-
-const initialItemState = { name: '', description: '', price_rub: '', stock: 1 };
+const initialItemState = { name: '', description: '', price_rub: '', stock: 1, image_url: '' };
 
 function ItemManager() {
-  const [view, setView] = useState('active'); // 'active' или 'archived'
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
+  const [view, setView] = useState('active');
   const [items, setItems] = useState([]);
   const [archivedItems, setArchivedItems] = useState([]);
-  
   const [form, setForm] = useState(initialItemState);
   const [editingItemId, setEditingItemId] = useState(null);
-  
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
-  // Загружаем все данные при старте
-  useEffect(() => {
-    fetchItems();
-  }, []);
 
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const [activeRes, archivedRes] = await Promise.all([
-        getAllMarketItems(),
-        getArchivedMarketItems()
-      ]);
-      setItems(activeRes.data);
-      setArchivedItems(archivedRes.data);
+        const [activeRes, archivedRes] = await Promise.all([
+            getAllMarketItems(),
+            getArchivedMarketItems()
+        ]);
+        setItems(activeRes.data);
+        setArchivedItems(archivedRes.data);
     } catch (error) {
-      setMessage('Ошибка загрузки списка товаров.');
+        showAlert('Не удалось загрузить товары.', 'error');
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
   
-  // Динамический расчет для отображения в форме
-  const calculatedPrice = useMemo(() => calculateSpasibkiPrice(form.price_rub), [form.price_rub]);
-  const forecast = useMemo(() => calculateAccumulationForecast(calculatedPrice), [calculatedPrice]);
+  const calculatedPrice = useMemo(() => {
+      if (!form.price_rub || form.price_rub <= 0) return 0;
+      return Math.round(form.price_rub / 50);
+  }, [form.price_rub]);
+
+  const forecast = useMemo(() => {
+      if (!calculatedPrice || calculatedPrice <= 0) return "-";
+      const monthsNeeded = calculatedPrice / 15;
+      if (monthsNeeded <= 1) return "около 1 месяца";
+      if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
+      const years = (monthsNeeded / 12).toFixed(1);
+      return `около ${years} лет`;
+  }, [calculatedPrice]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -67,24 +63,26 @@ function ItemManager() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
-    const itemData = {
+    // Убедитесь, что здесь нет логики по загрузке файла (formData, append и т.д.)
+    const { price, ...itemDataToSend } = {
       ...form,
       price_rub: parseInt(form.price_rub, 10),
       stock: parseInt(form.stock, 10),
     };
+
     try {
       if (editingItemId) {
-        await updateMarketItem(editingItemId, itemData);
-        setMessage('Товар успешно обновлен!');
+        await updateMarketItem(editingItemId, itemDataToSend);
+        showAlert('Товар успешно обновлен!', 'success');
       } else {
-        await createMarketItem(itemData);
-        setMessage('Товар успешно создан!');
+        await createMarketItem(itemDataToSend);
+        showAlert('Товар успешно создан!', 'success');
       }
       resetForm();
       fetchItems();
+      clearCache('market');
     } catch (error) {
-      setMessage('Произошла ошибка.');
+      showAlert('Произошла ошибка.', 'error');
     } finally {
       setLoading(false);
     }
@@ -93,10 +91,11 @@ function ItemManager() {
   const handleEdit = (item) => {
     setEditingItemId(item.id);
     setForm({
-      name: item.name,
-      description: item.description,
-      price_rub: item.price_rub,
-      stock: item.stock,
+        name: item.name,
+        description: item.description || '',
+        price_rub: item.price_rub,
+        stock: item.stock,
+        image_url: item.image_url || ''
     });
     window.scrollTo(0, 0);
   };
@@ -105,18 +104,32 @@ function ItemManager() {
     setForm(initialItemState);
     setEditingItemId(null);
   };
-
+  
   const handleArchive = async (itemId) => {
-    if (window.confirm('Вы уверены, что хотите архивировать этот товар?')) {
-      await archiveMarketItem(itemId);
-      fetchItems();
+    const isConfirmed = await confirm('Архивация', 'Вы уверены, что хотите архивировать этот товар?');
+    if (isConfirmed) {
+        try {
+            await archiveMarketItem(itemId);
+            showAlert('Товар архивирован.', 'success');
+            fetchItems();
+            clearCache('market');
+        } catch (error) {
+            showAlert('Ошибка архивации.', 'error');
+        }
     }
   };
 
   const handleRestore = async (itemId) => {
-    if (window.confirm('Вы уверены, что хотите восстановить этот товар?')) {
-      await restoreMarketItem(itemId);
-      fetchItems();
+    const isConfirmed = await confirm('Восстановление', 'Вы уверены, что хотите восстановить этот товар?');
+    if (isConfirmed) {
+        try {
+            await restoreMarketItem(itemId);
+            showAlert('Товар восстановлен.', 'success');
+            fetchItems();
+            clearCache('market');
+        } catch (error) {
+            showAlert('Ошибка восстановления.', 'error');
+        }
     }
   };
 
@@ -125,26 +138,51 @@ function ItemManager() {
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
+          
+          {/* Вот новый блок, который должен появиться */}
+          <div className={styles.imageUploader}>
+            {form.image_url ? (
+              <img 
+                src={form.image_url} 
+                alt="Предпросмотр" 
+                className={styles.imagePreview} 
+                onError={(e) => { e.target.style.display = 'none'; }} 
+                onLoad={(e) => { e.target.style.display = 'block'; }}
+              />
+            ) : (
+              <div className={styles.imagePlaceholder}>Фото</div>
+            )}
+          </div>
+          <input 
+            type="text" 
+            name="image_url" 
+            value={form.image_url} 
+            onChange={handleFormChange} 
+            placeholder="Прямая ссылка на изображение (URL) 300х620px" 
+            className={styles.input} 
+          />
+          {/* Старого блока с <input type="file"> здесь быть не должно */}
+          
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           
           {form.price_rub > 0 && (
-            <div className={styles.pricePreview}>
-              <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
-              <p>Прогноз накопления: <strong>{forecast}</strong></p>
-            </div>
+              <div className={styles.pricePreview}>
+                <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
+                <p>Прогноз накопления: <strong>{forecast}</strong></p>
+              </div>
           )}
-          
+            
           <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
           <button type="submit" disabled={loading} className={styles.buttonGreen}>
             {editingItemId ? 'Сохранить' : 'Создать'}
           </button>
           {editingItemId && <button type="button" onClick={resetForm} className={styles.buttonGrey}>Отмена</button>}
-          {message && <p className={styles.message}>{message}</p>}
         </form>
       </div>
       
+      {/* Остальная часть компонента без изменений */}
       <div className={styles.tabs}>
         <button onClick={() => setView('active')} className={view === 'active' ? styles.tabActive : styles.tab}>Активные ({items.length})</button>
         <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
@@ -155,6 +193,7 @@ function ItemManager() {
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
+              {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
                 <p>Цена: {item.price} спасибок ({item.price_rub} ₽)</p>

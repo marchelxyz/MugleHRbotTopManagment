@@ -6,45 +6,60 @@ import BannerManager from './admin/BannerManager';
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import { addPointsToAll, addTicketsToAll } from '../api';
+import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
+import { useConfirmation } from '../contexts/ConfirmationContext'; // 1. Импортируем
 
 // Пока используем заглушки
 const StatsManager = () => <div>Раздел статистики в разработке...</div>;
 
 // --- ИЗМЕНЕНИЕ: Создаем новый компонент для массовых начислений ---
 function MassActions() {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
+  const { confirm } = useConfirmation(); // 2. Получаем функцию подтверждения
   const [addPointsAmount, setAddPointsAmount] = useState(100);
   const [addTicketsAmount, setAddTicketsAmount] = useState(1);
   const [loading, setLoading] = useState(''); // 'points' or 'tickets'
   const [message, setMessage] = useState('');
 
   const handleAddPoints = async () => {
-    if (!window.confirm(`Вы уверены?`)) return;
+    // 3. Заменяем window.confirm на нашу новую асинхронную функцию
+    const isConfirmed = await confirm(
+      'Подтверждение', 
+      `Вы уверены, что хотите начислить ${addPointsAmount} спасибок всем пользователям?`
+    );
+    if (!isConfirmed) return; // Если пользователь нажал "Отмена", выходим
+    
     setLoading('points');
-    setMessage('');
     try {
       const response = await addPointsToAll({ amount: parseInt(addPointsAmount, 10) });
-      setMessage(response.data.detail);
+      showAlert(response.data.detail, 'success');
     } catch (error) {
-      setMessage(`Ошибка: ${error.response?.data?.detail || 'Не удалось выполнить операцию'}`);
+      const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+      showAlert(errorMsg, 'error');
     } finally {
       setLoading('');
     }
   };
   
   const handleAddTickets = async () => {
-    if (!window.confirm(`Вы уверены?`)) return;
+    const isConfirmed = await confirm(
+        'Подтверждение',
+        `Вы уверены, что хотите начислить ${addTicketsAmount} билетов всем пользователям?`
+    );
+    if (!isConfirmed) return;
+
     setLoading('tickets');
-    setMessage('');
     try {
       const response = await addTicketsToAll({ amount: parseInt(addTicketsAmount, 10) });
-      setMessage(response.data.detail);
+      showAlert(response.data.detail, 'success');
     } catch (error) {
-      setMessage(`Ошибка: ${error.response?.data?.detail || 'Не удалось выполнить операцию'}`);
+      const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+      showAlert(errorMsg, 'error');
     } finally {
       setLoading('');
     }
   };
-
+  
   return (
     <>
       <div className={styles.card}>

@@ -1,79 +1,81 @@
 // frontend/src/pages/MarketplacePage.jsx
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import styles from './MarketplacePage.module.css';
 import PageLayout from '../components/PageLayout';
 import { getCachedData } from '../storage';
+import { useModalAlert } from '../contexts/ModalAlertContext';
+import { useConfirmation } from '../contexts/ConfirmationContext';
 
-// 1. Принимаем новую функцию onPurchaseSuccess в пропсах
 function MarketplacePage({ user, onPurchaseSuccess }) {
-  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
   const [items, setItems] = useState(() => getCachedData('market'));
   const [isLoading, setIsLoading] = useState(!items); 
   
   useEffect(() => {
-    // Если данные не были в кэше, загружаем их
     if (!items) {
       const fetchItems = async () => {
         try {
           const response = await getMarketItems();
           setItems(response.data);
-        } catch (error) { console.error("Failed to fetch market items", error); } 
-        finally { setIsLoading(false); }
+        } catch (error) { 
+          console.error("Failed to fetch market items", error);
+          showAlert('Не удалось загрузить товары.', 'error');
+        } finally { 
+          setIsLoading(false); 
+        }
       };
       fetchItems();
     }
-  }, [items]);
-
-// frontend/src/pages/MarketplacePage.jsx
+  }, [items, showAlert]);
 
   const handlePurchase = async (itemId) => {
     if (!user) {
-      alert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.");
+      showAlert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.", 'error');
       return;
     }
-    // Можно оставить confirm для подтверждения
-    if (!window.confirm("Вы уверены, что хотите купить этот товар?")) return;
+
+    const isConfirmed = await confirm("Подтверждение покупки", "Вы уверены, что хотите купить этот товар?");
+    if (!isConfirmed) return;
     
     try {
       const response = await purchaseItem(user.id, itemId);
-      
-      // --- НАЧАЛО ИЗМЕНЕНИЙ ---
-      // 2. Обновляем баланс пользователя в главном компоненте
       onPurchaseSuccess({ balance: response.data.new_balance });
-
-      // 3. Показываем более приятное сообщение
-      alert(`Покупка совершена! Детали отправлены вам в чат с ботом.`);
-      
-      // Перезагрузка больше не нужна, так как баланс обновился
-      // window.location.reload();
-} catch (error) {
-      let errorMessage = 'Не удалось совершить покупку.';
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      }
-      alert(`Ошибка: ${errorMessage}`);
+      showAlert(`Покупка совершена! Детали отправлены вам в чат с ботом.`, 'success');
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Не удалось совершить покупку.';
+      showAlert(errorMessage, 'error');
     }
   };
   
   return (
-  <PageLayout title="Кафетерий">
-      <p>Ваш баланс: <strong>{user?.balance}</strong> баллов</p>
+    <PageLayout title="Кафетерий">
+      <p>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {items.map(item => (
             <div key={item.id} className={styles.itemCard}>
-              <h2 className={styles.itemName}>{item.name}</h2>
-              <p className={styles.itemDescription}>{item.description}</p>
-              <p className={styles.itemPrice}>Цена: {item.price} баллов</p>
-              <button 
-                onClick={() => handlePurchase(item.id)} 
-                className={styles.purchaseButton}
-                // Не даем купить, если не хватает баллов
-                disabled={user?.balance < item.price} 
-              >
-                Купить
-              </button>
+              {/* Используем image_url напрямую */}
+              {item.image_url && (
+                <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+              )}
+              <div className={styles.itemContent}>
+                <h2 className={styles.itemName}>{item.name}</h2>
+                <p className={styles.itemDescription}>{item.description}</p>
+                <p className={styles.itemPrice}>Цена: {item.price} спасибок </p>
+              </div>
+              <div className={styles.buttonWrapper}>
+                <button 
+                  onClick={() => handlePurchase(item.id)} 
+                  className={styles.purchaseButton}
+                  disabled={user?.balance < item.price || item.stock <= 0} 
+                >
+                  {item.stock > 0 ? 'Купить' : 'Нет в наличии'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

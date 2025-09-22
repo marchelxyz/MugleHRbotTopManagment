@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { getAllBanners, createBanner, updateBanner, deleteBanner } from '../../api';
 import styles from '../AdminPage.module.css'; // Используем те же стили
+import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
+import { useConfirmation } from '../../contexts/ConfirmationContext'; // 1. Импортируем
 
 const initialBannerState = {
   image_url: '',
@@ -12,6 +14,8 @@ const initialBannerState = {
 };
 
 function BannerManager() {
+  const { showAlert } = useModalAlert(); // 2. Получаем функцию
+  const { confirm } = useConfirmation(); // 2. Получаем функцию
   const [banners, setBanners] = useState([]);
   const [bannerForm, setBannerForm] = useState(initialBannerState);
   const [editingBannerId, setEditingBannerId] = useState(null);
@@ -77,13 +81,15 @@ function BannerManager() {
   };
 
   const handleDeleteBanner = async (bannerId) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот баннер?')) {
+    // 3. Заменяем window.confirm
+    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите удалить этот баннер?');
+    if (isConfirmed) {
       try {
         await deleteBanner(bannerId);
-        setBannerMessage('Баннер удален.');
+        showAlert('Баннер удален.', 'success');
         fetchBanners();
       } catch (error) {
-        setBannerMessage('Ошибка при удалении.');
+        showAlert('Ошибка при удалении.', 'error');
       }
     }
   };

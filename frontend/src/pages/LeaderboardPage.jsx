@@ -1,45 +1,158 @@
 // frontend/src/pages/LeaderboardPage.jsx
-import React, { useState, useEffect } from 'react';
-import { getLastMonthLeaderboard } from '../api';
-import styles from './LeaderboardPage.module.css'; // 1. Импортируем стили
+import React, { useState, useEffect, useCallback } from 'react';
+import { getLeaderboard, getMyRank, getLeaderboardStatus } from '../api';
+import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
-import { getCachedData } from '../storage';
+import { FaCrown, FaCalendarDay, FaCalendarAlt, FaGift, FaInfinity } from 'react-icons/fa';
 
-function LeaderboardPage() {
-  // --- 2. ИЗМЕНЯЕМ ИНИЦИАЛИЗАЦИЮ СОСТОЯНИЯ ---
-  const [leaderboard, setLeaderboard] = useState(() => getCachedData('leaderboard'));
-  const [isLoading, setIsLoading] = useState(!leaderboard);
+// --- ИЗМЕНЕНИЕ ЗДЕСЬ: "За всё время" теперь первая в списке ---
+const ALL_TABS = [
+  { id: 'all_time_received', label: 'За всё время', icon: <FaInfinity />, params: { period: 'all_time', type: 'received' } },
+  { id: 'current_month_received', label: 'Этот месяц', icon: <FaCalendarDay />, params: { period: 'current_month', type: 'received' } },
+  { id: 'last_month_received', label: 'Прошлый месяц', icon: <FaCalendarAlt />, params: { period: 'last_month', type: 'received' } },
+  { id: 'generosity', label: 'Щедрость', icon: <FaGift />, params: { period: 'current_month', type: 'sent' } },
+];
+
+function LeaderboardPage({ user }) {
+  // Теперь по умолчанию будет выбрана первая вкладка из нового списка
+  const [activeTabId, setActiveTabId] = useState(ALL_TABS[0].id);
+  const [visibleTabs, setVisibleTabs] = useState(user.is_admin ? ALL_TABS : []);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [myRank, setMyRank] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Если данные не были в кэше, загружаем их
-    if (!leaderboard) {
-      const fetchLeaderboard = async () => {
-        try {
-          const response = await getLastMonthLeaderboard();
-          setLeaderboard(response.data);
-        } catch (error) { console.error("Failed to fetch leaderboard", error); } 
-        finally { setIsLoading(false); }
-      };
-      fetchLeaderboard();
+    if (user.is_admin) return;
+    const fetchTabStatuses = async () => {
+      try {
+        const response = await getLeaderboardStatus();
+        const activeTabs = ALL_TABS.filter(tab => {
+          const status = response.data.find(s => s.id === tab.id);
+          return status && status.has_data;
+        });
+        
+        setVisibleTabs(activeTabs);
+        
+        // Проверяем, видима ли наша вкладка по умолчанию. Если нет, выбираем первую видимую.
+        const defaultTabIsVisible = activeTabs.some(t => t.id === ALL_TABS[0].id);
+        if (activeTabs.length > 0 && !defaultTabIsVisible) {
+            setActiveTabId(activeTabs[0].id);
+        } else if (activeTabs.length === 0) {
+            setIsLoading(false);
+        }
+
+      } catch (error) {
+        console.error("Failed to fetch tab statuses", error);
+        setIsLoading(false);
+      }
+    };
+    fetchTabStatuses();
+  }, [user.is_admin]);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const tabConfig = ALL_TABS.find(t => t.id === activeTabId);
+      if (!tabConfig) { setIsLoading(false); return; }
+      const [leaderboardRes, myRankRes] = await Promise.all([
+        getLeaderboard(tabConfig.params),
+        getMyRank(tabConfig.params)
+      ]);
+      setLeaderboard(leaderboardRes.data);
+      setMyRank(myRankRes.data);
+    } catch (error) {
+      console.error("Failed to fetch leaderboard data", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [leaderboard]);
-  
-return (
-  <PageLayout title="Лидерборд">
-      <h3 className={styles.subtitle}>Лидеры прошлого месяца по полученным баллам</h3>
-      
+  }, [activeTabId]);
+
+  useEffect(() => {
+    // Убедимся, что fetchData вызывается только если вкладка по умолчанию видима
+    const currentDefaultTab = ALL_TABS.find(t => t.id === activeTabId);
+    if (visibleTabs.includes(currentDefaultTab)) {
+      fetchData();
+    }
+  }, [fetchData, visibleTabs, activeTabId]);
+
+  const top3 = leaderboard.slice(0, 3);
+  const others = leaderboard.slice(3);
+
+  return (
+    <PageLayout title="Рейтинг">
+      {visibleTabs.length > 0 && (
+        <div className={styles.tabsContainer}>
+          {visibleTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className={`${styles.tab} ${activeTabId === tab.id ? styles.tabActive : styles.tabCollapsed}`}
+            >
+              <span className={styles.tabIcon}>{tab.icon}</span>
+              <span className={styles.tabLabel}>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {isLoading ? <p>Загрузка рейтинга...</p> : (
-        leaderboard.length > 0 ? (
-          <ol className={styles.list}>
-            {leaderboard.map((item) => (
-              <li key={item.user_id} className={styles.listItem}>
-                <strong>{item.user.last_name}</strong>
-                <span className={styles.position}>({item.user.position})</span>
-                <div className={styles.points}>{item.total_received} баллов</div>
-              </li>
-            ))}
-          </ol>
-        ) : <p>В прошлом месяце не было активности.</p>
+        <>
+          {myRank && myRank.rank !== null && (
+            <div className={styles.myRankCard}>
+              <p>Вы на <strong>{myRank.rank}-м</strong> месте</p>
+            </div>
+          )}
+
+          {top3.length > 0 && (
+            <div className={styles.podium}>
+              {top3[1] && (
+                <div className={`${styles.podiumItem} ${styles.place2}`}>
+                  <FaCrown className={styles.podiumIcon} color="#C0C0C0" />
+                  <img src={top3[1].user.telegram_photo_url || 'placeholder.png'} alt={top3[1].user.first_name} className={styles.podiumAvatar} />
+                  <div className={styles.podiumName}>{top3[1].user.first_name}</div>
+                  <div className={styles.podiumPoints}>{top3[1].total_received}</div>
+                </div>
+              )}
+              {top3[0] && (
+                <div className={`${styles.podiumItem} ${styles.place1}`}>
+                  <FaCrown className={styles.podiumIcon} color="#FFD700" />
+                  <img src={top3[0].user.telegram_photo_url || 'placeholder.png'} alt={top3[0].user.first_name} className={styles.podiumAvatar} />
+                  <div className={styles.podiumName}>{top3[0].user.first_name}</div>
+                  <div className={styles.podiumPoints}>{top3[0].total_received}</div>
+                </div>
+              )}
+              {top3[2] && (
+                <div className={`${styles.podiumItem} ${styles.place3}`}>
+                  <FaCrown className={styles.podiumIcon} color="#CD7F32" />
+                  <img src={top3[2].user.telegram_photo_url || 'placeholder.png'} alt={top3[2].user.first_name} className={styles.podiumAvatar} />
+                  <div className={styles.podiumName}>{top3[2].user.first_name}</div>
+                  <div className={styles.podiumPoints}>{top3[2].total_received}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {others.length > 0 && (
+            <ol start="4" className={styles.list}>
+              {others.map((item, index) => (
+                <li key={item.user.id} className={styles.listItem}>
+                  <span className={styles.rank}>{index + 4}</span>
+                  <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} />
+                  <div className={styles.userInfo}>
+                    <span className={styles.userName}>{item.user.first_name}</span>
+                  </div>
+                  <div className={styles.pointsContainer}>
+                    <span className={styles.points}>{item.total_received}</span>
+                    <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="спасибо" className={styles.pointsLogo} />
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+          
+          {leaderboard.length === 0 && visibleTabs.length > 0 && <p>В этом рейтинге пока нет данных.</p>}
+          {visibleTabs.length === 0 && !user.is_admin && <p>Рейтинги пока пусты. Скоро здесь появится активность!</p>}
+        </>
       )}
     </PageLayout>
   );

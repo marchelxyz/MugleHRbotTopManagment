@@ -44,6 +44,7 @@ class UserResponse(UserBase):
     daily_transfer_count: int
     is_admin: bool
     status: Optional[str] = 'approved' 
+    telegram_photo_url: Optional[str] = None
     ticket_parts: int
     tickets: int
     card_barcode: Optional[str] = None
@@ -62,6 +63,7 @@ class UserResponse(UserBase):
 # Она будет включать все поля для удобства
 class MarketItemResponse(MarketItemBase):
     price_rub: int
+    image_url: Optional[str] = None
     is_archived: bool
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
@@ -73,8 +75,9 @@ class RegisterRequest(BaseModel):
     position: str
     department: str
     username: Optional[str] = None
-    phone_number: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    telegram_photo_url: Optional[str] = None
+    phone_number: str
+    date_of_birth: str
 
 class FeedItem(OrmBase):
     id: int
@@ -108,6 +111,7 @@ class MarketItemCreate(BaseModel):
     description: Optional[str] = None
     price_rub: int
     stock: int
+    image_url: Optional[str] = None
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
@@ -115,6 +119,7 @@ class MarketItemUpdate(BaseModel):
     description: Optional[str] = None
     price_rub: Optional[int] = None
     stock: Optional[int] = None
+    image_url: Optional[str] = None
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
@@ -174,3 +179,9 @@ class SpinResponse(BaseModel):
     prize_won: int
     new_balance: int
     new_tickets: int
+
+# --- НОВАЯ СХЕМА ДЛЯ ОТВЕТА О РАНГЕ ПОЛЬЗОВАТЕЛЯ ---
+class MyRankResponse(BaseModel):
+    rank: Optional[int]
+    total_received: int
+    total_participants: int

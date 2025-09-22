@@ -1,8 +1,11 @@
 # backend/database.py
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base # 1. Добавляем declarative_base
 from config import Settings
+
+# 2. Создаем наш главный "чертёж" (Base) здесь
+Base = declarative_base()
 
 settings = Settings()
 database_url = settings.DATABASE_URL

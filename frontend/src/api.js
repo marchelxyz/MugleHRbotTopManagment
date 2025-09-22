@@ -1,10 +1,12 @@
+// frontend/src/api.js
 import axios from 'axios';
 
-// --- НАША ОТЛАДОЧНАЯ СТРОКА ---
-console.log('Using API URL:', import.meta.env.VITE_API_URL);
+// API_BASE_URL используется только для apiClient, экспортировать его не нужно
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+console.log('Using API URL:', API_BASE_URL);
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE_URL,
 });
 
 export const checkUserStatus = (telegramId) => {
@@ -40,7 +42,30 @@ export const requestProfileUpdate = (updateData) => {
 };
 
 export const getFeed = () => apiClient.get('/transactions/feed');
-export const getLastMonthLeaderboard = () => apiClient.get('/leaderboard/last-month');
+
+export const getLeaderboard = ({ period, type }) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Динамически формируем запрос с параметрами
+  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+export const getMyRank = ({ period, type }) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+// --- ДОБАВЬ ЭТУ ФУНКЦИЮ ---
+export const getLeaderboardStatus = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get('/leaderboard/status', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
 export const getMarketItems = () => apiClient.get('/market/items');
 export const purchaseItem = (userId, itemId) => {
   // Отправляем и ID пользователя, и ID товара в теле запроса

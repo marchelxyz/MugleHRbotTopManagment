@@ -1,10 +1,10 @@
 # backend/models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship
+# Стало
+from database import Base
 from datetime import datetime
-
-Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
@@ -16,8 +16,9 @@ class User(Base):
     position = Column(String, nullable=False)
     department = Column(String, nullable=False)
     username = Column(String, nullable=True)
-    phone_number = Column(String, nullable=True)
-    date_of_birth = Column(Date, nullable=True)
+    telegram_photo_url = Column(String, nullable=True)
+    phone_number = Column(String, nullable=False) # Было nullable=True
+    date_of_birth = Column(Date, nullable=False)   # Было nullable=True
     balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
     daily_transfer_count = Column(Integer, default=0)
@@ -54,6 +55,7 @@ class MarketItem(Base):
     price = Column(Integer, nullable=False)
     price_rub = Column(Integer, nullable=False) 
     stock = Column(Integer, default=0)
+    image_url = Column(String, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
     purchases = relationship("Purchase", back_populates="item")
