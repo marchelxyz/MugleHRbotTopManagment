@@ -2,27 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage'; 
-import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, uploadItemImage } from '../../api';
+// 1. Убираем uploadItemImage из импортов
+import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-// --- НАЧАЛО ИСПРАВЛЕНИЯ: Возвращаем недостающие функции ---
-function calculateSpasibkiPrice(priceRub) {
-    if (!priceRub || priceRub <= 0) return 0;
-    return Math.round(priceRub / 50);
-}
-
-function calculateAccumulationForecast(priceSpasibki) {
-    if (!priceSpasibki || priceSpasibki <= 0) return "-";
-    const monthsNeeded = priceSpasibki / 15;
-    if (monthsNeeded <= 1) return "около 1 месяца";
-    if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
-    const years = (monthsNeeded / 12).toFixed(1);
-    return `около ${years} лет`;
-}
-// --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+// ... (вспомогательные функции)
 
 const initialItemState = { name: '', description: '', price_rub: '', stock: 1, image_url: '' };
 
@@ -35,28 +22,10 @@ function ItemManager() {
   const [form, setForm] = useState(initialItemState);
   const [editingItemId, setEditingItemId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  // 2. Убираем состояние uploading
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const [activeRes, archivedRes] = await Promise.all([
-        getAllMarketItems(),
-        getArchivedMarketItems()
-      ]);
-      setItems(activeRes.data);
-      setArchivedItems(archivedRes.data);
-    } catch (error) {
-      showAlert('Ошибка загрузки списка товаров.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+  useEffect(() => { fetchItems(); }, []);
+  const fetchItems = async () => { /* ... */ };
   const calculatedPrice = useMemo(() => calculateSpasibkiPrice(form.price_rub), [form.price_rub]);
   const forecast = useMemo(() => calculateAccumulationForecast(calculatedPrice), [calculatedPrice]);
 
@@ -65,25 +34,15 @@ function ItemManager() {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const response = await uploadItemImage(file);
-      setForm(prev => ({ ...prev, image_url: response.data.url }));
-    } catch (error) {
-      showAlert('Ошибка загрузки изображения.', 'error');
-    } finally {
-      setUploading(false);
-    }
-  };
+  // 3. Удаляем всю функцию handleImageUpload
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    // Теперь image_url приходит напрямую из текстового поля
     const itemData = {
       ...form,
+      price: calculateSpasibkiPrice(form.price_rub),
       price_rub: parseInt(form.price_rub, 10),
       stock: parseInt(form.stock, 10),
     };
@@ -97,7 +56,7 @@ function ItemManager() {
       }
       resetForm();
       fetchItems();
-      clearCache('market'); // 2. Очищаем кэш магазина!
+      clearCache('market');
     } catch (error) {
       showAlert('Произошла ошибка.', 'error');
     } finally {
@@ -105,71 +64,41 @@ function ItemManager() {
     }
   };
 
-  const handleEdit = (item) => {
-    setEditingItemId(item.id);
-    setForm({
-      name: item.name,
-      description: item.description,
-      price_rub: item.price_rub,
-      stock: item.stock,
-      image_url: item.image_url || '',
-    });
-    window.scrollTo(0, 0);
-  };
-
-  const resetForm = () => {
-    setForm(initialItemState);
-    setEditingItemId(null);
-  };
-
-  const handleArchive = async (itemId) => {
-    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите архивировать этот товар?');
-    if (isConfirmed) {
-      await archiveMarketItem(itemId);
-      showAlert('Товар архивирован.', 'success');
-      fetchItems();
-    }
-  };
-
-  const handleRestore = async (itemId) => {
-    const isConfirmed = await confirm('Подтверждение', 'Вы уверены, что хотите восстановить этот товар?');
-    if (isConfirmed) {
-      await restoreMarketItem(itemId);
-      showAlert('Товар восстановлен.', 'success');
-      fetchItems();
-    }
-  };
+  const handleEdit = (item) => { /* ... */ };
+  const resetForm = () => { /* ... */ };
+  const handleArchive = async (itemId) => { /* ... */ };
+  const handleRestore = async (itemId) => { /* ... */ };
 
   return (
     <>
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
+          {/* 4. Заменяем загрузчик на простое текстовое поле */}
           <div className={styles.imageUploader}>
-            {/* 2. Используем image_url НАПРЯМУЮ */}
             {form.image_url ? (
               <img src={form.image_url} alt="Предпросмотр" className={styles.imagePreview} />
             ) : (
-              <div className={styles.imagePlaceholder}>300x300</div>
+              <div className={styles.imagePlaceholder}>Фото</div>
             )}
-            <input type="file" id="imageUpload" onChange={handleImageUpload} accept="image/png, image/jpeg" style={{ display: 'none' }} />
-            <label htmlFor="imageUpload" className={styles.buttonGrey}>
-              {uploading ? 'Загрузка...' : 'Выбрать фото'}
-            </label>
           </div>
+          <input 
+            type="text" 
+            name="image_url" 
+            value={form.image_url} 
+            onChange={handleFormChange} 
+            placeholder="Прямая ссылка на изображение" 
+            className={styles.input} 
+          />
+          
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           
-          {form.price_rub > 0 && (
-            <div className={styles.pricePreview}>
-              <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
-              <p>Прогноз накопления: <strong>{forecast}</strong></p>
-            </div>
-          )}
+          {form.price_rub > 0 && ( /* ... */ )}
             
           <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
-          <button type="submit" disabled={loading || uploading} className={styles.buttonGreen}>
+          <button type="submit" disabled={loading} className={styles.buttonGreen}>
             {editingItemId ? 'Сохранить' : 'Создать'}
           </button>
           {editingItemId && <button type="button" onClick={resetForm} className={styles.buttonGrey}>Отмена</button>}
