@@ -9,6 +9,3 @@ httpx
 pydantic-settings
 python-dateutil
 pyzipper
-Pillow
-python-multipart
-cloudinary
