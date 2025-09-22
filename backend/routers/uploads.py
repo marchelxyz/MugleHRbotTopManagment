@@ -46,4 +46,6 @@ async def upload_and_convert_image(file: UploadFile = File(...)):
         return {"url": public_url}
 
     except Exception as e:
+        # Добавим вывод ошибки в лог для лучшей диагностики
+        print(f"!!! Ошибка при обработке изображения: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to process image: {e}")
