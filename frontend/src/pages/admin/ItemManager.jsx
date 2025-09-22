@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage'; 
-// 1. Убираем uploadItemImage из импортов
+// 1. Убираем uploadItemImage из импортов lf
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
