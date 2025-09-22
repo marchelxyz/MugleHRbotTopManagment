@@ -479,32 +479,42 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
 
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    """Создает новый товар с расчетом цены в спасибках."""
-    price_spasibki = calculate_spasibki_price(item.price_rub)
+    # Рассчитываем 'price' на основе 'price_rub'
+    calculated_price = item.price_rub // 50
     db_item = models.MarketItem(
         name=item.name,
         description=item.description,
+        price=calculated_price, 
         price_rub=item.price_rub,
-        price=price_spasibki,
         stock=item.stock,
-        is_archived=False
+        image_url=item.image_url  # <-- ВОТ ДОБАВЛЕННАЯ СТРОКА
     )
+
     db.add(db_item)
     await db.commit()
     await db.refresh(db_item)
     return db_item
 
-async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
-    """Обновляет товар, пересчитывая цену, если нужно."""
+async def admin_update_market_item(db: AsyncSession, item_id: int, item_update: schemas.MarketItemUpdate):
     db_item = await db.get(models.MarketItem, item_id)
-    if not db_item: return None
-    update_data = item_data.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_item, key, value)
-    if 'price_rub' in update_data:
-        db_item.price = calculate_spasibki_price(update_data['price_rub'])
-    await db.commit()
-    await db.refresh(db_item)
+    if db_item:
+        if item_update.name is not None:
+            db_item.name = item_update.name
+        if item_update.description is not None:
+            db_item.description = item_update.description
+        if item_update.price_rub is not None:
+            db_item.price_rub = item_update.price_rub
+            db_item.price = item_update.price_rub // 50
+        if item_update.stock is not None:
+            db_item.stock = item_update.stock
+
+        # <-- НАЧАЛО ДОБАВЛЕННОГО БЛОКА -->
+        if item_update.image_url is not None:
+            db_item.image_url = item_update.image_url
+        # <-- КОНЕЦ ДОБАВЛЕННОГО БЛОКА -->
+
+        await db.commit()
+        await db.refresh(db_item)
     return db_item
     
 async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = False):
