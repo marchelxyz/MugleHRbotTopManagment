@@ -7,18 +7,18 @@ import styles from './RoulettePage.module.css';
 import { FaInfoCircle } from 'react-icons/fa';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 
-// --- НАШИ НОВЫЕ АССЕТЫ ДЛЯ СЛОТ-МАШИНЫ ---
+// --- Иконки для барабанов ---
 const thankYouIcon = "https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp"; // "Спасибо"
 const ticketIcon = "https://i.postimg.cc/pX05sN69/ticket-icon.png"; // Билет
 const jackpotIcon = "https://i.postimg.cc/W3B9pG1c/jackpot-icon.png"; // Джекпот
 
-// --- ПРИЗЫ И ИХ ИКОНКИ ---
+// --- Призы и их иконки ---
 const PRIZES = {
-    // Маленькие призы (чаще всего)
+    // Маленькие призы
     1: thankYouIcon, 2: thankYouIcon, 3: thankYouIcon, 4: thankYouIcon, 5: thankYouIcon,
-    // Средние призы (реже)
+    // Средние призы
     6: ticketIcon, 8: ticketIcon, 9: ticketIcon, 10: ticketIcon, 11: ticketIcon, 12: ticketIcon, 13: ticketIcon, 14: ticketIcon, 15: ticketIcon,
-    // Крупные призы (очень редко)
+    // Крупные призы
     16: jackpotIcon, 17: jackpotIcon, 18: jackpotIcon, 19: jackpotIcon, 20: jackpotIcon, 21: jackpotIcon, 22: jackpotIcon, 23: jackpotIcon, 24: jackpotIcon, 25: jackpotIcon, 26: jackpotIcon, 27: jackpotIcon, 28: jackpotIcon, 29: jackpotIcon, 30: jackpotIcon
 };
 
@@ -33,11 +33,9 @@ function RoulettePage({ user, onUpdateUser }) {
     const [infoVisible, setInfoVisible] = useState(false);
     const [winAmount, setWinAmount] = useState(null);
 
-    // Ссылки на DOM-элементы барабанов
     const reel1Ref = useRef(null);
     const reel2Ref = useRef(null);
     const reel3Ref = useRef(null);
-    const leverRef = useRef(null);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -68,21 +66,15 @@ function RoulettePage({ user, onUpdateUser }) {
         setIsSpinning(true);
         setWinAmount(null);
 
-        // Анимация рычага
-        leverRef.current.classList.add(styles.leverPulled);
-
-        // Запускаем вращение
         const reels = [reel1Ref.current, reel2Ref.current, reel3Ref.current];
         reels.forEach(reel => {
-            reel.style.transition = 'none'; // Сбрасываем transition для мгновенного "сброса"
+            reel.style.transition = 'none';
             reel.style.transform = `translateY(0)`;
         });
 
-        // Небольшая задержка, чтобы браузер успел применить сброс
         setTimeout(async () => {
             reels.forEach(reel => {
                 reel.style.transition = 'transform 4s cubic-bezier(0.25, 1, 0.5, 1)';
-                // Устанавливаем конечное положение далеко внизу
                 const randomOffset = Math.floor(Math.random() * reelSymbols.length);
                 const totalHeight = reel.scrollHeight;
                 const finalPosition = totalHeight - ((totalHeight / reelSymbols.length) * (randomOffset + 1));
@@ -94,15 +86,13 @@ function RoulettePage({ user, onUpdateUser }) {
                 const { prize_won, new_balance, new_tickets } = response.data;
                 const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
                 
-                // Ждем окончания основной анимации
                 setTimeout(() => {
                     setLocalUser(updatedUser);
                     onUpdateUser(updatedUser);
                     setWinAmount(prize_won);
                     
-                    // "Докручиваем" центральный барабан до выигрышной иконки
                     const prizeIcon = PRIZES[prize_won];
-                    const prizeIndex = reelSymbols.lastIndexOf(prizeIcon); // Находим индекс нужной иконки
+                    const prizeIndex = reelSymbols.lastIndexOf(prizeIcon);
                     
                     const iconHeight = reel2Ref.current.scrollHeight / reelSymbols.length;
                     const stopPosition = prizeIndex * iconHeight;
@@ -110,17 +100,12 @@ function RoulettePage({ user, onUpdateUser }) {
                     reel2Ref.current.style.transition = 'transform 1s ease-out';
                     reel2Ref.current.style.transform = `translateY(-${stopPosition}px)`;
                     
-                    // Возвращаем рычаг в исходное положение
-                    leverRef.current.classList.remove(styles.leverPulled);
-
                     setIsSpinning(false);
-                    // Принудительно обновляем ленту
                     getRouletteHistory().then(res => setHistory(res.data));
-                }, 4000); // 4 секунды на основное вращение
+                }, 4000);
 
             } catch (error) {
                 showAlert(error.response?.data?.detail || 'Ошибка прокрутки', 'error');
-                leverRef.current.classList.remove(styles.leverPulled);
                 setIsSpinning(false);
             }
         }, 100);
@@ -148,26 +133,26 @@ function RoulettePage({ user, onUpdateUser }) {
                 </div>
             </div>
 
-            {/* --- НОВАЯ СТРУКТУРА СЛОТ-МАШИНЫ --- */}
-            <div className={styles.slotMachine}>
-                <div className={styles.reelsContainer}>
-                    {[reel1Ref, reel2Ref, reel3Ref].map((ref, i) => (
-                        <div key={i} className={styles.reel}>
-                            <div className={styles.reelTrack} ref={ref}>
-                                {/* Дублируем символы для бесконечной прокрутки */}
-                                {[...reelSymbols, ...reelSymbols].map((symbol, index) => (
-                                    <div key={index} className={styles.symbol}>
-                                        <img src={symbol} alt="symbol" />
-                                    </div>
-                                ))}
+            {/* --- СТРУКТУРА СЛОТ-МАШИНЫ --- */}
+            <div className={styles.slotMachineWrapper}>
+                <div className={styles.slotMachine}>
+                    <div className={styles.reelsContainer}>
+                        {[reel1Ref, reel2Ref, reel3Ref].map((ref, i) => (
+                            <div key={i} className={styles.reel}>
+                                <div className={styles.reelTrack} ref={ref}>
+                                    {[...reelSymbols, ...reelSymbols].map((symbol, index) => (
+                                        <div key={index} className={styles.symbol}>
+                                            <img src={symbol} alt="symbol" />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
-                <div ref={leverRef} className={styles.lever} onClick={handleSpin}>
-                    <div className={styles.leverStick}></div>
-                    <div className={styles.leverBall}></div>
-                </div>
+                <button className={styles.spinButton} onClick={handleSpin} disabled={isSpinning || localUser.tickets < 1}>
+                    SPIN
+                </button>
             </div>
             
             {winAmount !== null && <div className={styles.winMessage}>Вы выиграли {winAmount} спасибок! 🎉</div>}
