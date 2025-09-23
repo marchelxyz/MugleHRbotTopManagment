@@ -24,15 +24,19 @@ function EditUserModal({ user, onClose, onSave }) {
     onSave(user.id, formData);
   };
 
-  const handleDelete = async () => {
-    const isConfirmed = await confirm(
-      'Сброс пользователя',
-      `Вы уверены, что хотите сбросить пользователя ${user.first_name}? Он будет отправлен на повторную регистрацию.`
-    );
-    if (isConfirmed) {
-      onSave(user.id, { ...formData, id_to_delete: user.id, action: 'delete' });
-    }
-  };
+    const handleDelete = async (userId) => {
+        const isConfirmed = await confirm('Удаление', 'Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.');
+        if (isConfirmed) {
+            try {
+                // 2. Добавляем вызов API для удаления
+                await deleteUser(userId); 
+                showAlert('Пользователь удален.', 'success');
+                fetchUsers();
+            } catch (error) {
+                showAlert('Ошибка удаления.', 'error');
+            }
+        }
+    };
 
   const handleBlockToggle = async () => {
     const newStatus = user.status === 'blocked' ? 'approved' : 'blocked';
