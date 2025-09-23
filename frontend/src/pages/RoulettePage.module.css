@@ -24,24 +24,22 @@
 .slotMachine {
     width: 100%;
     max-width: 350px;
-    height: 180px; /* Сделаем чуть повыше */
-    background: linear-gradient(145deg, #5CA14A, #4a8c3a);
-    border-radius: 25px;
-    border: 3px solid #3b6b2f;
-    box-shadow: 
-        0 15px 25px rgba(0,0,0,0.3), /* Основная тень */
-        inset 0 4px 8px rgba(255,255,255,0.4), /* Внутренний блик сверху */
-        inset 0 -4px 8px rgba(0,0,0,0.3); /* Внутренняя тень снизу */
+    height: 180px;
+    /* Основной зеленый фон с градиентом */
+    background: linear-gradient(145deg, #66bb6a, #4caf50); 
+    border-radius: 35px; /* Более сильное скругление по углам */
+    /* Главная тень для объема */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.4);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 18px; /* Внутренний отступ */
     box-sizing: border-box;
-    position: relative; /* Для позиционирования блика */
-    overflow: hidden; /* Скрываем выходящие за рамки блики */
+    position: relative;
+    overflow: hidden;
 }
 
-/* Элемент для создания глянцевого блика */
+/* Элемент для глянцевого блика (без изменений) */
 .slotGloss {
     position: absolute;
     top: -50%;
@@ -52,19 +50,22 @@
     transform: rotate(45deg);
 }
 
-/* "Экран", где находятся барабаны */
+/* 2. ОБНОВЛЯЕМ "ЭКРАН", ГДЕ НАХОДЯТСЯ БАРАБАНЫ */
 .slotScreen {
     width: 100%;
     height: 100%;
-    background: #222;
-    border-radius: 10px;
-    box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
-    padding: 10px;
+    background: #1c1c1c; /* Глубокий черный цвет */
+    border-radius: 15px; /* Скругление внутреннего экрана */
+    /* Тень, создающая эффект глубины */
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.7);
+    padding: 12px; /* Отступ внутри экрана до барабанов */
     box-sizing: border-box;
-    z-index: 1; /* Чтобы был над бликом */
+    z-index: 1;
+    border: 3px solid #333; /* Темная рамка вокруг экрана */
 }
 
 .reelsContainer {
+/* ... (все остальные стили ниже остаются без изменений) ... */
     display: flex;
     gap: 12px;
     width: 100%;
@@ -88,7 +89,7 @@
 
 .symbol {
     width: 100%;
-    height: 100%; /* Символ занимает всю высоту барабана */
+    height: 100%;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -101,7 +102,6 @@
     object-fit: contain;
 }
 
-/* --- СТИЛИ ДЛЯ КНОПКИ SPIN --- */
 .spinButton {
     width: 90px;
     height: 90px;
@@ -129,7 +129,6 @@
     opacity: 0.7;
 }
 
-/* --- Стили для результатов и истории (без изменений) --- */
 .winMessage { text-align: center; font-size: 20px; font-weight: bold; color: #5CA14A; margin: 20px 0; animation: bounce 0.5s; }
 .history h3 { text-align: center; }
 .historyItem { display: flex; justify-content: space-between; padding: 10px; background: #fff; border-radius: 8px; margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
