@@ -1,13 +1,14 @@
 // frontend/src/pages/admin/UserManager.jsx
 
 import React, { useState, useEffect } from 'react';
-// 1. Добавляем `deleteUser` в импорт
-import { getAllUsers, updateUser, deleteUser, giveBalance } from '../../api'; 
+// 1. Меняем 'deleteUser' на 'adminDeleteUser'
+import { getAllUsers, updateUser, adminDeleteUser, giveBalance } from '../../api'; 
 import styles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 function UserManager() {
+    // ... (весь код до handleDelete остается без изменений)
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
@@ -50,8 +51,8 @@ function UserManager() {
         const isConfirmed = await confirm('Удаление', 'Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.');
         if (isConfirmed) {
             try {
-                // 2. Добавляем вызов API для удаления
-                await deleteUser(userId); 
+                // 2. Меняем вызов функции на правильное имя
+                await adminDeleteUser(userId); 
                 showAlert('Пользователь удален.', 'success');
                 fetchUsers();
             } catch (error) {
@@ -61,7 +62,6 @@ function UserManager() {
     };
     
     // ... (остальной код файла остается без изменений)
-
     const handleGiveBalance = async (userId) => {
         const amountStr = prompt('Введите сумму для начисления:');
         const amount = parseInt(amountStr, 10);
