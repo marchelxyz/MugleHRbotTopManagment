@@ -20,8 +20,8 @@ function SideNav({ user, activePage, onNavigate }) {
   return (
     <div className={styles.nav}>
       <div className={styles.header}>
-        <img src="https://i.postimg.cc/YqcmJB37/6.webp" alt="Лого" />
-        <span>Mugle HR</span>
+        <img src="https://i.postimg.cc/fTRzYTLC/image.webp" alt="Лого" />
+        <span>Спасибо</span>
       </div>
       <div className={styles.menu}>
         {navItems.map(item => (
