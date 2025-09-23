@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 // 1. Меняем 'deleteUser' на 'adminDeleteUser'
-import { getAllUsers, updateUser, adminDeleteUser, giveBalance } from '../../api'; 
+import { admingetAllUsers, adminupdateUser, adminDeleteUser, giveBalance } from '../../api'; 
 import styles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
