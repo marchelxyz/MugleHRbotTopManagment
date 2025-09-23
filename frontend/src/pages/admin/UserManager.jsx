@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 // --- 1. ИМПОРТИРУЕМ ИКОНКИ ---
 import { FaPencilAlt, FaTimes } from 'react-icons/fa';
-import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../api';
+import { getAllUsers, updateUser, deleteUser, giveBalance } from '../../api'; 
 import styles from '../AdminPage.module.css';
 import userManagerStyles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
