@@ -12,35 +12,63 @@
 .userBalance button:disabled { background: #f0f0f0; color: #aaa; border-color: #ddd; }
 .userBalance button:not(:disabled):hover { background-color: #f0fff0; }
 
-/* --- НОВЫЕ СТИЛИ ДЛЯ СЛОТ-МАШИНЫ --- */
+/* --- НОВЫЕ СТИЛИ ДЛЯ СЛОТ-МАШИНЫ, НАРИСОВАННОЙ КОДОМ --- */
 .slotMachineWrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 25px; /* Увеличим отступ до кнопки */
     margin-bottom: 20px;
 }
 
 .slotMachine {
     width: 100%;
-    max-width: 400px;
-    height: 400px;
-    background-image: url('https://i.postimg.cc/D0pzY5Pj/Picsart-25-09-21-17-59-46-622.webp'); /* ВАШ КОРПУС */
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    background-position: center;
+    max-width: 350px;
+    height: 180px; /* Сделаем чуть повыше */
+    background: linear-gradient(145deg, #5CA14A, #4a8c3a);
+    border-radius: 25px;
+    border: 3px solid #3b6b2f;
+    box-shadow: 
+        0 15px 25px rgba(0,0,0,0.3), /* Основная тень */
+        inset 0 4px 8px rgba(255,255,255,0.4), /* Внутренний блик сверху */
+        inset 0 -4px 8px rgba(0,0,0,0.3); /* Внутренняя тень снизу */
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 50px; /* Отступы по бокам, чтобы барабаны не прилипали к краям */
+    padding: 20px;
     box-sizing: border-box;
+    position: relative; /* Для позиционирования блика */
+    overflow: hidden; /* Скрываем выходящие за рамки блики */
+}
+
+/* Элемент для создания глянцевого блика */
+.slotGloss {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 40%);
+    transform: rotate(45deg);
+}
+
+/* "Экран", где находятся барабаны */
+.slotScreen {
+    width: 100%;
+    height: 100%;
+    background: #222;
+    border-radius: 10px;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
+    padding: 10px;
+    box-sizing: border-box;
+    z-index: 1; /* Чтобы был над бликом */
 }
 
 .reelsContainer {
     display: flex;
     gap: 12px;
     width: 100%;
-    height: 90px; /* Высота окошек барабанов */
+    height: 100%;
     overflow: hidden;
 }
 
@@ -49,9 +77,8 @@
     height: 100%;
     overflow: hidden;
     position: relative;
-    background: #fff; /* Фон для барабанов */
+    background: #fff;
     border-radius: 5px;
-    border: 1px solid rgba(0,0,0,0.1);
 }
 
 .reelTrack {
@@ -61,7 +88,7 @@
 
 .symbol {
     width: 100%;
-    height: 90px; /* Высота одного символа равна высоте окошка */
+    height: 100%; /* Символ занимает всю высоту барабана */
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -69,8 +96,8 @@
 }
 
 .symbol img {
-    width: 60%;
-    height: 60%;
+    width: 65%;
+    height: 65%;
     object-fit: contain;
 }
 
@@ -88,6 +115,7 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.3), inset 0 3px 5px rgba(255,255,255,0.5);
     cursor: pointer;
     transition: all 0.1s ease-out;
+    z-index: 5;
 }
 
 .spinButton:active:not(:disabled) {
