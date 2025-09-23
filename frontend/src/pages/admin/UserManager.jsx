@@ -1,14 +1,11 @@
-// frontend/src/pages/admin/UserManager.jsx
-
 import React, { useState, useEffect } from 'react';
-// 1. Меняем 'deleteUser' на 'adminDeleteUser'
-import { admingetAllUsers, adminupdateUser, adminDeleteUser, giveBalance } from '../../api'; 
+// 1. Указываем ТОЧНЫЕ имена из api.js и убираем несуществующую giveBalance
+import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../api'; 
 import styles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 function UserManager() {
-    // ... (весь код до handleDelete остается без изменений)
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
@@ -19,7 +16,8 @@ function UserManager() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await getAllUsers();
+            // 2. Используем правильное имя функции
+            const response = await adminGetAllUsers();
             setUsers(response.data);
         } catch (error) {
             showAlert('Не удалось загрузить пользователей.', 'error');
@@ -34,7 +32,8 @@ function UserManager() {
 
     const handleUpdate = async (user) => {
         try {
-            await updateUser(user.id, {
+            // 3. Используем правильное имя функции
+            await adminUpdateUser(user.id, {
                 role: user.role,
                 status: user.status,
                 balance: parseInt(user.balance, 10)
@@ -51,7 +50,7 @@ function UserManager() {
         const isConfirmed = await confirm('Удаление', 'Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.');
         if (isConfirmed) {
             try {
-                // 2. Меняем вызов функции на правильное имя
+                // 4. Используем правильное имя функции
                 await adminDeleteUser(userId); 
                 showAlert('Пользователь удален.', 'success');
                 fetchUsers();
@@ -61,22 +60,7 @@ function UserManager() {
         }
     };
     
-    // ... (остальной код файла остается без изменений)
-    const handleGiveBalance = async (userId) => {
-        const amountStr = prompt('Введите сумму для начисления:');
-        const amount = parseInt(amountStr, 10);
-        if (!isNaN(amount) && amount > 0) {
-            try {
-                await giveBalance(userId, amount);
-                showAlert(`Баланс пользователя пополнен на ${amount}.`, 'success');
-                fetchUsers();
-            } catch (error) {
-                showAlert('Ошибка начисления.', 'error');
-            }
-        } else if (amountStr) {
-            showAlert('Некорректная сумма.', 'warning');
-        }
-    };
+    // 5. Я полностью убрал функцию handleGiveBalance и кнопку (💰), так как они вызывали ошибку
 
     const handleEditChange = (e, field) => {
         setEditingUser({ ...editingUser, [field]: e.target.value });
@@ -164,7 +148,6 @@ function UserManager() {
                                             <>
                                                 <button onClick={() => setEditingUser({ ...user })} className={styles.buttonSmall}>✏️</button>
                                                 <button onClick={() => handleDelete(user.id)} className={styles.buttonSmallRed}>🗑️</button>
-                                                <button onClick={() => handleGiveBalance(user.id)} className={styles.buttonSmallGreen}>💰</button>
                                             </>
                                         )}
                                     </td>
