@@ -17,7 +17,7 @@ const PRIZES = {
     16: jackpotIcon, 17: jackpotIcon, 18: jackpotIcon, 19: jackpotIcon, 20: jackpotIcon, 21: jackpotIcon, 22: jackpotIcon, 23: jackpotIcon, 24: jackpotIcon, 25: jackpotIcon, 26: jackpotIcon, 27: jackpotIcon, 28: jackpotIcon, 29: jackpotIcon, 30: jackpotIcon
 };
 
-const reelSymbols = [thankYouIcon, ticketIcon, jackpotIcon, thankYouIcon, ticketIcon];
+const reelSymbols = [thankYouIcon, ticketIcon, jackpotIcon, ticketIcon, thankYouIcon, jackpotIcon, ticketIcon];
 
 function RoulettePage({ user, onUpdateUser }) {
     const { showAlert } = useModalAlert();
@@ -27,9 +27,7 @@ function RoulettePage({ user, onUpdateUser }) {
     const [infoVisible, setInfoVisible] = useState(false);
     const [winAmount, setWinAmount] = useState(null);
 
-    const reel1Ref = useRef(null);
-    const reel2Ref = useRef(null);
-    const reel3Ref = useRef(null);
+    const reelsRef = useRef([]);
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -54,56 +52,85 @@ function RoulettePage({ user, onUpdateUser }) {
             showAlert(error.response?.data?.detail || 'Ошибка сборки', 'error');
         }
     };
-
+    
+    // --- НОВАЯ, УЛУЧШЕННАЯ ЛОГИКА ВРАЩЕНИЯ ---
     const handleSpin = async () => {
         if (localUser.tickets < 1 || isSpinning) return;
         setIsSpinning(true);
         setWinAmount(null);
-
-        const reels = [reel1Ref.current, reel2Ref.current, reel3Ref.current];
-        reels.forEach(reel => {
+        
+        // Сбрасываем барабаны в начальное положение
+        reelsRef.current.forEach(reel => {
             reel.style.transition = 'none';
             reel.style.transform = `translateY(0)`;
         });
 
-        setTimeout(async () => {
-            reels.forEach(reel => {
-                reel.style.transition = 'transform 4s cubic-bezier(0.25, 1, 0.5, 1)';
-                const randomOffset = Math.floor(Math.random() * reelSymbols.length);
-                const totalHeight = reel.scrollHeight;
-                const finalPosition = totalHeight - ((totalHeight / reelSymbols.length) * (randomOffset + 1));
-                reel.style.transform = `translateY(-${finalPosition}px)`;
-            });
+        // Запускаем бесконечную анимацию вращения через CSS
+        reelsRef.current.forEach(reel => reel.classList.add(styles.spinning));
 
-            try {
-                const response = await spinRoulette();
-                const { prize_won, new_balance, new_tickets } = response.data;
-                const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
-                
-                setTimeout(() => {
+        try {
+            const response = await spinRoulette();
+            const { prize_won, new_balance, new_tickets } = response.data;
+            const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
+            
+            // Получаем иконку нашего приза
+            const prizeIcon = PRIZES[prize_won];
+
+            // Начинаем останавливать барабаны по очереди
+            const stopReel = (reelIndex) => {
+                if (reelIndex >= reelsRef.current.length) {
+                    // Все барабаны остановлены
                     setLocalUser(updatedUser);
                     onUpdateUser(updatedUser);
                     setWinAmount(prize_won);
-                    
-                    const prizeIcon = PRIZES[prize_won];
-                    const prizeIndex = reelSymbols.lastIndexOf(prizeIcon);
-                    
-                    const iconHeight = reel2Ref.current.scrollHeight / reelSymbols.length;
-                    const stopPosition = prizeIndex * iconHeight;
-
-                    reel2Ref.current.style.transition = 'transform 1s ease-out';
-                    reel2Ref.current.style.transform = `translateY(-${stopPosition}px)`;
-                    
                     setIsSpinning(false);
                     getRouletteHistory().then(res => setHistory(res.data));
-                }, 4000);
+                    return;
+                }
 
-            } catch (error) {
-                showAlert(error.response?.data?.detail || 'Ошибка прокрутки', 'error');
-                setIsSpinning(false);
-            }
-        }, 100);
+                const reel = reelsRef.current[reelIndex];
+                const isCenterReel = reelIndex === 1;
+                
+                // Выбираем иконку: для центрального - призовую, для остальных - случайную
+                const targetIcon = isCenterReel ? prizeIcon : reelSymbols[Math.floor(Math.random() * reelSymbols.length)];
+                const targetIndex = reelSymbols.indexOf(targetIcon);
+                
+                // Рассчитываем позицию
+                const symbolHeight = reel.querySelector(`.${styles.symbol}`).offsetHeight;
+                const totalHeight = reel.scrollHeight;
+                const basePosition = (totalHeight / 2) - (targetIndex * symbolHeight);
+                const currentTransform = window.getComputedStyle(reel).transform;
+                const matrix = new DOMMatrixReadOnly(currentTransform);
+                const currentY = matrix.m42;
+
+                // Убираем класс бесконечной анимации
+                reel.classList.remove(styles.spinning);
+                reel.style.transition = 'none'; // Сбрасываем transition для точного позиционирования
+                
+                // Устанавливаем барабан в позицию чуть "выше" выигрышной
+                const preStopPosition = basePosition - totalHeight/2;
+                reel.style.transform = `translateY(${preStopPosition}px)`;
+                
+                // И плавно "докручиваем" до нужной иконки
+                setTimeout(() => {
+                    reel.style.transition = 'transform 1.5s cubic-bezier(0.25, 1, 0.5, 1)';
+                    reel.style.transform = `translateY(${basePosition}px)`;
+                }, 50);
+
+                // Запускаем остановку следующего барабана с задержкой
+                setTimeout(() => stopReel(reelIndex + 1), 500); // Задержка 0.5 секунды
+            };
+
+            // Запускаем процесс остановки первого барабана
+            stopReel(0);
+
+        } catch (error) {
+            showAlert(error.response?.data?.detail || 'Ошибка прокрутки', 'error');
+            reelsRef.current.forEach(reel => reel.classList.remove(styles.spinning));
+            setIsSpinning(false);
+        }
     };
+
 
     return (
         <PageLayout title="Слот-машина">
@@ -127,15 +154,14 @@ function RoulettePage({ user, onUpdateUser }) {
                 </div>
             </div>
 
-            {/* --- ОБНОВЛЕННАЯ СТРУКТУРА СЛОТ-МАШИНЫ --- */}
             <div className={styles.slotMachineWrapper}>
                 <div className={styles.slotMachine}>
                     <div className={styles.slotGloss}></div>
                     <div className={styles.slotScreen}>
                         <div className={styles.reelsContainer}>
-                            {[reel1Ref, reel2Ref, reel3Ref].map((ref, i) => (
+                            {[0, 1, 2].map(i => (
                                 <div key={i} className={styles.reel}>
-                                    <div className={styles.reelTrack} ref={ref}>
+                                    <div className={styles.reelTrack} ref={el => reelsRef.current[i] = el}>
                                         {[...reelSymbols, ...reelSymbols].map((symbol, index) => (
                                             <div key={index} className={styles.symbol}>
                                                 <img src={symbol} alt="symbol" />
