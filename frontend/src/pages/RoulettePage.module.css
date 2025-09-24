@@ -42,38 +42,20 @@
 
 .symbol {
     width: 100%;
-    height: 100%;
+    height: 120px; /* Фиксированная высота для точных расчетов */
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10vw;
-    max-font-size: 48px;
+    font-size: 48px;
     font-weight: bold;
     color: #333;
     background: linear-gradient(180deg, #ffffff, #e0e0e0);
 }
 
+/* --- ТЕНИ УДАЛЕНЫ --- */
 .shadow {
-    position: absolute;
-    z-index: 2;
-    pointer-events: none;
-}
-.topShadow {
-    top: 0; left: 0; right: 0;
-    height: 30%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
-}
-.bottomShadow {
-    bottom: 0; left: 0; right: 0;
-    height: 30%;
-    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
-}
-.reelShadow {
-    top: 0; bottom: 0; left: 0; right: 0;
-    height: 100%;
-    box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
-    border-radius: 10px;
+    display: none;
 }
 
 .spinButton {
@@ -122,20 +104,3 @@
 .history { margin-top: 30px; }
 .history h3 { text-align: center; }
 .historyItem { display: flex; justify-content: space-between; padding: 10px; background: #fff; border-radius: 8px; margin-bottom: 5px; }
-
-
-/* --- НОВАЯ АНИМАЦИЯ БЕСКОНЕЧНОГО ВРАЩЕНИЯ --- */
-@keyframes spin {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    /* Двигаем на половину высоты (т.к. у нас два набора чисел) */
-    transform: translateY(-50%);
-  }
-}
-
-.spinning {
-  /* Применяем бесконечную анимацию, когда барабаны крутятся */
-  animation: spin 0.3s linear infinite;
-}
