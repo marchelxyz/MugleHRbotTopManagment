@@ -16,7 +16,6 @@ function RoulettePage({ user, onUpdateUser }) {
     const [winAmount, setWinAmount] = useState(null);
 
     const reelsRef = useRef([]);
-    // Используем Ref для хранения колбэка, чтобы избежать лишних перерисовок
     const onAnimationEndRef = useRef(null); 
 
 
@@ -44,7 +43,6 @@ function RoulettePage({ user, onUpdateUser }) {
         }
     };
     
-    // --- НОВАЯ УЛУЧШЕННАЯ ЛОГИКА АНИМАЦИИ ---
     const handleSpin = async () => {
         if (localUser.tickets < 1 || isSpinning) return;
         setIsSpinning(true);
@@ -53,7 +51,7 @@ function RoulettePage({ user, onUpdateUser }) {
         reelsRef.current.forEach(reel => {
             reel.style.transition = 'none';
             const randomOffset = Math.floor(Math.random() * reelNumbers.length);
-            const symbolHeight = 120;
+            const symbolHeight = reel.offsetHeight; // Используем реальную высоту элемента
             reel.style.transform = `translateY(-${randomOffset * symbolHeight}px)`;
         });
 
@@ -62,32 +60,31 @@ function RoulettePage({ user, onUpdateUser }) {
             const { prize_won, new_balance, new_tickets } = response.data;
             const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
             
-            // Задаем колбэк, который выполнится ПОСЛЕ завершения анимации
+            // Эта функция выполнится ровно один раз, когда закончит крутиться последний барабан
             onAnimationEndRef.current = () => {
                 setLocalUser(updatedUser);
                 onUpdateUser(updatedUser);
                 setWinAmount(prize_won);
                 setIsSpinning(false);
                 getRouletteHistory().then(res => setHistory(res.data));
+                // Удаляем слушатель, чтобы он не сработал снова
+                reelsRef.current[reelsRef.current.length - 1].removeEventListener('transitionend', onAnimationEndRef.current);
             };
 
-            // Запускаем анимацию остановки для каждого барабана
             reelsRef.current.forEach((reel, index) => {
-                const targetNumber = prize_won; // Все барабаны останавливаются на выигрышном числе
+                const targetNumber = prize_won;
                 const targetIndex = reelNumbers.indexOf(targetNumber);
                 
-                const symbolHeight = 120;
+                const symbolHeight = reel.querySelector(`.${styles.symbol}`).offsetHeight;
                 const totalHeight = reel.scrollHeight;
                 const loops = 4;
                 const finalPosition = (loops * totalHeight / 2) + (targetIndex * symbolHeight);
 
-                // Добавляем небольшую задержку для старта, чтобы сброс transform успел примениться
                 setTimeout(() => {
                     reel.style.transition = `transform ${4 + index * 0.5}s cubic-bezier(.32, .95, .46, 1)`;
                     reel.style.transform = `translateY(-${finalPosition}px)`;
                 }, 100);
 
-                // Назначаем обработчик события окончания анимации только на последний, самый долгий барабан
                 if (index === reelsRef.current.length - 1) {
                     reel.addEventListener('transitionend', onAnimationEndRef.current, { once: true });
                 }
@@ -102,30 +99,32 @@ function RoulettePage({ user, onUpdateUser }) {
 
     return (
         <PageLayout title="Слот-машина">
-            <div className={styles.slotMachineWrapper}>
-                <div className={styles.slotMachine}>
-                    <div className={`${styles.shadow} ${styles.topShadow}`}></div>
-                    <div className={`${styles.shadow} ${styles.bottomShadow}`}></div>
-                    
-                    <div className={styles.reelsContainer}>
-                        {[0, 1, 2].map(i => (
-                            <div key={i} className={styles.reelWrapper}>
-                                <div className={styles.reelTrack} ref={el => reelsRef.current[i] = el}>
-                                    {[...reelNumbers, ...reelNumbers].map((number, index) => (
-                                        <div key={index} className={styles.symbol}>
-                                            {number}
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className={`${styles.shadow} ${styles.reelShadow}`}></div>
+            {/* 1. Убрали лишнюю обертку-рамку */}
+            <div className={styles.slotMachine}>
+                {/* 3. Тени */}
+                <div className={`${styles.shadow} ${styles.topShadow}`}></div>
+                <div className={`${styles.shadow} ${styles.bottomShadow}`}></div>
+                
+                <div className={styles.reelsContainer}>
+                    {[0, 1, 2].map(i => (
+                        <div key={i} className={styles.reelWrapper}>
+                            {/* 4. Барабаны с цифрами */}
+                            <div className={styles.reelTrack} ref={el => reelsRef.current[i] = el}>
+                                {[...reelNumbers, ...reelNumbers].map((number, index) => (
+                                    <div key={index} className={styles.symbol}>
+                                        {number}
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                            <div className={`${styles.shadow} ${styles.reelShadow}`}></div>
+                        </div>
+                    ))}
                 </div>
             </div>
             
             {winAmount !== null && <div className={styles.winMessage}>Выигрыш {winAmount} спасибок! 🎉</div>}
             
+            {/* 5. Новая кнопка */}
             <button 
               className={`${styles.spinButton} ${isSpinning ? styles.spinning : ''}`} 
               onClick={handleSpin} 
