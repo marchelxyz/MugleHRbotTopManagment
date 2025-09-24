@@ -1,5 +1,3 @@
-/* frontend/src/pages/RoulettePage.module.css */
-
 .slotMachine {
     width: 90vw;
     max-width: 463px;
@@ -13,36 +11,48 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 11.5%;
+    /* Убираем процентные отступы, чтобы управлять положением барабанов вручную */
+    padding: 0; 
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
 }
 
+/* =============================================================== */
+/* ============= ПАНЕЛЬ УПРАВЛЕНИЯ ПАРАМЕТРАМИ БАРАБАНОВ ============= */
+/* =============================================================== */
+
 .reelsContainer {
     display: flex;
-    gap: 8%;
-    width: 100%;
-    height: 80%;
+    
+    /* Ширина всей области с тремя барабанами */
+    width: 320px; 
+    
+    /* Высота всей области с тремя барабанами */
+    height: 120px;
+
+    /* Расстояние между барабанами */
+    gap: 20px; 
+
     overflow: hidden;
 }
 
 .reelWrapper {
+    /* Ширина одного барабана (высчитывается автоматически) */
     flex: 1;
+
     height: 100%;
     position: relative;
     overflow: hidden;
     border-radius: 10px;
 }
 
-.reelTrack {
-    display: flex;
-    flex-direction: column;
-}
-
 .symbol {
     width: 100%;
-    height: 120px; /* Фиксированная высота для точных расчетов */
+
+    /* Высота одной цифры (должна совпадать с высотой .reelsContainer) */
+    height: 120px;
+    
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -52,8 +62,16 @@
     color: #333;
     background: linear-gradient(180deg, #ffffff, #e0e0e0);
 }
+/* =============================================================== */
+/* =================== КОНЕЦ ПАНЕЛИ УПРАВЛЕНИЯ =================== */
+/* =============================================================== */
 
-/* --- ТЕНИ УДАЛЕНЫ --- */
+
+.reelTrack {
+    display: flex;
+    flex-direction: column;
+}
+
 .shadow {
     display: none;
 }
