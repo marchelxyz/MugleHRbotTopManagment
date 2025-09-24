@@ -25,9 +25,9 @@
 
 .reelsContainer {
     display: flex;
-    gap: 22px;
+    gap: 6px;
     width: 100%;
-    height: 120px;
+    height: 112px;
     overflow: hidden;
 }
 
