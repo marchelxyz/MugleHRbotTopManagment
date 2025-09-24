@@ -1,13 +1,17 @@
 /* frontend/src/pages/RoulettePage.module.css */
 
+.slotMachineWrapper {
+    /* 1. УБИРАЕМ ФОН И ОТСТУПЫ, ЧТОБЫ ИСЧЕЗЛА ЛИШНЯЯ РАМКА */
+    width: 100%;
+    max-width: 463px; /* Половина от 926px для четкости на ретина-экранах */
+    margin: 20px auto;
+}
+
 .slotMachine {
-    width: 90vw; /* Ширина занимает 90% экрана */
-    max-width: 463px; /* Половина от исходной ширины 926px для ретина-экранов */
+    width: 100%; /* Ширина теперь 100% от родителя */
     height: auto;
     aspect-ratio: 926 / 472; /* Сохраняем исходные пропорции */
-    margin: 20px auto; /* Центрируем */
     
-    /* 1. Новый корпус слот-машины */
     background-image: url('https://i.postimg.cc/k4gPr3sn/CKJN-VFIBYF.webp');
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -16,7 +20,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 11.5%; /* 2. Отступы для выравнивания барабанов */
+    padding: 0 11.5%; /* Отступы для точного позиционирования барабанов */
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
@@ -35,7 +39,7 @@
     height: 100%;
     position: relative;
     overflow: hidden;
-    border-radius: 10px; /* Скругление окошек */
+    border-radius: 10px;
 }
 
 .reelTrack {
@@ -50,14 +54,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10vw; /* Адаптивный размер шрифта */
-    max-font-size: 48px; /* Ограничение для больших экранов */
+    font-size: 10vw;
+    max-font-size: 48px;
     font-weight: bold;
     color: #333;
     background: linear-gradient(180deg, #ffffff, #e0e0e0);
 }
 
-/* 3. Тени */
+/* 3. ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ТЕНЕЙ */
 .shadow {
     position: absolute;
     z-index: 2;
@@ -65,22 +69,22 @@
 }
 .topShadow {
     top: 0; left: 0; right: 0;
-    height: 30%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+    height: 40%; /* Увеличиваем высоту тени */
+    background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
 }
 .bottomShadow {
     bottom: 0; left: 0; right: 0;
-    height: 30%;
-    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+    height: 40%; /* Увеличиваем высоту тени */
+    background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
 }
 .reelShadow {
     top: 0; bottom: 0; left: 0; right: 0;
     height: 100%;
-    box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6); /* Делаем тень глубже */
     border-radius: 10px;
 }
 
-/* 5. Новая кнопка SPIN */
+/* Кнопка SPIN (без изменений) */
 .spinButton {
     width: 90vw;
     max-width: 463px;
@@ -89,12 +93,11 @@
     padding: 15px;
     font-size: 22px;
     border: none;
-    border-radius: 20px; /* Скругление углов */
+    border-radius: 20px;
     background: #d32f2f;
     color: white;
     font-weight: bold;
     cursor: pointer;
-    /* "Светящийся" эффект */
     box-shadow: 0 0 20px rgba(255, 0, 0, 0.7), inset 0 2px 4px rgba(255,255,255,0.4);
     transition: all 0.2s ease;
     text-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -106,7 +109,6 @@
     cursor: not-allowed;
 }
 
-/* Анимация нажатия */
 .spinButton.spinning {
     animation: pulse 0.5s infinite alternate, color-change 1s infinite linear;
 }
@@ -123,7 +125,6 @@
     75% { background-color: #2196f3; color: white; box-shadow: 0 0 20px rgba(33, 150, 243, 0.7); }
     100% { background-color: #d32f2f; color: white; box-shadow: 0 0 20px rgba(255, 0, 0, 0.7); }
 }
-
 
 .winMessage { text-align: center; font-size: 20px; font-weight: bold; color: #5CA14A; margin: 20px 0; animation: bounce 0.5s; }
 @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
