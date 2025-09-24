@@ -4,9 +4,7 @@
     width: 100%;
     max-width: 400px;
     margin: 20px auto;
-    padding: 15px;
-    background: #e0e0e0;
-    border-radius: 10px;
+    /* Убрали фон и отступы, чтобы не было рамки */
 }
 
 .slotMachine {
@@ -27,9 +25,9 @@
 
 .reelsContainer {
     display: flex;
-    gap: 22px; /* Расстояние между окошками */
+    gap: 22px;
     width: 100%;
-    height: 120px; /* Высота видимой части барабанов */
+    height: 120px;
     overflow: hidden;
 }
 
@@ -37,18 +35,17 @@
     flex: 1;
     height: 100%;
     position: relative;
-    overflow: hidden; /* Обрезаем все, что выходит за рамки */
+    overflow: hidden;
 }
 
 .reelTrack {
     display: flex;
     flex-direction: column;
-    /* Начальная позиция будет задана в JS */
 }
 
 .symbol {
     width: 100%;
-    height: 120px; /* Высота одного числа равна высоте видимой части */
+    height: 120px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -59,14 +56,13 @@
     background: linear-gradient(180deg, #ffffff, #e0e0e0);
 }
 
-/* --- СТИЛИ ДЛЯ ТЕНЕЙ --- */
 .shadow {
     position: absolute;
     left: 0;
     right: 0;
     height: 40px;
     z-index: 2;
-    pointer-events: none; /* Тени не должны мешать кликам */
+    pointer-events: none;
 }
 .topShadow {
     top: 0;
@@ -83,10 +79,9 @@
     right: 0;
     height: 100%;
     box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
-    border-radius: 5px; /* Скругление тени внутри окошка */
+    border-radius: 5px;
 }
 
-/* --- СТИЛИ ДЛЯ КНОПКИ SPIN --- */
 .spinButton {
     width: 100%;
     max-width: 400px;
@@ -96,7 +91,7 @@
     font-size: 22px;
     border: none;
     border-radius: 20px;
-    background: #d32f2f; /* Основной красный цвет */
+    background: #d32f2f;
     color: white;
     font-weight: bold;
     cursor: pointer;
@@ -111,7 +106,6 @@
     cursor: not-allowed;
 }
 
-/* Анимация нажатия */
 .spinButton.spinning {
     animation: pulse 0.5s infinite alternate, color-change 1s infinite linear;
 }
@@ -129,7 +123,6 @@
     100% { background-color: #d32f2f; color: white; }
 }
 
-/* --- Стили для истории (без изменений) --- */
 .winMessage { text-align: center; font-size: 20px; font-weight: bold; color: #5CA14A; margin: 20px 0; animation: bounce 0.5s; }
 @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 .history { margin-top: 30px; }
