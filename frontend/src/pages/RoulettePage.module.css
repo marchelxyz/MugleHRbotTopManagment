@@ -11,7 +11,7 @@
     width: 90vw; /* Ширина относительно экрана */
     max-width: 400px; /* Максимальная ширина */
     height: auto; /* Высота автоматическая */
-    aspect-ratio: 400 / 150; /* Сохраняем пропорции (ширина / высота) */
+    aspect-ratio: 400 / 210; /* Сохраняем пропорции (ширина / высота) */
 
     background-image: url('https://i.postimg.cc/k4gPr3sn/CKJN-VFIBYF.webp');
     background-size: 100% 100%;
