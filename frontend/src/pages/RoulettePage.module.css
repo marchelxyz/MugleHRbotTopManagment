@@ -1,18 +1,15 @@
 /* frontend/src/pages/RoulettePage.module.css */
 
-/* 1. УБРАЛИ КОНТЕЙНЕР-ОБЕРТКУ */
 .slotMachine {
     width: 90vw;
     max-width: 463px;
     height: auto;
     aspect-ratio: 926 / 472;
     margin: 20px auto;
-    
     background-image: url('https://i.postimg.cc/k4gPr3sn/CKJN-VFIBYF.webp');
     background-size: 100% 100%;
     background-repeat: no-repeat;
     background-position: center;
-    
     display: flex;
     align-items: center;
     justify-content: center;
@@ -45,7 +42,7 @@
 
 .symbol {
     width: 100%;
-    height: 100%; /* 3. ВЫСОТА СИМВОЛА ТЕПЕРЬ 100% ОТ РОДИТЕЛЯ */
+    height: 100%;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -57,13 +54,28 @@
     background: linear-gradient(180deg, #ffffff, #e0e0e0);
 }
 
-/* 2. УБРАЛИ ТЕНИ */
 .shadow {
-    display: none; /* Полностью скрываем все тени */
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+}
+.topShadow {
+    top: 0; left: 0; right: 0;
+    height: 30%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+}
+.bottomShadow {
+    bottom: 0; left: 0; right: 0;
+    height: 30%;
+    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+}
+.reelShadow {
+    top: 0; bottom: 0; left: 0; right: 0;
+    height: 100%;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    border-radius: 10px;
 }
 
-
-/* Кнопка SPIN (без изменений) */
 .spinButton {
     width: 90vw;
     max-width: 463px;
@@ -110,3 +122,20 @@
 .history { margin-top: 30px; }
 .history h3 { text-align: center; }
 .historyItem { display: flex; justify-content: space-between; padding: 10px; background: #fff; border-radius: 8px; margin-bottom: 5px; }
+
+
+/* --- НОВАЯ АНИМАЦИЯ БЕСКОНЕЧНОГО ВРАЩЕНИЯ --- */
+@keyframes spin {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    /* Двигаем на половину высоты (т.к. у нас два набора чисел) */
+    transform: translateY(-50%);
+  }
+}
+
+.spinning {
+  /* Применяем бесконечную анимацию, когда барабаны крутятся */
+  animation: spin 0.3s linear infinite;
+}
