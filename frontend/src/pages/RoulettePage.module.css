@@ -1,12 +1,5 @@
 /* frontend/src/pages/RoulettePage.module.css */
 
-.slotMachineWrapper {
-    /* 1. УБИРАЕМ ФОН И ОТСТУПЫ, ЧТОБЫ ИСЧЕЗЛА ЛИШНЯЯ РАМКА */
-    width: 100%;
-    max-width: 463px; /* Половина от 926px для четкости на ретина-экранах */
-    margin: 20px auto;
-}
-
 .slotMachine {
     width: 100%; /* Ширина теперь 100% от родителя */
     height: auto;
