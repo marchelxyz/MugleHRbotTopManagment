@@ -549,20 +549,22 @@ async def assemble_tickets(db: AsyncSession, user_id: int):
     return user
 
 async def spin_roulette(db: AsyncSession, user_id: int):
-    """Прокручивает рулетку, рассчитывает и начисляет выигрыш."""
+    """
+    Прокручивает рулетку, рассчитывает и начисляет выигрыш на основе чисел от 1 до 30.
+    """
     user = await db.get(models.User, user_id)
     if not user or user.tickets < 1:
         raise ValueError("Недостаточно билетов для прокрутки.")
 
     user.tickets -= 1
 
-    # Логика взвешенного шанса
+    # Логика взвешенного шанса для чисел от 1 до 30
     rand = random.random()
-    if rand < 0.05: # 5% шанс
+    if rand < 0.05: # 5% шанс на крупный выигрыш
         prize = random.randint(16, 30)
-    elif rand < 0.35: # 30% шанс (0.05 + 0.30)
+    elif rand < 0.35: # 30% шанс на средний выигрыш
         prize = random.randint(6, 15)
-    else: # 65% шанс
+    else: # 65% шанс на малый выигрыш
         prize = random.randint(1, 5)
 
     user.balance += prize
