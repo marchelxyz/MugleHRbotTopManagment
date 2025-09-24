@@ -6,7 +6,6 @@ import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
 import styles from './RoulettePage.module.css';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 
-// Генерируем массив чисел от 1 до 30 для барабанов
 const reelNumbers = Array.from({ length: 30 }, (_, i) => i + 1);
 
 function RoulettePage({ user, onUpdateUser }) {
@@ -17,6 +16,9 @@ function RoulettePage({ user, onUpdateUser }) {
     const [winAmount, setWinAmount] = useState(null);
 
     const reelsRef = useRef([]);
+    // Используем Ref для хранения колбэка, чтобы избежать лишних перерисовок
+    const onAnimationEndRef = useRef(null); 
+
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -42,6 +44,7 @@ function RoulettePage({ user, onUpdateUser }) {
         }
     };
     
+    // --- НОВАЯ УЛУЧШЕННАЯ ЛОГИКА АНИМАЦИИ ---
     const handleSpin = async () => {
         if (localUser.tickets < 1 || isSpinning) return;
         setIsSpinning(true);
@@ -49,9 +52,8 @@ function RoulettePage({ user, onUpdateUser }) {
         
         reelsRef.current.forEach(reel => {
             reel.style.transition = 'none';
-            // Сбрасываем барабаны в случайное начальное положение для разнообразия
             const randomOffset = Math.floor(Math.random() * reelNumbers.length);
-            const symbolHeight = 120; // Высота одного символа
+            const symbolHeight = 120;
             reel.style.transform = `translateY(-${randomOffset * symbolHeight}px)`;
         });
 
@@ -60,38 +62,36 @@ function RoulettePage({ user, onUpdateUser }) {
             const { prize_won, new_balance, new_tickets } = response.data;
             const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
             
-            // Начинаем останавливать барабаны по очереди
-            const stopReel = (reelIndex) => {
-                const reel = reelsRef.current[reelIndex];
-                
-                // Для центрального барабана - призовое число, для боковых - случайные
-                const targetNumber = reelIndex === 1 ? prize_won : reelNumbers[Math.floor(Math.random() * reelNumbers.length)];
-                const targetIndex = reelNumbers.indexOf(targetNumber);
-                
-                const symbolHeight = 120;
-                const totalHeight = reel.scrollHeight;
-                const loops = 4; // Количество полных прокруток перед остановкой
-                // Конечное положение: несколько полных оборотов + смещение до нужного числа
-                const finalPosition = (loops * totalHeight / 2) + (targetIndex * symbolHeight);
-
-                // Устанавливаем плавную анимацию остановки
-                reel.style.transition = `transform ${4 + reelIndex * 0.5}s cubic-bezier(.32, .95, .46, 1)`;
-                reel.style.transform = `translateY(-${finalPosition}px)`;
-            };
-
-            // Запускаем остановку всех барабанов
-            reelsRef.current.forEach((_, index) => {
-                stopReel(index);
-            });
-
-            // Обновляем данные пользователя и показываем выигрыш после завершения анимации
-            setTimeout(() => {
+            // Задаем колбэк, который выполнится ПОСЛЕ завершения анимации
+            onAnimationEndRef.current = () => {
                 setLocalUser(updatedUser);
                 onUpdateUser(updatedUser);
                 setWinAmount(prize_won);
                 setIsSpinning(false);
                 getRouletteHistory().then(res => setHistory(res.data));
-            }, 5500); // Общая длительность анимации
+            };
+
+            // Запускаем анимацию остановки для каждого барабана
+            reelsRef.current.forEach((reel, index) => {
+                const targetNumber = prize_won; // Все барабаны останавливаются на выигрышном числе
+                const targetIndex = reelNumbers.indexOf(targetNumber);
+                
+                const symbolHeight = 120;
+                const totalHeight = reel.scrollHeight;
+                const loops = 4;
+                const finalPosition = (loops * totalHeight / 2) + (targetIndex * symbolHeight);
+
+                // Добавляем небольшую задержку для старта, чтобы сброс transform успел примениться
+                setTimeout(() => {
+                    reel.style.transition = `transform ${4 + index * 0.5}s cubic-bezier(.32, .95, .46, 1)`;
+                    reel.style.transform = `translateY(-${finalPosition}px)`;
+                }, 100);
+
+                // Назначаем обработчик события окончания анимации только на последний, самый долгий барабан
+                if (index === reelsRef.current.length - 1) {
+                    reel.addEventListener('transitionend', onAnimationEndRef.current, { once: true });
+                }
+            });
 
         } catch (error) {
             showAlert(error.response?.data?.detail || 'Ошибка прокрутки', 'error');
@@ -99,20 +99,18 @@ function RoulettePage({ user, onUpdateUser }) {
         }
     };
 
+
     return (
         <PageLayout title="Слот-машина">
             <div className={styles.slotMachineWrapper}>
                 <div className={styles.slotMachine}>
-                    {/* Верхняя тень */}
                     <div className={`${styles.shadow} ${styles.topShadow}`}></div>
-                    {/* Нижняя тень */}
                     <div className={`${styles.shadow} ${styles.bottomShadow}`}></div>
                     
                     <div className={styles.reelsContainer}>
                         {[0, 1, 2].map(i => (
                             <div key={i} className={styles.reelWrapper}>
                                 <div className={styles.reelTrack} ref={el => reelsRef.current[i] = el}>
-                                    {/* Дублируем массив чисел для бесшовной прокрутки */}
                                     {[...reelNumbers, ...reelNumbers].map((number, index) => (
                                         <div key={index} className={styles.symbol}>
                                             {number}
