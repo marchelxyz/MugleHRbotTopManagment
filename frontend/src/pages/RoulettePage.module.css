@@ -26,13 +26,13 @@
     display: flex;
     
     /* Ширина всей области с тремя барабанами */
-    width: 320px; 
+    width: 300px; 
     
     /* Высота всей области с тремя барабанами */
-    height: 150px;
+    height: 120px;
 
     /* Расстояние между барабанами */
-    gap: 10px; 
+    gap: 8px; 
 
     overflow: hidden;
 }
@@ -51,7 +51,7 @@
     width: 100%;
 
     /* Высота одной цифры (должна совпадать с высотой .reelsContainer) */
-    height: 150px;
+    height: 120px;
     
     flex-shrink: 0;
     display: flex;
