@@ -5,7 +5,6 @@ import { searchUsers, transferPoints } from '../api';
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
-// Функция Debounce (без изменений)
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -75,15 +74,13 @@ function UserSearch({ currentUser, onUserSelect }) {
 }
 
 
-function TransferPage({ user, onBack, onTransferSuccess }) {
+function TransferPage({ user, onBack, onUpdateUser }) { // <-- Обратите внимание, здесь мы принимаем onUpdateUser
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
-  // Если данные пользователя еще не загружены, показываем заглушку.
   if (!user) {
     return (
       <PageLayout title="Отправить спасибку">
@@ -111,15 +108,17 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
         message: message,
       };
       
-      await transferPoints(transferData);
+      const response = await transferPoints(transferData); // Получаем ответ от сервера
       setSuccess('Спасибка успешно отправлена!');
       
       setReceiver(null);
       setMessage('');
       
-      setTimeout(() => {
-        if(onTransferSuccess) onTransferSuccess();
-      }, 1000);
+      // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
+      // Вызываем правильную функцию onUpdateUser и передаем в нее обновленные данные пользователя
+      if (onUpdateUser) {
+        onUpdateUser(response.data.sender);
+      }
       
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
