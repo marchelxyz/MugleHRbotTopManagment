@@ -73,7 +73,7 @@ function App() {
 
     fetchUser();
   }, []);
-
+  
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
   const navigate = (targetPage) => {
@@ -89,13 +89,12 @@ function App() {
   };
 
   // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
-  // Она сначала обновляет данные пользователя, а потом выполняет другие действия
-  const handleTransferAndUpdate = (updatedSenderData) => {
-    updateUser(updatedSenderData); // Обновляем баланс и другие данные
-    clearCache('feed');
-    navigate('home');
+  const handleTransferSuccess = (updatedSenderData) => {
+    updateUser(updatedSenderData); // Обновляем данные пользователя во всем приложении
+    clearCache('feed'); // Очищаем кеш ленты
+    navigate('home'); // Возвращаемся на главную
   };
-
+  
   const handleProfileSaveSuccess = () => {
       setShowPendingBanner(true);
       setPage('profile');
