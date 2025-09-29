@@ -4,9 +4,12 @@ import React, { useEffect } from 'react'; // --- ИСПРАВЛЕНИЕ: Доб�
 import styles from './ProfilePage.module.css';
 import { FaCog, FaCreditCard, FaPencilAlt } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
+import { formatDateForDisplay } from '../utils/dateFormatter';
 
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
 
+const displayDateOfBirth = formatDateForDisplay(user.date_of_birth);
+  
   return (
     <PageLayout title="Профиль">
       <div className={styles.settingsIconContainer}>
@@ -38,10 +41,12 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
           <span className={styles.label}>Телефон:</span>
           {user.phone_number || 'Не указан'}
         </p>
-        <p className={styles.infoItem}>
-          <span className={styles.label}>Дата рождения:</span>
-          {user.date_of_birth || 'Не указана'}
-        </p>
+          <div className={styles.infoItem}>
+            <span className={styles.label}>Дата рождения</span>
+            {/* 3. ВЫВОДИМ ОТФОРМАТИРОВАННУЮ ДАТУ */}
+            <span className={styles.value}>{displayDateOfBirth || 'Не указана'}</span>
+          </div>
+        </div>
         <p className={styles.infoItem}>
             <span className={styles.label}>Накоплено:</span>
             {user.balance} спасибок
