@@ -74,28 +74,25 @@ function UserSearch({ currentUser, onUserSelect }) {
 }
 
 
-function TransferPage({ user, onBack, onUpdateUser }) { // <-- Обратите внимание, здесь мы принимаем onUpdateUser
+function TransferPage({ user, onBack, onUpdateUser }) { // Принимаем правильные пропсы
+  const { showAlert } = useModalAlert();
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   if (!user) {
     return (
       <PageLayout title="Отправить спасибку">
-        <div className="loading-container">Загрузка данных...</div>
+        <div className="loading-container">Загрузка...</div>
       </PageLayout>
     );
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     
-    if (!receiver || !message) {
-      setError('Пожалуйста, выберите получателя и напишите сообщение.');
+    if (!receiver || !message.trim()) {
+      showAlert('Пожалуйста, выберите получателя и напишите сообщение.', 'warning');
       return;
     }
     
@@ -108,21 +105,23 @@ function TransferPage({ user, onBack, onUpdateUser }) { // <-- Обратите 
         message: message,
       };
       
-      const response = await transferPoints(transferData); // Получаем ответ от сервера
-      setSuccess('Спасибка успешно отправлена!');
+      const updatedUser = await transferPoints(transferData); // Бэкенд вернет обновленного юзера
       
-      setReceiver(null);
-      setMessage('');
+      showAlert('Спасибка успешно отправлена!', 'success');
       
-      // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
-      // Вызываем правильную функцию onUpdateUser и передаем в нее обновленные данные пользователя
+      // Обновляем данные пользователя во всем приложении
       if (onUpdateUser) {
-        onUpdateUser(response.data.sender);
+        onUpdateUser(updatedUser.data);
+      }
+      
+      // Возвращаемся назад после успеха
+      if (onBack) {
+        setTimeout(onBack, 1000);
       }
       
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
-      setError(errorMessage);
+      showAlert(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -132,11 +131,9 @@ function TransferPage({ user, onBack, onUpdateUser }) { // <-- Обратите 
     <PageLayout title="Отправить спасибку">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
-      {user?.daily_transfer_count !== undefined && (
-          <div className={styles.balanceInfo}>
-              <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
-          </div>
-      )}
+      <div className={styles.balanceInfo}>
+          <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
@@ -157,8 +154,6 @@ function TransferPage({ user, onBack, onUpdateUser }) { // <-- Обратите 
         <button type="submit" disabled={isLoading || !receiver} className={styles.submitButton}>
           {isLoading ? 'Отправка...' : 'Отправить спасибку'}
         </button>
-        {error && <p className={styles.error}>{error}</p>}
-        {success && <p className={styles.success}>{success}</p>}
       </form>
     </PageLayout>
   );
