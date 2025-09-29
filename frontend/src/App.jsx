@@ -6,7 +6,7 @@ import { initializeCache, clearCache } from './storage';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
-import SideNav from './components/SideNav'; // 1. Импортируем новое боковое меню
+import SideNav from './components/SideNav';
 import RegistrationPage from './pages/RegistrationPage';
 import HomePage from './pages/HomePage';
 import LeaderboardPage from './pages/LeaderboardPage';
@@ -22,6 +22,7 @@ import RoulettePage from './pages/RoulettePage';
 import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
+import TransferPage from './pages/TransferPage'; // Убедимся, что TransferPage импортирован
 
 // Стили
 import './App.css';
@@ -35,7 +36,6 @@ function App() {
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
   const [showPendingBanner, setShowPendingBanner] = useState(false);
 
-  // Эта проверка остается - она ключ к адаптивности
   const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform);
 
   useEffect(() => {
@@ -44,8 +44,8 @@ function App() {
     tg.setBackgroundColor('#F4F4F8');
     tg.setHeaderColor('#408200');
     
-    initializeCache(); 
-     
+    initializeCache();  
+      
     const telegramUser = tg.initDataUnsafe?.user;
     if (!telegramUser) {
       setLoading(false);
@@ -72,7 +72,7 @@ function App() {
     };
 
     fetchUser();
-  }, []); // Убрали isDesktop из зависимостей, чтобы useEffect не перезапускался
+  }, []);
 
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
@@ -87,7 +87,11 @@ function App() {
     updateUser(newUserData);
     clearCache('market');
   };
-  const handleTransferSuccess = () => {
+
+  // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
+  // Она сначала обновляет данные пользователя, а потом выполняет другие действия
+  const handleTransferAndUpdate = (updatedSenderData) => {
+    updateUser(updatedSenderData); // Обновляем баланс и другие данные
     clearCache('feed');
     navigate('home');
   };
@@ -97,7 +101,6 @@ function App() {
       setPage('profile');
   };
   
-  // Эта функция остается без изменений, она рендерит нужную страницу
   const renderPage = () => {
     if (loading) {
       return <div>Загрузка...</div>;
@@ -122,11 +125,11 @@ function App() {
         case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
-        case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
+        // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
+        case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferAndUpdate} />;
         case 'admin': return <AdminPage />;
         case 'home':
         default:
-          // --- ИЗМЕНЕНИЕ ЗДЕСЬ: Передаём isDesktop в HomePage ---
           return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} />;
       }
     }
@@ -134,19 +137,14 @@ function App() {
     return <div>Неизвестный статус пользователя.</div>;
   };
 
-  // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Новый макет с проверкой isDesktop ---
   return (
     <div className="app-container">
-      {/* Показываем навигацию, только если пользователь авторизован */}
       {user && user.status === 'approved' && (
         isDesktop 
-          // Если это десктоп - показываем боковое меню
           ? <SideNav user={user} activePage={page} onNavigate={navigate} />
-          // Если мобильное устройство - показываем нижнее меню
           : <BottomNav user={user} activePage={page} onNavigate={navigate} />
       )}
       
-      {/* Применяем нужный стиль к основному контенту */}
       <main className={isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
         {showPendingBanner && (
             <div className="pending-update-banner">
