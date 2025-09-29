@@ -11,6 +11,15 @@ import models # <-- Добавь этот импорт
 
 router = APIRouter()
 
+@router.post("/points/transfer", response_model=schemas.User)
+async def create_new_transaction(tr: schemas.TransferRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        # Теперь эта функция вернет обновленного пользователя
+        updated_sender = await crud.create_transaction(db=db, tr=tr)
+        return updated_sender
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/points/transfer", response_model=schemas.FeedItem)
 async def transfer_points(request: schemas.TransferRequest, db: AsyncSession = Depends(get_db)):
     try:
