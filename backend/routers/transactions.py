@@ -11,7 +11,7 @@ import models # <-- Добавь этот импорт
 
 router = APIRouter()
 
-@router.post("/points/transfer", response_model=schemas.User)
+@router.post("/points/transfer", response_model=schemas.UserResponse) # <--- ИСПРАВЛЕНО
 async def create_new_transaction(tr: schemas.TransferRequest, db: AsyncSession = Depends(get_db)):
     try:
         # Теперь эта функция вернет обновленного пользователя
