@@ -1,12 +1,11 @@
 // frontend/src/pages/TransferPage.jsx
 
 import React, { useState, useCallback } from 'react';
-import { searchUsers, transferPoints } from '../api'; // Добавляем searchUsers
+import { searchUsers, transferPoints } from '../api';
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
-// --- НАЧАЛО: Новый компонент для поиска ---
-// Функция Debounce, чтобы не слать запрос на каждое нажатие
+// Функция Debounce (без изменений)
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -28,7 +27,6 @@ function UserSearch({ currentUser, onUserSelect }) {
     }
     try {
       const response = await searchUsers(searchQuery);
-      // Фильтруем самого себя из результатов
       setResults(response.data.filter(u => u.id !== currentUser.id));
     } catch (error) {
       console.error("Ошибка поиска:", error);
@@ -54,7 +52,7 @@ function UserSearch({ currentUser, onUserSelect }) {
   };
 
   return (
-    <div className={styles.searchContainer}> {/* Добавь searchContainer в CSS, если нужно */}
+    <div className={styles.searchContainer}>
       <input
         type="text"
         value={query}
@@ -75,16 +73,24 @@ function UserSearch({ currentUser, onUserSelect }) {
     </div>
   );
 }
-// --- КОНЕЦ: Новый компонент для поиска ---
 
 
 function TransferPage({ user, onBack, onTransferSuccess }) {
-  // Упрощаем состояния: теперь нам нужен только получатель, сообщение и ошибки
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
+  // Если данные пользователя еще не загружены, показываем заглушку.
+  if (!user) {
+    return (
+      <PageLayout title="Отправить спасибку">
+        <div className="loading-container">Загрузка данных...</div>
+      </PageLayout>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,7 +142,6 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
           <label className={styles.label}>Кому:</label>
-          {/* Используем наш новый компонент поиска */}
           <UserSearch currentUser={user} onUserSelect={setReceiver} />
         </div>
 
