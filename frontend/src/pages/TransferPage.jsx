@@ -5,7 +5,6 @@ import { searchUsers, transferPoints } from '../api'; // Добавляем sear
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
-// --- НАЧАЛО: Новый компонент для поиска ---
 // Функция Debounce, чтобы не слать запрос на каждое нажатие
 const debounce = (func, delay) => {
   let timeout;
@@ -54,7 +53,7 @@ function UserSearch({ currentUser, onUserSelect }) {
   };
 
   return (
-    <div className={styles.searchContainer}> {/* Добавь searchContainer в CSS, если нужно */}
+    <div className={styles.searchContainer}>
       <input
         type="text"
         value={query}
@@ -75,16 +74,24 @@ function UserSearch({ currentUser, onUserSelect }) {
     </div>
   );
 }
-// --- КОНЕЦ: Новый компонент для поиска ---
 
 
 function TransferPage({ user, onBack, onTransferSuccess }) {
-  // Упрощаем состояния: теперь нам нужен только получатель, сообщение и ошибки
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
+  // Если данные пользователя еще не загружены, показываем заглушку и предотвращаем падение.
+  if (!user) {
+    return (
+      <PageLayout title="Отправить спасибку">
+        <div className="loading-container">Загрузка данных...</div>
+      </PageLayout>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,7 +143,6 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
           <label className={styles.label}>Кому:</label>
-          {/* Используем наш новый компонент поиска */}
           <UserSearch currentUser={user} onUserSelect={setReceiver} />
         </div>
 

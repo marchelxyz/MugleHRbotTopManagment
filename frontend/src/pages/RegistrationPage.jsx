@@ -1,58 +1,86 @@
 // frontend/src/pages/RegistrationPage.jsx
 
 import React, { useState } from 'react';
-import InputMask from 'react-input-mask'; // 1. Импортируем компонент маски
+import InputMask from 'react-input-mask';
 import { registerUser } from '../api';
 import styles from './RegistrationPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 
+// --- НОВАЯ ФУНКЦИЯ: Конвертирует дату из DD.MM.YYYY в YYYY-MM-DD ---
+const formatDateForApi = (date) => {
+  if (!date || date.includes('_')) return null;
+  const parts = date.split('.');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    return `${year}-${month}-${day}`;
+  }
+  return null;
+};
+
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const { showAlert } = useModalAlert();
-  const [firstName, setFirstName] = useState(telegramUser?.first_name || '');
-  const [lastName, setLastName] = useState('');
-  const [department, setDepartment] = useState('');
-  const [position, setPosition] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    firstName: telegramUser?.first_name || '',
+    lastName: '',
+    department: '',
+    position: '',
+    phoneNumber: '',
+    dateOfBirth: '',
+  });
+  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // --- НОВАЯ ФУНКЦИЯ: Проверка всех полей перед отправкой ---
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.firstName.trim()) newErrors.firstName = 'Имя обязательно';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Фамилия обязательна';
+    if (!formData.department.trim()) newErrors.department = 'Подразделение обязательно';
+    if (!formData.position.trim()) newErrors.position = 'Должность обязательна';
+    if (formData.phoneNumber.includes('_')) newErrors.phoneNumber = 'Введите телефон полностью';
+    if (formData.dateOfBirth.includes('_')) newErrors.dateOfBirth = 'Введите дату полностью';
+    
+    // Проверка формата даты
+    const formattedDate = formatDateForApi(formData.dateOfBirth);
+    if (!formattedDate && !formData.dateOfBirth.includes('_')) {
+        newErrors.dateOfBirth = 'Неверный формат даты';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // 2. Обновляем проверку на обязательные поля
-    if (!firstName || !lastName || !department || !position || !phoneNumber || !dateOfBirth) {
-      setError('Пожалуйста, заполните все поля.');
-      return;
-    }
-    // Проверка, что телефон и дата введены полностью
-    if (phoneNumber.includes('_')) {
-      setError('Пожалуйста, введите номер телефона полностью.');
-      return;
-    }
-    if (dateOfBirth.includes('_')) {
-      setError('Пожалуйста, введите дату рождения полностью.');
+    if (!validateForm()) {
+      showAlert('Пожалуйста, заполните все обязательные поля корректно.', 'error');
       return;
     }
 
     setIsLoading(true);
-    setError('');
 
     try {
+      const apiDate = formatDateForApi(formData.dateOfBirth);
+
       const userData = {
         telegram_id: String(telegramUser.id),
-        first_name: firstName,
-        last_name: lastName,
-        department: department,
-        position: position,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        department: formData.department,
+        position: formData.position,
         username: telegramUser.username,
         telegram_photo_url: telegramUser.photo_url || null,
-        phone_number: phoneNumber,
-        date_of_birth: dateOfBirth,
+        phone_number: formData.phoneNumber,
+        date_of_birth: apiDate,
       };
 
       await registerUser(telegramUser.id, userData);
-      
       showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
       
       setTimeout(() => {
@@ -60,7 +88,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
       }, 1500);
 
     } catch (err) {
-      setError('Не удалось отправить заявку. Попробуйте снова.');
+      showAlert(err.response?.data?.detail || 'Не удалось отправить заявку.', 'error');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -73,36 +101,44 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
         Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
-        <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ваше имя" className={styles.input} required />
-        <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Ваша фамилия" className={styles.input} required />
-        <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Ваше подразделение" className={styles.input} required />
-        <input type="text" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Ваша должность" className={styles.input} required />
+        <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
+        {errors.firstName && <p className={styles.error}>{errors.firstName}</p>}
+
+        <input name="lastName" type="text" value={formData.lastName} onChange={handleChange} placeholder="Ваша фамилия" className={styles.input} />
+        {errors.lastName && <p className={styles.error}>{errors.lastName}</p>}
+
+        <input name="department" type="text" value={formData.department} onChange={handleChange} placeholder="Ваше подразделение" className={styles.input} />
+        {errors.department && <p className={styles.error}>{errors.department}</p>}
         
-        {/* 3. Заменяем обычные input на InputMask */}
+        <input name="position" type="text" value={formData.position} onChange={handleChange} placeholder="Ваша должность" className={styles.input} />
+        {errors.position && <p className={styles.error}>{errors.position}</p>}
+        
         <InputMask
           mask="+7 (999) 999-99-99"
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
+          name="phoneNumber"
+          value={formData.phoneNumber}
+          onChange={handleChange}
           className={styles.input}
-          required
         >
           {(inputProps) => <input {...inputProps} type="tel" placeholder="Номер телефона" />}
         </InputMask>
+        {errors.phoneNumber && <p className={styles.error}>{errors.phoneNumber}</p>}
 
+        {/* --- ИЗМЕНЕНИЕ: Формат даты DD.MM.YYYY --- */}
         <InputMask
-          mask="9999-99-99"
-          value={dateOfBirth}
-          onChange={(e) => setDateOfBirth(e.target.value)}
+          mask="99.99.9999"
+          name="dateOfBirth"
+          value={formData.dateOfBirth}
+          onChange={handleChange}
           className={styles.input}
-          required
         >
-          {(inputProps) => <input {...inputProps} type="text" placeholder="Дата рождения (ГГГГ-ММ-ДД)" />}
+          {(inputProps) => <input {...inputProps} type="text" placeholder="Дата рождения (ДД.ММ.ГГГГ)" />}
         </InputMask>
+        {errors.dateOfBirth && <p className={styles.error}>{errors.dateOfBirth}</p>}
 
         <button type="submit" disabled={isLoading} className={styles.submitButton}>
           {isLoading ? 'Отправка...' : 'Отправить на рассмотрение'}
         </button>
-        {error && <p className={styles.error}>{error}</p>}
       </form>
     </PageLayout>
   );

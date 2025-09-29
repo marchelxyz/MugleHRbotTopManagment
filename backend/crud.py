@@ -116,23 +116,28 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     if not sender:
         raise ValueError("Отправитель не найден")
 
-    if sender.last_login_date < today:
+    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    # Обновляем счетчик, если наступил новый день
+    if sender.last_login_date is None or sender.last_login_date < today:
         sender.daily_transfer_count = 0
         sender.last_login_date = today
     
-    # --- Новые лимиты ---
-    fixed_amount = 1 # Сумма перевода теперь всегда 1
-    if sender.daily_transfer_count >= 3: # Лимит - 3 перевода в день
+    fixed_amount = 1 
+    if sender.daily_transfer_count >= 3:
         raise ValueError("Дневной лимит переводов исчерпан (3 в день)")
 
     receiver = await db.get(models.User, tr.receiver_id)
     if not receiver:
         raise ValueError("Получатель не найден")
 
-    # Увеличиваем счетчик и начисляем на основной баланс получателя
+    # Сначала вычитаем баланс у отправителя
+    if sender.balance < fixed_amount:
+        raise ValueError("Недостаточно средств")
+    
+    sender.balance -= fixed_amount
     sender.daily_transfer_count += 1
     receiver.balance += fixed_amount
-    sender.ticket_parts += 1 # <-- ДОБАВИТЬ ЭТУ СТРОКУ
+    sender.ticket_parts += 1
     
     db_tr = models.Transaction(
         sender_id=tr.sender_id,
@@ -142,7 +147,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     )
     db.add(db_tr)
     await db.commit()
-    await db.refresh(db_tr)
+    await db.refresh(sender) # Обновляем объект отправителя, чтобы получить актуальные данные
     
     try:
         message_text = (f"🎉 Вам начислено *{tr.amount}* баллов!\n"
@@ -152,7 +157,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
-    return db_tr
+    return sender
 
 async def get_feed(db: AsyncSession):
     result = await db.execute(
@@ -549,20 +554,22 @@ async def assemble_tickets(db: AsyncSession, user_id: int):
     return user
 
 async def spin_roulette(db: AsyncSession, user_id: int):
-    """Прокручивает рулетку, рассчитывает и начисляет выигрыш."""
+    """
+    Прокручивает рулетку, рассчитывает и начисляет выигрыш на основе чисел от 1 до 30.
+    """
     user = await db.get(models.User, user_id)
     if not user or user.tickets < 1:
         raise ValueError("Недостаточно билетов для прокрутки.")
 
     user.tickets -= 1
 
-    # Логика взвешенного шанса
+    # Логика взвешенного шанса для чисел от 1 до 30
     rand = random.random()
-    if rand < 0.05: # 5% шанс
+    if rand < 0.05: # 5% шанс на крупный выигрыш
         prize = random.randint(16, 30)
-    elif rand < 0.35: # 30% шанс (0.05 + 0.30)
+    elif rand < 0.35: # 30% шанс на средний выигрыш
         prize = random.randint(6, 15)
-    else: # 65% шанс
+    else: # 65% шанс на малый выигрыш
         prize = random.randint(1, 5)
 
     user.balance += prize

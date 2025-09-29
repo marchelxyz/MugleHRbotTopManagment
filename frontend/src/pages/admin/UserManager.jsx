@@ -8,12 +8,17 @@ import styles from '../AdminPage.module.css';
 import userManagerStyles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
 import { useConfirmation } from '../../contexts/ConfirmationContext'; // 1. Импортируем
+import { formatDateForDisplay } from '../../utils/dateFormatter';
 
 // Модальное окно для редактирования
 function EditUserModal({ user, onClose, onSave }) {
   const { confirm } = useConfirmation(); // 2. Получаем функцию
-  const [formData, setFormData] = useState(user);
-
+  // 2. ПРИ ИНИЦИАЛИЗАЦИИ ФОРМЫ СРАЗУ ФОРМАТИРУЕМ ДАТУ
+  const [formData, setFormData] = useState({
+    ...user,
+    date_of_birth: formatDateForDisplay(user.date_of_birth),
+  });
+  
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -61,7 +66,15 @@ function EditUserModal({ user, onClose, onSave }) {
             
             {/* --- ДОБАВЛЯЕМ ПОЛЕ ДЛЯ ТЕЛЕФОНА --- */}
             <input type="tel" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} placeholder="Номер телефона" className={styles.input} />
-            
+  
+            <input 
+      type="text" 
+      name="date_of_birth" 
+      value={formData.date_of_birth || ''} 
+      onChange={handleChange} 
+      placeholder="Дата (ДД.ММ.ГГГГ)" 
+      className={styles.input} 
+    />
             <input type="number" name="balance" value={formData.balance || 0} onChange={handleChange} placeholder="Баланс" className={styles.input} />
             <input type="number" name="tickets" value={formData.tickets || 0} onChange={handleChange} placeholder="Билеты" className={styles.input} />
             <input type="number" name="ticket_parts" value={formData.ticket_parts || 0} onChange={handleChange} placeholder="Части билетов" className={styles.input} />
@@ -111,22 +124,30 @@ function UserManager() {
     }
   };
 
-  const handleSaveUser = async (userId, userData) => {
-    setMessage('');
-    try {
-      if (userData.action === 'delete') {
-        await adminDeleteUser(userId);
-        setMessage('Пользователь успешно сброшен.');
-      } else {
-        await adminUpdateUser(userId, userData);
-        setMessage('Данные пользователя обновлены.');
-      }
-      setEditingUser(null);
-      fetchUsers();
-    } catch (error) {
-      setMessage('Произошла ошибка при сохранении.');
-    }
-  };
+    const handleSaveUser = async (userId, userData) => {
+        // Конвертируем дату обратно в формат YYYY-MM-DD перед отправкой
+        const dateParts = userData.date_of_birth.split('.');
+        let apiDate = null;
+        if (dateParts.length === 3) {
+            apiDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+        }
+        
+        const dataToSend = { ...userData, date_of_birth: apiDate };
+
+        try {
+            if (dataToSend.action === 'delete') {
+                await adminDeleteUser(userId);
+                showAlert('Пользователь успешно сброшен.', 'success');
+            } else {
+                await adminUpdateUser(userId, dataToSend);
+                showAlert('Данные пользователя обновлены.', 'success');
+            }
+            setEditingUser(null);
+            fetchUsers();
+        } catch (error) {
+            showAlert('Произошла ошибка при сохранении.', 'error');
+        }
+    };
 
   const filteredUsers = useMemo(() => {
     const targetStatus = view === 'blocked' ? 'blocked' : 'approved';
