@@ -89,10 +89,11 @@ function App() {
   };
 
   // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
+ // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ---
   const handleTransferSuccess = (updatedSenderData) => {
-    updateUser(updatedSenderData); // Обновляем данные пользователя во всем приложении
-    clearCache('feed'); // Очищаем кеш ленты
-    navigate('home'); // Возвращаемся на главную
+    updateUser(updatedSenderData); // Сначала обновляем данные
+    clearCache('feed');
+    navigate('home'); // Потом переходим на главную
   };
   
   const handleProfileSaveSuccess = () => {
