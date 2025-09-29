@@ -131,31 +131,6 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
     }
   };
   
-    try {
-      const transferData = {
-        sender_id: user.id,
-        receiver_id: receiver.id,
-        message: message,
-      };
-      
-      await transferPoints(transferData);
-      setSuccess('Спасибка успешно отправлена!');
-      
-      setReceiver(null);
-      setMessage('');
-      
-      setTimeout(() => {
-        if(onTransferSuccess) onTransferSuccess();
-      }, 1000);
-      
-    } catch (err) {
-      const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <PageLayout title="Отправить спасибку">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
