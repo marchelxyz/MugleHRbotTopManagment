@@ -1,10 +1,11 @@
 // frontend/src/pages/TransferPage.jsx
 
 import React, { useState, useCallback } from 'react';
-import { searchUsers, transferPoints } from '../api';
+import { searchUsers, transferPoints } from '../api'; // Добавляем searchUsers
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
+// Функция Debounce, чтобы не слать запрос на каждое нажатие
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -26,6 +27,7 @@ function UserSearch({ currentUser, onUserSelect }) {
     }
     try {
       const response = await searchUsers(searchQuery);
+      // Фильтруем самого себя из результатов
       setResults(response.data.filter(u => u.id !== currentUser.id));
     } catch (error) {
       console.error("Ошибка поиска:", error);
@@ -74,25 +76,30 @@ function UserSearch({ currentUser, onUserSelect }) {
 }
 
 
-function TransferPage({ user, onBack, onUpdateUser }) { // Принимаем правильные пропсы
-  const { showAlert } = useModalAlert();
+function TransferPage({ user, onBack, onTransferSuccess }) {
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
+  // Если данные пользователя еще не загружены, показываем заглушку и предотвращаем падение.
   if (!user) {
     return (
       <PageLayout title="Отправить спасибку">
-        <div className="loading-container">Загрузка...</div>
+        <div className="loading-container">Загрузка данных...</div>
       </PageLayout>
     );
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
     
-    if (!receiver || !message.trim()) {
-      showAlert('Пожалуйста, выберите получателя и напишите сообщение.', 'warning');
+    if (!receiver || !message) {
+      setError('Пожалуйста, выберите получателя и напишите сообщение.');
       return;
     }
     
@@ -105,23 +112,19 @@ function TransferPage({ user, onBack, onUpdateUser }) { // Принимаем п
         message: message,
       };
       
-      const updatedUser = await transferPoints(transferData); // Бэкенд вернет обновленного юзера
+      await transferPoints(transferData);
+      setSuccess('Спасибка успешно отправлена!');
       
-      showAlert('Спасибка успешно отправлена!', 'success');
+      setReceiver(null);
+      setMessage('');
       
-      // Обновляем данные пользователя во всем приложении
-      if (onUpdateUser) {
-        onUpdateUser(updatedUser.data);
-      }
-      
-      // Возвращаемся назад после успеха
-      if (onBack) {
-        setTimeout(onBack, 1000);
-      }
+      setTimeout(() => {
+        if(onTransferSuccess) onTransferSuccess();
+      }, 1000);
       
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
-      showAlert(errorMessage, 'error');
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -131,9 +134,11 @@ function TransferPage({ user, onBack, onUpdateUser }) { // Принимаем п
     <PageLayout title="Отправить спасибку">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
-      <div className={styles.balanceInfo}>
-          <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
-      </div>
+      {user?.daily_transfer_count !== undefined && (
+          <div className={styles.balanceInfo}>
+              <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
+          </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
@@ -154,6 +159,8 @@ function TransferPage({ user, onBack, onUpdateUser }) { // Принимаем п
         <button type="submit" disabled={isLoading || !receiver} className={styles.submitButton}>
           {isLoading ? 'Отправка...' : 'Отправить спасибку'}
         </button>
+        {error && <p className={styles.error}>{error}</p>}
+        {success && <p className={styles.success}>{success}</p>}
       </form>
     </PageLayout>
   );
