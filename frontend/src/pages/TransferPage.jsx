@@ -112,6 +112,34 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
         message: message,
       };
       
+      // 1. Сохраняем ответ от сервера
+      const response = await transferPoints(transferData); 
+      setSuccess('Спасибка успешно отправлена!');
+      
+      setReceiver(null);
+      setMessage('');
+      
+      // 2. Вызываем onTransferSuccess и ПЕРЕДАЕМ в него обновленные данные
+      setTimeout(() => {
+        // response.data теперь содержит обновленный объект user (отправителя)
+        if(onTransferSuccess) onTransferSuccess(response.data);
+      }, 1000);
+      
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+    try {
+      const transferData = {
+        sender_id: user.id,
+        receiver_id: receiver.id,
+        message: message,
+      };
+      
       await transferPoints(transferData);
       setSuccess('Спасибка успешно отправлена!');
       
