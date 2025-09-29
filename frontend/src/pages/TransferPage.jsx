@@ -1,11 +1,10 @@
 // frontend/src/pages/TransferPage.jsx
 
 import React, { useState, useCallback } from 'react';
-import { searchUsers, transferPoints } from '../api'; // Добавляем searchUsers
+import { searchUsers, transferPoints } from '../api';
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
-// Функция Debounce, чтобы не слать запрос на каждое нажатие
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -27,7 +26,6 @@ function UserSearch({ currentUser, onUserSelect }) {
     }
     try {
       const response = await searchUsers(searchQuery);
-      // Фильтруем самого себя из результатов
       setResults(response.data.filter(u => u.id !== currentUser.id));
     } catch (error) {
       console.error("Ошибка поиска:", error);
@@ -75,7 +73,6 @@ function UserSearch({ currentUser, onUserSelect }) {
   );
 }
 
-
 function TransferPage({ user, onBack, onTransferSuccess }) {
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
@@ -83,12 +80,11 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
-  // Если данные пользователя еще не загружены, показываем заглушку и предотвращаем падение.
+  // --- ПРОВЕРКА НА ЗАГРУЗКУ ДАННЫХ ---
   if (!user) {
     return (
       <PageLayout title="Отправить спасибку">
-        <div className="loading-container">Загрузка данных...</div>
+        <div className="loading-container">Загрузка...</div>
       </PageLayout>
     );
   }
@@ -112,16 +108,16 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
         message: message,
       };
       
-      const response = await transferPoints(transferData); 
+      const response = await transferPoints(transferData);
       setSuccess('Спасибка успешно отправлена!');
       
       setReceiver(null);
       setMessage('');
       
-      setTimeout(() => {
-        // response.data теперь содержит обновленный объект user (отправителя)
-        if(onTransferSuccess) onTransferSuccess(response.data);
-      }, 1000);
+      // --- ПЕРЕДАЕМ ОБНОВЛЕННЫЕ ДАННЫЕ В APP.JSX ---
+      if(onTransferSuccess) {
+        onTransferSuccess(response.data);
+      }
       
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
@@ -130,16 +126,14 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <PageLayout title="Отправить спасибку">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
-      {user?.daily_transfer_count !== undefined && (
-          <div className={styles.balanceInfo}>
-              <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
-          </div>
-      )}
+      <div className={styles.balanceInfo}>
+          <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
