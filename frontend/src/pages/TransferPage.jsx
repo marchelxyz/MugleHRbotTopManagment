@@ -73,6 +73,7 @@ function UserSearch({ currentUser, onUserSelect }) {
   );
 }
 
+
 function TransferPage({ user, onBack, onTransferSuccess }) {
   const [receiver, setReceiver] = useState(null);
   const [message, setMessage] = useState('');
@@ -80,11 +81,11 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- ПРОВЕРКА НА ЗАГРУЗКУ ДАННЫХ ---
+  // --- ИСПРАВЛЕНИЕ №1: Проверка на наличие user для предотвращения падения ---
   if (!user) {
     return (
       <PageLayout title="Отправить спасибку">
-        <div className="loading-container">Загрузка...</div>
+        <div className="loading-container">Загрузка данных...</div>
       </PageLayout>
     );
   }
@@ -114,10 +115,12 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       setReceiver(null);
       setMessage('');
       
-      // --- ПЕРЕДАЕМ ОБНОВЛЕННЫЕ ДАННЫЕ В APP.JSX ---
-      if(onTransferSuccess) {
-        onTransferSuccess(response.data);
-      }
+      // --- ИСПРАВЛЕНИЕ №2: Передаем обновленные данные в App.jsx ---
+      setTimeout(() => {
+        if (onTransferSuccess) {
+          onTransferSuccess(response.data); // response.data теперь содержит обновленного пользователя
+        }
+      }, 1000);
       
     } catch (err) {
       const errorMessage = err.response?.data?.detail || 'Произошла ошибка.';
