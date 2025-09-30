@@ -116,7 +116,6 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     if not sender:
         raise ValueError("Отправитель не найден")
 
-    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
     # Обновляем счетчик, если наступил новый день
     if sender.last_login_date is None or sender.last_login_date < today:
         sender.daily_transfer_count = 0
@@ -129,12 +128,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     receiver = await db.get(models.User, tr.receiver_id)
     if not receiver:
         raise ValueError("Получатель не найден")
-
-    # Сначала вычитаем баланс у отправителя
-    if sender.balance < fixed_amount:
-        raise ValueError("Недостаточно средств")
     
-    sender.balance -= fixed_amount
     sender.daily_transfer_count += 1
     receiver.balance += fixed_amount
     sender.ticket_parts += 1
@@ -147,18 +141,19 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     )
     db.add(db_tr)
     await db.commit()
-    await db.refresh(sender) # Обновляем объект отправителя, чтобы получить актуальные данные
+    await db.refresh(sender) # Обновляем данные отправителя из БД
     
     try:
-        message_text = (f"🎉 Вам начислено *{tr.amount}* баллов!\n"
-                        f"От: *{sender.last_name}*\n"
+        message_text = (f"🎉 Вам начислена *1* спасибка!\n"
+                        f"От: *{sender.first_name} {sender.last_name}*\n"
                         f"Сообщение: _{tr.message}_")
         await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
+    # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Возвращаем обновленного отправителя ---
     return sender
-
+    
 async def get_feed(db: AsyncSession):
     result = await db.execute(
         select(models.Transaction).order_by(models.Transaction.timestamp.desc())
@@ -229,19 +224,22 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
     today = datetime.utcnow()
     
     if period == 'current_month':
-        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
-        end_date = today.strftime('%Y-%m-%d %H:%M:%S')
+        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = today
     elif period == 'last_month':
         first_day_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = first_day_current_month - timedelta(days=1)
-        start_date = end_date.replace(day=1).strftime('%Y-%m-%d %H:%M:%S')
-        end_date = end_date.strftime('%Y-%m-%d %H:%M:%S')
+        start_date = end_date.replace(day=1)
+        end_date = end_date.replace(hour=23, minute=59, second=59)
 
-    # Используем сырой SQL с оконными функциями для эффективности
     time_filter = ""
     if start_date and end_date:
-        time_filter = f"WHERE t.timestamp BETWEEN '{start_date}' AND '{end_date}'"
+        # Форматируем даты для SQL-запроса
+        start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+        end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+        time_filter = f"WHERE transactions.timestamp BETWEEN '{start_str}' AND '{end_str}'"
 
+    # --- НАЧАЛО ИСПРАВЛЕНИЙ ---
     raw_sql = text(f"""
         WITH ranked_users AS (
             SELECT
@@ -250,7 +248,7 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
                 RANK() OVER (ORDER BY SUM(t.amount) DESC) as rank
             FROM users u
             JOIN transactions t ON u.id = t.{group_by_field}
-            {time_filter}
+            {time_filter.replace('transactions.', 't.')}
             GROUP BY u.id
         ),
         total_participants AS (
@@ -260,12 +258,12 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
         FROM ranked_users ru, total_participants tp
         WHERE ru.user_id = :user_id
     """)
+    # --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
     result = await db.execute(raw_sql, {"user_id": user_id})
     user_rank_data = result.first()
 
     if not user_rank_data:
-        # Если пользователь не участвовал, получаем только общее число участников
         total_participants_sql = text(f"SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}")
         total_result = await db.execute(total_participants_sql)
         total_participants = total_result.scalar_one_or_none() or 0

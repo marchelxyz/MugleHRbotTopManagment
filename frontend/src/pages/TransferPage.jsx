@@ -1,11 +1,10 @@
 // frontend/src/pages/TransferPage.jsx
 
 import React, { useState, useCallback } from 'react';
-import { searchUsers, transferPoints } from '../api'; // Добавляем searchUsers
+import { searchUsers, transferPoints } from '../api';
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
-// Функция Debounce, чтобы не слать запрос на каждое нажатие
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -27,7 +26,6 @@ function UserSearch({ currentUser, onUserSelect }) {
     }
     try {
       const response = await searchUsers(searchQuery);
-      // Фильтруем самого себя из результатов
       setResults(response.data.filter(u => u.id !== currentUser.id));
     } catch (error) {
       console.error("Ошибка поиска:", error);
@@ -83,14 +81,9 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
-  // Если данные пользователя еще не загружены, показываем заглушку и предотвращаем падение.
+  // --- ИСПРАВЛЕНИЕ №1: Проверка на наличие user для предотвращения падения ---
   if (!user) {
-    return (
-      <PageLayout title="Отправить спасибку">
-        <div className="loading-container">Загрузка данных...</div>
-      </PageLayout>
-    );
+    return <PageLayout title="Отправить спасибку"><div className="loading-container">Загрузка...</div></PageLayout>;
   }
 
   const handleSubmit = async (e) => {
@@ -112,14 +105,17 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
         message: message,
       };
       
-      await transferPoints(transferData);
+      const response = await transferPoints(transferData);
       setSuccess('Спасибка успешно отправлена!');
       
       setReceiver(null);
       setMessage('');
       
+      // --- ИСПРАВЛЕНИЕ №2: Передаем обновленные данные в App.jsx ---
       setTimeout(() => {
-        if(onTransferSuccess) onTransferSuccess();
+      if (onTransferSuccess) {
+        onTransferSuccess(response.data); // Передаем обновленные данные наверх
+      }
       }, 1000);
       
     } catch (err) {
@@ -134,11 +130,9 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
     <PageLayout title="Отправить спасибку">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
-      {user?.daily_transfer_count !== undefined && (
-          <div className={styles.balanceInfo}>
-              <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
-          </div>
-      )}
+      <div className={styles.balanceInfo}>
+          <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
