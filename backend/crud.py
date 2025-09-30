@@ -141,8 +141,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     )
     db.add(db_tr)
     await db.commit()
-    # Обновляем объект отправителя, чтобы получить актуальные данные из БД
-    await db.refresh(sender) 
+    await db.refresh(sender) # Обновляем данные отправителя из БД
     
     try:
         message_text = (f"🎉 Вам начислена *1* спасибка!\n"
