@@ -229,19 +229,22 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
     today = datetime.utcnow()
     
     if period == 'current_month':
-        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
-        end_date = today.strftime('%Y-%m-%d %H:%M:%S')
+        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = today
     elif period == 'last_month':
         first_day_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = first_day_current_month - timedelta(days=1)
-        start_date = end_date.replace(day=1).strftime('%Y-%m-%d %H:%M:%S')
-        end_date = end_date.strftime('%Y-%m-%d %H:%M:%S')
+        start_date = end_date.replace(day=1)
+        end_date = end_date.replace(hour=23, minute=59, second=59)
 
-    # Используем сырой SQL с оконными функциями для эффективности
     time_filter = ""
     if start_date and end_date:
-        time_filter = f"WHERE t.timestamp BETWEEN '{start_date}' AND '{end_date}'"
+        # Форматируем даты для SQL-запроса
+        start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+        end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+        time_filter = f"WHERE transactions.timestamp BETWEEN '{start_str}' AND '{end_str}'"
 
+    # --- НАЧАЛО ИСПРАВЛЕНИЙ ---
     raw_sql = text(f"""
         WITH ranked_users AS (
             SELECT
@@ -250,7 +253,7 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
                 RANK() OVER (ORDER BY SUM(t.amount) DESC) as rank
             FROM users u
             JOIN transactions t ON u.id = t.{group_by_field}
-            {time_filter}
+            {time_filter.replace('transactions.', 't.')}
             GROUP BY u.id
         ),
         total_participants AS (
@@ -260,12 +263,12 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
         FROM ranked_users ru, total_participants tp
         WHERE ru.user_id = :user_id
     """)
+    # --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
     result = await db.execute(raw_sql, {"user_id": user_id})
     user_rank_data = result.first()
 
     if not user_rank_data:
-        # Если пользователь не участвовал, получаем только общее число участников
         total_participants_sql = text(f"SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}")
         total_result = await db.execute(total_participants_sql)
         total_participants = total_result.scalar_one_or_none() or 0
