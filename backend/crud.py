@@ -3,7 +3,6 @@ import io
 import zipfile
 import json
 import math # Добавьте этот импорт вверху
-from datetime import datetime # Добавьте этот импорт вверху
 import random
 from sqlalchemy.future import select
 from sqlalchemy import func, update 
@@ -11,9 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from bot import send_telegram_message
 from database import settings
-from datetime import datetime, timedelta, date
+from datetime import datetime, timezone, timedelta  # <--- ИЗМЕНЕНИЕ: Добавляем timezone и timedelta
 from sqlalchemy import or_
 from sqlalchemy import text
+
+# --- ДОБАВЛЕНИЕ: Создаем объект часового пояса для Москвы ---
+MSK = timezone(timedelta(hours=3), 'Europe/Moscow')
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
