@@ -67,7 +67,6 @@ const RoulettePage = ({ user, onBack, updateUser }) => {
         каждый из которых стилизуется в CSS для создания 3D-эффекта.
       */}
       <div className={styles.slotMachineBody}>
-        <div className={styles.highlight}></div>
         <div className={styles.windowsContainer}>
           {/* Три окошка для барабанов */}
           <div className={styles.window}>
