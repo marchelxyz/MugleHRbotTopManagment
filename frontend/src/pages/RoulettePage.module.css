@@ -5,68 +5,87 @@
   text-align: center;
 }
 
-/* Главный контейнер, который будет держать фон и окошки */
-.slotMachine {
-  position: relative; /* Обязательно для позиционирования дочерних элементов */
-  width: 90%; /* Занимает 90% ширины родителя */
-  max-width: 500px; /* Но не больше 500px, чтобы не растягиваться на больших экранах */
-  margin: 20px auto; /* Центрируем по горизонтали */
+/* 1. Основной корпус: создаем зеленую капсулу */
+.slotMachineBody {
+  position: relative; /* Нужно для позиционирования бликов и теней */
+  width: 90%;
+  max-width: 500px;
+  margin: 20px auto;
+  aspect-ratio: 9 / 4; /* Соотношение сторон, похожее на ваше изображение */
   
-  /* --- ВАШ ФОН --- */
-  background: url('https://i.postimg.cc/3RgzK8Dv/image.webp') no-repeat center center;
-  background-size: contain; /* Фон будет вписываться в размеры контейнера */
+  /* Магия скругления: большое значение делает идеальную капсулу */
+  border-radius: 999px; 
+  
+  /* Цвет и 3D-эффект с помощью градиента */
+  background: linear-gradient(180deg, #8BC34A, #558B2F); /* От светло-зеленого к темному */
+  
+  /* Обводка для четкости */
+  border: 4px solid #33691E;
 
-  /* --- Адаптивность высоты --- */
-  /* Задаем соотношение сторон, как у вашего изображения. Например, 4:3 */
-  /* Подберите значение под вашу картинку! */
-  aspect-ratio: 4 / 3;
-}
+  /* Тень для объема */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), inset 0 3px 5px rgba(255, 255, 255, 0.3);
 
-/* Контейнер для окошек. Он будет абсолютно спозиционирован внутри .slotMachine */
-.windowsContainer {
-  position: absolute;
-  
-  /* --- ПОДБЕРИТЕ ЭТИ ЗНАЧЕНИЯ --- */
-  /* Этими процентами вы двигаете всю группу окошек по фону */
-  top: 45%; /* 45% от верха родителя .slotMachine */
-  left: 50%; /* 50% от левого края */
-  transform: translate(-50%, -50%); /* Эта магия центрирует контейнер точно по точке top/left */
-  
-  width: 65%; /* Ширина группы окошек относительно родителя .slotMachine */
-  
-  /* Располагаем окошки в ряд */
+  /* Центрируем окошки внутри */
   display: flex;
-  justify-content: space-around; /* Равномерное расстояние между окошками */
-  gap: 10px; /* Промежуток между окошками */
+  align-items: center;
+  justify-content: center;
+  padding: 20px 60px; /* Внутренние отступы для окошек */
+  box-sizing: border-box;
 }
 
-/* Стиль одного окошка */
+/* 2. Блик сверху: добавляет реалистичности */
+.highlight {
+  position: absolute;
+  top: 5%;
+  left: 10%;
+  width: 80%;
+  height: 30%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0));
+  border-radius: 999px / 150px; /* Создает эллиптический блик */
+  opacity: 0.8;
+}
+
+/* 3. Контейнер для трех окошек */
+.windowsContainer {
+  display: flex;
+  gap: 15px; /* Расстояние между окошками */
+  width: 100%;
+  height: 80%;
+  position: relative; /* Чтобы z-index работал */
+  z-index: 2; /* Размещаем поверх блика */
+}
+
+/* 4. Стиль одного окошка: создаем эффект вдавленности */
 .window {
-  height: 100px; /* Высота окошка */
-  flex: 1; /* Окошки будут занимать равное пространство */
-  background-color: rgba(0, 0, 0, 0.3);
-  border: 2px solid #fff;
-  border-radius: 10px;
-  overflow: hidden; /* Самое главное! Скрывает все цифры, кроме одной */
+  flex: 1; /* Окошки занимают равное пространство */
+  border-radius: 15px;
+  background-color: #33691E; /* Темно-зеленая подложка */
+  
+  /* Главный трюк: внутренняя тень создает эффект глубины */
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.7); 
+  
+  overflow: hidden; /* Скрывает все цифры, кроме одной */
+  border: 2px solid rgba(0, 0, 0, 0.3);
 }
 
-/* Барабан с цифрами внутри окошка */
+/* 5. Барабан с цифрами (остается без изменений) */
 .reel {
-  /* Анимация будет плавной */
-  transition: transform 3s ease-out;
+  transition: transform 3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .reel div {
-  height: 100px; /* Высота каждой цифры должна совпадать с высотой окошка */
+  height: 100%; /* Высота цифры равна высоте окошка */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 48px;
   font-weight: bold;
   color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  background-color: rgba(0, 0, 0, 0.2); /* Легкий фон для цифр */
 }
 
-/* Стили для кнопок */
+/* Кнопки и прочее (остается без изменений) */
 .spinButton {
   margin-top: 20px;
   padding: 15px 30px;
