@@ -13,7 +13,7 @@
   margin: 20px auto; /* Центрируем по горизонтали */
   
   /* --- ВАШ ФОН --- */
-  background: url('/path/to/your/roulette-body-image.png') no-repeat center center;
+  background: url('https://i.postimg.cc/3RgzK8Dv/image.webp') no-repeat center center;
   background-size: contain; /* Фон будет вписываться в размеры контейнера */
 
   /* --- Адаптивность высоты --- */
