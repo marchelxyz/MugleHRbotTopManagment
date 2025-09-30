@@ -89,11 +89,11 @@ function App() {
   };
 
   // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
-  const handleTransferSuccess = (updatedSenderData) => {
-    updateUser(updatedSenderData); // Сначала обновляем данные пользователя
+const handleTransferSuccess = (updatedSenderData) => {
+    updateUser(updatedSenderData); // Обновляем состояние user новыми данными
     clearCache('feed');
     navigate('home');
-  };
+};
   
   const handleProfileSaveSuccess = () => {
       setShowPendingBanner(true);
