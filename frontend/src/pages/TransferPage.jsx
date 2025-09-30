@@ -83,11 +83,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
 
   // --- ИСПРАВЛЕНИЕ №1: Проверка на наличие user для предотвращения падения ---
   if (!user) {
-    return (
-      <PageLayout title="Отправить спасибку">
-        <div className="loading-container">Загрузка данных...</div>
-      </PageLayout>
-    );
+    return <PageLayout title="Отправить спасибку"><div className="loading-container">Загрузка...</div></PageLayout>;
   }
 
   const handleSubmit = async (e) => {
@@ -117,9 +113,9 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       
       // --- ИСПРАВЛЕНИЕ №2: Передаем обновленные данные в App.jsx ---
       setTimeout(() => {
-        if (onTransferSuccess) {
-          onTransferSuccess(response.data); // response.data теперь содержит обновленного пользователя
-        }
+      if (onTransferSuccess) {
+        onTransferSuccess(response.data); // Передаем обновленные данные наверх
+      }
       }, 1000);
       
     } catch (err) {
