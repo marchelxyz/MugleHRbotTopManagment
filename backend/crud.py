@@ -128,10 +128,6 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     receiver = await db.get(models.User, tr.receiver_id)
     if not receiver:
         raise ValueError("Получатель не найден")
-
-    # Сначала вычитаем баланс у отправителя (если это требуется по логике)
-    # В вашем коде этого не было, но если "спасибки" не бесконечны, это нужно
-    # sender.balance -= fixed_amount 
     
     sender.daily_transfer_count += 1
     receiver.balance += fixed_amount
@@ -149,7 +145,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     await db.refresh(sender) 
     
     try:
-        message_text = (f"🎉 Вам начислено *{fixed_amount}* спасибка!\n"
+        message_text = (f"🎉 Вам начислена *1* спасибка!\n"
                         f"От: *{sender.first_name} {sender.last_name}*\n"
                         f"Сообщение: _{tr.message}_")
         await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
