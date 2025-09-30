@@ -5,94 +5,55 @@
   text-align: center;
 }
 
-/* 1. Основной корпус: создаем центральную часть */
-.slotMachineBody {
-  position: relative; /* Обязательно для позиционирования псевдо-элементов */
-  width: 90%;
-  max-width: 500px;
-  margin: 20px auto;
-  aspect-ratio: 9 / 4;
-  
-  /* Основной цвет и градиент для объема */
-  background: linear-gradient(to bottom, 
-    #a5d6a7 0%,  /* Светлый блик сверху */
-    #66bb6a 10%, /* Чуть темнее */
-    #4caf50 50%, /* Основной цвет в центре */
-    #43a047 85%, /* Начало тени */
-    #388e3c 100% /* Темная тень снизу */
-  );
-  
-  /* Тень под корпусом */
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-  
-  /* Скругляем только центральную часть, края будут закрыты "заглушками" */
-  border-radius: 40px; 
-  
-  /* Центрируем окошки */
+.slotMachine {
   display: flex;
+  justify-content: space-around;
   align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
+  width: 420px;
+  height: 200px;
+  background: linear-gradient(180deg, #43a047, #2e7d32);
+  border-radius: 40px;
+  padding: 20px;
+  box-shadow: inset 0 5px 15px rgba(0,0,0,0.4),
+              0 8px 20px rgba(0,0,0,0.6);
+  position: relative;
+  margin: 20px auto; /* Центрируем сам автомат */
 }
 
-/* 2. Рисуем боковые "заглушки" с помощью псевдо-элементов */
-.slotMachineBody::before,
-.slotMachineBody::after {
+/* Боковые выступы */
+.slotMachine::before,
+.slotMachine::after {
   content: '';
   position: absolute;
-  top: -2%; /* Чуть выше, чтобы перекрыть основной корпус */
-  height: 104%; /* Чуть больше по высоте */
-  width: 15%; /* Ширина заглушки */
+  top: 20px;
+  width: 40px;
+  height: 160px;
+  background: linear-gradient(180deg, #43a047, #2e7d32);
+  border-radius: 20px;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.4);
+}
+.slotMachine::before { left: -40px; }
+.slotMachine::after { right: -40px; }
+
+.slotWindow {
+  width: 100px;
+  height: 140px;
+  background: linear-gradient(180deg, #1b5e20, #2e7d32);
+  border-radius: 15px;
+  box-shadow: inset 0 5px 12px rgba(0,0,0,0.6);
   
-  /* Тот же градиент, что и у основного корпуса */
-  background: linear-gradient(to bottom, #a5d6a7, #66bb6a, #4caf50, #43a047, #388e3c);
-  
-  /* Делаем их круглыми */
-  border-radius: 50%;
-  z-index: -1; /* Размещаем под основным корпусом */
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-}
-
-/* Позиционируем левую заглушку */
-.slotMachineBody::before {
-  left: -2%;
-}
-
-/* Позиционируем правую заглушку */
-.slotMachineBody::after {
-  right: -2%;
-}
-
-/* 3. Контейнер для трех окошек */
-.windowsContainer {
-  display: flex;
-  gap: 15px;
-  width: 60%; /* Ширина области с окошками */
-  height: 70%;
-}
-
-/* 4. Стиль одного окошка: создаем вдавленный эффект */
-.window {
-  flex: 1;
-  border-radius: 12px;
-  background-color: #388e3c; /* Темно-зеленая подложка */
-  
-  /* Создаем вдавленный эффект с помощью нескольких теней */
-  box-shadow: 
-    inset 0 4px 8px rgba(0, 0, 0, 0.5), /* Основная тень внутри */
-    inset 0 -1px 1px rgba(255, 255, 255, 0.2); /* Легкий блик снизу */
-    
+  /* --- ВАЖНОЕ ДОБАВЛЕНИЕ --- */
+  /* Скрываем все цифры, которые не помещаются в окошко */
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.2); /* Тонкая темная рамка */
 }
 
-/* 5. Барабан с цифрами (остается без изменений) */
+/* Стили для самого барабана с цифрами (остаются от прошлой версии) */
 .reel {
   transition: transform 3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .reel div {
-  height: 100%;
+  height: 140px; /* Высота цифры должна совпадать с высотой окошка */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -100,12 +61,11 @@
   font-weight: bold;
   color: #fff;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  background-color: transparent;
 }
 
-/* Кнопки и прочее (остается без изменений) */
+/* Стили для кнопок (остаются без изменений) */
 .spinButton {
-  margin-top: 20px;
+  margin-top: 40px; /* Добавим отступ от автомата */
   padding: 15px 30px;
   font-size: 18px;
   cursor: pointer;
