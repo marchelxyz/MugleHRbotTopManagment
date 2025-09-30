@@ -62,31 +62,27 @@ const RoulettePage = ({ user, onBack, updateUser }) => {
       <h2>Рулетка</h2>
       <p>Стоимость вращения: 10 очков. Ваш баланс: {user.points_balance}</p>
       
-      {/* НАЧАЛО ИЗМЕНЕНИЙ: Новый корпус, нарисованный с помощью CSS.
-        Вместо одного div с background-image у нас теперь структура из нескольких div'ов,
-        каждый из которых стилизуется в CSS для создания 3D-эффекта.
-      */}
-      <div className={styles.slotMachineBody}>
-        <div className={styles.windowsContainer}>
-          {/* Три окошка для барабанов */}
-          <div className={styles.window}>
-            <div ref={reel1} className={styles.reel}>
-              {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
-            </div>
+      {/* Используем вашу новую структуру */}
+      <div className={styles.slotMachine}>
+        <div className={styles.slotWindow}>
+          {/* Вставляем первый барабан */}
+          <div ref={reel1} className={styles.reel}>
+            {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
           </div>
-          <div className={styles.window}>
-            <div ref={reel2} className={styles.reel}>
-              {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
-            </div>
+        </div>
+        <div className={styles.slotWindow}>
+          {/* Вставляем второй барабан */}
+          <div ref={reel2} className={styles.reel}>
+            {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
           </div>
-          <div className={styles.window}>
-            <div ref={reel3} className={styles.reel}>
-              {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
-            </div>
+        </div>
+        <div className={styles.slotWindow}>
+          {/* Вставляем третий барабан */}
+          <div ref={reel3} className={styles.reel}>
+            {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
           </div>
         </div>
       </div>
-      {/* КОНЕЦ ИЗМЕНЕНИЙ */}
 
       <button onClick={handleSpin} disabled={isSpinning} className={styles.spinButton}>
         {isSpinning ? 'Вращение...' : 'Крутить!'}
