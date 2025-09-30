@@ -62,10 +62,12 @@ const RoulettePage = ({ user, onBack, updateUser }) => {
       <h2>Рулетка</h2>
       <p>Стоимость вращения: 10 очков. Ваш баланс: {user.points_balance}</p>
       
-      {/* Главный контейнер с фоном корпуса рулетки */}
-      <div className={styles.slotMachine}>
-        
-        {/* Контейнер, который мы позиционируем поверх фона */}
+      {/* НАЧАЛО ИЗМЕНЕНИЙ: Новый корпус, нарисованный с помощью CSS.
+        Вместо одного div с background-image у нас теперь структура из нескольких div'ов,
+        каждый из которых стилизуется в CSS для создания 3D-эффекта.
+      */}
+      <div className={styles.slotMachineBody}>
+        <div className={styles.highlight}></div>
         <div className={styles.windowsContainer}>
           {/* Три окошка для барабанов */}
           <div className={styles.window}>
@@ -85,6 +87,7 @@ const RoulettePage = ({ user, onBack, updateUser }) => {
           </div>
         </div>
       </div>
+      {/* КОНЕЦ ИЗМЕНЕНИЙ */}
 
       <button onClick={handleSpin} disabled={isSpinning} className={styles.spinButton}>
         {isSpinning ? 'Вращение...' : 'Крутить!'}
