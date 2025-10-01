@@ -1048,3 +1048,97 @@ async def get_general_statistics(db: AsyncSession, period_days: int) -> dict:
     }
 
 # --- КОНЕЦ: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
+
+def get_hourly_activity_stats(db: Session):
+    """
+    Собирает статистику по транзакциям за последние 30 дней, сгруппированную по часам.
+    """
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    activity = (
+        db.query(
+            extract('hour', models.Transaction.created_at).label('hour'),
+            func.count(models.Transaction.id).label('transaction_count')
+        )
+        .filter(models.Transaction.created_at >= thirty_days_ago)
+        .group_by(extract('hour', models.Transaction.created_at))
+        .order_by(extract('hour', models.Transaction.created_at))
+        .all()
+    )
+    hourly_stats = {hour: 0 for hour in range(24)}
+    for row in activity:
+        if row.hour is not None:
+            hourly_stats[row.hour] = row.transaction_count
+    return hourly_stats
+
+
+def get_user_engagement_stats(db: Session, limit: int = 5):
+    """
+    Возвращает топ пользователей по отправленным и полученным благодарностям.
+    """
+    top_senders = (
+        db.query(
+            models.User,
+            func.count(models.Transaction.id).label('sent_count')
+        )
+        .join(models.Transaction, models.User.id == models.Transaction.sender_id)
+        .group_by(models.User.id)
+        .order_by(func.count(models.Transaction.id).desc())
+        .limit(limit)
+        .all()
+    )
+    top_receivers = (
+        db.query(
+            models.User,
+            func.count(models.Transaction.id).label('received_count')
+        )
+        .join(models.Transaction, models.User.id == models.Transaction.recipient_id)
+        .group_by(models.User.id)
+        .order_by(func.count(models.Transaction.id).desc())
+        .limit(limit)
+        .all()
+    )
+    return {"top_senders": top_senders, "top_receivers": top_receivers}
+
+
+def get_popular_items_stats(db: Session, limit: int = 10):
+    """
+    Возвращает самые покупаемые товары из магазина.
+    """
+    popular_items = (
+        db.query(
+            models.MarketItem,
+            func.count(models.Purchase.id).label('purchase_count')
+        )
+        .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
+        .group_by(models.MarketItem.id)
+        .order_by(func.count(models.Purchase.id).desc())
+        .limit(limit)
+        .all()
+    )
+    return popular_items
+
+
+def get_inactive_users(db: Session):
+    """
+    Находит пользователей, которые не совершили ни одной транзакции (ни отправили, ни получили).
+    """
+    # Подзапрос для получения ID всех активных пользователей
+    active_senders = db.query(models.Transaction.sender_id).distinct()
+    active_recipients = db.query(models.Transaction.recipient_id).distinct()
+    
+    active_user_ids = active_senders.union(active_recipients).subquery()
+
+    # Находим пользователей, чьи ID не входят в список активных
+    inactive_users = db.query(models.User).filter(
+        models.User.id.notin_(active_user_ids)
+    ).all()
+    
+    return inactive_users
+
+    
+def get_total_balance(db: Session):
+    """
+    Считает общую сумму "спасибок" на балансах всех пользователей.
+    """
+    total = db.query(func.sum(models.User.balance)).scalar()
+    return total or 0
