@@ -17,7 +17,7 @@ const StatCard = ({ icon, title, value, color }) => (
 function StatisticsDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(7); // Период по умолчанию - 7 дней
+  const [period, setPeriod] = useState(1);  // Период по умолчанию - 7 дней
 
   useEffect(() => {
     const fetchStats = async () => {
