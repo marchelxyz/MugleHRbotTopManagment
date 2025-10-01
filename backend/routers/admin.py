@@ -157,3 +157,41 @@ async def get_general_stats_route(
     stats = await crud.get_general_statistics(db, period_days=period)
     return stats
 # --- КОНЕЦ: НОВЫЙ ЭНДПОИНТ ДЛЯ СТАТИСТИКИ ---
+
+# --- Наши новые эндпоинты статистики ---
+
+@router.get("/statistics/hourly_activity", response_model=schemas.HourlyActivityStats)
+def get_hourly_activity(db: Session = Depends(get_db)):
+    stats = crud.get_hourly_activity_stats(db)
+    return {"hourly_stats": stats}
+
+@router.get("/statistics/user_engagement", response_model=schemas.UserEngagementStats)
+def get_user_engagement(db: Session = Depends(get_db)):
+    engagement_data = crud.get_user_engagement_stats(db)
+    top_senders_schema = [{"user": user, "count": count} for user, count in engagement_data["top_senders"]]
+    top_receivers_schema = [{"user": user, "count": count} for user, count in engagement_data["top_receivers"]]
+    return {"top_senders": top_senders_schema, "top_receivers": top_receivers_schema}
+
+@router.get("/statistics/popular_items", response_model=schemas.PopularItemsStats)
+def get_popular_items(db: Session = Depends(get_db)):
+    items_data = crud.get_popular_items_stats(db)
+    popular_items_schema = [{"item": item, "purchase_count": count} for item, count in items_data]
+    return {"items": popular_items_schema}
+
+# --- Добавляем эндпоинты для твоих идей ---
+
+@router.get("/statistics/inactive_users", response_model=schemas.InactiveUsersStats)
+def get_inactive_users_list(db: Session = Depends(get_db)):
+    """
+    Получение списка неактивных пользователей.
+    """
+    inactive_users = crud.get_inactive_users(db)
+    return {"users": inactive_users}
+
+@router.get("/statistics/total_balance", response_model=schemas.TotalBalanceStats)
+def get_economy_total_balance(db: Session = Depends(get_db)):
+    """
+    Получение общего количества "спасибок" в системе.
+    """
+    total_balance = crud.get_total_balance(db)
+    return {"total_balance": total_balance}
