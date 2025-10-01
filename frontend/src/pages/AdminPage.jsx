@@ -5,6 +5,7 @@ import PageLayout from '../components/PageLayout';
 import BannerManager from './admin/BannerManager'; 
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
+import StatisticsDashboard from './admin/StatisticsDashboard';
 import { addPointsToAll, addTicketsToAll } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
 import { useConfirmation } from '../contexts/ConfirmationContext'; // 1. Импортируем
@@ -83,17 +84,24 @@ function MassActions() {
 
 // --- ИЗМЕНЕНИЕ: Обновляем главный компонент ---
 function AdminPanel() {
+  const [activeTab, setActiveTab] = useState('stats');
   const [activeSection, setActiveSection] = useState(null);
 
   const renderSection = () => {
     switch (activeSection) {
+      case 'stats': return <StatisticsDashboard />;
       case 'banners': return <BannerManager />;
       case 'items': return <ItemManager />;
       case 'mass-actions': return <MassActions />; // Новый раздел
       case 'users': return <UserManager />;
       default:
-        return (
+        return <StatisticsDashboard />;
+    }
+  };
+  
+  return (
           <div className={styles.grid}>
+            <button onClick={() => setActiveTab('stats')} className={activeTab === 'stats' ? styles.tabActive : styles.tab}>Статистика</button>
             <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
             <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
             <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>
