@@ -89,11 +89,11 @@ function AdminPage() {
     if (!activeSection) {
       return (
         <div className={styles.grid}>
-          <button onClick={() => setActiveSection('stats')} className={styles.gridButton}>📊 Статистика</button>
-          <button onClick={() => setActiveSection('users')} className={styles.gridButton}>👥 Пользователи</button>
-          <button onClick={() => setActiveSection('items')} className={styles.gridButton}>🎁 Товары</button>
-          <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>🖼️ Баннеры</button>
-          <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>💰 Массовые начисления</button>
+          <button onClick={() => setActiveSection('stats')} className={styles.gridButton}>Статистика</button>
+          <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
+          <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
+          <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
+          <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>
         </div>
       );
     }
