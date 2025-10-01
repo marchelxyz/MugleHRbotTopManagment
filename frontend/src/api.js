@@ -151,3 +151,32 @@ export const adminDeleteUser = (userId) => {
 export const getGeneralStats = (period) => {
     return apiClient.get(`/admin/statistics/general?period=${period}`);
 };
+
+// --- НАШИ НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
+
+export const getHourlyActivityStats = async () => {
+  const response = await axiosInstance.get('/admin/statistics/hourly_activity');
+  return response.data;
+};
+
+export const getUserEngagementStats = async () => {
+  const response = await axiosInstance.get('/admin/statistics/user_engagement');
+  return response.data;
+};
+
+export const getPopularItemsStats = async () => {
+  const response = await axiosInstance.get('/admin/statistics/popular_items');
+  return response.data;
+};
+
+export const getInactiveUsers = async () => {
+  const response = await axiosInstance.get('/admin/statistics/inactive_users');
+  return response.data;
+};
+
+export const getTotalBalance = async () => {
+  const response = await axiosInstance.get('/admin/statistics/total_balance');
+  return response.data;
+};
+
+export default axiosInstance;
