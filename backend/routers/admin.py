@@ -145,13 +145,14 @@ async def admin_delete_user_route(
 # --- НАЧАЛО: НОВЫЙ ЭНДПОИНТ ДЛЯ СТАТИСТИКИ ---
 @router.get("/statistics/general", response_model=schemas.GeneralStatsResponse)
 async def get_general_stats_route(
-    period: int = Query(7, description="Период в днях (7, 30, 90)"),
+    period: int = Query(7, description="Период в днях (1, 7, 30, 90, 365)"), # Добавили описание
     admin_user: models.User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Возвращает общую статистику по активности в приложении."""
-    if period not in [7, 30, 90, 365]:
-        raise HTTPException(status_code=400, detail="Недопустимый период. Используйте 7, 30, 90 или 365.")
+    # --- ИЗМЕНЕНИЕ: Добавляем 1 в список ---
+    if period not in [1, 7, 30, 90, 365]:
+        raise HTTPException(status_code=400, detail="Недопустимый период. Используйте 1, 7, 30, 90 или 365.")
     
     stats = await crud.get_general_statistics(db, period_days=period)
     return stats
