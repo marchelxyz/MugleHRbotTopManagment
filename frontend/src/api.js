@@ -9,6 +9,25 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем "перехватчик" запросов ---
+// Этот код будет выполняться ПЕРЕД КАЖДЫМ запросом, отправляемым через apiClient
+apiClient.interceptors.request.use(
+  (config) => {
+    // Получаем ID пользователя прямо перед отправкой запроса
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    if (telegramId) {
+      // Если ID есть, добавляем его в заголовки
+      config.headers['X-Telegram-Id'] = telegramId;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// --- конец ---
+
 export const checkUserStatus = (telegramId) => {
   return apiClient.get('/users/me', {
     headers: { 'X-Telegram-Id': telegramId },
