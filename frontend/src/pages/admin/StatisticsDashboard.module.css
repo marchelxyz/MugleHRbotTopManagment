@@ -1,82 +1,84 @@
-.dashboardContainer {
-    padding: 20px;
-    background-color: #f4f7f6;
-    border-radius: 8px;
+/* frontend/src/pages/admin/StatisticsDashboard.module.css */
+
+.statsContainer {
+    width: 100%;
 }
 
-.header {
+.tabs {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 10px;
+    background-color: var(--secondary-bg-color);
+    border-radius: 12px;
+    padding: 5px;
 }
 
-.header h2 {
-    margin: 0;
-}
-
-.periodSelector button {
-    padding: 8px 12px;
-    margin-left: 5px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    border-radius: 6px;
+.tabs button {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: none;
+    background-color: transparent;
+    color: var(--hint-color);
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
+    border-radius: 8px;
     transition: background-color 0.2s, color 0.2s;
 }
 
-.periodSelector button:hover {
-    background-color: #e9ecef;
+.tabs button.active {
+    background-color: var(--button-color);
+    color: var(--button-text-color);
 }
 
-.periodSelector button.active {
-    background-color: #5CA14A;
-    color: white;
-    border-color: #5CA14A;
+.content {
+    padding: 10px;
+    background-color: var(--secondary-bg-color);
+    border-radius: 12px;
+}
+
+/* Стили для карточек и селектора периода (из GeneralStats) */
+.periodSelector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.periodSelector button {
+    background: var(--bg-color);
+    border: 1px solid var(--hint-color);
+    color: var(--text-color);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.periodSelector button.activePeriod {
+    background: var(--button-color);
+    color: var(--button-text-color);
+    border-color: var(--button-color);
 }
 
 .statsGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
 }
 
 .statCard {
-    background-color: #fff;
-    border-radius: 8px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border-left: 5px solid var(--card-color, #ccc);
-    transition: transform 0.2s, box-shadow 0.2s;
+    background-color: var(--bg-color);
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
 }
 
-.statCard:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.statCard h4 {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    color: var(--hint-color);
 }
 
-.cardIcon {
-    font-size: 2.5em;
-    color: var(--card-color, #ccc);
-}
-
-.cardContent {
-    display: flex;
-    flex-direction: column;
-}
-
-.cardValue {
-    font-size: 2em;
+.statCard p {
+    margin: 0;
+    font-size: 1.5rem;
     font-weight: bold;
-    color: #333;
-}
-
-.cardTitle {
-    font-size: 0.9em;
-    color: #777;
 }
