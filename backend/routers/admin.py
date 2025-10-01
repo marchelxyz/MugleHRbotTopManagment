@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import crud
 import schemas
+import models
 from dependencies import get_current_admin_user
 from models import User
 from database import get_db
