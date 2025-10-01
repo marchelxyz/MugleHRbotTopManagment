@@ -194,3 +194,32 @@ class GeneralStatsResponse(BaseModel):
     total_turnover: int
     store_purchases_count: int
     total_store_spent: int
+
+# Для статистики по часам
+class HourlyActivityStats(BaseModel):
+    hourly_stats: dict[int, int]
+
+# Для лидеров вовлечённости
+class UserEngagement(BaseModel):
+    user: User
+    count: int
+
+class UserEngagementStats(BaseModel):
+    top_senders: list[UserEngagement]
+    top_receivers: list[UserEngagement]
+    
+# Для популярных товаров
+class PopularItem(BaseModel):
+    item: MarketItem
+    purchase_count: int
+    
+class PopularItemsStats(BaseModel):
+    items: list[PopularItem]
+
+# Для неактивных пользователей
+class InactiveUsersStats(BaseModel):
+    users: list[User]
+
+# Для общего баланса
+class TotalBalanceStats(BaseModel):
+    total_balance: int
