@@ -4,6 +4,7 @@ import zipfile
 import json
 import math # Добавьте этот импорт вверху
 from datetime import datetime # Добавьте этот импорт вверху
+from sqlalchemy.orm import Session  # <--- ДОБАВЬ ЭТУ СТРОКУ
 import random
 from sqlalchemy.future import select
 from sqlalchemy import func, update 
