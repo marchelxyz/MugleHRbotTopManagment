@@ -1,34 +1,32 @@
+// frontend/src/pages/AdminPage.jsx
+
 import React, { useState } from 'react';
 import styles from './AdminPage.module.css';
 import PageLayout from '../components/PageLayout';
-// Импортируем компоненты управления, которые мы сейчас создадим
-import BannerManager from './admin/BannerManager'; 
+
+// Импортируем все дочерние компоненты
+import BannerManager from './admin/BannerManager';
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import StatisticsDashboard from './admin/StatisticsDashboard';
 import { addPointsToAll, addTicketsToAll } from '../api';
-import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем
-import { useConfirmation } from '../contexts/ConfirmationContext'; // 1. Импортируем
+import { useModalAlert } from '../contexts/ModalAlertContext';
+import { useConfirmation } from '../contexts/ConfirmationContext';
 
-// Пока используем заглушки
-const StatsManager = () => <div>Раздел статистики в разработке...</div>;
-
-// --- ИЗМЕНЕНИЕ: Создаем новый компонент для массовых начислений ---
+// Компонент для массовых начислений (без изменений)
 function MassActions() {
-  const { showAlert } = useModalAlert(); // 2. Получаем функцию
-  const { confirm } = useConfirmation(); // 2. Получаем функцию подтверждения
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
   const [addPointsAmount, setAddPointsAmount] = useState(100);
   const [addTicketsAmount, setAddTicketsAmount] = useState(1);
   const [loading, setLoading] = useState(''); // 'points' or 'tickets'
-  const [message, setMessage] = useState('');
 
   const handleAddPoints = async () => {
-    // 3. Заменяем window.confirm на нашу новую асинхронную функцию
     const isConfirmed = await confirm(
-      'Подтверждение', 
+      'Подтверждение',
       `Вы уверены, что хотите начислить ${addPointsAmount} спасибок всем пользователям?`
     );
-    if (!isConfirmed) return; // Если пользователь нажал "Отмена", выходим
+    if (!isConfirmed) return;
     
     setLoading('points');
     try {
@@ -77,50 +75,52 @@ function MassActions() {
           {loading === 'tickets' ? 'Начисление...' : `Начислить ${addTicketsAmount} билетов`}
         </button>
       </div>
-      {message && <p className={styles.message}>{message}</p>}
     </>
   );
 }
 
-// --- ИЗМЕНЕНИЕ: Обновляем главный компонент ---
-function AdminPanel() {
-  const [activeTab, setActiveTab] = useState('stats');
+// --- ИСПРАВЛЕННЫЙ ГЛАВНЫЙ КОМПОНЕНТ ---
+function AdminPage() {
+  // Используем одну переменную для навигации. null - это главное меню.
   const [activeSection, setActiveSection] = useState(null);
 
-  const renderSection = () => {
+  const renderContent = () => {
+    // Если секция не выбрана, показываем меню
+    if (!activeSection) {
+      return (
+        <div className={styles.grid}>
+          <button onClick={() => setActiveSection('stats')} className={styles.gridButton}>📊 Статистика</button>
+          <button onClick={() => setActiveSection('users')} className={styles.gridButton}>👥 Пользователи</button>
+          <button onClick={() => setActiveSection('items')} className={styles.gridButton}>🎁 Товары</button>
+          <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>🖼️ Баннеры</button>
+          <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>💰 Массовые начисления</button>
+        </div>
+      );
+    }
+    
+    // Если секция выбрана, показываем соответствующий компонент
     switch (activeSection) {
       case 'stats': return <StatisticsDashboard />;
       case 'banners': return <BannerManager />;
       case 'items': return <ItemManager />;
-      case 'mass-actions': return <MassActions />; // Новый раздел
+      case 'mass-actions': return <MassActions />;
       case 'users': return <UserManager />;
-      default:
-        return <StatisticsDashboard />;
+      default: return null; // На случай непредвиденного значения
     }
   };
   
   return (
-          <div className={styles.grid}>
-            <button onClick={() => setActiveTab('stats')} className={activeTab === 'stats' ? styles.tabActive : styles.tab}>Статистика</button>
-            <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
-            <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
-            <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>
-            <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <PageLayout title="Админ">
+    <PageLayout title="Панель администратора">
+      {/* Кнопка "Назад" появляется, только если мы не в главном меню */}
       {activeSection && (
         <button onClick={() => setActiveSection(null)} className={styles.backButton}>
           &larr; Назад в меню
         </button>
       )}
-      {renderSection()}
+      {renderContent()}
     </PageLayout>
   );
 }
 
-export default AdminPanel;
+// Экспортируем компонент под правильным именем
+export default AdminPage;
