@@ -987,11 +987,13 @@ async def get_leaderboards_status(db: AsyncSession):
 async def get_general_statistics(db: AsyncSession, period_days: int) -> dict:
     """Собирает общую статистику за указанный период в днях."""
     
+    # Используем date.today() для корректной работы с датами в базе
     end_date = date.today()
     start_date = end_date - timedelta(days=period_days)
 
-    # 1. Новые пользователи
+    # 1. Новые пользователи (теперь с проверкой на NULL)
     new_users_query = select(func.count(models.User.id)).where(
+        models.User.registration_date.is_not(None), # <-- ГЛАВНОЕ ИСПРАВЛЕНИЕ
         func.date(models.User.registration_date) >= start_date
     )
     new_users_count = await db.scalar(new_users_query)
