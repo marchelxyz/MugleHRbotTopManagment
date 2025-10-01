@@ -982,3 +982,68 @@ async def get_leaderboards_status(db: AsyncSession):
         statuses.append({ "id": f"{period_key}_sent", "has_data": count_sent > 0 })
             
     return statuses
+
+# --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
+
+async def get_general_statistics(db: AsyncSession, period_days: int) -> dict:
+    """Собирает общую статистику за указанный период в днях."""
+    
+    end_date = date.today()
+    start_date = end_date - timedelta(days=period_days)
+
+    # 1. Новые пользователи
+    new_users_query = select(func.count(models.User.id)).where(
+        func.date(models.User.registration_date) >= start_date
+    )
+    new_users_count = await db.scalar(new_users_query)
+
+    # 2. Количество транзакций
+    transactions_query = select(func.count(models.Transaction.id)).where(
+        func.date(models.Transaction.timestamp) >= start_date
+    )
+    transactions_count = await db.scalar(transactions_query)
+
+    # 3. Активные пользователи (отправили или получили)
+    active_senders = select(models.Transaction.sender_id).where(
+        func.date(models.Transaction.timestamp) >= start_date
+    ).distinct()
+    
+    active_receivers = select(models.Transaction.receiver_id).where(
+        func.date(models.Transaction.timestamp) >= start_date
+    ).distinct()
+    
+    active_users_query = select(func.count()).select_from(
+        select(active_senders.union(active_receivers).subquery()).distinct()
+    )
+    active_users_count = await db.scalar(active_users_query)
+
+    # 4. Сумма "спасибок" в обороте
+    turnover_query = select(func.sum(models.Transaction.amount)).where(
+        func.date(models.Transaction.timestamp) >= start_date
+    )
+    total_turnover = await db.scalar(turnover_query) or 0
+
+    # 5. Покупки в магазине
+    purchases_query = select(func.count(models.Purchase.id)).where(
+        func.date(models.Purchase.timestamp) >= start_date
+    )
+    store_purchases_count = await db.scalar(purchases_query)
+
+    # 6. Общая потраченная сумма в магазине
+    spent_query = select(func.sum(models.MarketItem.price)).join(
+        models.Purchase, models.Purchase.item_id == models.MarketItem.id
+    ).where(
+        func.date(models.Purchase.timestamp) >= start_date
+    )
+    total_store_spent = await db.scalar(spent_query) or 0
+
+    return {
+        "new_users_count": new_users_count,
+        "transactions_count": transactions_count,
+        "active_users_count": active_users_count,
+        "total_turnover": total_turnover,
+        "store_purchases_count": store_purchases_count,
+        "total_store_spent": total_store_spent,
+    }
+
+# --- КОНЕЦ: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
