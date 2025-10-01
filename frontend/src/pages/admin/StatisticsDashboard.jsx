@@ -2,79 +2,53 @@
 
 import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
+import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins } from 'react-icons/fa';
 
 // Импортируем наши компоненты-отчёты
-import GeneralStats from './stats/GeneralStats'; // Мы создадим его на основе твоего старого дашборда
+import GeneralStats from './stats/GeneralStats';
 import HourlyActivityPage from './stats/HourlyActivityPage';
 import UserEngagementPage from './stats/UserEngagementPage';
 import PopularItemsPage from './stats/PopularItemsPage';
 import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
 
-
 const StatisticsDashboard = () => {
-    // Состояние для отслеживания активного таба
     const [activeTab, setActiveTab] = useState('general');
 
-    // Функция для рендеринга активного компонента
+    const tabs = [
+        { id: 'general', label: 'Общая', icon: <FaChartBar /> },
+        { id: 'hourly', label: 'Активность', icon: <FaHourglassHalf /> },
+        { id: 'engagement', label: 'Лидеры', icon: <FaStar /> },
+        { id: 'popular', label: 'Товары', icon: <FaChartLine /> },
+        { id: 'inactive', label: 'Неактивные', icon: <FaUsersSlash /> },
+        { id: 'economy', label: 'Экономика', icon: <FaCoins /> },
+    ];
+
     const renderActiveComponent = () => {
         switch (activeTab) {
-            case 'general':
-                return <GeneralStats />;
-            case 'hourly':
-                return <HourlyActivityPage />;
-            case 'engagement':
-                return <UserEngagementPage />;
-            case 'popular':
-                return <PopularItemsPage />;
-            case 'inactive':
-                return <InactiveUsersPage />;
-            case 'economy':
-                return <EconomyBalancePage />;
-            default:
-                return <GeneralStats />;
+            case 'general': return <GeneralStats />;
+            case 'hourly': return <HourlyActivityPage />;
+            case 'engagement': return <UserEngagementPage />;
+            case 'popular': return <PopularItemsPage />;
+            case 'inactive': return <InactiveUsersPage />;
+            case 'economy': return <EconomyBalancePage />;
+            default: return <GeneralStats />;
         }
     };
 
     return (
         <div className={styles.statsContainer}>
-            <div className={styles.tabs}>
-                <button 
-                    className={activeTab === 'general' ? styles.active : ''}
-                    onClick={() => setActiveTab('general')}
-                >
-                    Общая
-                </button>
-                <button 
-                    className={activeTab === 'hourly' ? styles.active : ''}
-                    onClick={() => setActiveTab('hourly')}
-                >
-                    Активность
-                </button>
-                <button 
-                    className={activeTab === 'engagement' ? styles.active : ''}
-                    onClick={() => setActiveTab('engagement')}
-                >
-                    Лидеры
-                </button>
-                <button 
-                    className={activeTab === 'popular' ? styles.active : ''}
-                    onClick={() => setActiveTab('popular')}
-                >
-                    Товары
-                </button>
-                 <button 
-                    className={activeTab === 'inactive' ? styles.active : ''}
-                    onClick={() => setActiveTab('inactive')}
-                >
-                    Неактивные
-                </button>
-                 <button 
-                    className={activeTab === 'economy' ? styles.active : ''}
-                    onClick={() => setActiveTab('economy')}
-                >
-                    Экономика
-                </button>
+            <div className={styles.tabsContainer}>
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : styles.tabCollapsed}`}
+                        onClick={() => setActiveTab(tab.id)}
+                    >
+                        <span className={styles.tabIcon}>{tab.icon}</span>
+                        <span className={styles.tabLabel}>{tab.label}</span>
+                    </button>
+                ))}
             </div>
             <div className={styles.content}>
                 {renderActiveComponent()}
