@@ -4,44 +4,69 @@
     width: 100%;
 }
 
-/* --- НОВЫЕ СТИЛИ ДЛЯ ТАБОВ --- */
+/* --- СТИЛИ ДЛЯ АНИМИРОВАННЫХ ТАБОВ (ИЗ LEADERBOARD) --- */
 
-/* Главный прямоугольник-контейнер для табов */
-.tabs {
+.tabsContainer {
     display: flex;
     width: 100%;
+    height: 50px;
     background-color: #e9eef2;
     border-radius: 12px;
     padding: 5px;
     box-sizing: border-box;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Общий стиль для всех кнопок-табов */
-.tabs button {
-    flex-grow: 1;
-    padding: 10px 5px; /* Уменьшим горизонтальный паддинг */
+.tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    background-color: transparent;
-    color: #6E7A85;
-    font-size: 0.85rem; /* Немного уменьшим шрифт */
-    font-weight: 500;
-    transition: all 0.2s ease-in-out;
-    white-space: nowrap; /* Запрещаем перенос текста */
+    overflow: hidden;
+    transition: all 0.4s ease-in-out;
 }
 
-/* Стиль для АКТИВНОЙ вкладки */
-.tabs button.active {
+.tabCollapsed {
+    flex-grow: 1;
+    background-color: transparent;
+    color: #6E7A85;
+}
+
+.tabActive {
+    flex-grow: 4; /* Можешь поменять это значение, если вкладок больше/меньше */
     background-color: #ffffff;
     color: #333;
     font-weight: bold;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* --- КОНЕЦ НОВЫХ СТИЛЕЙ ДЛЯ ТАБОВ --- */
+.tabIcon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.tabLabel {
+    white-space: nowrap;
+    margin-left: 8px;
+    font-size: 14px;
+    transition: opacity 0.3s ease, max-width 0.4s ease, margin-left 0.4s ease;
+}
+
+.tabCollapsed .tabLabel {
+    opacity: 0;
+    max-width: 0;
+    margin-left: 0;
+}
+
+.tabActive .tabLabel {
+    opacity: 1;
+    max-width: 100px; /* Даем максимальную ширину для плавности */
+}
+
+/* --- КОНЕЦ СТИЛЕЙ ДЛЯ ТАБОВ --- */
 
 
 .content {
