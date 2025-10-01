@@ -17,7 +17,7 @@ const StatCard = ({ icon, title, value, color }) => (
 function StatisticsDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(1);  // Период по умолчанию - 7 дней
+  const [period, setPeriod] = useState(1);  // Период по умолчанию - 1 день
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -41,6 +41,7 @@ function StatisticsDashboard() {
       <div className={styles.header}>
         <h2>Общая статистика</h2>
         <div className={styles.periodSelector}>
+          <button onClick={() => setPeriod(1)} className={period === 1 ? styles.active : ''}>День</button>
           <button onClick={() => setPeriod(7)} className={period === 7 ? styles.active : ''}>Неделя</button>
           <button onClick={() => setPeriod(30)} className={period === 30 ? styles.active : ''}>Месяц</button>
           <button onClick={() => setPeriod(90)} className={period === 90 ? styles.active : ''}>3 месяца</button>
