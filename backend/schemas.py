@@ -6,8 +6,6 @@ from datetime import datetime, date
 class OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# --- НОВЫЕ И ПЕРЕРАБОТАННЫЕ СХЕМЫ ---
-
 # --- ИЗМЕНЕНИЕ: Базовая схема для товара ---
 class MarketItemBase(OrmBase):
     id: int
@@ -195,31 +193,46 @@ class GeneralStatsResponse(BaseModel):
     store_purchases_count: int
     total_store_spent: int
 
-# Для статистики по часам
+# --- Наши новые схемы для статистики (с исправлениями) ---
+
 class HourlyActivityStats(BaseModel):
     hourly_stats: dict[int, int]
 
-# Для лидеров вовлечённости
 class UserEngagement(BaseModel):
-    user: User
+    user: 'User'  # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
     count: int
+    class Config:
+        from_attributes = True
 
 class UserEngagementStats(BaseModel):
-    top_senders: list[UserEngagement]
-    top_receivers: list[UserEngagement]
+    top_senders: list['UserEngagement'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
+    top_receivers: list['UserEngagement'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
     
-# Для популярных товаров
 class PopularItem(BaseModel):
-    item: MarketItem
+    item: 'MarketItem' # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
     purchase_count: int
+    class Config:
+        from_attributes = True
     
 class PopularItemsStats(BaseModel):
-    items: list[PopularItem]
+    items: list['PopularItem'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
 
-# Для неактивных пользователей
 class InactiveUsersStats(BaseModel):
-    users: list[User]
+    users: list['User'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
 
-# Для общего баланса
 class TotalBalanceStats(BaseModel):
     total_balance: int
+
+# --- Обновление ссылок в конце файла ---
+
+# Существующие вызовы
+User.model_rebuild()
+Transaction.model_rebuild()
+Purchase.model_rebuild()
+
+# ИСПРАВЛЕНИЕ: Добавляем наши новые схемы
+UserEngagement.model_rebuild()
+UserEngagementStats.model_rebuild()
+PopularItem.model_rebuild()
+PopularItemsStats.model_rebuild()
+InactiveUsersStats.model_rebuild()
