@@ -1,20 +1,24 @@
 import axios from 'axios';
+import { getToken, removeToken } from './storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
-const apiClient = axios.create({
+const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем "перехватчик" запросов ---
-// Этот код будет выполняться ПЕРЕД КАЖДЫМ запросом, отправляемым через apiClient
-apiClient.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (config) => {
-    // Получаем ID пользователя прямо перед отправкой запроса
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    if (telegramId) {
-      // Если ID есть, добавляем его в заголовки
-      config.headers['X-Telegram-Id'] = telegramId;
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+        const initData = new URLSearchParams(window.Telegram.WebApp.initData);
+        const authData = initData.get('user');
+        if (authData) {
+          config.headers['Telegram-Auth'] = authData;
+        }
     }
     return config;
   },
@@ -23,136 +27,99 @@ apiClient.interceptors.request.use(
   }
 );
 
-// --- Теперь можно упростить все остальные функции, убрав из них заголовки ---
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      removeToken();
+    }
+    return Promise.reject(error);
+  }
+);
 
-export const checkUserStatus = () => {
-  return apiClient.get('/users/me');
+// --- Основные функции ---
+export const getMe = async () => {
+  const response = await axiosInstance.get('/users/me');
+  return response.data;
 };
 
-export const registerUser = (userData) => {
-  return apiClient.post('/users/auth/register', userData);
+export const registerUser = async (userData) => {
+  const response = await axiosInstance.post('/users/register', userData);
+  return response.data;
 };
 
-export const transferPoints = (transferData) => {
-  return apiClient.post('/points/transfer', transferData);
+export const updateUser = async (userId, userData) => {
+  const response = await axiosInstance.put(`/users/${userId}`, userData);
+  return response.data;
 };
 
-export const requestProfileUpdate = (updateData) => {
-  return apiClient.post('/users/me/request-update', updateData);
+export const getFeed = async () => {
+  const response = await axiosInstance.get('/feed');
+  return response.data;
 };
 
-export const getFeed = () => apiClient.get('/transactions/feed');
-
-export const getLeaderboard = ({ period, type }) => {
-  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`);
+export const getLeaderboard = async () => {
+  const response = await axiosInstance.get('/leaderboard');
+  return response.data;
 };
 
-export const getMyRank = ({ period, type }) => {
-  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`);
+export const transferThanks = async (transferData) => {
+  const response = await axiosInstance.post('/transactions/transfer', transferData);
+  return response.data;
 };
 
-export const getLeaderboardStatus = () => {
-  return apiClient.get('/leaderboard/status');
+export const getMarketItems = async () => {
+  const response = await axiosInstance.get('/market/items');
+  return response.data;
 };
 
-export const getMarketItems = () => apiClient.get('/market/items');
-
-export const purchaseItem = (userId, itemId) => {
-  return apiClient.post('/market/purchase', { user_id: userId, item_id: itemId });
+export const purchaseItem = async (purchaseData) => {
+  const response = await axiosInstance.post('/market/purchase', purchaseData);
+  return response.data;
 };
 
-export const getUserTransactions = (userId) => {
-  return apiClient.get(`/users/${userId}/transactions`);
+export const getUserHistory = async (userId) => {
+  const response = await axiosInstance.get(`/users/${userId}/history`);
+  return response.data;
 };
 
-// --- АДМИН-ФУНКЦИИ ---
-
-export const addPointsToAll = (data) => {
-  return apiClient.post('/admin/add-points', data);
+export const getMyRank = async () => {
+    const response = await axiosInstance.get(`/users/me/rank`);
+    return response.data;
 };
 
-export const createMarketItem = (itemData) => {
-  return apiClient.post('/admin/market-items', itemData);
+// --- Функции для рулетки ---
+export const spinRoulette = async () => {
+  const response = await axiosInstance.post('/roulette/spin');
+  return response.data;
 };
 
-export const getBanners = () => apiClient.get('/banners');
-
-export const getAllBanners = () => {
-    return apiClient.get('/admin/banners');
+export const assembleTickets = async () => {
+  const response = await axiosInstance.post('/roulette/assemble_tickets');
+  return response.data;
 };
 
-export const createBanner = (bannerData) => {
-    return apiClient.post('/admin/banners', bannerData);
+export const getRouletteHistory = async () => {
+  const response = await axiosInstance.get('/roulette/history');
+  return response.data;
 };
 
-export const updateBanner = (bannerId, bannerData) => {
-    return apiClient.put(`/admin/banners/${bannerId}`, bannerData);
+// --- Админ-панель (Общее) ---
+export const getUsersForAdmin = async () => {
+  const response = await axiosInstance.get('/admin/users');
+  return response.data;
 };
 
-export const deleteBanner = (bannerId) => {
-    return apiClient.delete(`/admin/banners/${bannerId}`);
+export const updateUserForAdmin = async (userId, userData) => {
+  const response = await axiosInstance.put(`/admin/users/${userId}`, userData);
+  return response.data;
 };
 
-export const getAllMarketItems = () => {
-    return apiClient.get('/admin/market-items');
+// --- Админ-панель (Статистика) ---
+export const getGeneralStats = async (period) => {
+    const response = await axiosInstance.get(`/admin/statistics/general?period=${period}`);
+    return response.data;
 };
-
-export const updateMarketItem = (itemId, itemData) => {
-    return apiClient.put(`/admin/market-items/${itemId}`, itemData);
-};
-
-export const archiveMarketItem = (itemId) => {
-    return apiClient.delete(`/admin/market-items/${itemId}`);
-};
-
-export const getArchivedMarketItems = () => {
-    return apiClient.get('/admin/market-items/archived');
-};
-
-export const restoreMarketItem = (itemId) => {
-    return apiClient.post(`/admin/market-items/${itemId}/restore`, {});
-};
-
-export const assembleTickets = () => {
-    return apiClient.post('/roulette/assemble', {});
-};
-
-export const spinRoulette = () => {
-    return apiClient.post('/roulette/spin', {});
-};
-
-export const getRouletteHistory = () => apiClient.get('/roulette/history');
-
-export const addTicketsToAll = (data) => {
-  return apiClient.post('/admin/add-tickets', data);
-};
-
-export const deleteUserCard = () => {
-  return apiClient.delete('/users/me/card');
-};
-
-export const searchUsers = (query) => {
-  return apiClient.get(`/users/search/?query=${query}`);
-};
-
-export const adminGetAllUsers = () => {
-    return apiClient.get('/admin/users');
-};
-
-export const adminUpdateUser = (userId, userData) => {
-    return apiClient.put(`/admin/users/${userId}`, userData);
-};
-
-export const adminDeleteUser = (userId) => {
-    return apiClient.delete(`/admin/users/${userId}`);
-};
-
-// Функция для статистики (теперь тоже работает через перехватчик)
-export const getGeneralStats = (period) => {
-    return apiClient.get(`/admin/statistics/general?period=${period}`);
-};
-
-// --- НАШИ НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
 
 export const getHourlyActivityStats = async () => {
   const response = await axiosInstance.get('/admin/statistics/hourly_activity');
