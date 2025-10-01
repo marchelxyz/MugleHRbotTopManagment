@@ -255,10 +255,7 @@ export const adminDeleteUser = (userId) => {
     });
 };
 
-// --- НОВАЯ ФУНКЦИЯ ДЛЯ СТАТИСТИКИ ---
+// Функция для статистики (теперь тоже работает через перехватчик)
 export const getGeneralStats = (period) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.get(`/admin/statistics/general?period=${period}`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
+    return apiClient.get(`/admin/statistics/general?period=${period}`);
 };
