@@ -235,3 +235,11 @@ export const adminDeleteUser = (userId) => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ СТАТИСТИКИ ---
+export const getGeneralStats = (period) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get(`/admin/statistics/general?period=${period}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
