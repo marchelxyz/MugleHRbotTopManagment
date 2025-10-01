@@ -44,7 +44,6 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         department=user.department,
         username=user.username,
         is_admin=is_admin,
-        # --- ДОБАВЬ ЭТУ СТРОКУ ---
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
         date_of_birth=dob,
