@@ -185,3 +185,12 @@ class MyRankResponse(BaseModel):
     rank: Optional[int]
     total_received: int
     total_participants: int
+
+# --- СХЕМА ДЛЯ СТАТИСТИКИ ---
+class GeneralStatsResponse(BaseModel):
+    new_users_count: int
+    transactions_count: int
+    active_users_count: int
+    total_turnover: int
+    store_purchases_count: int
+    total_store_spent: int
