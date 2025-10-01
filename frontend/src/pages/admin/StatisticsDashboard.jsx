@@ -1,70 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { getGeneralStats } from '../../api';
+// frontend/src/pages/admin/StatisticsDashboard.jsx
+
+import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
-import { FaUsers, FaSyncAlt, FaUserCheck, FaShoppingBag, FaGift, FaMoneyBillWave } from 'react-icons/fa';
 
-// Компонент для отображения одной карточки статистики
-const StatCard = ({ icon, title, value, color }) => (
-  <div className={styles.statCard} style={{ '--card-color': color }}>
-    <div className={styles.cardIcon}>{icon}</div>
-    <div className={styles.cardContent}>
-      <span className={styles.cardValue}>{value}</span>
-      <span className={styles.cardTitle}>{title}</span>
-    </div>
-  </div>
-);
+// Импортируем наши компоненты-отчёты
+import GeneralStats from './stats/GeneralStats'; // Мы создадим его на основе твоего старого дашборда
+import HourlyActivityPage from './stats/HourlyActivityPage';
+import UserEngagementPage from './stats/UserEngagementPage';
+import PopularItemsPage from './stats/PopularItemsPage';
+import InactiveUsersPage from './stats/InactiveUsersPage';
+import EconomyBalancePage from './stats/EconomyBalancePage';
 
-function StatisticsDashboard() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(1);  // Период по умолчанию - 1 день
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        const response = await getGeneralStats(period);
-        setStats(response.data);
-      } catch (error) {
-        console.error("Не удалось загрузить статистику:", error);
-        // Здесь можно добавить уведомление об ошибке
-      } finally {
-        setLoading(false);
-      }
+const StatisticsDashboard = () => {
+    // Состояние для отслеживания активного таба
+    const [activeTab, setActiveTab] = useState('general');
+
+    // Функция для рендеринга активного компонента
+    const renderActiveComponent = () => {
+        switch (activeTab) {
+            case 'general':
+                return <GeneralStats />;
+            case 'hourly':
+                return <HourlyActivityPage />;
+            case 'engagement':
+                return <UserEngagementPage />;
+            case 'popular':
+                return <PopularItemsPage />;
+            case 'inactive':
+                return <InactiveUsersPage />;
+            case 'economy':
+                return <EconomyBalancePage />;
+            default:
+                return <GeneralStats />;
+        }
     };
 
-    fetchStats();
-  }, [period]); // Перезапрашивать статистику при смене периода
-
-  return (
-    <div className={styles.dashboardContainer}>
-      <div className={styles.header}>
-        <h2>Общая статистика</h2>
-        <div className={styles.periodSelector}>
-          <button onClick={() => setPeriod(1)} className={period === 1 ? styles.active : ''}>День</button>
-          <button onClick={() => setPeriod(7)} className={period === 7 ? styles.active : ''}>Неделя</button>
-          <button onClick={() => setPeriod(30)} className={period === 30 ? styles.active : ''}>Месяц</button>
-          <button onClick={() => setPeriod(90)} className={period === 90 ? styles.active : ''}>3 месяца</button>
-          <button onClick={() => setPeriod(365)} className={period === 365 ? styles.active : ''}>Год</button>
+    return (
+        <div className={styles.statsContainer}>
+            <div className={styles.tabs}>
+                <button 
+                    className={activeTab === 'general' ? styles.active : ''}
+                    onClick={() => setActiveTab('general')}
+                >
+                    Общая
+                </button>
+                <button 
+                    className={activeTab === 'hourly' ? styles.active : ''}
+                    onClick={() => setActiveTab('hourly')}
+                >
+                    Активность
+                </button>
+                <button 
+                    className={activeTab === 'engagement' ? styles.active : ''}
+                    onClick={() => setActiveTab('engagement')}
+                >
+                    Лидеры
+                </button>
+                <button 
+                    className={activeTab === 'popular' ? styles.active : ''}
+                    onClick={() => setActiveTab('popular')}
+                >
+                    Товары
+                </button>
+                 <button 
+                    className={activeTab === 'inactive' ? styles.active : ''}
+                    onClick={() => setActiveTab('inactive')}
+                >
+                    Неактивные
+                </button>
+                 <button 
+                    className={activeTab === 'economy' ? styles.active : ''}
+                    onClick={() => setActiveTab('economy')}
+                >
+                    Экономика
+                </button>
+            </div>
+            <div className={styles.content}>
+                {renderActiveComponent()}
+            </div>
         </div>
-      </div>
-
-      {loading ? (
-        <p>Загрузка статистики...</p>
-      ) : stats ? (
-        <div className={styles.statsGrid}>
-          <StatCard icon={<FaUsers />} title="Новые пользователи" value={stats.new_users_count} color="#3498db" />
-          <StatCard icon={<FaUserCheck />} title="Активные пользователи" value={stats.active_users_count} color="#2ecc71" />
-          <StatCard icon={<FaGift />} title="Всего транзакций" value={stats.transactions_count} color="#e67e22" />
-          <StatCard icon={<FaSyncAlt />} title="Оборот 'спасибок'" value={stats.total_turnover} color="#f1c40f" />
-          <StatCard icon={<FaShoppingBag />} title="Покупок в магазине" value={stats.store_purchases_count} color="#9b59b6" />
-          <StatCard icon={<FaMoneyBillWave />} title="Потрачено в магазине" value={stats.total_store_spent} color="#e74c3c" />
-        </div>
-      ) : (
-        <p>Не удалось загрузить данные.</p>
-      )}
-    </div>
-  );
-}
+    );
+};
 
 export default StatisticsDashboard;
