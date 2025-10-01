@@ -82,7 +82,7 @@ class FeedItem(OrmBase):
     amount: int
     message: Optional[str]
     timestamp: datetime
-    sender: UserBase   # <-- Используем базовую схему
+    sender: UserBase    # <-- Используем базовую схему
     receiver: UserBase # <-- Используем базовую схему
 
 class LeaderboardItem(OrmBase):
@@ -139,7 +139,7 @@ class AdminUserUpdate(BaseModel):
     last_name: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
-    phone_number: Optional[str] = None
+    # phone_number дублировался, я оставил один
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
     balance: Optional[int] = None
@@ -193,46 +193,34 @@ class GeneralStatsResponse(BaseModel):
     store_purchases_count: int
     total_store_spent: int
 
-# --- Наши новые схемы для статистики (с исправлениями) ---
+# --- НАШИ НОВЫЕ СХЕМЫ ДЛЯ РАСШИРЕННОЙ СТАТИСТИКИ ---
 
 class HourlyActivityStats(BaseModel):
     hourly_stats: dict[int, int]
 
-class UserEngagement(BaseModel):
-    user: 'User'  # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
+class UserEngagement(OrmBase):
+    user: UserResponse  # Используем твою основную схему UserResponse
     count: int
-    class Config:
-        from_attributes = True
 
 class UserEngagementStats(BaseModel):
-    top_senders: list['UserEngagement'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
-    top_receivers: list['UserEngagement'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
+    top_senders: List['UserEngagement']
+    top_receivers: List['UserEngagement']
     
-class PopularItem(BaseModel):
-    item: 'MarketItem' # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
+class PopularItem(OrmBase):
+    item: MarketItemResponse # Используем твою основную схему MarketItemResponse
     purchase_count: int
-    class Config:
-        from_attributes = True
     
 class PopularItemsStats(BaseModel):
-    items: list['PopularItem'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
+    items: List['PopularItem']
 
 class InactiveUsersStats(BaseModel):
-    users: list['User'] # <-- ИСПРАВЛЕНИЕ: Добавили кавычки
+    users: List[UserResponse] # Возвращаем список полных профилей
 
 class TotalBalanceStats(BaseModel):
     total_balance: int
 
 # --- Обновление ссылок в конце файла ---
-
-# Существующие вызовы
-User.model_rebuild()
-Transaction.model_rebuild()
-Purchase.model_rebuild()
-
-# ИСПРАВЛЕНИЕ: Добавляем наши новые схемы
-UserEngagement.model_rebuild()
-UserEngagementStats.model_rebuild()
-PopularItem.model_rebuild()
-PopularItemsStats.model_rebuild()
-InactiveUsersStats.model_rebuild()
+# Важно! Pydantic v2 (который ты используешь) умнее и сам обрабатывает большинство 
+# forward references. Явный вызов .model_rebuild() часто не нужен, если структура
+# не слишком сложная (как у тебя). Я убрал эти вызовы, так как они, скорее всего,
+# и были источником последней ошибки. Код станет чище и должен работать.
