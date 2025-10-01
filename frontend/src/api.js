@@ -1,149 +1,240 @@
+// frontend/src/api.js
 import axios from 'axios';
-import { getToken, removeToken } from './storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+// API_BASE_URL используется только для apiClient, экспортировать его не нужно
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+console.log('Using API URL:', API_BASE_URL);
 
-const axiosInstance = axios.create({
+const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-        const initData = new URLSearchParams(window.Telegram.WebApp.initData);
-        const authData = initData.get('user');
-        if (authData) {
-          config.headers['Telegram-Auth'] = authData;
-        }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// --- Существующие функции (без изменений) ---
 
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      removeToken();
-    }
-    return Promise.reject(error);
-  }
-);
-
-// --- Основные функции ---
-export const getMe = async () => {
-  const response = await axiosInstance.get('/users/me');
-  return response.data;
+export const checkUserStatus = (telegramId) => {
+  return apiClient.get('/users/me', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const registerUser = async (userData) => {
-  const response = await axiosInstance.post('/users/register', userData);
-  return response.data;
+export const registerUser = (telegramId, userData) => {
+  return apiClient.post('/users/auth/register', userData, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const updateUser = async (userId, userData) => {
-  const response = await axiosInstance.put(`/users/${userId}`, userData);
-  return response.data;
+export const getAllUsers = (telegramId) => {
+  return apiClient.get('/users/', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const getFeed = async () => {
-  const response = await axiosInstance.get('/feed');
-  return response.data;
+export const transferPoints = (transferData) => {
+  return apiClient.post('/points/transfer', transferData);
 };
 
-export const getLeaderboard = async () => {
-  const response = await axiosInstance.get('/leaderboard');
-  return response.data;
+export const requestProfileUpdate = (updateData) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/users/me/request-update', updateData, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const transferThanks = async (transferData) => {
-  const response = await axiosInstance.post('/transactions/transfer', transferData);
-  return response.data;
+export const getFeed = () => apiClient.get('/transactions/feed');
+
+export const getLeaderboard = ({ period, type }) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const getMarketItems = async () => {
-  const response = await axiosInstance.get('/market/items');
-  return response.data;
+export const getMyRank = ({ period, type }) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const purchaseItem = async (purchaseData) => {
-  const response = await axiosInstance.post('/market/purchase', purchaseData);
-  return response.data;
+export const getLeaderboardStatus = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get('/leaderboard/status', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const getUserHistory = async (userId) => {
-  const response = await axiosInstance.get(`/users/${userId}/history`);
-  return response.data;
+export const getMarketItems = () => apiClient.get('/market/items');
+export const purchaseItem = (userId, itemId) => {
+  return apiClient.post('/market/purchase', { user_id: userId, item_id: itemId });
 };
 
-export const getMyRank = async () => {
-    const response = await axiosInstance.get(`/users/me/rank`);
-    return response.data;
+export const getUserTransactions = (userId) => {
+  return apiClient.get(`/users/${userId}/transactions`);
 };
 
-// --- Функции для рулетки ---
-export const spinRoulette = async () => {
-  const response = await axiosInstance.post('/roulette/spin');
-  return response.data;
+export const addPointsToAll = (data) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/add-points', data, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const assembleTickets = async () => {
-  const response = await axiosInstance.post('/roulette/assemble_tickets');
-  return response.data;
+export const createMarketItem = (itemData) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/market-items', itemData, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
 };
 
-export const getRouletteHistory = async () => {
-  const response = await axiosInstance.get('/roulette/history');
-  return response.data;
+export const getBanners = () => apiClient.get('/banners');
+
+export const getAllBanners = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/banners', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-// --- Админ-панель (Общее) ---
-export const getUsersForAdmin = async () => {
-  const response = await axiosInstance.get('/admin/users');
-  return response.data;
+export const createBanner = (bannerData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/banners', bannerData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export const updateUserForAdmin = async (userId, userData) => {
-  const response = await axiosInstance.put(`/admin/users/${userId}`, userData);
-  return response.data;
+export const updateBanner = (bannerId, bannerData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/banners/${bannerId}`, bannerData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-// --- Админ-панель (Статистика) ---
-export const getGeneralStats = async (period) => {
-    const response = await axiosInstance.get(`/admin/statistics/general?period=${period}`);
-    return response.data;
+export const deleteBanner = (bannerId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/banners/${bannerId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export const getHourlyActivityStats = async () => {
-  const response = await axiosInstance.get('/admin/statistics/hourly_activity');
-  return response.data;
+export const getAllMarketItems = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/market-items', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export const getUserEngagementStats = async () => {
-  const response = await axiosInstance.get('/admin/statistics/user_engagement');
-  return response.data;
+export const updateMarketItem = (itemId, itemData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/market-items/${itemId}`, itemData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export const getPopularItemsStats = async () => {
-  const response = await axiosInstance.get('/admin/statistics/popular_items');
-  return response.data;
+export const archiveMarketItem = (itemId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/market-items/${itemId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export const getInactiveUsers = async () => {
-  const response = await axiosInstance.get('/admin/statistics/inactive_users');
-  return response.data;
+export const getArchivedMarketItems = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/market-items/archived', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export const getTotalBalance = async () => {
-  const response = await axiosInstance.get('/admin/statistics/total_balance');
-  return response.data;
+export const restoreMarketItem = (itemId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post(`/admin/market-items/${itemId}/restore`, {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
-export default axiosInstance;
+export const assembleTickets = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/roulette/assemble', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const spinRoulette = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/roulette/spin', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const getRouletteHistory = () => apiClient.get('/roulette/history');
+
+export const addTicketsToAll = (data) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/add-tickets', data, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+export const deleteUserCard = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.delete('/users/me/card', {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+export const searchUsers = (query) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.get(`/users/search/?query=${query}`, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+export const adminGetAllUsers = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/users', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminUpdateUser = (userId, userData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put(`/admin/users/${userId}`, userData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminDeleteUser = (userId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/users/${userId}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ АДМИН-ПАНЕЛИ ---
+
+const getAdminHeaders = () => ({
+  headers: { 'X-Telegram-Id': window.Telegram.WebApp.initDataUnsafe?.user?.id },
+});
+
+export const getGeneralStats = (period) => {
+    return apiClient.get(`/admin/statistics/general?period=${period}`, getAdminHeaders());
+};
+
+export const getHourlyActivityStats = () => {
+  return apiClient.get('/admin/statistics/hourly_activity', getAdminHeaders());
+};
+
+export const getUserEngagementStats = () => {
+  return apiClient.get('/admin/statistics/user_engagement', getAdminHeaders());
+};
+
+export const getPopularItemsStats = () => {
+  return apiClient.get('/admin/statistics/popular_items', getAdminHeaders());
+};
+
+export const getInactiveUsers = () => {
+  return apiClient.get('/admin/statistics/inactive_users', getAdminHeaders());
+};
+
+export const getTotalBalance = () => {
+  return apiClient.get('/admin/statistics/total_balance', getAdminHeaders());
+};
