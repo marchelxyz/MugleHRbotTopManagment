@@ -5,10 +5,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from .. import crud, schemas, models
-from ..dependencies import get_current_admin_user
-from ..database import get_db
-
+import crud
+import schemas
+import models
+from dependencies import get_current_admin_user
+from database import get_db
 # --- ПРАВИЛЬНАЯ НАСТРОЙКА РОУТЕРА ---
 # Префикс /admin и зависимость от админа задаются один раз здесь
 router = APIRouter(
