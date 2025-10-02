@@ -224,3 +224,10 @@ class TotalBalanceStats(BaseModel):
 # forward references. Явный вызов .model_rebuild() часто не нужен, если структура
 # не слишком сложная (как у тебя). Я убрал эти вызовы, так как они, скорее всего,
 # и были источником последней ошибки. Код станет чище и должен работать.
+
+class LoginActivityStats(BaseModel):
+    hourly_stats: dict[int, int]
+
+class ActiveUserRatioStats(BaseModel):
+    active_users: int
+    inactive_users: int
