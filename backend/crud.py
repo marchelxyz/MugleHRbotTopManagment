@@ -7,7 +7,7 @@ from datetime import datetime # Добавьте этот импорт ввер�
 from sqlalchemy.orm import Session  # <--- ДОБАВЬ ЭТУ СТРОКУ
 import random
 from sqlalchemy.future import select
-from sqlalchemy import func, update 
+from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from bot import send_telegram_message
