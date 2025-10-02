@@ -2,10 +2,11 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, Base
-from .routers import users, transactions, market, admin, banners, roulette, scheduler, telegram
+# --- ИСПРАВЛЕНИЕ: Убираем точки из импортов ---
+from database import engine, Base
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram
 
-# Создаем все таблицы в базе данных при старте (для разработки)
+# Создаем все таблицы в базе данных при старте
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -27,8 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ РОУТЕРОВ ---
-# Префиксы теперь заданы внутри каждого файла роутера
+# Подключение роутеров (остается без изменений)
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(market.router)
