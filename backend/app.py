@@ -2,14 +2,20 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# --- ИСПРАВЛЕНИЕ: Убираем точки из импортов ---
+from contextlib import asynccontextmanager
+
+# Абсолютные импорты (без точек)
 from database import engine, Base
 from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram
 
-# Создаем все таблицы в базе данных при старте
-Base.metadata.create_all(bind=engine)
+# --- ПРАВИЛЬНЫЙ АСИНХРОННЫЙ СПОСОБ СОЗДАНИЯ ТАБЛИЦ ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Настройка CORS
 origins = [
@@ -17,7 +23,7 @@ origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "https://mugle-h-rbot-top-managment-m11i.vercel.app",
-    "*" # Оставляем для гибкости
+    "*"
 ]
 
 app.add_middleware(
@@ -28,7 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключение роутеров (остается без изменений)
+# Подключение роутеров
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(market.router)
