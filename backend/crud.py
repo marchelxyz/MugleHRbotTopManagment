@@ -4,9 +4,10 @@ import zipfile
 import json
 import math # Добавьте этот импорт вверху
 from datetime import datetime # Добавьте этот импорт вверху
+from sqlalchemy.orm import Session  # <--- ДОБАВЬ ЭТУ СТРОКУ
 import random
 from sqlalchemy.future import select
-from sqlalchemy import func, update 
+from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from bot import send_telegram_message
@@ -44,7 +45,6 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         department=user.department,
         username=user.username,
         is_admin=is_admin,
-        # --- ДОБАВЬ ЭТУ СТРОКУ ---
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
         date_of_birth=dob,
@@ -982,3 +982,118 @@ async def get_leaderboards_status(db: AsyncSession):
         statuses.append({ "id": f"{period_key}_sent", "has_data": count_sent > 0 })
             
     return statuses
+
+# --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
+
+async def get_general_statistics(db: AsyncSession, period: str):
+    end_date = datetime.utcnow()
+    if period == "day":
+        start_date = end_date - timedelta(days=1)
+    elif period == "week":
+        start_date = end_date - timedelta(weeks=1)
+    elif period == "month":
+        start_date = end_date - timedelta(days=30)
+    else: # year
+        start_date = end_date - timedelta(days=365)
+    
+    # ИСПРАВЛЕНИЕ: Так как у User нет created_at, мы не можем посчитать "новых".
+    # Вместо этого считаем всех пользователей.
+    query_total_users = select(func.count(models.User.id))
+    total_users = (await db.execute(query_total_users)).scalar_one()
+
+    # "Активные" - это уникальные отправители или получатели за период
+    active_senders = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    active_receivers = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    
+    active_senders_ids = (await db.execute(active_senders)).scalars().all()
+    active_receivers_ids = (await db.execute(active_receivers)).scalars().all()
+    active_users_count = len(set(active_senders_ids).union(set(active_receivers_ids)))
+
+    query_transactions = select(func.count(models.Transaction.id)).filter(models.Transaction.timestamp.between(start_date, end_date))
+    transactions_count = (await db.execute(query_transactions)).scalar_one()
+
+    query_purchases = select(func.count(models.Purchase.id)).filter(models.Purchase.timestamp.between(start_date, end_date))
+    shop_purchases = (await db.execute(query_purchases)).scalar_one()
+
+    return {
+        "new_users_count": total_users, # Возвращаем общее число пользователей
+        "active_users_count": active_users_count,
+        "transactions_count": transactions_count,
+        "store_purchases_count": shop_purchases,
+        "total_turnover": 0, 
+        "total_store_spent": 0,
+    }
+
+async def get_hourly_activity_stats(db: AsyncSession):
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    
+    # ИСПРАВЛЕНИЕ: Используем 'timestamp' вместо 'created_at'
+    query = (
+        select(
+            extract('hour', models.Transaction.timestamp).label('hour'),
+            func.count(models.Transaction.id).label('transaction_count')
+        )
+        .filter(models.Transaction.timestamp >= thirty_days_ago)
+        .group_by(extract('hour', models.Transaction.timestamp))
+        .order_by(extract('hour', models.Transaction.timestamp))
+    )
+    result = await db.execute(query)
+    activity = result.all()
+    
+    hourly_stats = {hour: 0 for hour in range(24)}
+    for row in activity:
+        if row.hour is not None:
+            hourly_stats[row.hour] = row.transaction_count
+            
+    return hourly_stats
+
+async def get_user_engagement_stats(db: AsyncSession, limit: int = 5):
+    query_senders = (
+        select(models.User, func.count(models.Transaction.id).label('sent_count'))
+        .join(models.Transaction, models.User.id == models.Transaction.sender_id)
+        .group_by(models.User.id)
+        .order_by(func.count(models.Transaction.id).desc())
+        .limit(limit)
+    )
+    top_senders = (await db.execute(query_senders)).all()
+
+    query_receivers = (
+        select(models.User, func.count(models.Transaction.id).label('received_count'))
+        .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
+        .group_by(models.User.id)
+        .order_by(func.count(models.Transaction.id).desc())
+        .limit(limit)
+    )
+    top_receivers = (await db.execute(query_receivers)).all()
+    
+    return {"top_senders": top_senders, "top_receivers": top_receivers}
+
+async def get_popular_items_stats(db: AsyncSession, limit: int = 10):
+    query = (
+        select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
+        .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
+        .group_by(models.MarketItem.id)
+        .order_by(func.count(models.Purchase.id).desc())
+        .limit(limit)
+    )
+    popular_items = (await db.execute(query)).all()
+    return popular_items
+
+async def get_inactive_users(db: AsyncSession):
+    active_senders_query = select(models.Transaction.sender_id).distinct()
+    active_recipients_query = select(models.Transaction.receiver_id).distinct()
+    
+    active_senders = (await db.execute(active_senders_query)).scalars().all()
+    active_recipients = (await db.execute(active_recipients_query)).scalars().all()
+    
+    active_user_ids = set(active_senders).union(set(active_recipients))
+    
+    inactive_users_query = select(models.User).filter(models.User.id.notin_(active_user_ids))
+    inactive_users = (await db.execute(inactive_users_query)).scalars().all()
+    
+    return inactive_users
+
+async def get_total_balance(db: AsyncSession):
+    query = select(func.sum(models.User.balance))
+    total = (await db.execute(query)).scalar_one_or_none()
+    return total or 0

@@ -1,5 +1,5 @@
 # backend/models.py
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date, func 
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 # Стало
@@ -29,6 +29,7 @@ class User(Base):
     last_ticket_reset = Column(Date, default=datetime.utcnow)
     card_barcode = Column(String, nullable=True) # Поле для хранения данных штрих-кода
     card_balance = Column(String, nullable=True) # Поле для хранения баланса карты
+    registration_date = Column(DateTime, default=func.now())
 
 
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")

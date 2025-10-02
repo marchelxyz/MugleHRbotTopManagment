@@ -1,138 +1,94 @@
 // frontend/src/pages/RoulettePage.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
-import PageLayout from '../components/PageLayout';
-import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
+import React, { useState, useRef } from 'react';
 import styles from './RoulettePage.module.css';
-import { useModalAlert } from '../contexts/ModalAlertContext';
+import { spinRoulette } from '../api'; // Убедитесь, что api.js на месте
 
-const reelNumbers = Array.from({ length: 30 }, (_, i) => i + 1);
+const RoulettePage = ({ user, onBack, updateUser }) => {
+  const [isSpinning, setIsSpinning] = useState(false);
+  // Рефы для каждого барабана
+  const reel1 = useRef(null);
+  const reel2 = useRef(null);
+  const reel3 = useRef(null);
 
-function RoulettePage({ user, onUpdateUser }) {
-    const { showAlert } = useModalAlert();
-    const [localUser, setLocalUser] = useState(user);
-    const [history, setHistory] = useState([]);
-    const [isSpinning, setIsSpinning] = useState(false);
-    const [winAmount, setWinAmount] = useState(null);
+  // Список чисел на каждом барабане. Вы можете сделать его длиннее или изменить значения.
+  const reelNumbers = [100, 20, 50, 0, 10, 100, 0, 50, 10, 20];
 
-    const reelsRef = useRef([]);
+  const handleSpin = async () => {
+    if (isSpinning || user.points_balance < 10) {
+      alert(user.points_balance < 10 ? "Недостаточно очков для вращения!" : "Вращение уже идет!");
+      return;
+    }
 
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const res = await getRouletteHistory();
-                setHistory(res.data);
-            } catch (error) { console.error("Не удалось обновить историю рулетки:", error); }
-        };
-        fetchHistory();
-        const intervalId = setInterval(fetchHistory, 5000);
-        return () => clearInterval(intervalId);
-    }, []);
+    setIsSpinning(true);
 
-    const handleAssemble = async () => {
-        if (localUser.ticket_parts < 2) return;
-        try {
-            const response = await assembleTickets();
-            setLocalUser(response.data);
-            onUpdateUser(response.data);
-            showAlert('Билет собран!', 'success');
-        } catch (error) {
-            showAlert(error.response?.data?.detail || 'Ошибка сборки', 'error');
-        }
-    };
-    
-    // --- ИСПРАВЛЕННАЯ ЛОГИКА АНИМАЦИИ ---
-    const handleSpin = async () => {
-        if (localUser.tickets < 1 || isSpinning) return;
-        setIsSpinning(true);
-        setWinAmount(null);
-        
-        // Сбрасываем барабаны для нового старта
-        reelsRef.current.forEach(reel => {
-            reel.style.transition = 'none';
-        });
+    try {
+      const result = await spinRoulette(); // Вызов API для получения результата
+      updateUser({ ...user, points_balance: result.current_balance });
+      
+      // Здесь должна быть логика анимации для каждого барабана,
+      // чтобы в итоге остановиться на нужных цифрах.
+      // Пока что сделаем простую случайную анимацию.
+      
+      const animateReel = (reelRef, delay) => {
+        setTimeout(() => {
+          const randomIndex = Math.floor(Math.random() * reelNumbers.length);
+          const backgroundPosition = `0 -${randomIndex * 100}px`; // Примерная позиция
+          if (reelRef.current) {
+             reelRef.current.style.transition = 'background-position 3s ease-out';
+             reelRef.current.style.backgroundPosition = backgroundPosition;
+          }
+        }, delay);
+      };
 
-        try {
-            const response = await spinRoulette();
-            const { prize_won, new_balance, new_tickets } = response.data;
-            const updatedUser = { ...localUser, balance: new_balance, tickets: new_tickets };
-            
-            const totalAnimationTime = 5000; // Общее время анимации в миллисекундах
+      animateReel(reel1, 0);
+      animateReel(reel2, 500);
+      animateReel(reel3, 1000);
 
-            // Запускаем анимацию остановки для каждого барабана
-            reelsRef.current.forEach((reel, index) => {
-                const targetNumber = prize_won;
-                const targetIndex = reelNumbers.indexOf(targetNumber);
-                
-                // Используем фиксированную высоту символа из CSS
-                const symbolHeight = 120; 
-                const totalSymbols = reelNumbers.length;
-                
-                // Рассчитываем конечную позицию
-                // 5 полных оборотов + позиция выигрышного числа
-                const totalDistance = 5 * totalSymbols * symbolHeight + (targetIndex * symbolHeight);
-                
-                // Устанавливаем transition с небольшой задержкой для каждого барабана
-                const animationDuration = (totalAnimationTime / 1000) - (reelsRef.current.length - 1 - index) * 0.3;
-                reel.style.transition = `transform ${animationDuration}s cubic-bezier(0.25, 1, 0.5, 1)`;
-                reel.style.transform = `translateY(-${totalDistance}px)`;
-            });
+    } catch (error) {
+      console.error('Spin error:', error);
+      alert(error.detail || 'Произошла ошибка во время вращения.');
+    } finally {
+      // Даем анимации завершиться
+      setTimeout(() => {
+        setIsSpinning(false);
+      }, 4000);
+    }
+  };
 
-            // Обновляем состояние и историю ПОСЛЕ завершения всей анимации
-            setTimeout(() => {
-                setLocalUser(updatedUser);
-                onUpdateUser(updatedUser);
-                setWinAmount(prize_won);
-                setIsSpinning(false);
-                getRouletteHistory().then(res => setHistory(res.data));
-            }, totalAnimationTime);
+  return (
+    <div className={styles.pageContainer}>
+      <button onClick={onBack} className={styles.backButton}>Назад</button>
+      <h2>Рулетка</h2>
+      <p>Стоимость вращения: 10 очков. Ваш баланс: {user.points_balance}</p>
+      
+      {/* Используем вашу новую структуру */}
+      <div className={styles.slotMachine}>
+        <div className={styles.slotWindow}>
+          {/* Вставляем первый барабан */}
+          <div ref={reel1} className={styles.reel}>
+            {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
+          </div>
+        </div>
+        <div className={styles.slotWindow}>
+          {/* Вставляем второй барабан */}
+          <div ref={reel2} className={styles.reel}>
+            {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
+          </div>
+        </div>
+        <div className={styles.slotWindow}>
+          {/* Вставляем третий барабан */}
+          <div ref={reel3} className={styles.reel}>
+            {reelNumbers.map((num, i) => <div key={i}>{num}</div>)}
+          </div>
+        </div>
+      </div>
 
-        } catch (error) {
-            showAlert(error.response?.data?.detail || 'Ошибка прокрутки', 'error');
-            setIsSpinning(false);
-        }
-    };
-
-    return (
-        <PageLayout title="Слот-машина">
-            <div className={styles.slotMachine}>
-                <div className={styles.reelsContainer}>
-                    {[0, 1, 2].map(i => (
-                        <div key={i} className={styles.reelWrapper}>
-                            <div className={styles.reelTrack} ref={el => reelsRef.current[i] = el}>
-                                {/* Создаем 10 копий чисел для очень длинной ленты, чтобы избежать "пропадания" */}
-                                {Array(10).fill(reelNumbers).flat().map((number, index) => (
-                                    <div key={index} className={styles.symbol}>
-                                        {number}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            
-            {winAmount !== null && <div className={styles.winMessage}>Выигрыш {winAmount} спасибок! 🎉</div>}
-            
-            <button 
-              className={`${styles.spinButton} ${isSpinning ? styles.spinning : ''}`} 
-              onClick={handleSpin} 
-              disabled={isSpinning || localUser.tickets < 1}
-            >
-                SPIN
-            </button>
-            
-            <div className={styles.history}>
-                <h3>Последние победители</h3>
-                {history.length > 0 ? history.map(win => (
-                    <div key={win.id} className={styles.historyItem}>
-                        <span>{win.user.first_name}</span>
-                        <strong>выиграл(а) {win.amount} спасибок</strong>
-                    </div>
-                )) : <p>Пока никто не выигрывал.</p>}
-            </div>
-        </PageLayout>
-    );
-}
+      <button onClick={handleSpin} disabled={isSpinning} className={styles.spinButton}>
+        {isSpinning ? 'Вращение...' : 'Крутить!'}
+      </button>
+    </div>
+  );
+};
 
 export default RoulettePage;

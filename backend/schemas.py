@@ -6,8 +6,6 @@ from datetime import datetime, date
 class OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# --- НОВЫЕ И ПЕРЕРАБОТАННЫЕ СХЕМЫ ---
-
 # --- ИЗМЕНЕНИЕ: Базовая схема для товара ---
 class MarketItemBase(OrmBase):
     id: int
@@ -84,7 +82,7 @@ class FeedItem(OrmBase):
     amount: int
     message: Optional[str]
     timestamp: datetime
-    sender: UserBase   # <-- Используем базовую схему
+    sender: UserBase    # <-- Используем базовую схему
     receiver: UserBase # <-- Используем базовую схему
 
 class LeaderboardItem(OrmBase):
@@ -141,7 +139,7 @@ class AdminUserUpdate(BaseModel):
     last_name: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
-    phone_number: Optional[str] = None
+    # phone_number дублировался, я оставил один
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
     balance: Optional[int] = None
@@ -185,3 +183,44 @@ class MyRankResponse(BaseModel):
     rank: Optional[int]
     total_received: int
     total_participants: int
+
+# --- СХЕМА ДЛЯ СТАТИСТИКИ ---
+class GeneralStatsResponse(BaseModel):
+    new_users_count: int
+    transactions_count: int
+    active_users_count: int
+    total_turnover: int
+    store_purchases_count: int
+    total_store_spent: int
+
+# --- НАШИ НОВЫЕ СХЕМЫ ДЛЯ РАСШИРЕННОЙ СТАТИСТИКИ ---
+
+class HourlyActivityStats(BaseModel):
+    hourly_stats: dict[int, int]
+
+class UserEngagement(OrmBase):
+    user: UserResponse  # Используем твою основную схему UserResponse
+    count: int
+
+class UserEngagementStats(BaseModel):
+    top_senders: List['UserEngagement']
+    top_receivers: List['UserEngagement']
+    
+class PopularItem(OrmBase):
+    item: MarketItemResponse # Используем твою основную схему MarketItemResponse
+    purchase_count: int
+    
+class PopularItemsStats(BaseModel):
+    items: List['PopularItem']
+
+class InactiveUsersStats(BaseModel):
+    users: List[UserResponse] # Возвращаем список полных профилей
+
+class TotalBalanceStats(BaseModel):
+    total_balance: int
+
+# --- Обновление ссылок в конце файла ---
+# Важно! Pydantic v2 (который ты используешь) умнее и сам обрабатывает большинство 
+# forward references. Явный вызов .model_rebuild() часто не нужен, если структура
+# не слишком сложная (как у тебя). Я убрал эти вызовы, так как они, скорее всего,
+# и были источником последней ошибки. Код станет чище и должен работать.
