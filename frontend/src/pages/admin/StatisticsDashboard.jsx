@@ -11,8 +11,8 @@ import UserEngagementPage from './stats/UserEngagementPage';
 import PopularItemsPage from './stats/PopularItemsPage';
 import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
-import LoginActivityPage from './LoginActivityPage';
-import ActiveUserRatioPage from './ActiveUserRatioPage';
+import LoginActivityPage from './stats/LoginActivityPage';
+import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
 
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
