@@ -145,21 +145,9 @@ async def admin_delete_user_route(
 
 # --- НАЧАЛО: НОВЫЙ ЭНДПОИНТ ДЛЯ СТАТИСТИКИ ---
 @router.get("/statistics/general", response_model=schemas.GeneralStatsResponse)
-async def get_general_stats_route(
-    period: int = Query(7, description="Период в днях (1, 7, 30, 90, 365)"), # Добавили описание
-    admin_user: models.User = Depends(get_current_admin_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Возвращает общую статистику по активности в приложении."""
-    # --- ИЗМЕНЕНИЕ: Добавляем 1 в список ---
-    if period not in [1, 7, 30, 90, 365]:
-        raise HTTPException(status_code=400, detail="Недопустимый период. Используйте 1, 7, 30, 90 или 365.")
-    
-    stats = await crud.get_general_statistics(db, period_days=period)
+def get_general_statistics_route(period: str = "day", db: Session = Depends(get_db)):
+    stats = crud.get_general_statistics(db=db, period=period)
     return stats
-# --- КОНЕЦ: НОВЫЙ ЭНДПОИНТ ДЛЯ СТАТИСТИКИ ---
-
-# --- Наши новые эндпоинты статистики ---
 
 @router.get("/statistics/hourly_activity", response_model=schemas.HourlyActivityStats)
 def get_hourly_activity(db: Session = Depends(get_db)):
@@ -169,30 +157,31 @@ def get_hourly_activity(db: Session = Depends(get_db)):
 @router.get("/statistics/user_engagement", response_model=schemas.UserEngagementStats)
 def get_user_engagement(db: Session = Depends(get_db)):
     engagement_data = crud.get_user_engagement_stats(db)
+    
+    # Преобразуем данные под новую схему
     top_senders_schema = [{"user": user, "count": count} for user, count in engagement_data["top_senders"]]
     top_receivers_schema = [{"user": user, "count": count} for user, count in engagement_data["top_receivers"]]
-    return {"top_senders": top_senders_schema, "top_receivers": top_receivers_schema}
+    
+    return {
+        "top_senders": top_senders_schema,
+        "top_receivers": top_receivers_schema
+    }
 
 @router.get("/statistics/popular_items", response_model=schemas.PopularItemsStats)
 def get_popular_items(db: Session = Depends(get_db)):
     items_data = crud.get_popular_items_stats(db)
+    
+    # Преобразуем данные под новую схему
     popular_items_schema = [{"item": item, "purchase_count": count} for item, count in items_data]
+    
     return {"items": popular_items_schema}
-
-# --- Добавляем эндпоинты для твоих идей ---
 
 @router.get("/statistics/inactive_users", response_model=schemas.InactiveUsersStats)
 def get_inactive_users_list(db: Session = Depends(get_db)):
-    """
-    Получение списка неактивных пользователей.
-    """
     inactive_users = crud.get_inactive_users(db)
     return {"users": inactive_users}
 
 @router.get("/statistics/total_balance", response_model=schemas.TotalBalanceStats)
 def get_economy_total_balance(db: Session = Depends(get_db)):
-    """
-    Получение общего количества "спасибок" в системе.
-    """
     total_balance = crud.get_total_balance(db)
     return {"total_balance": total_balance}
