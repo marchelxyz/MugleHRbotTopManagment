@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
-import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaPieChart } from 'react-icons/fa';
+import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie } from 'react-icons/fa';
 
 // Импортируем ВСЕ наши компоненты-отчёты
 import GeneralStats from './stats/GeneralStats';
