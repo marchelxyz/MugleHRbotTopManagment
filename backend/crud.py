@@ -1115,17 +1115,16 @@ async def get_total_balance(db: AsyncSession):
 async def get_login_activity_stats(db: AsyncSession):
     """
     Собирает статистику по входам пользователей за последние 30 дней, сгруппированную по часам.
-    ИСПРАВЛЕНО: Использует поле last_login_date.
     """
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: last_login -> last_login_date ---
     query = (
         select(
             extract('hour', models.User.last_login_date).label('hour'),
             func.count(models.User.id).label('login_count')
         )
-        .filter(models.User.last_login_date >= thirty_days_ago.date()) # Сравниваем дату с датой
+        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: убираем .date() ---
+        .filter(models.User.last_login_date >= thirty_days_ago)
         .group_by(extract('hour', models.User.last_login_date))
         .order_by(extract('hour', models.User.last_login_date))
     )
