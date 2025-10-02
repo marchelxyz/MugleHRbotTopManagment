@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
+// --- ИСПРАВЛЕНИЕ №1: Меняем FaPieChart на FaChartPie ---
 import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie } from 'react-icons/fa';
 
 // Импортируем ВСЕ наши компоненты-отчёты
@@ -11,7 +12,6 @@ import UserEngagementPage from './stats/UserEngagementPage';
 import PopularItemsPage from './stats/PopularItemsPage';
 import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
-// --- ИСПРАВЛЕНИЕ: Добавляем правильный путь './stats/' ---
 import LoginActivityPage from './stats/LoginActivityPage';
 import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
 
@@ -22,7 +22,8 @@ const StatisticsDashboard = () => {
         { id: 'general', label: 'Общая', icon: <FaChartBar /> },
         { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf /> },
         { id: 'logins', label: 'Заходы', icon: <FaSignInAlt /> },
-        { id: 'ratio', label: 'Акт/Неакт', icon: <FaPieChart /> },
+        // --- ИСПРАВЛЕНИЕ №2: Меняем FaPieChart на FaChartPie ---
+        { id: 'ratio', label: 'Акт/Неакт', icon: <FaChartPie /> },
         { id: 'engagement', label: 'Лидеры', icon: <FaStar /> },
         { id: 'popular', label: 'Товары', icon: <FaChartLine /> },
         { id: 'inactive', label: 'Неактивные', icon: <FaUsersSlash /> },
