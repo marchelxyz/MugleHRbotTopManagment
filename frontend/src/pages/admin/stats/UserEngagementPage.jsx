@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { getUserEngagementStats } from '../../../api';
-import styles from './UserEngagementPage.module.css'; // Подключаем наши новые стили
-import defaultAvatar from '../../../assets/default-avatar.png'; // Аватарка по умолчанию
+import styles from './UserEngagementPage.module.css';
+import UserAvatar from '../../../components/UserAvatar'; // <-- ИМПОРТИРУЕМ ТВОЙ КОМПОНЕНТ
 
 const UserEngagementPage = () => {
     const [stats, setStats] = useState(null);
@@ -35,7 +35,6 @@ const UserEngagementPage = () => {
         return <p style={{ color: 'red' }}>{error}</p>;
     }
 
-    // Компонент для отображения одного списка
     const LeaderList = ({ title, users }) => (
         <div className={styles.listContainer}>
             <h3>{title}</h3>
@@ -43,11 +42,10 @@ const UserEngagementPage = () => {
                 {users && users.length > 0 ? (
                     users.map(({ user, count }) => (
                         <li key={user.id} className={styles.listItem}>
-                            <img 
-                                src={user.telegram_photo_url || defaultAvatar} 
-                                alt={`${user.first_name} ${user.last_name}`} 
-                                className={styles.avatar}
-                            />
+                            {/* --- ИЗМЕНЕНИЕ ЗДЕСЬ: ИСПОЛЬЗУЕМ UserAvatar --- */}
+                            <div className={styles.avatarContainer}>
+                                <UserAvatar user={user} size="small" />
+                            </div>
                             <div className={styles.userInfo}>
                                 <div className={styles.userName}>{`${user.first_name} ${user.last_name}`}</div>
                                 <div className={styles.userPosition}>{user.position}</div>
