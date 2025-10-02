@@ -17,8 +17,13 @@ app = FastAPI(lifespan=lifespan)
 
 # --- 2. ДОБАВЛЯЕМ НАСТРОЙКУ CORS ---
 # Указываем, каким адресам разрешено обращаться к нашему API.
-# "*" означает "разрешить всем", что хорошо для начала.
-origins = ["*"]
+# "*" означает "разрешить всем", что хорошо для начала. [*]
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://mugle-h-rbot-top-managment-m11i.vercel.app",
+]
 
 app.add_middleware(
     CORSMiddleware,
