@@ -11,6 +11,8 @@ import UserEngagementPage from './stats/UserEngagementPage';
 import PopularItemsPage from './stats/PopularItemsPage';
 import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
+import LoginActivityPage from './LoginActivityPage';
+import ActiveUserRatioPage from './ActiveUserRatioPage';
 
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -18,6 +20,8 @@ const StatisticsDashboard = () => {
     const tabs = [
         { id: 'general', label: 'Общая', icon: <FaChartBar /> },
         { id: 'hourly', label: 'Активность', icon: <FaHourglassHalf /> },
+         { id: 'logins', label: 'Заходы', icon: <FaSignInAlt /> },
+        { id: 'ratio', label: 'Акт/Неакт', icon: <FaPieChart /> },
         { id: 'engagement', label: 'Лидеры', icon: <FaStar /> },
         { id: 'popular', label: 'Товары', icon: <FaChartLine /> },
         { id: 'inactive', label: 'Неактивные', icon: <FaUsersSlash /> },
@@ -28,6 +32,8 @@ const StatisticsDashboard = () => {
         switch (activeTab) {
             case 'general': return <GeneralStats />;
             case 'hourly': return <HourlyActivityPage />;
+            case 'logins': return <LoginActivityPage />; // <-- Новый
+            case 'ratio': return <ActiveUserRatioPage />; // <-- Новый
             case 'engagement': return <UserEngagementPage />;
             case 'popular': return <PopularItemsPage />;
             case 'inactive': return <InactiveUsersPage />;
