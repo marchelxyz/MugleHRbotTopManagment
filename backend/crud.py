@@ -996,24 +996,30 @@ async def get_general_statistics(db: AsyncSession, period: str):
     else: # year
         start_date = end_date - timedelta(days=365)
     
-    query_new_users = select(func.count(models.User.id)).filter(models.User.created_at.between(start_date, end_date))
-    new_users = (await db.execute(query_new_users)).scalar_one()
+    # ИСПРАВЛЕНИЕ: Так как у User нет created_at, мы не можем посчитать "новых".
+    # Вместо этого считаем всех пользователей.
+    query_total_users = select(func.count(models.User.id))
+    total_users = (await db.execute(query_total_users)).scalar_one()
 
-    query_active_users = select(func.count(models.User.id)).filter(models.User.last_login.between(start_date, end_date))
-    active_users = (await db.execute(query_active_users)).scalar_one()
+    # "Активные" - это уникальные отправители или получатели за период
+    active_senders = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    active_receivers = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    
+    active_senders_ids = (await db.execute(active_senders)).scalars().all()
+    active_receivers_ids = (await db.execute(active_receivers)).scalars().all()
+    active_users_count = len(set(active_senders_ids).union(set(active_receivers_ids)))
 
-    query_transactions = select(func.count(models.Transaction.id)).filter(models.Transaction.created_at.between(start_date, end_date))
+    query_transactions = select(func.count(models.Transaction.id)).filter(models.Transaction.timestamp.between(start_date, end_date))
     transactions_count = (await db.execute(query_transactions)).scalar_one()
 
-    query_purchases = select(func.count(models.Purchase.id)).filter(models.Purchase.created_at.between(start_date, end_date))
+    query_purchases = select(func.count(models.Purchase.id)).filter(models.Purchase.timestamp.between(start_date, end_date))
     shop_purchases = (await db.execute(query_purchases)).scalar_one()
 
     return {
-        "new_users_count": new_users,
-        "active_users_count": active_users,
+        "new_users_count": total_users, # Возвращаем общее число пользователей
+        "active_users_count": active_users_count,
         "transactions_count": transactions_count,
         "store_purchases_count": shop_purchases,
-        # Добавь сюда total_turnover и total_store_spent, если они есть в твоей модели
         "total_turnover": 0, 
         "total_store_spent": 0,
     }
@@ -1021,14 +1027,15 @@ async def get_general_statistics(db: AsyncSession, period: str):
 async def get_hourly_activity_stats(db: AsyncSession):
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     
+    # ИСПРАВЛЕНИЕ: Используем 'timestamp' вместо 'created_at'
     query = (
         select(
-            extract('hour', models.Transaction.created_at).label('hour'),
+            extract('hour', models.Transaction.timestamp).label('hour'),
             func.count(models.Transaction.id).label('transaction_count')
         )
-        .filter(models.Transaction.created_at >= thirty_days_ago)
-        .group_by(extract('hour', models.Transaction.created_at))
-        .order_by(extract('hour', models.Transaction.created_at))
+        .filter(models.Transaction.timestamp >= thirty_days_ago)
+        .group_by(extract('hour', models.Transaction.timestamp))
+        .order_by(extract('hour', models.Transaction.timestamp))
     )
     result = await db.execute(query)
     activity = result.all()
@@ -1052,7 +1059,7 @@ async def get_user_engagement_stats(db: AsyncSession, limit: int = 5):
 
     query_receivers = (
         select(models.User, func.count(models.Transaction.id).label('received_count'))
-        .join(models.Transaction, models.User.id == models.Transaction.recipient_id)
+        .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
         .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc())
         .limit(limit)
@@ -1074,7 +1081,7 @@ async def get_popular_items_stats(db: AsyncSession, limit: int = 10):
 
 async def get_inactive_users(db: AsyncSession):
     active_senders_query = select(models.Transaction.sender_id).distinct()
-    active_recipients_query = select(models.Transaction.recipient_id).distinct()
+    active_recipients_query = select(models.Transaction.receiver_id).distinct()
     
     active_senders = (await db.execute(active_senders_query)).scalars().all()
     active_recipients = (await db.execute(active_recipients_query)).scalars().all()
@@ -1090,4 +1097,3 @@ async def get_total_balance(db: AsyncSession):
     query = select(func.sum(models.User.balance))
     total = (await db.execute(query)).scalar_one_or_none()
     return total or 0
-
