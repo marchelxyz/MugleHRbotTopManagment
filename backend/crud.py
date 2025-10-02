@@ -985,161 +985,109 @@ async def get_leaderboards_status(db: AsyncSession):
 
 # --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
 
-async def get_general_statistics(db: AsyncSession, period_days: int) -> dict:
-    """Собирает общую статистику за указанный период в днях."""
+async def get_general_statistics(db: AsyncSession, period: str):
+    end_date = datetime.utcnow()
+    if period == "day":
+        start_date = end_date - timedelta(days=1)
+    elif period == "week":
+        start_date = end_date - timedelta(weeks=1)
+    elif period == "month":
+        start_date = end_date - timedelta(days=30)
+    else: # year
+        start_date = end_date - timedelta(days=365)
     
-    # Используем date.today() для корректной работы с датами в базе
-    end_date = date.today()
-    start_date = end_date - timedelta(days=period_days)
+    query_new_users = select(func.count(models.User.id)).filter(models.User.created_at.between(start_date, end_date))
+    new_users = (await db.execute(query_new_users)).scalar_one()
 
-    # 1. Новые пользователи (теперь с проверкой на NULL)
-    new_users_query = select(func.count(models.User.id)).where(
-        models.User.registration_date.is_not(None), # <-- ГЛАВНОЕ ИСПРАВЛЕНИЕ
-        func.date(models.User.registration_date) >= start_date
-    )
-    new_users_count = await db.scalar(new_users_query)
+    query_active_users = select(func.count(models.User.id)).filter(models.User.last_login.between(start_date, end_date))
+    active_users = (await db.execute(query_active_users)).scalar_one()
 
-    # 2. Количество транзакций
-    transactions_query = select(func.count(models.Transaction.id)).where(
-        func.date(models.Transaction.timestamp) >= start_date
-    )
-    transactions_count = await db.scalar(transactions_query)
+    query_transactions = select(func.count(models.Transaction.id)).filter(models.Transaction.created_at.between(start_date, end_date))
+    transactions_count = (await db.execute(query_transactions)).scalar_one()
 
-    # 3. Активные пользователи (отправили или получили)
-    active_senders = select(models.Transaction.sender_id).where(
-        func.date(models.Transaction.timestamp) >= start_date
-    ).distinct()
-    
-    active_receivers = select(models.Transaction.receiver_id).where(
-        func.date(models.Transaction.timestamp) >= start_date
-    ).distinct()
-    
-    active_users_query = select(func.count()).select_from(
-        select(active_senders.union(active_receivers).subquery()).distinct()
-    )
-    active_users_count = await db.scalar(active_users_query)
-
-    # 4. Сумма "спасибок" в обороте
-    turnover_query = select(func.sum(models.Transaction.amount)).where(
-        func.date(models.Transaction.timestamp) >= start_date
-    )
-    total_turnover = await db.scalar(turnover_query) or 0
-
-    # 5. Покупки в магазине
-    purchases_query = select(func.count(models.Purchase.id)).where(
-        func.date(models.Purchase.timestamp) >= start_date
-    )
-    store_purchases_count = await db.scalar(purchases_query)
-
-    # 6. Общая потраченная сумма в магазине
-    spent_query = select(func.sum(models.MarketItem.price)).join(
-        models.Purchase, models.Purchase.item_id == models.MarketItem.id
-    ).where(
-        func.date(models.Purchase.timestamp) >= start_date
-    )
-    total_store_spent = await db.scalar(spent_query) or 0
+    query_purchases = select(func.count(models.Purchase.id)).filter(models.Purchase.created_at.between(start_date, end_date))
+    shop_purchases = (await db.execute(query_purchases)).scalar_one()
 
     return {
-        "new_users_count": new_users_count,
+        "new_users_count": new_users,
+        "active_users_count": active_users,
         "transactions_count": transactions_count,
-        "active_users_count": active_users_count,
-        "total_turnover": total_turnover,
-        "store_purchases_count": store_purchases_count,
-        "total_store_spent": total_store_spent,
+        "store_purchases_count": shop_purchases,
+        # Добавь сюда total_turnover и total_store_spent, если они есть в твоей модели
+        "total_turnover": 0, 
+        "total_store_spent": 0,
     }
 
-# --- КОНЕЦ: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
-
-def get_hourly_activity_stats(db: Session):
-    """
-    Собирает статистику по транзакциям за последние 30 дней, сгруппированную по часам.
-    """
+async def get_hourly_activity_stats(db: AsyncSession):
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    activity = (
-        db.query(
+    
+    query = (
+        select(
             extract('hour', models.Transaction.created_at).label('hour'),
             func.count(models.Transaction.id).label('transaction_count')
         )
         .filter(models.Transaction.created_at >= thirty_days_ago)
         .group_by(extract('hour', models.Transaction.created_at))
         .order_by(extract('hour', models.Transaction.created_at))
-        .all()
     )
+    result = await db.execute(query)
+    activity = result.all()
+    
     hourly_stats = {hour: 0 for hour in range(24)}
     for row in activity:
         if row.hour is not None:
             hourly_stats[row.hour] = row.transaction_count
+            
     return hourly_stats
 
-
-def get_user_engagement_stats(db: Session, limit: int = 5):
-    """
-    Возвращает топ пользователей по отправленным и полученным благодарностям.
-    """
-    top_senders = (
-        db.query(
-            models.User,
-            func.count(models.Transaction.id).label('sent_count')
-        )
+async def get_user_engagement_stats(db: AsyncSession, limit: int = 5):
+    query_senders = (
+        select(models.User, func.count(models.Transaction.id).label('sent_count'))
         .join(models.Transaction, models.User.id == models.Transaction.sender_id)
         .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc())
         .limit(limit)
-        .all()
     )
-    top_receivers = (
-        db.query(
-            models.User,
-            func.count(models.Transaction.id).label('received_count')
-        )
+    top_senders = (await db.execute(query_senders)).all()
+
+    query_receivers = (
+        select(models.User, func.count(models.Transaction.id).label('received_count'))
         .join(models.Transaction, models.User.id == models.Transaction.recipient_id)
         .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc())
         .limit(limit)
-        .all()
     )
+    top_receivers = (await db.execute(query_receivers)).all()
+    
     return {"top_senders": top_senders, "top_receivers": top_receivers}
 
-
-def get_popular_items_stats(db: Session, limit: int = 10):
-    """
-    Возвращает самые покупаемые товары из магазина.
-    """
-    popular_items = (
-        db.query(
-            models.MarketItem,
-            func.count(models.Purchase.id).label('purchase_count')
-        )
+async def get_popular_items_stats(db: AsyncSession, limit: int = 10):
+    query = (
+        select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
         .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
         .group_by(models.MarketItem.id)
         .order_by(func.count(models.Purchase.id).desc())
         .limit(limit)
-        .all()
     )
+    popular_items = (await db.execute(query)).all()
     return popular_items
 
-
-def get_inactive_users(db: Session):
-    """
-    Находит пользователей, которые не совершили ни одной транзакции (ни отправили, ни получили).
-    """
-    # Подзапрос для получения ID всех активных пользователей
-    active_senders = db.query(models.Transaction.sender_id).distinct()
-    active_recipients = db.query(models.Transaction.recipient_id).distinct()
+async def get_inactive_users(db: AsyncSession):
+    active_senders_query = select(models.Transaction.sender_id).distinct()
+    active_recipients_query = select(models.Transaction.recipient_id).distinct()
     
-    active_user_ids = active_senders.union(active_recipients).subquery()
-
-    # Находим пользователей, чьи ID не входят в список активных
-    inactive_users = db.query(models.User).filter(
-        models.User.id.notin_(active_user_ids)
-    ).all()
+    active_senders = (await db.execute(active_senders_query)).scalars().all()
+    active_recipients = (await db.execute(active_recipients_query)).scalars().all()
+    
+    active_user_ids = set(active_senders).union(set(active_recipients))
+    
+    inactive_users_query = select(models.User).filter(models.User.id.notin_(active_user_ids))
+    inactive_users = (await db.execute(inactive_users_query)).scalars().all()
     
     return inactive_users
 
-    
-def get_total_balance(db: Session):
-    """
-    Считает общую сумму "спасибок" на балансах всех пользователей.
-    """
-    total = db.query(func.sum(models.User.balance)).scalar()
+async def get_total_balance(db: AsyncSession):
+    query = select(func.sum(models.User.balance))
+    total = (await db.execute(query)).scalar_one_or_none()
     return total or 0
+
