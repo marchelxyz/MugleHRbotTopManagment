@@ -1,0 +1,23 @@
+/* frontend/src/pages/admin/stats/EconomyBalancePage.module.css */
+
+.card {
+    background: linear-gradient(135deg, #5CA14A, #4a8c3a);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    margin-top: 20px;
+}
+
+.value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.label {
+    margin: 0;
+    font-size: 1rem;
+    opacity: 0.8;
+}
