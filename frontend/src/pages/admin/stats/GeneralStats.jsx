@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { getGeneralStats } from '../../../api'; 
-import styles from '../StatisticsDashboard.module.css'; // Используем те же стили
+import styles from '../StatisticsDashboard.module.css';
 
+// --- ИЗМЕНЕНИЕ: В StatCard добавляем проверку на null/undefined ---
 const StatCard = ({ title, value }) => (
     <div className={styles.statCard}>
         <h4>{title}</h4>
-        <p>{value}</p>
+        {/* Если value не пришло, показываем 0 */}
+        <p>{value ?? 0}</p>
     </div>
 );
 
@@ -20,8 +22,9 @@ const GeneralStats = () => {
         const fetchStats = async () => {
             setLoading(true);
             try {
-                const data = await getGeneralStats(period);
-                setStats(data);
+                const response = await getGeneralStats(period);
+                // --- ИЗМЕНЕНИЕ: Используем response.data, так как твой api.js возвращает весь объект ответа ---
+                setStats(response.data);
             } catch (error) {
                 console.error("Failed to fetch general stats:", error);
             } finally {
@@ -45,16 +48,13 @@ const GeneralStats = () => {
                 <button onClick={() => setPeriod('year')} className={period === 'year' ? styles.activePeriod : ''}>Год</button>
             </div>
             <div className={styles.statsGrid}>
-                {stats && (
-                    <>
-                        <StatCard title="Новые пользователи" value={stats.new_users_count} />
-                        <StatCard title="Активные пользователи" value={stats.active_users_count} />
-                        <StatCard title="Всего транзакций" value={stats.transactions_count} />
-                        <StatCard title="Оборот" value={`${stats.total_turnover} спасибок`} />
-                        <StatCard title="Покупок в магазине" value={stats.store_purchases_count} />
-                        <StatCard title="Потрачено в магазине" value={`${stats.total_store_spent} спасибок`} />
-                    </>
-                )}
+                {/* --- ИЗМЕНЕНИЕ: Теперь мы напрямую обращаемся к полям, и StatCard сам обработает undefined --- */}
+                <StatCard title="Всего пользователей" value={stats?.new_users_count} />
+                <StatCard title="Активные пользователи" value={stats?.active_users_count} />
+                <StatCard title="Всего транзакций" value={stats?.transactions_count} />
+                <StatCard title="Оборот" value={`${stats?.total_turnover ?? 0} спасибок`} />
+                <StatCard title="Покупок в магазине" value={stats?.store_purchases_count} />
+                <StatCard title="Потрачено в магазине" value={`${stats?.total_store_spent ?? 0} спасибок`} />
             </div>
         </div>
     );
