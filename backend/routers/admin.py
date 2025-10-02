@@ -120,3 +120,13 @@ async def get_inactive_users_list(db: AsyncSession = Depends(get_db)):
 async def get_economy_total_balance(db: AsyncSession = Depends(get_db)):
     total_balance = await crud.get_total_balance(db)
     return {"total_balance": total_balance}
+
+@router.get("/statistics/login_activity", response_model=schemas.LoginActivityStats)
+async def get_login_activity(db: AsyncSession = Depends(get_db)):
+    stats = await crud.get_login_activity_stats(db)
+    return {"hourly_stats": stats}
+
+@router.get("/statistics/active_user_ratio", response_model=schemas.ActiveUserRatioStats)
+async def get_active_user_ratio_route(db: AsyncSession = Depends(get_db)):
+    ratio_data = await crud.get_active_user_ratio(db)
+    return ratio_data
