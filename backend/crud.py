@@ -985,41 +985,31 @@ async def get_leaderboards_status(db: AsyncSession):
 
 # --- НАЧАЛО: НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ ---
 
-async def get_general_statistics(db: AsyncSession, period: str):
-    end_date = datetime.utcnow()
-    if period == "day":
-        start_date = end_date - timedelta(days=1)
-    elif period == "week":
-        start_date = end_date - timedelta(weeks=1)
-    elif period == "month":
+async def get_general_statistics(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    # Если даты не переданы, используем последние 30 дней по умолчанию
+    if end_date is None:
+        end_date = datetime.utcnow().date()
+    if start_date is None:
         start_date = end_date - timedelta(days=30)
-    else: # year
-        start_date = end_date - timedelta(days=365)
-    
-    # Считаем общее число пользователей (как и раньше)
+
     query_total_users = select(func.count(models.User.id))
     total_users = (await db.execute(query_total_users)).scalar_one()
 
-    # Считаем активных пользователей (как и раньше)
     active_senders = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
     active_receivers = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
     active_senders_ids = (await db.execute(active_senders)).scalars().all()
     active_receivers_ids = (await db.execute(active_receivers)).scalars().all()
     active_users_count = len(set(active_senders_ids).union(set(active_receivers_ids)))
 
-    # Считаем транзакции (как и раньше)
     query_transactions = select(func.count(models.Transaction.id)).filter(models.Transaction.timestamp.between(start_date, end_date))
     transactions_count = (await db.execute(query_transactions)).scalar_one()
 
-    # Считаем покупки в магазине (как и раньше)
     query_purchases = select(func.count(models.Purchase.id)).filter(models.Purchase.timestamp.between(start_date, end_date))
     shop_purchases = (await db.execute(query_purchases)).scalar_one()
 
-    # --- НОВОЕ: Считаем оборот "спасибок" ---
     query_turnover = select(func.sum(models.Transaction.amount)).filter(models.Transaction.timestamp.between(start_date, end_date))
     total_turnover = (await db.execute(query_turnover)).scalar_one_or_none() or 0
 
-    # --- НОВОЕ: Считаем потраченное в магазине ---
     query_spent = (
         select(func.sum(models.MarketItem.price))
         .join(models.Purchase, models.Purchase.item_id == models.MarketItem.id)
@@ -1036,16 +1026,18 @@ async def get_general_statistics(db: AsyncSession, period: str):
         "total_store_spent": total_store_spent,
     }
 
-async def get_hourly_activity_stats(db: AsyncSession):
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    
-    # ИСПРАВЛЕНИЕ: Используем 'timestamp' вместо 'created_at'
+async def get_hourly_activity_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    if end_date is None:
+        end_date = datetime.utcnow().date()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
     query = (
         select(
             extract('hour', models.Transaction.timestamp).label('hour'),
             func.count(models.Transaction.id).label('transaction_count')
         )
-        .filter(models.Transaction.timestamp >= thirty_days_ago)
+        .filter(models.Transaction.timestamp.between(start_date, end_date))
         .group_by(extract('hour', models.Transaction.timestamp))
         .order_by(extract('hour', models.Transaction.timestamp))
     )
@@ -1056,6 +1048,31 @@ async def get_hourly_activity_stats(db: AsyncSession):
     for row in activity:
         if row.hour is not None:
             hourly_stats[row.hour] = row.transaction_count
+            
+    return hourly_stats
+
+async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    if end_date is None:
+        end_date = datetime.utcnow().date()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    query = (
+        select(
+            extract('hour', models.User.last_login_date).label('hour'),
+            func.count(models.User.id).label('login_count')
+        )
+        .filter(models.User.last_login_date.between(start_date, end_date))
+        .group_by(extract('hour', models.User.last_login_date))
+        .order_by(extract('hour', models.User.last_login_date))
+    )
+    result = await db.execute(query)
+    activity = result.all()
+    
+    hourly_stats = {hour: 0 for hour in range(24)}
+    for row in activity:
+        if row.hour is not None:
+            hourly_stats[row.hour] = row.login_count
             
     return hourly_stats
 
