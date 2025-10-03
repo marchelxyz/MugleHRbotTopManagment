@@ -1,15 +1,16 @@
 # backend/routers/admin.py
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
-
+from typing import List, Optional
+from datetime import date # <-- Добавляем date
 import crud
 import schemas
 import models
 from dependencies import get_current_admin_user
 from database import get_db
+
 # --- ПРАВИЛЬНАЯ НАСТРОЙКА РОУТЕРА ---
 # Префикс /admin и зависимость от админа задаются один раз здесь
 router = APIRouter(
@@ -89,41 +90,30 @@ async def admin_delete_user_route(user_id: int, admin_user: models.User = Depend
 # --- НОВЫЕ И ИСПРАВЛЕННЫЕ ЭНДПОИНТЫ ДЛЯ СТАТИСТИКИ ---
 
 @router.get("/statistics/general", response_model=schemas.GeneralStatsResponse)
-async def get_general_statistics_route(period: str = "day", db: AsyncSession = Depends(get_db)):
-    stats = await crud.get_general_statistics(db=db, period=period)
+async def get_general_statistics_route(
+    start_date: Optional[date] = Query(None), 
+    end_date: Optional[date] = Query(None), 
+    db: AsyncSession = Depends(get_db)
+):
+    stats = await crud.get_general_statistics(db=db, start_date=start_date, end_date=end_date)
     return stats
 
 @router.get("/statistics/hourly_activity", response_model=schemas.HourlyActivityStats)
-async def get_hourly_activity(db: AsyncSession = Depends(get_db)):
-    stats = await crud.get_hourly_activity_stats(db)
+async def get_hourly_activity(
+    start_date: Optional[date] = Query(None), 
+    end_date: Optional[date] = Query(None), 
+    db: AsyncSession = Depends(get_db)
+):
+    stats = await crud.get_hourly_activity_stats(db, start_date=start_date, end_date=end_date)
     return {"hourly_stats": stats}
 
-@router.get("/statistics/user_engagement", response_model=schemas.UserEngagementStats)
-async def get_user_engagement(db: AsyncSession = Depends(get_db)):
-    engagement_data = await crud.get_user_engagement_stats(db)
-    top_senders_schema = [{"user": user, "count": count} for user, count in engagement_data["top_senders"]]
-    top_receivers_schema = [{"user": user, "count": count} for user, count in engagement_data["top_receivers"]]
-    return {"top_senders": top_senders_schema, "top_receivers": top_receivers_schema}
-
-@router.get("/statistics/popular_items", response_model=schemas.PopularItemsStats)
-async def get_popular_items(db: AsyncSession = Depends(get_db)):
-    items_data = await crud.get_popular_items_stats(db)
-    popular_items_schema = [{"item": item, "purchase_count": count} for item, count in items_data]
-    return {"items": popular_items_schema}
-
-@router.get("/statistics/inactive_users", response_model=schemas.InactiveUsersStats)
-async def get_inactive_users_list(db: AsyncSession = Depends(get_db)):
-    inactive_users = await crud.get_inactive_users(db)
-    return {"users": inactive_users}
-
-@router.get("/statistics/total_balance", response_model=schemas.TotalBalanceStats)
-async def get_economy_total_balance(db: AsyncSession = Depends(get_db)):
-    total_balance = await crud.get_total_balance(db)
-    return {"total_balance": total_balance}
-
 @router.get("/statistics/login_activity", response_model=schemas.LoginActivityStats)
-async def get_login_activity(db: AsyncSession = Depends(get_db)):
-    stats = await crud.get_login_activity_stats(db)
+async def get_login_activity(
+    start_date: Optional[date] = Query(None), 
+    end_date: Optional[date] = Query(None), 
+    db: AsyncSession = Depends(get_db)
+):
+    stats = await crud.get_login_activity_stats(db, start_date=start_date, end_date=end_date)
     return {"hourly_stats": stats}
 
 @router.get("/statistics/active_user_ratio", response_model=schemas.ActiveUserRatioStats)
