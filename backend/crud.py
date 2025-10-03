@@ -1069,12 +1069,15 @@ async def get_user_engagement_stats(db: AsyncSession, limit: int = 5):
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_senders = (await db.execute(query_senders)).all()
+
+    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: recipient_id -> receiver_id ---
     query_receivers = (
         select(models.User, func.count(models.Transaction.id).label('received_count'))
-        .join(models.Transaction, models.User.id == models.Transaction.recipient_id).group_by(models.User.id)
+        .join(models.Transaction, models.User.id == models.Transaction.receiver_id).group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_receivers = (await db.execute(query_receivers)).all()
+    
     return {"top_senders": top_senders, "top_receivers": top_receivers}
 
 async def get_popular_items_stats(db: AsyncSession, limit: int = 10):
