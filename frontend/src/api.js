@@ -238,3 +238,11 @@ export const getInactiveUsers = () => {
 export const getTotalBalance = () => {
   return apiClient.get('/admin/statistics/total_balance', getAdminHeaders());
 };
+
+export const getLoginActivityStats = () => {
+    return apiClient.get('/admin/statistics/login_activity', getAdminHeaders());
+};
+
+export const getActiveUserRatio = () => {
+    return apiClient.get('/admin/statistics/active_user_ratio', getAdminHeaders());
+};

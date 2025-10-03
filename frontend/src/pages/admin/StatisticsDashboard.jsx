@@ -2,22 +2,28 @@
 
 import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
-import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins } from 'react-icons/fa';
+// --- ИСПРАВЛЕНИЕ №1: Меняем FaPieChart на FaChartPie ---
+import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie } from 'react-icons/fa';
 
-// Импортируем наши компоненты-отчёты
+// Импортируем ВСЕ наши компоненты-отчёты
 import GeneralStats from './stats/GeneralStats';
 import HourlyActivityPage from './stats/HourlyActivityPage';
 import UserEngagementPage from './stats/UserEngagementPage';
 import PopularItemsPage from './stats/PopularItemsPage';
 import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
+import LoginActivityPage from './stats/LoginActivityPage';
+import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
 
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
 
     const tabs = [
         { id: 'general', label: 'Общая', icon: <FaChartBar /> },
-        { id: 'hourly', label: 'Активность', icon: <FaHourglassHalf /> },
+        { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf /> },
+        { id: 'logins', label: 'Заходы', icon: <FaSignInAlt /> },
+        // --- ИСПРАВЛЕНИЕ №2: Меняем FaPieChart на FaChartPie ---
+        { id: 'ratio', label: 'Акт/Неакт', icon: <FaChartPie /> },
         { id: 'engagement', label: 'Лидеры', icon: <FaStar /> },
         { id: 'popular', label: 'Товары', icon: <FaChartLine /> },
         { id: 'inactive', label: 'Неактивные', icon: <FaUsersSlash /> },
@@ -28,6 +34,8 @@ const StatisticsDashboard = () => {
         switch (activeTab) {
             case 'general': return <GeneralStats />;
             case 'hourly': return <HourlyActivityPage />;
+            case 'logins': return <LoginActivityPage />;
+            case 'ratio': return <ActiveUserRatioPage />;
             case 'engagement': return <UserEngagementPage />;
             case 'popular': return <PopularItemsPage />;
             case 'inactive': return <InactiveUsersPage />;

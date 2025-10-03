@@ -1109,3 +1109,56 @@ async def get_total_balance(db: AsyncSession):
     query = select(func.sum(models.User.balance))
     total = (await db.execute(query)).scalar_one_or_none()
     return total or 0
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ РАСШИРЕННОЙ СТАТИСТИКИ ---
+
+async def get_login_activity_stats(db: AsyncSession):
+    """
+    Собирает статистику по входам пользователей за последние 30 дней, сгруппированную по часам.
+    """
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    
+    query = (
+        select(
+            extract('hour', models.User.last_login_date).label('hour'),
+            func.count(models.User.id).label('login_count')
+        )
+        # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: убираем .date() ---
+        .filter(models.User.last_login_date >= thirty_days_ago)
+        .group_by(extract('hour', models.User.last_login_date))
+        .order_by(extract('hour', models.User.last_login_date))
+    )
+    result = await db.execute(query)
+    activity = result.all()
+    
+    hourly_stats = {hour: 0 for hour in range(24)}
+    for row in activity:
+        if row.hour is not None:
+            hourly_stats[row.hour] = row.login_count
+            
+    return hourly_stats
+
+async def get_active_user_ratio(db: AsyncSession):
+    """
+    Считает количество активных и неактивных пользователей.
+    Активный - тот, кто совершил хотя бы одну транзакцию.
+    """
+    # Считаем общее количество пользователей
+    total_users_query = select(func.count(models.User.id))
+    total_users = (await db.execute(total_users_query)).scalar_one()
+
+    # Считаем количество неактивных пользователей (как и раньше)
+    active_senders_query = select(models.Transaction.sender_id).distinct()
+    active_recipients_query = select(models.Transaction.receiver_id).distinct()
+    
+    active_senders = (await db.execute(active_senders_query)).scalars().all()
+    active_recipients = (await db.execute(active_recipients_query)).scalars().all()
+    
+    active_user_ids_count = len(set(active_senders).union(set(active_recipients)))
+    
+    inactive_users_count = total_users - active_user_ids_count
+
+    return {
+        "active_users": active_user_ids_count,
+        "inactive_users": inactive_users_count
+    }
