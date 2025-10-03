@@ -2,9 +2,10 @@
 import io
 import zipfile
 import json
-import math # Добавьте этот импорт вверху
-from datetime import datetime # Добавьте этот импорт вверху
-from sqlalchemy.orm import Session  # <--- ДОБАВЬ ЭТУ СТРОКУ
+import math 
+from typing import Optional
+from datetime import datetime
+from sqlalchemy.orm import Session
 import random
 from sqlalchemy.future import select
 from sqlalchemy import func, update, extract
