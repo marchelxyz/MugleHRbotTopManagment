@@ -3,7 +3,7 @@
 import React from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import './DateRangePicker.css'; // Мы создадим этот файл в следующем шаге
+import './DateRangePicker.css';
 
 const DateRangePicker = ({ startDate, setStartDate, endDate, setEndDate }) => {
   return (
@@ -17,6 +17,7 @@ const DateRangePicker = ({ startDate, setStartDate, endDate, setEndDate }) => {
         placeholderText="Начало периода"
         className="date-input"
         dateFormat="dd.MM.yyyy"
+        locale="ru" // <-- ДОБАВЛЕНО
       />
       <DatePicker
         selected={endDate}
@@ -28,6 +29,7 @@ const DateRangePicker = ({ startDate, setStartDate, endDate, setEndDate }) => {
         placeholderText="Конец периода"
         className="date-input"
         dateFormat="dd.MM.yyyy"
+        locale="ru" // <-- ДОБАВЛЕНО
       />
     </div>
   );
