@@ -215,12 +215,22 @@ const getAdminHeaders = () => ({
   headers: { 'X-Telegram-Id': window.Telegram.WebApp.initDataUnsafe?.user?.id },
 });
 
-export const getGeneralStats = (period) => {
-    return apiClient.get(`/admin/statistics/general?period=${period}`, getAdminHeaders());
+// Добавляем startDate и endDate в параметры
+export const getGeneralStats = (startDate, endDate) => {
+    // Формируем строку с параметрами
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    return apiClient.get(`/admin/statistics/general?${params.toString()}`, getAdminHeaders());
 };
 
-export const getHourlyActivityStats = () => {
-  return apiClient.get('/admin/statistics/hourly_activity', getAdminHeaders());
+export const getHourlyActivityStats = (startDate, endDate) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+  return apiClient.get(`/admin/statistics/hourly_activity?${params.toString()}`, getAdminHeaders());
 };
 
 export const getUserEngagementStats = () => {
@@ -239,8 +249,12 @@ export const getTotalBalance = () => {
   return apiClient.get('/admin/statistics/total_balance', getAdminHeaders());
 };
 
-export const getLoginActivityStats = () => {
-    return apiClient.get('/admin/statistics/login_activity', getAdminHeaders());
+export const getLoginActivityStats = (startDate, endDate) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    return apiClient.get(`/admin/statistics/login_activity?${params.toString()}`, getAdminHeaders());
 };
 
 export const getActiveUserRatio = () => {

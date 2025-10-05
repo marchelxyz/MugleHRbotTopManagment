@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
-// --- ИСПРАВЛЕНИЕ №1: Меняем FaPieChart на FaChartPie ---
 import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie } from 'react-icons/fa';
+import DateRangePicker from '../../components/DateRangePicker';
 
 // Импортируем ВСЕ наши компоненты-отчёты
 import GeneralStats from './stats/GeneralStats';
@@ -17,36 +17,53 @@ import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
 
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
 
+    // Функция для форматирования даты в строку 'YYYY-MM-DD' для API
+    const formatDateForApi = (date) => {
+        if (!date) return null;
+        return date.toISOString().split('T')[0];
+    };
+
+    // Описываем все вкладки и указываем, зависит ли она от даты
     const tabs = [
-        { id: 'general', label: 'Общая', icon: <FaChartBar /> },
-        { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf /> },
-        { id: 'logins', label: 'Заходы', icon: <FaSignInAlt /> },
-        // --- ИСПРАВЛЕНИЕ №2: Меняем FaPieChart на FaChartPie ---
-        { id: 'ratio', label: 'Акт/Неакт', icon: <FaChartPie /> },
-        { id: 'engagement', label: 'Лидеры', icon: <FaStar /> },
-        { id: 'popular', label: 'Товары', icon: <FaChartLine /> },
-        { id: 'inactive', label: 'Неактивные', icon: <FaUsersSlash /> },
-        { id: 'economy', label: 'Экономика', icon: <FaCoins /> },
+        { id: 'general', label: 'Общая', icon: <FaChartBar />, dateDependent: true },
+        { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf />, dateDependent: true },
+        { id: 'logins', label: 'Заходы', icon: <FaSignInAlt />, dateDependent: true },
+        { id: 'ratio', label: 'Акт/Неакт', icon: <FaChartPie />, dateDependent: false },
+        { id: 'engagement', label: 'Лидеры', icon: <FaStar />, dateDependent: false },
+        { id: 'popular', label: 'Товары', icon: <FaChartLine />, dateDependent: false },
+        { id: 'inactive', label: 'Неактивные', icon: <FaUsersSlash />, dateDependent: false },
+        { id: 'economy', label: 'Экономика', icon: <FaCoins />, dateDependent: false },
     ];
 
     const renderActiveComponent = () => {
+        const dateProps = {
+            startDate: formatDateForApi(startDate),
+            endDate: formatDateForApi(endDate)
+        };
+
         switch (activeTab) {
-            case 'general': return <GeneralStats />;
-            case 'hourly': return <HourlyActivityPage />;
-            case 'logins': return <LoginActivityPage />;
+            case 'general': return <GeneralStats {...dateProps} />;
+            case 'hourly': return <HourlyActivityPage {...dateProps} />;
+            case 'logins': return <LoginActivityPage {...dateProps} />;
             case 'ratio': return <ActiveUserRatioPage />;
             case 'engagement': return <UserEngagementPage />;
             case 'popular': return <PopularItemsPage />;
             case 'inactive': return <InactiveUsersPage />;
             case 'economy': return <EconomyBalancePage />;
-            default: return <GeneralStats />;
+            default: return <GeneralStats {...dateProps} />;
         }
     };
+
+    // Проверяем, нужно ли показывать календарь для текущей активной вкладки
+    const isDateFilterVisible = tabs.find(tab => tab.id === activeTab)?.dateDependent;
 
     return (
         <div className={styles.statsContainer}>
             <div className={styles.tabsContainer}>
+                {/* --- ВОТ ИСПРАВЛЕНИЕ: Добавляем отрисовку кнопок --- */}
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
@@ -58,6 +75,17 @@ const StatisticsDashboard = () => {
                     </button>
                 ))}
             </div>
+
+            {/* Отображаем календарь, если он нужен для этой вкладки */}
+            {isDateFilterVisible && (
+                <DateRangePicker 
+                    startDate={startDate}
+                    setStartDate={setStartDate}
+                    endDate={endDate}
+                    setEndDate={setEndDate}
+                />
+            )}
+
             <div className={styles.content}>
                 {renderActiveComponent()}
             </div>
