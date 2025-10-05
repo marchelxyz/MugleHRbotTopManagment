@@ -8,6 +8,14 @@ import './index.css';
 import { ModalAlertProvider } from './contexts/ModalAlertContext.jsx';
 import { ConfirmationProvider } from './contexts/ConfirmationContext.jsx';
 
+// --- НАЧАЛО ИЗМЕНЕНИЙ: Локализация календаря ---
+import { registerLocale } from 'react-datepicker';
+import { ru } from 'date-fns/locale/ru';
+
+// Регистрируем русскую локаль под кодом 'ru'
+registerLocale('ru', ru);
+// --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {/* 2. Оборачиваем App в правильные Provider'ы */}
