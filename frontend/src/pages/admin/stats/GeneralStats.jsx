@@ -13,17 +13,16 @@ const StatCard = ({ title, value }) => (
     </div>
 );
 
-const GeneralStats = () => {
+const GeneralStats = ({ startDate, endDate }) => {
     const [stats, setStats] = useState(null);
-    const [period, setPeriod] = useState('day');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchStats = async () => {
             setLoading(true);
             try {
-                const response = await getGeneralStats(period);
-                // --- ИЗМЕНЕНИЕ: Используем response.data, так как твой api.js возвращает весь объект ответа ---
+                // --- ИЗМЕНЕНИЕ: Передаем даты в API ---
+                const response = await getGeneralStats(startDate, endDate);
                 setStats(response.data);
             } catch (error) {
                 console.error("Failed to fetch general stats:", error);
@@ -31,8 +30,10 @@ const GeneralStats = () => {
                 setLoading(false);
             }
         };
+        
         fetchStats();
-    }, [period]);
+    }, [startDate, endDate]);
+
 
     if (loading) {
         return <p>Загрузка...</p>;
@@ -41,12 +42,8 @@ const GeneralStats = () => {
     return (
         <div>
             <h2>Общая статистика</h2>
-            <div className={styles.periodSelector}>
-                <button onClick={() => setPeriod('day')} className={period === 'day' ? styles.activePeriod : ''}>День</button>
-                <button onClick={() => setPeriod('week')} className={period === 'week' ? styles.activePeriod : ''}>Неделя</button>
-                <button onClick={() => setPeriod('month')} className={period === 'month' ? styles.activePeriod : ''}>Месяц</button>
-                <button onClick={() => setPeriod('year')} className={period === 'year' ? styles.activePeriod : ''}>Год</button>
-            </div>
+            {/* Мы убираем старый переключатель День/Неделя/Месяц, так как теперь есть календарь */}
+
             <div className={styles.statsGrid}>
                 {/* --- ИЗМЕНЕНИЕ: Теперь мы напрямую обращаемся к полям, и StatCard сам обработает undefined --- */}
                 <StatCard title="Всего пользователей" value={stats?.new_users_count} />
