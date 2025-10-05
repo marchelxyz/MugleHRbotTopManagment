@@ -254,7 +254,7 @@ export const getLoginActivityStats = (startDate, endDate) => {
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
 
-    return apiClient.get('/admin/statistics/login_activity?${params.toString()}`, getAdminHeaders());
+    return apiClient.get(`/admin/statistics/login_activity?${params.toString()}`, getAdminHeaders());
 };
 
 export const getActiveUserRatio = () => {
