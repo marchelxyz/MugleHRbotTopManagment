@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
 // --- ИСПРАВЛЕНИЕ №1: Меняем FaPieChart на FaChartPie ---
 import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie } from 'react-icons/fa';
+import DateRangePicker from '../../components/DateRangePicker'; // <-- Импортируем наш календарь
 
 // Импортируем ВСЕ наши компоненты-отчёты
 import GeneralStats from './stats/GeneralStats';
@@ -18,6 +19,16 @@ import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
 
+    // --- НОВОЕ: Состояние для дат ---
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+
+    // Функция для форматирования даты в строку 'YYYY-MM-DD'
+    const formatDateForApi = (date) => {
+        if (!date) return null;
+        return date.toISOString().split('T')[0];
+    };
+
     const tabs = [
         { id: 'general', label: 'Общая', icon: <FaChartBar /> },
         { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf /> },
@@ -31,18 +42,27 @@ const StatisticsDashboard = () => {
     ];
 
     const renderActiveComponent = () => {
+        // --- НОВОЕ: Передаем даты в дочерние компоненты ---
+        const dateProps = {
+            startDate: formatDateForApi(startDate),
+            endDate: formatDateForApi(endDate)
+        };
+        
         switch (activeTab) {
-            case 'general': return <GeneralStats />;
-            case 'hourly': return <HourlyActivityPage />;
-            case 'logins': return <LoginActivityPage />;
+            case 'general': return <GeneralStats {...dateProps} />;
+            case 'hourly': return <HourlyActivityPage {...dateProps} />;
+            case 'logins': return <LoginActivityPage {...dateProps} />;
             case 'ratio': return <ActiveUserRatioPage />;
             case 'engagement': return <UserEngagementPage />;
             case 'popular': return <PopularItemsPage />;
             case 'inactive': return <InactiveUsersPage />;
             case 'economy': return <EconomyBalancePage />;
-            default: return <GeneralStats />;
+            default: return <GeneralStats {...dateProps} />;
         }
     };
+
+    // Определяем, нужно ли показывать календарь для текущей вкладки
+    const isDateFilterVisible = tabs.find(tab => tab.id === activeTab)?.dateDependent;
 
     return (
         <div className={styles.statsContainer}>
@@ -58,6 +78,17 @@ const StatisticsDashboard = () => {
                     </button>
                 ))}
             </div>
+
+            {/* --- НОВОЕ: Отображаем календарь, если нужно --- */}
+            {isDateFilterVisible && (
+                <DateRangePicker 
+                    startDate={startDate}
+                    setStartDate={setStartDate}
+                    endDate={endDate}
+                    setEndDate={setEndDate}
+                />
+            )}
+            
             <div className={styles.content}>
                 {renderActiveComponent()}
             </div>
