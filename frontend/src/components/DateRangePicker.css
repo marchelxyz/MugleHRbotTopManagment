@@ -8,7 +8,10 @@
 }
 
 .date-input {
-    width: 100%;
+    /* --- ИСПРАВЛЕНИЕ ЗДЕСЬ --- */
+    flex: 1; /* Позволяет полю гибко занимать доступное место */
+    min-width: 0; /* Техническое свойство для правильной работы flex */
+
     padding: 8px 12px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
