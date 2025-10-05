@@ -8,6 +8,7 @@ from datetime import date # <-- Добавляем date
 import crud
 import schemas
 import models
+import io
 from dependencies import get_current_admin_user
 from database import get_db
 from openpyxl import Workbook
