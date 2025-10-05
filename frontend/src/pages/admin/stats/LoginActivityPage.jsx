@@ -7,7 +7,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const LoginActivityPage = () => {
+// Принимаем startDate и endDate как props
+const LoginActivityPage = ({ startDate, endDate }) => {
     const [chartData, setChartData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -16,7 +17,8 @@ const LoginActivityPage = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const response = await getLoginActivityStats();
+                // Передаем даты в API вызов
+                const response = await getLoginActivityStats(startDate, endDate);
                 const stats = response.data.hourly_stats;
                 
                 const labels = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
@@ -39,7 +41,8 @@ const LoginActivityPage = () => {
             }
         };
         fetchData();
-    }, []);
+    // Добавляем startDate и endDate в зависимости, чтобы график обновлялся
+    }, [startDate, endDate]);
 
     const options = {
         responsive: true,
@@ -48,7 +51,7 @@ const LoginActivityPage = () => {
             legend: { display: false },
             title: {
                 display: true,
-                text: 'Активность входов в приложение по часам (30 дней)',
+                text: 'Активность входов в приложение (по часам)',
                 font: { size: 16 }
             },
         },
