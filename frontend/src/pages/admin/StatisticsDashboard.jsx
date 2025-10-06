@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
-import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie, FaFileExcel } from 'react-icons/fa';
+import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie, FaFileExcel, FaClock } from 'react-icons/fa';
 import DateRangePicker from '../../components/DateRangePicker';
 import { exportConsolidatedReport } from '../../api';
 
@@ -15,6 +15,7 @@ import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
 import LoginActivityPage from './stats/LoginActivityPage';
 import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
+import AverageSessionDurationPage from './stats/AverageSessionDurationPage'; // <-- Новый
 
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -52,6 +53,7 @@ const StatisticsDashboard = () => {
 
     const tabs = [
         { id: 'general', label: 'Общая', icon: <FaChartBar />, dateDependent: true },
+        { id: 'duration', label: 'Время сессии', icon: <FaClock />, dateDependent: true },
         { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf />, dateDependent: true },
         { id: 'logins', label: 'Заходы', icon: <FaSignInAlt />, dateDependent: true },
         { id: 'ratio', label: 'Акт/Неакт', icon: <FaChartPie />, dateDependent: false },
@@ -68,6 +70,7 @@ const StatisticsDashboard = () => {
         };
         switch (activeTab) {
             case 'general': return <GeneralStats {...dateProps} />;
+            case 'duration': return <AverageSessionDurationPage {...dateProps} />; // <-- Новый
             case 'hourly': return <HourlyActivityPage {...dateProps} />;
             case 'logins': return <LoginActivityPage {...dateProps} />;
             case 'ratio': return <ActiveUserRatioPage />;
