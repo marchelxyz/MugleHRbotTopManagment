@@ -290,3 +290,21 @@ export const exportAllUsers = () => {
         responseType: 'blob', // Указываем, что ждем файл
     });
 };
+
+// --- НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С СЕССИЯМИ ---
+
+export const startSession = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Отправляем POST-запрос для создания новой сессии
+  return apiClient.post('/sessions/start', {}, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
+export const pingSession = (sessionId) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  // Отправляем PUT-запрос для обновления существующей сессии
+  return apiClient.put(`/sessions/ping/${sessionId}`, {}, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
