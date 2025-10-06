@@ -241,3 +241,6 @@ class SessionResponse(SessionBase):
     id: int
     session_start: datetime
     last_seen: datetime
+
+class AverageSessionDurationStats(BaseModel):
+    average_duration_minutes: float
