@@ -11,7 +11,7 @@ export const formatToMsk = (dateInput, options = {}) => {
     return ''; // Возвращаем пустую строку, если дата не пришла
   }
 
-  const date = new Date(dateInput);
+  const date = new Date(typeof dateInput === 'string' ? dateInput + 'Z' : dateInput);
 
   // Проверяем, корректная ли дата
   if (isNaN(date.getTime())) {
