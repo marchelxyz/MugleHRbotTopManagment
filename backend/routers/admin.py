@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from dependencies import get_current_admin_user
 from database import get_db
 from openpyxl import Workbook
+import pandas as pd  # <--- ДОБАВЬ ЭТУ СТРОКУ
 
 # --- ПРАВИЛЬНАЯ НАСТРОЙКА РОУТЕРА ---
 # Префикс /admin и зависимость от админа задаются один раз здесь
