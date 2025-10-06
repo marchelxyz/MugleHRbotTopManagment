@@ -1,15 +1,16 @@
 // frontend/src/pages/admin/UserManager.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
-// --- 1. ИМПОРТИРУЕМ ВСЕ НУЖНЫЕ ИКОНКИ ---
+// --- ИЗМЕНЕНИЕ: Добавляем иконку FaDownload и функцию exportAllUsers ---
 import { FaPencilAlt, FaTimes, FaDownload } from 'react-icons/fa';
 import { adminGetAllUsers, adminUpdateUser, adminDeleteUser, exportAllUsers } from '../../api';
-import userManagerStyles from './UserManager.module.css'; // Используем один файл стилей
+import styles from '../AdminPage.module.css';
+import userManagerStyles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { formatDateForDisplay } from '../../utils/dateFormatter';
 
-// Модальное окно для редактирования (без изменений)
+// Модальное окно для редактирования (остается без изменений)
 function EditUserModal({ user, onClose, onSave }) {
     const { confirm } = useConfirmation();
     const [formData, setFormData] = useState({
@@ -36,40 +37,55 @@ function EditUserModal({ user, onClose, onSave }) {
             onSave(user.id, { ...formData, id_to_delete: user.id, action: 'delete' });
         }
     };
-    
-    // ... (остальной код модального окна без изменений)
+
+    const handleBlockToggle = async () => {
+        const newStatus = user.status === 'blocked' ? 'approved' : 'blocked';
+        const actionText = newStatus === 'blocked' ? 'разблокировать' : 'заблокировать';
+        const isConfirmed = await confirm(
+            'Изменение статуса',
+            `Вы уверены, что хотите ${actionText} пользователя ${user.first_name}?`
+        );
+        if (isConfirmed) {
+            onSave(user.id, { ...formData, status: newStatus });
+        }
+    };
 
     return (
         <div className={userManagerStyles.modalBackdrop} onClick={onClose}>
             <div className={userManagerStyles.modalContent} onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className={userManagerStyles.closeButton}><FaTimes /></button>
+
                 <h2>Редактирование: {user.first_name} {user.last_name}</h2>
                 <form onSubmit={handleSave}>
                     <div className={userManagerStyles.formGrid}>
-                        <input name="first_name" value={formData.first_name || ''} onChange={handleChange} placeholder="Имя" className={userManagerStyles.input} />
-                        <input name="last_name" value={formData.last_name || ''} onChange={handleChange} placeholder="Фамилия" className={userManagerStyles.input} />
-                        <input name="department" value={formData.department || ''} onChange={handleChange} placeholder="Подразделение" className={userManagerStyles.input} />
-                        <input name="position" value={formData.position || ''} onChange={handleChange} placeholder="Должность" className={userManagerStyles.input} />
-                        <input type="tel" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} placeholder="Номер телефона" className={userManagerStyles.input} />
-                        <input type="text" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} placeholder="Дата (ДД.ММ.ГГГГ)" className={userManagerStyles.input} />
-                        <input type="number" name="balance" value={formData.balance || 0} onChange={handleChange} placeholder="Баланс" className={userManagerStyles.input} />
-                        <input type="number" name="tickets" value={formData.tickets || 0} onChange={handleChange} placeholder="Билеты" className={userManagerStyles.input} />
-                        <input type="number" name="ticket_parts" value={formData.ticket_parts || 0} onChange={handleChange} placeholder="Части билетов" className={userManagerStyles.input} />
-                        <select name="status" value={formData.status} onChange={handleChange} className={userManagerStyles.select}>
+                        <input name="first_name" value={formData.first_name || ''} onChange={handleChange} placeholder="Имя" className={styles.input} />
+                        <input name="last_name" value={formData.last_name || ''} onChange={handleChange} placeholder="Фамилия" className={styles.input} />
+                        <input name="department" value={formData.department || ''} onChange={handleChange} placeholder="Подразделение" className={styles.input} />
+                        <input name="position" value={formData.position || ''} onChange={handleChange} placeholder="Должность" className={styles.input} />
+                        <input type="tel" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} placeholder="Номер телефона" className={styles.input} />
+                        <input type="text" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} placeholder="Дата (ДД.ММ.ГГГГ)" className={styles.input} />
+                        <input type="number" name="balance" value={formData.balance || 0} onChange={handleChange} placeholder="Баланс" className={styles.input} />
+                        <input type="number" name="tickets" value={formData.tickets || 0} onChange={handleChange} placeholder="Билеты" className={styles.input} />
+                        <input type="number" name="ticket_parts" value={formData.ticket_parts || 0} onChange={handleChange} placeholder="Части билетов" className={styles.input} />
+                        <select name="status" value={formData.status} onChange={handleChange} className={styles.select}>
                             <option value="approved">Активен</option>
                             <option value="blocked">Заблокирован</option>
                         </select>
                     </div>
                     <div className={userManagerStyles.modalActions}>
-                        <button type="submit" className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonGreen}`}>Сохранить</button>
-                        <button type="button" onClick={onClose} className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonGrey}`}>Отмена</button>
+                        <button type="submit" className={`${userManagerStyles.modalButton} ${styles.buttonGreen}`}>Сохранить</button>
+                        <button type="button" onClick={handleBlockToggle} className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonYellow}`}>
+                            {user.status === 'blocked' ? 'Разблокировать' : 'Заблокировать'}
+                        </button>
                         <button type="button" onClick={handleDelete} className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonRed}`}>Удалить</button>
+                        <button type="button" onClick={onClose} className={`${userManagerStyles.modalButton} ${styles.buttonGrey}`}>Отмена</button>
                     </div>
                 </form>
             </div>
         </div>
     );
 }
+
 
 // Основной компонент
 function UserManager() {
@@ -79,7 +95,13 @@ function UserManager() {
     const [searchQuery, setSearchQuery] = useState('');
     const [editingUser, setEditingUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState('');
+    // --- ИЗМЕНЕНИЕ: Добавляем состояние для кнопки экспорта ---
     const [isExporting, setIsExporting] = useState(false);
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -87,18 +109,34 @@ function UserManager() {
             const response = await adminGetAllUsers();
             setAllUsers(response.data);
         } catch (error) {
-            showAlert('Ошибка загрузки пользователей.', 'error');
+            setMessage('Ошибка загрузки пользователей.');
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
     const handleSaveUser = async (userId, userData) => {
-        // ... (код функции без изменений)
+        const dateParts = userData.date_of_birth.split('.');
+        let apiDate = null;
+        if (dateParts.length === 3) {
+            apiDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+        }
+        
+        const dataToSend = { ...userData, date_of_birth: apiDate };
+
+        try {
+            if (dataToSend.action === 'delete') {
+                await adminDeleteUser(userId);
+                showAlert('Пользователь успешно сброшен.', 'success');
+            } else {
+                await adminUpdateUser(userId, dataToSend);
+                showAlert('Данные пользователя обновлены.', 'success');
+            }
+            setEditingUser(null);
+            fetchUsers();
+        } catch (error) {
+            showAlert('Произошла ошибка при сохранении.', 'error');
+        }
     };
 
     const filteredUsers = useMemo(() => {
@@ -116,6 +154,7 @@ function UserManager() {
         return users;
     }, [allUsers, view, searchQuery]);
 
+    // --- ИЗМЕНЕНИЕ: Добавляем функцию для экспорта ---
     const handleExport = async () => {
         setIsExporting(true);
         try {
@@ -137,9 +176,11 @@ function UserManager() {
 
     if (loading) return <p>Загрузка пользователей...</p>;
 
-    // --- ИСПРАВЛЕНИЕ: Убираем лишний return и используем один корневой <div> ---
     return (
-        <div>
+        <>
+            {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
+            
+            {/* --- ИЗМЕНЕНИЕ: Добавляем div-обертку для заголовка и кнопки --- */}
             <div className={userManagerStyles.header}>
                 <h2>Управление пользователями</h2>
                 <button
@@ -152,43 +193,45 @@ function UserManager() {
                 </button>
             </div>
 
-            {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
-
-            <div className={userManagerStyles.card}>
+            <div className={styles.card}>
+                <h2>Поиск сотрудников</h2>
                 <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Поиск по имени, фамилии, @username..."
-                    className={userManagerStyles.input}
+                    placeholder="Начните вводить..."
+                    className={styles.input}
                 />
             </div>
 
-            <div className={userManagerStyles.tabs}>
-                <button onClick={() => setView('active')} className={view === 'active' ? userManagerStyles.tabActive : userManagerStyles.tab}>Активные</button>
-                <button onClick={() => setView('blocked')} className={view === 'blocked' ? userManagerStyles.tabActive : userManagerStyles.tab}>Заблокированные</button>
+            <div className={styles.tabs}>
+                <button onClick={() => setView('active')} className={view === 'active' ? styles.tabActive : styles.tab}>Активные</button>
+                <button onClick={() => setView('blocked')} className={view === 'blocked' ? styles.tabActive : styles.tab}>Заблокированные</button>
             </div>
 
-            <div className={userManagerStyles.userListContainer}>
-                {filteredUsers.length > 0 ? filteredUsers.map(user => (
-                    <div key={user.id} className={userManagerStyles.userItem}>
-                        <div className={userManagerStyles.userInfo}>
-                            <strong>{user.first_name} {user.last_name}</strong>
-                            <span>@{user.username || '...'} | {user.position}</span>
+            <div className={styles.card}>
+                {message && <p className={styles.message}>{message}</p>}
+                <div className={userManagerStyles.userList}>
+                    {filteredUsers.map(user => (
+                        <div key={user.id} className={userManagerStyles.userItem}>
+                            <div className={userManagerStyles.userInfo}>
+                                <strong>{user.first_name} {user.last_name}</strong>
+                                <span>@{user.username || '...'} | {user.position}</span>
+                            </div>
+                            <div className={userManagerStyles.userStats}>
+                                <span>Спасибок: {user.balance}</span>
+                                <span>Билетов: {user.tickets} ({user.ticket_parts}/2)</span>
+                            </div>
+                            <div className={userManagerStyles.userActions}>
+                                <button onClick={() => setEditingUser(user)} className={`${styles.buttonSmall} ${userManagerStyles.iconButton}`}>
+                                    <FaPencilAlt />
+                                </button>
+                            </div>
                         </div>
-                        <div className={userManagerStyles.userStats}>
-                            <span>Спасибок: {user.balance}</span>
-                            <span>Билетов: {user.tickets} ({user.ticket_parts}/2)</span>
-                        </div>
-                        <div className={userManagerStyles.userActions}>
-                            <button onClick={() => setEditingUser(user)} className={userManagerStyles.iconButton}>
-                                <FaPencilAlt />
-                            </button>
-                        </div>
-                    </div>
-                )) : <p>Пользователи не найдены.</p>}
+                    ))}
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 
