@@ -5,7 +5,7 @@ import PageLayout from '../components/PageLayout';
 import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
 import styles from './RoulettePage.module.css';
 import { FaInfoCircle, FaTicketAlt } from 'react-icons/fa';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '/src/contexts/AuthContext';
 import UserAvatar from '../components/UserAvatar';
 import { formatToMsk } from '../utils/dateFormatter';
 
