@@ -184,7 +184,7 @@ async def export_consolidated_report(
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
-    # 2. Собираем все данные, вызывая наши CRUD-функции
+    # 2. Собираем все данные (без изменений)
     general_stats = await crud.get_general_statistics(db, start_date, end_date)
     engagement_data = await crud.get_user_engagement_stats(db)
     popular_items_data = await crud.get_popular_items_stats(db)
@@ -193,12 +193,30 @@ async def export_consolidated_report(
     # 3. Создаем Excel-файл в памяти с помощью pandas
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # --- Лист 1: Общая статистика ---
-        # Превращаем словарь в таблицу
-        df_general = pd.DataFrame.from_dict(general_stats, orient='index', columns=['Значение'])
+        
+        # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Лист 1: Общая статистика (с переводом) ---
+        
+        # Создаем словарь-переводчик
+        general_stats_translation = {
+            "new_users_count": "Всего пользователей",
+            "active_users_count": "Активные пользователи",
+            "transactions_count": "Всего транзакций",
+            "store_purchases_count": "Покупок в магазине",
+            "total_turnover": "Оборот 'спасибок'",
+            "total_store_spent": "Потрачено в магазине"
+        }
+        
+        # Переводим ключи и создаем DataFrame
+        translated_stats = {
+            general_stats_translation.get(key, key): value 
+            for key, value in general_stats.items()
+        }
+        
+        df_general = pd.DataFrame.from_dict(translated_stats, orient='index', columns=['Значение'])
         df_general.index.name = 'Метрика'
         df_general.to_excel(writer, sheet_name='Общая статистика')
 
+        # --- Остальные листы остаются без изменений ---
         # --- Лист 2: Топ Донаторы ---
         senders_list = [
             {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отправлено": count}
@@ -233,7 +251,7 @@ async def export_consolidated_report(
         
     output.seek(0)
 
-    # 4. Отдаем готовый файл
+    # 4. Отдаем готовый файл (без изменений)
     filename = f"consolidated_report_{start_date}_to_{end_date}.xlsx"
     return StreamingResponse(
         output,
