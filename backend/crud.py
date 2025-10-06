@@ -118,9 +118,14 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         raise ValueError("Отправитель не найден")
 
     # Обновляем счетчик, если наступил новый день
-    if sender.last_login_date is None or sender.last_login_date < today:
+    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+    # Обновляем счетчик, если наступил новый день
+    # Сравниваем дату с датой, добавляя .date()
+    if sender.last_login_date is None or sender.last_login_date.date() < today:
         sender.daily_transfer_count = 0
-        sender.last_login_date = today
+    
+    # Записываем текущее время в last_login_date, так как колонка теперь DateTime
+    sender.last_login_date = datetime.utcnow()
     
     fixed_amount = 1 
     if sender.daily_transfer_count >= 3:
