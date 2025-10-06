@@ -192,21 +192,21 @@ async def export_consolidated_report(
     """
     Экспортирует сводный отчет по всем метрикам в один Excel-файл.
     """
-    # 1. Задаем период по умолчанию, если он не указан
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
-    # 2. Собираем все данные (без изменений)
+    # --- ИЗМЕНЕНИЕ: Передаем диапазон дат во все функции ---
     general_stats = await crud.get_general_statistics(db, start_date, end_date)
     avg_session_stats = await crud.get_average_session_duration(db, start_date, end_date)
-    engagement_data = await crud.get_user_engagement_stats(db)
-    popular_items_data = await crud.get_popular_items_stats(db)
-    inactive_users_data = await crud.get_inactive_users(db)
-
+    engagement_data = await crud.get_user_engagement_stats(db, start_date, end_date)
+    popular_items_data = await crud.get_popular_items_stats(db, start_date, end_date)
+    inactive_users_data = await crud.get_inactive_users(db, start_date, end_date)
+    
     general_stats['average_session_duration_minutes'] = avg_session_stats['average_duration_minutes']
-
-    # 3. Создаем Excel-файл в памяти с помощью pandas
+    
+    moscow_tz = pytz.timezone('Europe/Moscow')
     output = io.BytesIO()
+
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         
         # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Лист 1: Общая статистика (с переводом) ---
@@ -257,7 +257,7 @@ async def export_consolidated_report(
         df_items = pd.DataFrame(items_list)
         df_items.to_excel(writer, sheet_name='Популярные товары', index=False)
 
-        # --- Лист 5: Неактивные пользователи ---
+        # Лист 5: Неактивные пользователи
         inactive_list = [
             {
                 "Имя": user.first_name,
@@ -271,16 +271,15 @@ async def export_consolidated_report(
         ]
         df_inactive = pd.DataFrame(inactive_list)
         df_inactive.to_excel(writer, sheet_name='Неактивные пользователи', index=False)
-        
-    output.seek(0)
 
+    output.seek(0)
     filename = f"consolidated_report_{start_date}_to_{end_date}.xlsx"
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-
+    
 # --- НОВЫЙ ЭНДПОИНТ ДЛЯ ВЫГРУЗКИ СПИСКА ПОЛЬЗОВАТЕЛЕЙ ---
 
 @router.get("/users/export")
