@@ -258,3 +258,50 @@ async def export_consolidated_report(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ ВЫГРУЗКИ СПИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+
+@router.get("/users/export")
+async def export_all_users(db: AsyncSession = Depends(get_db)):
+    """
+    Экспортирует полный список пользователей в Excel-файл.
+    """
+    # 1. Получаем всех пользователей из базы
+    all_users = await crud.get_all_users_for_admin(db)
+
+    # 2. Создаем Excel-файл в памяти
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Превращаем данные пользователей в удобный формат
+        users_list = [
+            {
+                "ID": user.id,
+                "Telegram ID": user.telegram_id,
+                "Имя": user.first_name,
+                "Фамилия": user.last_name,
+                "Username": user.username,
+                "Отдел": user.department,
+                "Должность": user.position,
+                "Баланс": user.balance,
+                "Билеты": user.tickets,
+                "Статус": user.status,
+                "Админ": "Да" if user.is_admin else "Нет",
+                "Дата регистрации": user.registration_date.strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
+                "Последний вход": user.last_login_date.strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
+            }
+            for user in all_users
+        ]
+        
+        # Создаем таблицу и записываем ее на лист
+        df_users = pd.DataFrame(users_list)
+        df_users.to_excel(writer, sheet_name='Все пользователи', index=False)
+
+    output.seek(0)
+
+    # 3. Отдаем готовый файл
+    filename = f"all_users_{datetime.utcnow().date()}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
