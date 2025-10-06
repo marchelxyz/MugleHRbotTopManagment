@@ -8,18 +8,16 @@
  */
 export const formatToMsk = (dateInput, options = {}) => {
   if (!dateInput) {
-    return ''; // Возвращаем пустую строку, если дата не пришла
+    return '';
   }
 
-  const date = new Date(typeof dateInput === 'string' ? dateInput + 'Z' : dateInput);
+  // Добавляем 'Z' к строке, чтобы браузер гарантированно распознал её как UTC
+  const date = new Date(typeof dateInput === 'string' && !dateInput.endsWith('Z') ? dateInput + 'Z' : dateInput);
 
-  // Проверяем, корректная ли дата
   if (isNaN(date.getTime())) {
-    // Возвращаем исходную строку, если это не дата
     return dateInput;
   }
 
-  // Настройки по умолчанию: дата и время (ДД.ММ.ГГГГ, ЧЧ:ММ)
   const defaultOptions = {
     timeZone: 'Europe/Moscow',
     year: 'numeric',
@@ -29,22 +27,41 @@ export const formatToMsk = (dateInput, options = {}) => {
     minute: '2-digit',
   };
 
-  // Соединяем опции по умолчанию с теми, что были переданы
   const finalOptions = { ...defaultOptions, ...options };
-
-  // Используем Intl.DateTimeFormat для правильного форматирования
-  // 'ru-RU' гарантирует правильный порядок (день.месяц.год)
   return new Intl.DateTimeFormat('ru-RU', finalOptions).format(date);
 };
 
 /**
+ * Функция для форматирования заголовков дат в ленте ("Сегодня", "Вчера").
+ * @param {string} dateInput - Дата в виде строки (из API).
+ * @returns {string}
+ */
+export const formatFeedDate = (dateInput) => {
+    if (!dateInput) return '';
+
+    const moscowTime = new Date(new Date(dateInput + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const options = { month: 'long', day: 'numeric' };
+
+    if (moscowTime.toDateString() === today.toDateString()) {
+        return 'Сегодня';
+    }
+    if (moscowTime.toDateString() === yesterday.toDateString()) {
+        return 'Вчера';
+    }
+    return new Intl.DateTimeFormat('ru-RU', options).format(moscowTime);
+};
+
+
+/**
  * Вспомогательная функция для форматирования даты в формат ДД.ММ.ГГГГ.
- * Используется в формах редактирования.
  * @param {string | Date} dateString - Входящая дата.
  * @returns {string} - Дата в формате ДД.ММ.ГГГГ.
  */
 export const formatDateForDisplay = (dateString) => {
   if (!dateString) return '';
-  // Используем нашу главную функцию, но убираем из нее время
   return formatToMsk(dateString, { hour: undefined, minute: undefined, second: undefined });
 };

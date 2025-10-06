@@ -1,80 +1,82 @@
 // frontend/src/pages/HomePage.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
-import { formatToMsk } from '../utils/dateFormatter';
+// --- 1. Убедимся, что импортируем обе функции ---
+import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 
-
-// 1. Принимаем новый пропс isDesktop
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
-  const [feed, setFeed] = useState(() => getCachedData('feed'));
-  const [banners, setBanners] = useState([]);
-  const [isLoading, setIsLoading] = useState(!feed); 
-  const [currentSlide, setCurrentSlide] = useState(0);
+    const [feed, setFeed] = useState(() => getCachedData('feed'));
+    const [banners, setBanners] = useState([]);
+    const [isLoading, setIsLoading] = useState(!feed);
+    const [currentSlide, setCurrentSlide] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      // Загружаем баннеры
-      const bannersResponse = await getBanners();
-      setBanners(bannersResponse.data);
+    useEffect(() => {
+        const fetchData = async () => {
+            const bannersResponse = await getBanners();
+            setBanners(bannersResponse.data);
+            if (!feed) {
+                try {
+                    const feedResponse = await getFeed();
+                    setFeed(feedResponse.data);
+                } catch (error) {
+                    console.error("Failed to fetch feed", error);
+                }
+            }
+            setIsLoading(false);
+        };
+        fetchData();
+    }, [feed]);
 
-      // Если в кэше ничего не было, загружаем ленту с сервера
-      if (!feed) {
-        try {
-          const feedResponse = await getFeed();
-          setFeed(feedResponse.data);
-          // (Данные автоматически сохранятся в кэш через refreshAllData в App.jsx)
-        } catch (error) {
-          console.error("Failed to fetch feed", error);
+    const mainBanners = banners.filter(b => b.position === 'main');
+
+    useEffect(() => {
+        if (mainBanners.length > 1) {
+            const timer = setTimeout(() => {
+                setCurrentSlide((prevSlide) => (prevSlide + 1) % mainBanners.length);
+            }, 5000);
+            return () => clearTimeout(timer);
         }
-      }
-      setIsLoading(false);
+    }, [currentSlide, mainBanners.length]);
+
+    const photoFeedBanners = banners.filter(b => b.position === 'feed');
+
+    const handleBannerClick = (url) => {
+        if (url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
     };
 
-    fetchData();
-  }, [feed]); // Зависимость остается, чтобы среагировать, если feed был null
-  
-  // --- НОВЫЙ ЭФФЕКТ: Логика для авто-переключения слайдов ---
-  const mainBanners = banners.filter(b => b.position === 'main');
-  
-  useEffect(() => {
-    if (mainBanners.length > 1) {
-      const timer = setTimeout(() => {
-        setCurrentSlide((prevSlide) => (prevSlide + 1) % mainBanners.length);
-      }, 5000); // Переключаем каждые 5 секунд
-      return () => clearTimeout(timer); // Очищаем таймер при смене компонента
-    }
-  }, [currentSlide, mainBanners.length]);
+    // --- 2. НОВАЯ ЛОГИКА: Группируем ленту по дням ---
+    const groupedFeed = useMemo(() => {
+        if (!feed || feed.length === 0) return {};
+        return feed.reduce((acc, item) => {
+            const dateKey = formatToMsk(item.timestamp, { year: undefined, month: undefined, day: undefined, hour: undefined, minute: undefined });
+            if (!acc[dateKey]) {
+                acc[dateKey] = [];
+            }
+            acc[dateKey].push(item);
+            return acc;
+        }, {});
+    }, [feed]);
 
-  const photoFeedBanners = banners.filter(b => b.position === 'feed');
-  
-  const handleBannerClick = (url) => {
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
-  
-  return (
-    <div className={styles.pageContainer}>
-      {/* 2. Используем isDesktop для выбора нужного стиля */}
-      <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+    return (
+        <div className={styles.pageContainer}>
+            <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+            <div className={styles.contentArea}>
+                <div className={styles.userBlock}>
+                    <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
+                    <span className={styles.userName}>{user.first_name}</span>
+                    <img
+                        src="https://i.postimg.cc/ncfzjKGc/image.webp"
+                        alt="Отправить спасибки"
+                        className={styles.thankYouButton}
+                        onClick={() => onNavigate('transfer')}
+                    />
+                </div>
 
-      <div className={styles.contentArea}>
-        
-        <div className={styles.userBlock}>
-          <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
-          <span className={styles.userName}>{user.first_name}</span>
-          <img 
-            src="https://i.postimg.cc/ncfzjKGc/image.webp" 
-            alt="Отправить спасибки" 
-            className={styles.thankYouButton} 
-            onClick={() => onNavigate('transfer')} 
-          />
-        </div>
-
-{/* --- ИЗМЕНЕНИЕ: Переделываем блок в слайдер --- */}
         {mainBanners.length > 0 && (
           <div className={styles.sliderContainer}>
             <div 
@@ -101,7 +103,6 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
           </div>
         )}
 
-        {/* --- ИЗМЕНЕНИЕ: Горизонтальная лента баннеров --- */}
         {photoFeedBanners.length > 0 && (
           <div className={styles.photoFeed}>
             {/* Дублируем массив для создания бесшовной анимации */}
@@ -114,34 +115,42 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             </div>
           </div>
         )}
-        
-        {/* --- ИСПРАВЛЕНИЕ: ВОССТАНАВЛИВАЕМ ПРОПАВШИЙ БЛОК --- */}
-        <div className={styles.feedSection}>
-          <h3 className={styles.feedTitle}>Последняя активность</h3>
-          <div className={styles.feedGrid}>
-            {isLoading ? <p>Загрузка...</p> : (
-              feed.length > 0 ? (
-                feed.map((item) => (
-                  <div key={item.id} className={styles.feedItem}>
-                    <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
-                    <div className={styles.feedItemContent}>
-                      <p className={styles.feedTransaction}>
-                        @{item.sender.username || item.sender.last_name} <span className={styles.arrow}>&rarr;</span> @{item.receiver.username || item.receiver.last_name}
-                      </p>
-                      <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
+                
+                <div className={styles.feedSection}>
+                    <h3 className={styles.feedTitle}>Последняя активность</h3>
+                    <div className={styles.feedGrid}>
+                        {isLoading ? <p>Загрузка...</p> : (
+                            Object.keys(groupedFeed).length > 0 ? (
+                                // --- 3. ИЗМЕНЕНИЕ: Отрисовываем сгруппированную ленту ---
+                                Object.keys(groupedFeed).map(dateKey => (
+                                    <React.Fragment key={dateKey}>
+                                        <div className={styles.dateHeader}>
+                                            <span>{formatFeedDate(groupedFeed[dateKey][0].timestamp)}</span>
+                                        </div>
+                                        {groupedFeed[dateKey].map(item => (
+                                            <div key={item.id} className={styles.feedItem}>
+                                                <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
+                                                <div className={styles.feedItemContent}>
+                                                    <p className={styles.feedTransaction}>
+                                                        @{item.sender.username || item.sender.last_name} <span className={styles.arrow}>&rarr;</span> @{item.receiver.username || item.receiver.last_name}
+                                                    </p>
+                                                    <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
+                                                </div>
+                                                <div className={styles.feedTimestamp}>
+                                                    {/* Показываем только время */}
+                                                    {formatToMsk(item.timestamp, { year: undefined, month: undefined, day: undefined })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </React.Fragment>
+                                ))
+                            ) : <p>Лента активности пуста.</p>
+                        )}
                     </div>
-                                  {/* --- 2. ИСПОЛЬЗУЕМ formatToMsk --- */}
-              <div className={styles.feedTimestamp}>{formatToMsk(item.timestamp)}</div>
-                  </div>
-                ))
-              ) : <p>Лента активности пуста.</p>
-            )}
-          </div>
+                </div>
+            </div>
         </div>
-        
-      </div>
-    </div>
-  );
+    );
 }
 
 export default HomePage;
