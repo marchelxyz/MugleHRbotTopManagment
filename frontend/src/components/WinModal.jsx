@@ -18,7 +18,7 @@ const WinModal = ({ prize, onClose }) => {
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
                 <Lottie
                     loop={false}
-                    animationData={null} // Lottie Player будет сам загружать по URL
+                    // --- ИСПРАВЛЕНИЕ: Убираем лишний параметр animationData ---
                     path="/AnimatedSticker.tgs" // Путь к нашему файлу в папке /public
                     play
                     style={{ width: 150, height: 150, margin: '0 auto' }}
