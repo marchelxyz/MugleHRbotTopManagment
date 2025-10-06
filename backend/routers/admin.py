@@ -139,46 +139,29 @@ async def get_economy_total_balance(db: AsyncSession = Depends(get_db)):
 
 @router.get("/statistics/user_engagement/export")
 async def export_user_engagement(db: AsyncSession = Depends(get_db)):
-    """
-    Экспортирует отчет "Лидеры вовлеченности" в Excel.
-    """
-    # 1. Получаем данные так же, как и для отображения на странице
     engagement_data = await crud.get_user_engagement_stats(db)
     top_senders = engagement_data["top_senders"]
     top_receivers = engagement_data["top_receivers"]
 
-    # 2. Создаем Excel-файл в памяти
     workbook = Workbook()
     
-    # --- Лист для Донаторов ---
     ws_senders = workbook.active
     ws_senders.title = "Топ Донаторы"
-    
-    # Заголовки таблицы
     ws_senders.append(["#", "Имя", "Фамилия", "Должность", "Отдел", "Отправлено"])
-    
-    # Заполняем данными
     for i, sender in enumerate(top_senders, 1):
         user, count = sender
         ws_senders.append([i, user.first_name, user.last_name, user.position, user.department, count])
 
-    # --- Лист для Инфлюенсеров ---
     ws_receivers = workbook.create_sheet("Топ Инфлюенсеры")
-    
-    # Заголовки таблицы
     ws_receivers.append(["#", "Имя", "Фамилия", "Должность", "Отдел", "Получено"])
-    
-    # Заполняем данными
     for i, receiver in enumerate(top_receivers, 1):
         user, count = receiver
         ws_receivers.append([i, user.first_name, user.last_name, user.position, user.department, count])
 
-    # 3. Сохраняем файл в "виртуальный" байтовый поток
     file_stream = io.BytesIO()
     workbook.save(file_stream)
-    file_stream.seek(0) # Возвращаемся в начало файла
+    file_stream.seek(0)
 
-    # 4. Отдаем файл как ответ на запрос
     return StreamingResponse(
         file_stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
