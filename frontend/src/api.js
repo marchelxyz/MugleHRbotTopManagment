@@ -282,3 +282,11 @@ export const exportConsolidatedReport = (startDate, endDate) => {
         responseType: 'blob', // Указываем, что ждем файл
     });
 };
+
+// --- ВЫГРУЗКА ВСЕГО СПИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+export const exportAllUsers = () => {
+    return apiClient.get('/admin/users/export', {
+        ...getAdminHeaders(),
+        responseType: 'blob', // Указываем, что ждем файл
+    });
+};
