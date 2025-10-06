@@ -1105,3 +1105,27 @@ async def get_active_user_ratio(db: AsyncSession):
     active_user_ids_count = len(set(active_senders).union(set(active_recipients)))
     inactive_users_count = total_users - active_user_ids_count
     return {"active_users": active_user_ids_count, "inactive_users": inactive_users_count}
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С СЕССИЯМИ ---
+
+async def start_user_session(db: AsyncSession, user_id: int) -> models.UserSession:
+    """Создает новую запись о сессии для пользователя."""
+    new_session = models.UserSession(user_id=user_id)
+    db.add(new_session)
+    await db.commit()
+    await db.refresh(new_session)
+    return new_session
+
+async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[models.UserSession]:
+    """Обновляет время 'last_seen' для существующей сессии."""
+    result = await db.execute(select(models.UserSession).filter(models.UserSession.id == session_id))
+    session = result.scalar_one_or_none()
+    
+    if session:
+        # SQLAlchemy onupdate=func.now() должен сработать автоматически при коммите,
+        # но для явности можно обновить вручную.
+        session.last_seen = datetime.utcnow()
+        await db.commit()
+        await db.refresh(session)
+    
+    return session
