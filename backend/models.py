@@ -37,6 +37,22 @@ class User(Base):
     purchases = relationship("Purchase", back_populates="user")
     pending_updates = relationship("PendingUpdate", back_populates="user")
 
+    sessions = relationship("UserSession", back_populates="user")
+
+# --- НОВАЯ ТАБЛИЦА ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИЙ ---
+class UserSession(Base):
+    __tablename__ = 'user_sessions'
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    
+    # Время, когда сессия началась
+    session_start: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    # Время, когда пользователь был активен в последний раз
+    last_seen: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="sessions")
+
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
