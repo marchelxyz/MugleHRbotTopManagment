@@ -231,3 +231,13 @@ class LoginActivityStats(BaseModel):
 class ActiveUserRatioStats(BaseModel):
     active_users: int
     inactive_users: int
+
+# --- НОВЫЕ СХЕМЫ ДЛЯ СЕССИЙ ---
+
+class SessionBase(OrmBase):
+    user_id: int
+
+class SessionResponse(SessionBase):
+    id: int
+    session_start: datetime
+    last_seen: datetime
