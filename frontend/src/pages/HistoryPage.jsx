@@ -1,79 +1,60 @@
 // frontend/src/pages/HistoryPage.jsx
 
 import React, { useState, useEffect } from 'react';
-import { getUserHistory } from '../api'; // Используем актуальную функцию API
-import { useAuth } from '../contexts/AuthContext'; // Получаем пользователя из контекста
+import { getUserTransactions } from '../api';
 import styles from './HistoryPage.module.css';
 import PageLayout from '../components/PageLayout';
-import { formatToMsk } from '../utils/dateFormatter'; // Наша новая функция форматирования
+import { formatToMsk } from '../utils/dateFormatter'; // <-- 1. ИМПОРТИРУЕМ НАШУ ФУНКЦИЮ
 
-const HistoryPage = () => {
-    const { user } = useAuth(); // Получаем авторизованного пользователя
-    const [history, setHistory] = useState({ sent: [], received: [] });
+function HistoryPage({ user, onBack }) {
+    const [transactions, setTransactions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         if (user) {
-            const fetchHistory = async () => {
+            const fetchTransactions = async () => {
                 try {
-                    const response = await getUserHistory(user.id);
-                    setHistory(response.data);
+                    const response = await getUserTransactions(user.id);
+                    setTransactions(response.data);
                 } catch (error) {
-                    console.error("Failed to fetch history", error);
+                    console.error("Failed to fetch transactions", error);
                 } finally {
                     setIsLoading(false);
                 }
             };
-            fetchHistory();
+            fetchTransactions();
         }
     }, [user]);
 
-    // Вспомогательный компонент для отрисовки одного списка
-    const TransactionList = ({ transactions, type }) => {
-        if (!transactions || transactions.length === 0) {
-            return <p>У вас пока нет {type === 'sent' ? 'отправленных' : 'полученных'} транзакций.</p>;
-        }
-
-        return (
-            <div className={styles.list}>
-                {transactions.map(tx => {
-                    const isSent = type === 'sent';
-                    const otherUser = isSent ? tx.receiver : tx.sender;
-                    
-                    return (
-                        <div key={tx.id} className={`${styles.transactionItem} ${isSent ? styles.outgoingBorder : styles.incomingBorder}`}>
-                            {isSent ? (
-                                <p>
-                                    <span className={styles.outgoing}>Вы отправили</span>
-                                    <strong> {tx.amount} баллов</strong>
-                                    <span> {otherUser.first_name} {otherUser.last_name}</span>
-                                </p>
-                            ) : (
-                                <p>
-                                    <span className={styles.incoming}>Вы получили</span>
-                                    <strong> {tx.amount} баллов</strong>
-                                    <span> от {tx.sender.first_name} {tx.sender.last_name}</span>
-                                </p>
-                            )}
-                            {tx.message && <p className={styles.message}>"{tx.message}"</p>}
-                            <p className={styles.timestamp}>{formatToMsk(tx.timestamp)}</p>
-                        </div>
-                    );
-                })}
-            </div>
-        );
-    };
-
     return (
         <PageLayout title="История">
+            <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
+            
             {isLoading ? <p>Загрузка...</p> : (
-                <>
-                    <h2>Полученные</h2>
-                    <TransactionList transactions={history.received} type="received" />
-                    
-                    <h2 className={styles.sentTitle}>Отправленные</h2>
-                    <TransactionList transactions={history.sent} type="sent" />
-                </>
+                transactions.length > 0 ? (
+                    <div className={styles.list}>
+                        {transactions.map(tx => (
+                            <div key={tx.id} className={`${styles.transactionItem} ${tx.sender.id === user.id ? styles.outgoingBorder : styles.incomingBorder}`}>
+                                {tx.sender.id === user.id ? (
+                                    <p>
+                                        <span className={styles.outgoing}>Вы отправили</span>
+                                        <strong> {tx.amount} баллов</strong>
+                                        <span> {tx.receiver.first_name} {tx.receiver.last_name}</span>
+                                    </p>
+                                ) : (
+                                    <p>
+                                        <span className={styles.incoming}>Вы получили</span>
+                                        <strong> {tx.amount} баллов</strong>
+                                        <span> от {tx.sender.first_name} {tx.sender.last_name}</span>
+                                    </p>
+                                )}
+                                {tx.message && <p className={styles.message}>"{tx.message}"</p>}
+                                {/* --- 2. ИСПОЛЬЗУЕМ formatToMsk --- */}
+                                <p className={styles.timestamp}>{formatToMsk(tx.timestamp)}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : <p>У вас пока нет транзакций.</p>
             )}
         </PageLayout>
     );
