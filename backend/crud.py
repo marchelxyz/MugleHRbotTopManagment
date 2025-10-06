@@ -118,9 +118,14 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         raise ValueError("Отправитель не найден")
 
     # Обновляем счетчик, если наступил новый день
-    if sender.last_login_date is None or sender.last_login_date < today:
+    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+    # Обновляем счетчик, если наступил новый день
+    # Сравниваем дату с датой, добавляя .date()
+    if sender.last_login_date is None or sender.last_login_date.date() < today:
         sender.daily_transfer_count = 0
-        sender.last_login_date = today
+    
+    # Записываем текущее время в last_login_date, так как колонка теперь DateTime
+    sender.last_login_date = datetime.utcnow()
     
     fixed_amount = 1 
     if sender.daily_transfer_count >= 3:
@@ -541,12 +546,12 @@ async def get_archived_items(db: AsyncSession):
 async def assemble_tickets(db: AsyncSession, user_id: int):
     """Собирает части билетиков в целые билеты (2 к 1)."""
     user = await db.get(models.User, user_id)
-    if not user or user.ticket_parts < 2:
+    if not user or user.ticket_parts < 3:
         raise ValueError("Недостаточно частей для сборки билета.")
     
-    new_tickets = user.ticket_parts // 2
+    new_tickets = user.ticket_parts // 3
     user.tickets += new_tickets
-    user.ticket_parts %= 2 # Оставляем остаток (0 или 1)
+    user.ticket_parts %= 3 # Оставляем остаток (0 или 1)
     
     await db.commit()
     await db.refresh(user)
@@ -554,7 +559,8 @@ async def assemble_tickets(db: AsyncSession, user_id: int):
 
 async def spin_roulette(db: AsyncSession, user_id: int):
     """
-    Прокручивает рулетку, рассчитывает и начисляет выигрыш на основе чисел от 1 до 30.
+    Прокручивает рулетку, рассчитывает и начисляет выигрыш
+    на основе взвешенного шанса для чисел от 1 до 15.
     """
     user = await db.get(models.User, user_id)
     if not user or user.tickets < 1:
@@ -562,14 +568,24 @@ async def spin_roulette(db: AsyncSession, user_id: int):
 
     user.tickets -= 1
 
-    # Логика взвешенного шанса для чисел от 1 до 30
-    rand = random.random()
-    if rand < 0.05: # 5% шанс на крупный выигрыш
-        prize = random.randint(16, 30)
-    elif rand < 0.35: # 30% шанс на средний выигрыш
-        prize = random.randint(6, 15)
-    else: # 65% шанс на малый выигрыш
-        prize = random.randint(1, 5)
+    # --- НОВАЯ ЛОГИКА ВЗВЕШЕННОГО ШАНСА ---
+
+    # Определяем призы и их шансы
+    # Формат: (приз, шанс_в_процентах)
+    prize_tiers = {
+        'small': (list(range(1, 5)), 65),    # Призы от 1 до 5, шанс 65%
+        'medium': (list(range(6, 10)), 30),   # Призы от 6 до 10, шанс 30%
+        'large': (list(range(11, 15)), 5)     # Призы от 11 до 15, шанс 5%
+    }
+    
+    # Выбираем тир на основе шансов
+    tiers = [tier for tier in prize_tiers.keys()]
+    weights = [prize_tiers[tier][1] for tier in tiers]
+    chosen_tier = random.choices(tiers, weights=weights, k=1)[0]
+    
+    # Выбираем случайный приз из выпавшего тира
+    possible_prizes = prize_tiers[chosen_tier][0]
+    prize = random.choice(possible_prizes)
 
     user.balance += prize
 
@@ -1028,13 +1044,16 @@ async def get_hourly_activity_stats(db: AsyncSession, start_date: Optional[date]
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Правильная конвертация времени из UTC в MSK ---
+    moscow_time = models.Transaction.timestamp.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
+    
     query = (
         select(
-            extract('hour', models.Transaction.timestamp).label('hour'),
+            extract('hour', moscow_time).label('hour'),
             func.count(models.Transaction.id).label('transaction_count')
         )
         .filter(models.Transaction.timestamp.between(start_date, end_date))
-        .group_by(extract('hour', models.Transaction.timestamp))
+        .group_by(extract('hour', moscow_time))
     )
     result = await db.execute(query)
     activity = result.all()
@@ -1047,13 +1066,16 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
     
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Правильная конвертация времени из UTC в MSK ---
+    moscow_time = models.User.last_login_date.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
+
     query = (
         select(
-            extract('hour', models.User.last_login_date).label('hour'),
+            extract('hour', moscow_time).label('hour'),
             func.count(models.User.id).label('login_count')
         )
         .filter(models.User.last_login_date.between(start_date, end_date))
-        .group_by(extract('hour', models.User.last_login_date))
+        .group_by(extract('hour', moscow_time))
     )
     result = await db.execute(query)
     activity = result.all()
@@ -1061,39 +1083,62 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     for row in activity:
         if row.hour is not None: hourly_stats[row.hour] = row.login_count
     return hourly_stats
+    
+async def get_user_engagement_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 5):
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=365*5) # Берем большой диапазон по умолчанию
 
-async def get_user_engagement_stats(db: AsyncSession, limit: int = 5):
+    # Добавляем фильтр по дате в запрос
     query_senders = (
         select(models.User, func.count(models.Transaction.id).label('sent_count'))
-        .join(models.Transaction, models.User.id == models.Transaction.sender_id).group_by(models.User.id)
+        .join(models.Transaction, models.User.id == models.Transaction.sender_id)
+        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_senders = (await db.execute(query_senders)).all()
 
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: recipient_id -> receiver_id ---
+    # Добавляем фильтр по дате в запрос
     query_receivers = (
         select(models.User, func.count(models.Transaction.id).label('received_count'))
-        .join(models.Transaction, models.User.id == models.Transaction.receiver_id).group_by(models.User.id)
+        .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
+        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_receivers = (await db.execute(query_receivers)).all()
     
     return {"top_senders": top_senders, "top_receivers": top_receivers}
 
-async def get_popular_items_stats(db: AsyncSession, limit: int = 10):
+async def get_popular_items_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 10):
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=365*5)
+
+    # Добавляем фильтр по дате в запрос
     query = (
         select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
         .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
+        .filter(models.Purchase.timestamp.between(start_date, end_date))
         .group_by(models.MarketItem.id).order_by(func.count(models.Purchase.id).desc()).limit(limit)
     )
     return (await db.execute(query)).all()
 
-async def get_inactive_users(db: AsyncSession):
-    active_senders = (await db.execute(select(models.Transaction.sender_id).distinct())).scalars().all()
-    active_recipients = (await db.execute(select(models.Transaction.receiver_id).distinct())).scalars().all()
-    active_user_ids = set(active_senders).union(set(active_recipients))
-    return (await db.execute(select(models.User).filter(models.User.id.notin_(active_user_ids)))).scalars().all()
+async def get_inactive_users(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=30)
 
+    # Находим ID тех, кто был активен в УКАЗАННЫЙ ПЕРИОД
+    active_senders_q = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    active_recipients_q = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    
+    active_senders = (await db.execute(active_senders_q)).scalars().all()
+    active_recipients = (await db.execute(active_recipients_q)).scalars().all()
+    
+    active_user_ids = set(active_senders).union(set(active_recipients))
+    
+    # Возвращаем всех пользователей, КРОМЕ тех, кто был активен в этот период
+    return (await db.execute(select(models.User).filter(models.User.id.notin_(active_user_ids)))).scalars().all()
+    
 async def get_total_balance(db: AsyncSession):
     total = (await db.execute(select(func.sum(models.User.balance)))).scalar_one_or_none()
     return total or 0
@@ -1105,3 +1150,52 @@ async def get_active_user_ratio(db: AsyncSession):
     active_user_ids_count = len(set(active_senders).union(set(active_recipients)))
     inactive_users_count = total_users - active_user_ids_count
     return {"active_users": active_user_ids_count, "inactive_users": inactive_users_count}
+
+# --- НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С СЕССИЯМИ ---
+
+async def start_user_session(db: AsyncSession, user_id: int) -> models.UserSession:
+    """Создает новую запись о сессии для пользователя."""
+    new_session = models.UserSession(user_id=user_id)
+    db.add(new_session)
+    await db.commit()
+    await db.refresh(new_session)
+    return new_session
+
+async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[models.UserSession]:
+    """Обновляет время 'last_seen' для существующей сессии."""
+    result = await db.execute(select(models.UserSession).filter(models.UserSession.id == session_id))
+    session = result.scalar_one_or_none()
+    
+    if session:
+        # SQLAlchemy onupdate=func.now() должен сработать автоматически при коммите,
+        # но для явности можно обновить вручную.
+        session.last_seen = datetime.utcnow()
+        await db.commit()
+        await db.refresh(session)
+    
+    return session
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ РАСЧЁТА СРЕДНЕЙ ДЛИТЕЛЬНОСТИ СЕССИИ ---
+
+async def get_average_session_duration(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    """
+    Считает среднюю длительность сессии в минутах за указанный период.
+    """
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=30)
+
+    # Вычисляем разницу между last_seen и session_start для каждой сессии
+    session_duration = func.extract('epoch', models.UserSession.last_seen - models.UserSession.session_start)
+    
+    # Считаем среднее значение этой разницы в секундах
+    query = (
+        select(func.avg(session_duration))
+        .filter(models.UserSession.session_start.between(start_date, end_date))
+    )
+    
+    average_seconds = (await db.execute(query)).scalar_one_or_none() or 0
+    
+    # Конвертируем в минуты и округляем до сотых
+    average_minutes = round(average_seconds / 60, 2)
+    
+    return {"average_duration_minutes": average_minutes}

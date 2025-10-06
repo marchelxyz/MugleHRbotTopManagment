@@ -1,21 +1,50 @@
 // frontend/src/utils/dateFormatter.js
 
 /**
- * Форматирует дату из строки YYYY-MM-DD в DD.MM.YYYY
- * @param {string | null | undefined} dateString - Дата в формате 'YYYY-MM-DD'
- * @returns {string} - Дата в формате 'DD.MM.YYYY' или пустая строка
+ * Главная функция для форматирования даты и времени в московском часовом поясе.
+ * @param {string | Date} dateInput - Дата в виде строки (из API) или объекта Date.
+ * @param {object} options - Опции форматирования из Intl.DateTimeFormat.
+ * @returns {string} - Отформатированная строка.
+ */
+export const formatToMsk = (dateInput, options = {}) => {
+  if (!dateInput) {
+    return ''; // Возвращаем пустую строку, если дата не пришла
+  }
+
+  const date = new Date(typeof dateInput === 'string' ? dateInput + 'Z' : dateInput);
+
+  // Проверяем, корректная ли дата
+  if (isNaN(date.getTime())) {
+    // Возвращаем исходную строку, если это не дата
+    return dateInput;
+  }
+
+  // Настройки по умолчанию: дата и время (ДД.ММ.ГГГГ, ЧЧ:ММ)
+  const defaultOptions = {
+    timeZone: 'Europe/Moscow',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  };
+
+  // Соединяем опции по умолчанию с теми, что были переданы
+  const finalOptions = { ...defaultOptions, ...options };
+
+  // Используем Intl.DateTimeFormat для правильного форматирования
+  // 'ru-RU' гарантирует правильный порядок (день.месяц.год)
+  return new Intl.DateTimeFormat('ru-RU', finalOptions).format(date);
+};
+
+/**
+ * Вспомогательная функция для форматирования даты в формат ДД.ММ.ГГГГ.
+ * Используется в формах редактирования.
+ * @param {string | Date} dateString - Входящая дата.
+ * @returns {string} - Дата в формате ДД.ММ.ГГГГ.
  */
 export const formatDateForDisplay = (dateString) => {
   if (!dateString) return '';
-  try {
-    const [year, month, day] = dateString.split('-');
-    // Убедимся, что все части даты присутствуют
-    if (year && month && day) {
-      return `${day}.${month}.${year}`;
-    }
-    return ''; // Возвращаем пустую строку, если формат некорректный
-  } catch (error) {
-    console.error('Ошибка форматирования даты:', dateString, error);
-    return ''; // В случае любой ошибки возвращаем пустую строку
-  }
+  // Используем нашу главную функцию, но убираем из нее время
+  return formatToMsk(dateString, { hour: undefined, minute: undefined, second: undefined });
 };

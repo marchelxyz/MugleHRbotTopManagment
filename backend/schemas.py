@@ -171,7 +171,7 @@ class RouletteWinResponse(OrmBase):
     id: int
     amount: int
     timestamp: datetime
-    user: UserBase # Используем базовую схему пользователя, чтобы избежать лишних данных
+    user: UserResponse # Используем полную схему данных
 
 class SpinResponse(BaseModel):
     prize_won: int
@@ -231,3 +231,16 @@ class LoginActivityStats(BaseModel):
 class ActiveUserRatioStats(BaseModel):
     active_users: int
     inactive_users: int
+
+# --- НОВЫЕ СХЕМЫ ДЛЯ СЕССИЙ ---
+
+class SessionBase(OrmBase):
+    user_id: int
+
+class SessionResponse(SessionBase):
+    id: int
+    session_start: datetime
+    last_seen: datetime
+
+class AverageSessionDurationStats(BaseModel):
+    average_duration_minutes: float
