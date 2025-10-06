@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import styles from './StatisticsDashboard.module.css';
 import { FaChartBar, FaHourglassHalf, FaStar, FaChartLine, FaUsersSlash, FaCoins, FaSignInAlt, FaChartPie } from 'react-icons/fa';
 import DateRangePicker from '../../components/DateRangePicker';
+import { exportConsolidatedReport } from '../../api'; // <-- Импортируем новую функцию
 
 // Импортируем ВСЕ наши компоненты-отчёты
 import GeneralStats from './stats/GeneralStats';
@@ -19,6 +20,7 @@ const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+    const [isExporting, setIsExporting] = useState(false); // Состояние для кнопки экспорта
 
     // Функция для форматирования даты в строку 'YYYY-MM-DD' для API
     const formatDateForApi = (date) => {
@@ -26,6 +28,31 @@ const StatisticsDashboard = () => {
         return date.toISOString().split('T')[0];
     };
 
+    // --- НОВАЯ ФУНКЦИЯ ДЛЯ СКАЧИВАНИЯ СВОДНОГО ОТЧЁТА ---
+    const handleConsolidatedExport = async () => {
+        setIsExporting(true);
+        try {
+            const formattedStartDate = formatDateForApi(startDate);
+            const formattedEndDate = formatDateForApi(endDate);
+            
+            const response = await exportConsolidatedReport(formattedStartDate, formattedEndDate);
+            
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            // Имя файла будет сформировано на бэкенде, но мы можем задать запасное
+            link.setAttribute('download', `consolidated_report.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (err) {
+            console.error('Ошибка при экспорте сводного отчета:', err);
+            alert('Не удалось скачать сводный отчет.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+    
     // Описываем все вкладки и указываем, зависит ли она от даты
     const tabs = [
         { id: 'general', label: 'Общая', icon: <FaChartBar />, dateDependent: true },
@@ -85,7 +112,17 @@ const StatisticsDashboard = () => {
                     setEndDate={setEndDate}
                 />
             )}
-
+                {/* --- НОВАЯ КНОПКА СКАЧИВАНИЯ --- */}
+                <button
+                    className={styles.consolidatedExportButton}
+                    onClick={handleConsolidatedExport}
+                    disabled={isExporting}
+                >
+                    <FaFileExcel />
+                    {isExporting ? 'Формируем отчет...' : 'Скачать сводный отчет'}
+                </button>
+            </div>
+        
             <div className={styles.content}>
                 {renderActiveComponent()}
             </div>
