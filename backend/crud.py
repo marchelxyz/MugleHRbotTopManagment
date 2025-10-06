@@ -546,12 +546,12 @@ async def get_archived_items(db: AsyncSession):
 async def assemble_tickets(db: AsyncSession, user_id: int):
     """Собирает части билетиков в целые билеты (2 к 1)."""
     user = await db.get(models.User, user_id)
-    if not user or user.ticket_parts < 2:
+    if not user or user.ticket_parts < 3:
         raise ValueError("Недостаточно частей для сборки билета.")
     
-    new_tickets = user.ticket_parts // 2
+    new_tickets = user.ticket_parts // 3
     user.tickets += new_tickets
-    user.ticket_parts %= 2 # Оставляем остаток (0 или 1)
+    user.ticket_parts %= 3 # Оставляем остаток (0 или 1)
     
     await db.commit()
     await db.refresh(user)
@@ -559,7 +559,8 @@ async def assemble_tickets(db: AsyncSession, user_id: int):
 
 async def spin_roulette(db: AsyncSession, user_id: int):
     """
-    Прокручивает рулетку, рассчитывает и начисляет выигрыш на основе чисел от 1 до 30.
+    Прокручивает рулетку, рассчитывает и начисляет выигрыш
+    на основе взвешенного шанса для чисел от 1 до 15.
     """
     user = await db.get(models.User, user_id)
     if not user or user.tickets < 1:
@@ -567,14 +568,24 @@ async def spin_roulette(db: AsyncSession, user_id: int):
 
     user.tickets -= 1
 
-    # Логика взвешенного шанса для чисел от 1 до 30
-    rand = random.random()
-    if rand < 0.05: # 5% шанс на крупный выигрыш
-        prize = random.randint(16, 30)
-    elif rand < 0.35: # 30% шанс на средний выигрыш
-        prize = random.randint(6, 15)
-    else: # 65% шанс на малый выигрыш
-        prize = random.randint(1, 5)
+    # --- НОВАЯ ЛОГИКА ВЗВЕШЕННОГО ШАНСА ---
+
+    # Определяем призы и их шансы
+    # Формат: (приз, шанс_в_процентах)
+    prize_tiers = {
+        'small': (list(range(1, 5)), 65),    # Призы от 1 до 5, шанс 65%
+        'medium': (list(range(6, 10)), 30),   # Призы от 6 до 10, шанс 30%
+        'large': (list(range(11, 15)), 5)     # Призы от 11 до 15, шанс 5%
+    }
+    
+    # Выбираем тир на основе шансов
+    tiers = [tier for tier in prize_tiers.keys()]
+    weights = [prize_tiers[tier][1] for tier in tiers]
+    chosen_tier = random.choices(tiers, weights=weights, k=1)[0]
+    
+    # Выбираем случайный приз из выпавшего тира
+    possible_prizes = prize_tiers[chosen_tier][0]
+    prize = random.choice(possible_prizes)
 
     user.balance += prize
 
