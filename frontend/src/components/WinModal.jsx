@@ -3,9 +3,10 @@
 import React, { useEffect } from 'react';
 import Lottie from 'react-lottie-player';
 import styles from './WinModal.module.css';
+// --- ИСПРАВЛЕНИЕ 1: Импортируем файл анимации напрямую ---
+import animationData from '../assets/AnimatedSticker.tgs';
 
 const WinModal = ({ prize, onClose }) => {
-    // Автоматически закрываем окно через 4 секунды
     useEffect(() => {
         const timer = setTimeout(() => {
             onClose();
@@ -18,8 +19,8 @@ const WinModal = ({ prize, onClose }) => {
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
                 <Lottie
                     loop={false}
-                    // --- ИСПРАВЛЕНИЕ: Убираем лишний параметр animationData ---
-                    path="/AnimatedSticker.tgs" // Путь к нашему файлу в папке /public
+                    // --- ИСПРАВЛЕНИЕ 2: Используем animationData вместо path ---
+                    animationData={animationData}
                     play
                     style={{ width: 150, height: 150, margin: '0 auto' }}
                 />
