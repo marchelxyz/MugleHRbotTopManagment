@@ -279,3 +279,34 @@
   right: 0;
   z-index: 1;
 }
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ ДАТЫ И ВРЕМЕНИ --- */
+/* --- Стили для группировки по дате --- */
+.dateHeader {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 5px;
+}
+
+.dateHeader span {
+    background-color: #e9eef2;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6E7A85;
+}
+
+/* --- ИЗМЕНЕНИЕ: Позиционируем время в углу --- */
+.feedItem {
+    position: relative; /* Это нужно, чтобы позиционировать время */
+    padding-bottom: 25px; /* Добавляем место для времени */
+}
+
+.feedTimestamp {
+    position: absolute; /* Абсолютное позиционирование */
+    bottom: 8px;        /* внизу */
+    right: 12px;        /* справа */
+    font-size: 0.8rem;
+    color: #6E7A85;
+}
