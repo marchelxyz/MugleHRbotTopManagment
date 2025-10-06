@@ -7,25 +7,26 @@ import styles from './RoulettePage.module.css';
 import { FaInfoCircle, FaTicketAlt } from 'react-icons/fa';
 import UserAvatar from '../components/UserAvatar';
 import { formatToMsk } from '../utils/dateFormatter';
+import WinModal from '../components/WinModal';
 
 // Функция для создания "ленты" с призами для анимации
 const generatePrizeReel = (finalPrize) => {
-    const reelLength = 50; // Общая длина ленты
+    const reelLength = 50;
     const prizes = [];
     for (let i = 0; i < reelLength; i++) {
         prizes.push(Math.floor(Math.random() * 15) + 1);
     }
-    // Вставляем наш реальный выигрыш примерно в конец ленты
     prizes[reelLength - 5] = finalPrize;
     return prizes;
 };
 
-// --- ИЗМЕНЕНИЕ: Принимаем user и onUpdateUser как пропсы ---
+// Принимаем user и onUpdateUser как пропсы
 function RoulettePage({ user, onUpdateUser }) {
     const [history, setHistory] = useState([]);
     const [isSpinning, setIsSpinning] = useState(false);
     const [infoVisible, setInfoVisible] = useState(false);
-    const [prizeReel, setPrizeReel] = useState(() => generatePrizeReel(1)); // Начальная лента
+    const [prizeReel, setPrizeReel] = useState(() => generatePrizeReel(1));
+    const [winPrize, setWinPrize] = useState(null);
     const rouletteTrackRef = useRef(null);
 
     useEffect(() => {
@@ -33,10 +34,10 @@ function RoulettePage({ user, onUpdateUser }) {
     }, []);
 
     const handleAssemble = async () => {
-        if (user.ticket_parts < 3) return;
+        if (!user || user.ticket_parts < 3) return;
         try {
             const response = await assembleTickets();
-            onUpdateUser(response.data); // Обновляем данные пользователя в App.jsx
+            onUpdateUser(response.data); // API возвращает обновленный объект user
         } catch (error) {
             console.error("Failed to assemble tickets", error);
             alert(error.response?.data?.detail || "Ошибка сборки билета");
@@ -44,10 +45,10 @@ function RoulettePage({ user, onUpdateUser }) {
     };
 
     const handleSpin = async () => {
-        if (user.tickets < 1 || isSpinning) return;
+        if (!user || user.tickets < 1 || isSpinning || winPrize) return;
         
         setIsSpinning(true);
-        // Сбрасываем анимацию для нового вращения
+        setWinPrize(null);
         rouletteTrackRef.current.style.transition = 'none';
         rouletteTrackRef.current.style.transform = `translateX(0px)`;
 
@@ -59,7 +60,7 @@ function RoulettePage({ user, onUpdateUser }) {
             setPrizeReel(newReel);
 
             setTimeout(() => {
-                const prizeElementWidth = 80; // Ширина одного элемента из CSS
+                const prizeElementWidth = 80;
                 const stopPosition = (newReel.length - 5) * prizeElementWidth;
                 const randomOffset = (Math.random() - 0.5) * (prizeElementWidth * 0.8);
                 const finalPosition = stopPosition - randomOffset;
@@ -68,12 +69,15 @@ function RoulettePage({ user, onUpdateUser }) {
                 rouletteTrackRef.current.style.transform = `translateX(-${finalPosition}px)`;
 
                 setTimeout(async () => {
-                    // После завершения анимации обновляем данные
+                    setIsSpinning(false);
+                    setWinPrize(prize_won);
+                    
+                    // Обновляем баланс и билеты в главном компоненте App.jsx
                     onUpdateUser({ balance: new_balance, tickets: new_tickets });
+                    
                     const historyRes = await getRouletteHistory();
                     setHistory(historyRes.data);
-                    setIsSpinning(false);
-                }, 5000); // Задержка равна длительности анимации
+                }, 5000);
             }, 100);
 
         } catch (error) {
@@ -85,6 +89,8 @@ function RoulettePage({ user, onUpdateUser }) {
 
     return (
         <PageLayout title="Рулетка">
+            {winPrize && <WinModal prize={winPrize} onClose={() => setWinPrize(null)} />}
+            
             <FaInfoCircle className={styles.infoIcon} onClick={() => setInfoVisible(!infoVisible)} />
 
             {infoVisible && (
@@ -101,7 +107,7 @@ function RoulettePage({ user, onUpdateUser }) {
                     <span>Части билетов</span>
                     <strong>{user?.ticket_parts || 0} / 3</strong>
                 </div>
-                <button onClick={handleAssemble} disabled={user?.ticket_parts < 3}>Собрать</button>
+                <button onClick={handleAssemble} disabled={!user || user.ticket_parts < 3}>Собрать</button>
                 <div className={styles.balanceBox}>
                     <FaTicketAlt />
                     <strong>{user?.tickets || 0}</strong>
@@ -117,7 +123,11 @@ function RoulettePage({ user, onUpdateUser }) {
                 </div>
             </div>
 
-            <button onClick={handleSpin} disabled={user?.tickets < 1 || isSpinning} className={styles.spinButton}>
+            <button 
+                onClick={handleSpin} 
+                disabled={!user || user.tickets < 1 || isSpinning || winPrize} 
+                className={styles.spinButton}
+            >
                 {isSpinning ? 'Крутится...' : `Крутить (1 билет)`}
             </button>
 
