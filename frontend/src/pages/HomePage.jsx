@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
+import { formatToMsk } from '../utils/dateFormatter';
+
 
 // 1. Принимаем новый пропс isDesktop
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
@@ -128,6 +130,8 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                       </p>
                       <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
                     </div>
+                                  {/* --- 2. ИСПОЛЬЗУЕМ formatToMsk --- */}
+              <div className={styles.feedTimestamp}>{formatToMsk(item.timestamp)}</div>
                   </div>
                 ))
               ) : <p>Лента активности пуста.</p>
