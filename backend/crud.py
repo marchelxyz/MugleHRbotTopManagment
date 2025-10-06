@@ -1062,38 +1062,61 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
         if row.hour is not None: hourly_stats[row.hour] = row.login_count
     return hourly_stats
 
-async def get_user_engagement_stats(db: AsyncSession, limit: int = 5):
+async def get_user_engagement_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 5):
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=365*5) # Берем большой диапазон по умолчанию
+
+    # Добавляем фильтр по дате в запрос
     query_senders = (
         select(models.User, func.count(models.Transaction.id).label('sent_count'))
-        .join(models.Transaction, models.User.id == models.Transaction.sender_id).group_by(models.User.id)
+        .join(models.Transaction, models.User.id == models.Transaction.sender_id)
+        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_senders = (await db.execute(query_senders)).all()
 
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ: recipient_id -> receiver_id ---
+    # Добавляем фильтр по дате в запрос
     query_receivers = (
         select(models.User, func.count(models.Transaction.id).label('received_count'))
-        .join(models.Transaction, models.User.id == models.Transaction.receiver_id).group_by(models.User.id)
+        .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
+        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_receivers = (await db.execute(query_receivers)).all()
     
     return {"top_senders": top_senders, "top_receivers": top_receivers}
 
-async def get_popular_items_stats(db: AsyncSession, limit: int = 10):
+async def get_popular_items_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 10):
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=365*5)
+
+    # Добавляем фильтр по дате в запрос
     query = (
         select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
         .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
+        .filter(models.Purchase.timestamp.between(start_date, end_date))
         .group_by(models.MarketItem.id).order_by(func.count(models.Purchase.id).desc()).limit(limit)
     )
     return (await db.execute(query)).all()
 
-async def get_inactive_users(db: AsyncSession):
-    active_senders = (await db.execute(select(models.Transaction.sender_id).distinct())).scalars().all()
-    active_recipients = (await db.execute(select(models.Transaction.receiver_id).distinct())).scalars().all()
-    active_user_ids = set(active_senders).union(set(active_recipients))
-    return (await db.execute(select(models.User).filter(models.User.id.notin_(active_user_ids)))).scalars().all()
+async def get_inactive_users(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=30)
 
+    # Находим ID тех, кто был активен в УКАЗАННЫЙ ПЕРИОД
+    active_senders_q = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    active_recipients_q = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
+    
+    active_senders = (await db.execute(active_senders_q)).scalars().all()
+    active_recipients = (await db.execute(active_recipients_q)).scalars().all()
+    
+    active_user_ids = set(active_senders).union(set(active_recipients))
+    
+    # Возвращаем всех пользователей, КРОМЕ тех, кто был активен в этот период
+    return (await db.execute(select(models.User).filter(models.User.id.notin_(active_user_ids)))).scalars().all()
+    
 async def get_total_balance(db: AsyncSession):
     total = (await db.execute(select(func.sum(models.User.balance)))).scalar_one_or_none()
     return total or 0
