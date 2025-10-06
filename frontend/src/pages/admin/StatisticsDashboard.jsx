@@ -121,7 +121,7 @@ const StatisticsDashboard = () => {
                     <FaFileExcel />
                     {isExporting ? 'Формируем отчет...' : 'Скачать сводный отчет'}
                 </button>
-            </div>
+            </div> {
         
             <div className={styles.content}>
                 {renderActiveComponent()}
