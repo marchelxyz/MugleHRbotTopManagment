@@ -136,6 +136,17 @@ async def get_economy_total_balance(db: AsyncSession = Depends(get_db)):
     total_balance = await crud.get_total_balance(db)
     return {"total_balance": total_balance}
 
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ СР.ВРЕМЕНИ ПОЛЬЗОВАТЕЛЯ ---
+
+@router.get("/statistics/average_session_duration", response_model=schemas.AverageSessionDurationStats)
+async def get_average_session_duration_route(
+    start_date: Optional[date] = Query(None), 
+    end_date: Optional[date] = Query(None), 
+    db: AsyncSession = Depends(get_db)
+):
+    stats = await crud.get_average_session_duration(db, start_date=start_date, end_date=end_date)
+    return stats
+
 # --- НОВЫЙ ЭНДПОИНТ ДЛЯ ВЫГРУЗКИ В EXCEL ---
 
 @router.get("/statistics/user_engagement/export")
