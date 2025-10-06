@@ -1033,8 +1033,8 @@ async def get_hourly_activity_stats(db: AsyncSession, start_date: Optional[date]
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
-    # --- ИСПРАВЛЕНИЕ: Используем func.timezone для конвертации в MSK ---
-    moscow_time = func.timezone('Europe/Moscow', models.Transaction.timestamp)
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Правильная конвертация времени из UTC в MSK ---
+    moscow_time = models.Transaction.timestamp.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
     
     query = (
         select(
@@ -1055,8 +1055,8 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
     
-    # --- ИСПРАВЛЕНИЕ: Используем func.timezone для конвертации в MSK ---
-    moscow_time = func.timezone('Europe/Moscow', models.User.last_login_date)
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Правильная конвертация времени из UTC в MSK ---
+    moscow_time = models.User.last_login_date.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
 
     query = (
         select(
