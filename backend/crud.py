@@ -1033,8 +1033,8 @@ async def get_hourly_activity_stats(db: AsyncSession, start_date: Optional[date]
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
-    # --- ИСПРАВЛЕНИЕ: Конвертируем время в MSK перед извлечением часа ---
-    moscow_time = models.Transaction.timestamp.at_time_zone('Europe/Moscow')
+    # --- ИСПРАВЛЕНИЕ: Используем func.timezone для конвертации в MSK ---
+    moscow_time = func.timezone('Europe/Moscow', models.Transaction.timestamp)
     
     query = (
         select(
@@ -1055,8 +1055,8 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
     
-    # --- ИСПРАВЛЕНИЕ: Конвертируем время в MSK перед извлечением часа ---
-    moscow_time = models.User.last_login_date.at_time_zone('Europe/Moscow')
+    # --- ИСПРАВЛЕНИЕ: Используем func.timezone для конвертации в MSK ---
+    moscow_time = func.timezone('Europe/Moscow', models.User.last_login_date)
 
     query = (
         select(
@@ -1072,6 +1072,7 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     for row in activity:
         if row.hour is not None: hourly_stats[row.hour] = row.login_count
     return hourly_stats
+    
 async def get_user_engagement_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 5):
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=365*5) # Берем большой диапазон по умолчанию
