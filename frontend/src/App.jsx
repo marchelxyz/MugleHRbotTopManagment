@@ -23,9 +23,12 @@ import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
 import TransferPage from './pages/TransferPage'; // Убедимся, что TransferPage импортирован
+import { startSession, pingSession } from './api';
 
 // Стили
 import './App.css';
+
+const PING_INTERVAL = 60000; // Пингуем каждую минуту (60 000 миллисекунд)
 
 const tg = window.Telegram.WebApp;
 
@@ -136,6 +139,51 @@ const handleTransferSuccess = (updatedSenderData) => {
     return <div>Неизвестный статус пользователя.</div>;
   };
 
+    // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
+  useEffect(() => {
+    let sessionId = null;
+    let intervalId = null;
+
+    const sessionManager = async () => {
+      try {
+        // 1. При запуске приложения создаем новую сессию
+        const response = await startSession();
+        sessionId = response.data.id;
+        console.log('Сессия успешно запущена, ID:', sessionId);
+
+        // 2. Запускаем интервал, который будет "пинговать" сессию
+        intervalId = setInterval(async () => {
+          if (sessionId) {
+            try {
+              await pingSession(sessionId);
+              console.log(`Пинг для сессии ${sessionId} успешен.`);
+            } catch (pingError) {
+              console.error('Ошибка пинга сессии:', pingError);
+              // Если сессия не найдена на сервере, прекращаем пинговать
+              if (pingError.response && pingError.response.status === 404) {
+                clearInterval(intervalId);
+              }
+            }
+          }
+        }, PING_INTERVAL);
+
+      } catch (startError) {
+        // Ошибки могут возникать, если пользователь не авторизован, это нормально
+        console.error('Не удалось запустить сессию:', startError);
+      }
+    };
+
+    sessionManager();
+
+    // 3. Функция очистки: сработает, когда пользователь закроет приложение
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log('Отслеживание сессии остановлено.');
+      }
+    };
+  }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+  
   return (
     <div className="app-container">
       {user && user.status === 'approved' && (
