@@ -16,6 +16,7 @@
     margin-bottom: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+
 .infoModal h3 { margin-top: 0; }
 .infoModal p { margin: 5px 0; font-size: 0.9rem; }
 
@@ -55,7 +56,8 @@
     background: #f0f0f0;
     color: #aaa;
     border-color: #ddd;
-
+}
+    
 .rouletteContainer {
     width: 100%;
     overflow: hidden;
