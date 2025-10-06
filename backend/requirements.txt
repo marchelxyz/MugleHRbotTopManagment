@@ -9,3 +9,4 @@ httpx
 pydantic-settings
 pyzipper
 openpyxl
+pandas
