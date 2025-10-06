@@ -171,7 +171,7 @@ class RouletteWinResponse(OrmBase):
     id: int
     amount: int
     timestamp: datetime
-    user: UserBase # Используем базовую схему пользователя, чтобы избежать лишних данных
+    user: UserResponse # Используем полную схему данных
 
 class SpinResponse(BaseModel):
     prize_won: int
