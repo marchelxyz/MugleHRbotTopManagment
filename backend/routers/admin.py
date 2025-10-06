@@ -259,7 +259,14 @@ async def export_consolidated_report(
 
         # --- Лист 5: Неактивные пользователи ---
         inactive_list = [
-            {"Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отдел": user.department}
+            {
+                "Имя": user.first_name,
+                "Фамилия": user.last_name,
+                "Должность": user.position,
+                "Отдел": user.department,
+                "Дата регистрации": user.registration_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
+                "Последний вход": user.last_login_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
+            }
             for user in inactive_users_data
         ]
         df_inactive = pd.DataFrame(inactive_list)
@@ -267,7 +274,6 @@ async def export_consolidated_report(
         
     output.seek(0)
 
-    # 4. Отдаем готовый файл (без изменений)
     filename = f"consolidated_report_{start_date}_to_{end_date}.xlsx"
     return StreamingResponse(
         output,
