@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from datetime import date # <-- Добавляем date
+from datetime import date, datetime, timedelta  # <--- ИСПРАВЛЕНИЕ ЗДЕСЬ
 import crud
 import schemas
 import models
@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from dependencies import get_current_admin_user
 from database import get_db
 from openpyxl import Workbook
+import pandas as pd  # <--- ДОБАВЬ ЭТУ СТРОКУ
 
 # --- ПРАВИЛЬНАЯ НАСТРОЙКА РОУТЕРА ---
 # Префикс /admin и зависимость от админа задаются один раз здесь
@@ -166,4 +167,141 @@ async def export_user_engagement(db: AsyncSession = Depends(get_db)):
         file_stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=leaders_report.xlsx"}
+    )
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ СВОДНОГО ОТЧЁТА ---
+
+@router.get("/statistics/export/consolidated")
+async def export_consolidated_report(
+    start_date: Optional[date] = Query(None), 
+    end_date: Optional[date] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Экспортирует сводный отчет по всем метрикам в один Excel-файл.
+    """
+    # 1. Задаем период по умолчанию, если он не указан
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=30)
+
+    # 2. Собираем все данные (без изменений)
+    general_stats = await crud.get_general_statistics(db, start_date, end_date)
+    engagement_data = await crud.get_user_engagement_stats(db)
+    popular_items_data = await crud.get_popular_items_stats(db)
+    inactive_users_data = await crud.get_inactive_users(db)
+    
+    # 3. Создаем Excel-файл в памяти с помощью pandas
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        
+        # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Лист 1: Общая статистика (с переводом) ---
+        
+        # Создаем словарь-переводчик
+        general_stats_translation = {
+            "new_users_count": "Всего пользователей",
+            "active_users_count": "Активные пользователи",
+            "transactions_count": "Всего транзакций",
+            "store_purchases_count": "Покупок в магазине",
+            "total_turnover": "Оборот 'спасибок'",
+            "total_store_spent": "Потрачено в магазине"
+        }
+        
+        # Переводим ключи и создаем DataFrame
+        translated_stats = {
+            general_stats_translation.get(key, key): value 
+            for key, value in general_stats.items()
+        }
+        
+        df_general = pd.DataFrame.from_dict(translated_stats, orient='index', columns=['Значение'])
+        df_general.index.name = 'Метрика'
+        df_general.to_excel(writer, sheet_name='Общая статистика')
+
+        # --- Остальные листы остаются без изменений ---
+        # --- Лист 2: Топ Донаторы ---
+        senders_list = [
+            {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отправлено": count}
+            for i, (user, count) in enumerate(engagement_data["top_senders"], 1)
+        ]
+        df_senders = pd.DataFrame(senders_list)
+        df_senders.to_excel(writer, sheet_name='Топ Донаторы', index=False)
+
+        # --- Лист 3: Топ Инфлюенсеры ---
+        receivers_list = [
+            {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Получено": count}
+            for i, (user, count) in enumerate(engagement_data["top_receivers"], 1)
+        ]
+        df_receivers = pd.DataFrame(receivers_list)
+        df_receivers.to_excel(writer, sheet_name='Топ Инфлюенсеры', index=False)
+
+        # --- Лист 4: Популярные товары ---
+        items_list = [
+            {"#": i, "Название товара": item.name, "Цена": item.price, "Кол-во покупок": purchase_count}
+            for i, (item, purchase_count) in enumerate(popular_items_data, 1)
+        ]
+        df_items = pd.DataFrame(items_list)
+        df_items.to_excel(writer, sheet_name='Популярные товары', index=False)
+
+        # --- Лист 5: Неактивные пользователи ---
+        inactive_list = [
+            {"Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отдел": user.department}
+            for user in inactive_users_data
+        ]
+        df_inactive = pd.DataFrame(inactive_list)
+        df_inactive.to_excel(writer, sheet_name='Неактивные пользователи', index=False)
+        
+    output.seek(0)
+
+    # 4. Отдаем готовый файл (без изменений)
+    filename = f"consolidated_report_{start_date}_to_{end_date}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ ВЫГРУЗКИ СПИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+
+@router.get("/users/export")
+async def export_all_users(db: AsyncSession = Depends(get_db)):
+    """
+    Экспортирует полный список пользователей в Excel-файл.
+    """
+    # 1. Получаем всех пользователей из базы
+    all_users = await crud.get_all_users_for_admin(db)
+
+    # 2. Создаем Excel-файл в памяти
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Превращаем данные пользователей в удобный формат
+        users_list = [
+            {
+                "ID": user.id,
+                "Telegram ID": user.telegram_id,
+                "Имя": user.first_name,
+                "Фамилия": user.last_name,
+                "Username": user.username,
+                "Отдел": user.department,
+                "Должность": user.position,
+                "Баланс": user.balance,
+                "Билеты": user.tickets,
+                "Статус": user.status,
+                "Админ": "Да" if user.is_admin else "Нет",
+                "Дата регистрации": user.registration_date.strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
+                "Последний вход": user.last_login_date.strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
+            }
+            for user in all_users
+        ]
+        
+        # Создаем таблицу и записываем ее на лист
+        df_users = pd.DataFrame(users_list)
+        df_users.to_excel(writer, sheet_name='Все пользователи', index=False)
+
+    output.seek(0)
+
+    # 3. Отдаем готовый файл
+    filename = f"all_users_{datetime.utcnow().date()}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )

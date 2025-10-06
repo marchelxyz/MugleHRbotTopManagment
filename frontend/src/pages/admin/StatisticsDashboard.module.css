@@ -125,3 +125,38 @@
     font-weight: bold;
     color: #333;
 }
+
+.controlsContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.consolidatedExportButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 320px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background-color: #5CA14A;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.consolidatedExportButton:hover {
+    background-color: #4a8c3a;
+}
+
+.consolidatedExportButton:disabled {
+    background-color: #a5d6a7;
+    cursor: not-allowed;
+}

@@ -269,3 +269,24 @@ export const exportUserEngagement = () => {
         responseType: 'blob', // <-- ВАЖНО: указываем, что мы ожидаем файл
     });
 };
+
+// --- ВЫГРУЗКА СВОДНОГО ОТЧЕТА ---
+export const exportConsolidatedReport = (startDate, endDate) => {
+    // Формируем строку с параметрами дат
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    return apiClient.get(`/admin/statistics/export/consolidated?${params.toString()}`, {
+        ...getAdminHeaders(),
+        responseType: 'blob', // Указываем, что ждем файл
+    });
+};
+
+// --- ВЫГРУЗКА ВСЕГО СПИСКА ПОЛЬЗОВАТЕЛЕЙ ---
+export const exportAllUsers = () => {
+    return apiClient.get('/admin/users/export', {
+        ...getAdminHeaders(),
+        responseType: 'blob', // Указываем, что ждем файл
+    });
+};
