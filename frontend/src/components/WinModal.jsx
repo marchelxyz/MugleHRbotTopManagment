@@ -10,7 +10,7 @@ const WinModal = ({ prize, onClose }) => {
     useEffect(() => {
         const timer = setTimeout(() => {
             onClose();
-        }, 4000);
+        }, 3000);
         return () => clearTimeout(timer);
     }, [onClose]);
 
