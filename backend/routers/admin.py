@@ -14,6 +14,7 @@ from dependencies import get_current_admin_user
 from database import get_db
 from openpyxl import Workbook
 import pandas as pd  # <--- ДОБАВЬ ЭТУ СТРОКУ
+import pytz # <-- 1. Добавляем новый импорт
 
 # --- ПРАВИЛЬНАЯ НАСТРОЙКА РОУТЕРА ---
 # Префикс /admin и зависимость от админа задаются один раз здесь
@@ -284,6 +285,8 @@ async def export_all_users(db: AsyncSession = Depends(get_db)):
     # 1. Получаем всех пользователей из базы
     all_users = await crud.get_all_users_for_admin(db)
 
+    moscow_tz = pytz.timezone('Europe/Moscow')
+    
     # 2. Создаем Excel-файл в памяти
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -301,8 +304,9 @@ async def export_all_users(db: AsyncSession = Depends(get_db)):
                 "Билеты": user.tickets,
                 "Статус": user.status,
                 "Админ": "Да" if user.is_admin else "Нет",
-                "Дата регистрации": user.registration_date.strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
-                "Последний вход": user.last_login_date.strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
+                # --- 3. Конвертируем время в MSK перед форматированием ---
+                "Дата регистрации": user.registration_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
+                "Последний вход": user.last_login_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
             }
             for user in all_users
         ]
