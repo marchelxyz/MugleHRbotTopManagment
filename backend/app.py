@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 # Абсолютные импорты (без точек)
 from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions
 
 # --- ПРАВИЛЬНЫЙ АСИНХРОННЫЙ СПОСОБ СОЗДАНИЯ ТАБЛИЦ ---
 @asynccontextmanager
@@ -43,6 +43,7 @@ app.include_router(banners.router)
 app.include_router(roulette.router)
 app.include_router(scheduler.router)
 app.include_router(telegram.router)
+app.include_router(sessions.router)
 
 @app.get("/")
 def read_root():
