@@ -197,10 +197,13 @@ async def export_consolidated_report(
 
     # 2. Собираем все данные (без изменений)
     general_stats = await crud.get_general_statistics(db, start_date, end_date)
+    avg_session_stats = await crud.get_average_session_duration(db, start_date, end_date)
     engagement_data = await crud.get_user_engagement_stats(db)
     popular_items_data = await crud.get_popular_items_stats(db)
     inactive_users_data = await crud.get_inactive_users(db)
-    
+
+    general_stats['average_session_duration_minutes'] = avg_session_stats['average_duration_minutes']
+
     # 3. Создаем Excel-файл в памяти с помощью pandas
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -214,7 +217,8 @@ async def export_consolidated_report(
             "transactions_count": "Всего транзакций",
             "store_purchases_count": "Покупок в магазине",
             "total_turnover": "Оборот 'спасибок'",
-            "total_store_spent": "Потрачено в магазине"
+            "total_store_spent": "Потрачено в магазине",
+            "average_session_duration_minutes": "Среднее время сессии (мин)"
         }
         
         # Переводим ключи и создаем DataFrame
