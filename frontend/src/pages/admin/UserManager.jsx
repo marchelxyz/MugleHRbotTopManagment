@@ -107,7 +107,8 @@ function UserManager() {
   const [editingUser, setEditingUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-
+  const [isExporting, setIsExporting] = useState(false);
+  
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -164,10 +165,43 @@ function UserManager() {
     return users;
   }, [allUsers, view, searchQuery]);
 
-  if (loading) return <p>Загрузка пользователей...</p>;
+    // --- ИЗМЕНЕНИЕ: Новая функция для скачивания ---
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const response = await exportAllUsers();
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `all_users_${new Date().toISOString().slice(0,10)}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch (err) {
+            console.error('Ошибка при экспорте пользователей:', err);
+            alert('Не удалось скачать отчет.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
+    if (loading) return <p>Загрузка пользователей...</p>;
+  
   return (
-    <>
+        return (
+        <div>
+            {/* --- ИЗМЕНЕНИЕ: Добавляем контейнер для заголовка и кнопки --- */}
+            <div className={styles.header}>
+                <h2>Управление пользователями</h2>
+                <button
+                    className={styles.exportButton}
+                    onClick={handleExport}
+                    disabled={isExporting}
+                >
+                    <FaDownload />
+                    {isExporting ? 'Экспорт...' : 'Скачать список'}
+                </button>
+            </div>
       {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
       
       <div className={styles.card}>
