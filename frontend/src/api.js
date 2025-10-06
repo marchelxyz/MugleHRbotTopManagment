@@ -260,3 +260,12 @@ export const getLoginActivityStats = (startDate, endDate) => {
 export const getActiveUserRatio = () => {
     return apiClient.get('/admin/statistics/active_user_ratio', getAdminHeaders());
 };
+
+// --- НОВЫЙ БЛОК ДЛЯ ЭКСПОРТА ---
+
+export const exportUserEngagement = () => {
+    return apiClient.get('/admin/statistics/user_engagement/export', {
+        ...getAdminHeaders(), // Добавляем заголовки аутентификации
+        responseType: 'blob', // <-- ВАЖНО: указываем, что мы ожидаем файл
+    });
+};
