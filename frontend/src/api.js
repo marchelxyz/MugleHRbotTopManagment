@@ -308,3 +308,11 @@ export const pingSession = (sessionId) => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+export const getAverageSessionDuration = (startDate, endDate) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    return apiClient.get(`/admin/statistics/average_session_duration?${params.toString()}`, getAdminHeaders());
+};
