@@ -109,7 +109,7 @@ function RoulettePage({ user, onUpdateUser }) {
                 </div>
                 <button onClick={handleAssemble} disabled={!user || user.ticket_parts < 3}>Собрать</button>
                 <div className={styles.balanceBox}>
-                    <FaTicketAlt />
+                    <span>Билеты</span>
                     <strong>{user?.tickets || 0}</strong>
                 </div>
             </div>
