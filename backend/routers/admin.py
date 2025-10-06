@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from datetime import date # <-- Добавляем date
+from datetime import date, datetime, timedelta  # <--- ИСПРАВЛЕНИЕ ЗДЕСЬ
 import crud
 import schemas
 import models
