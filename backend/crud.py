@@ -1129,3 +1129,28 @@ async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[model
         await db.refresh(session)
     
     return session
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ РАСЧЁТА СРЕДНЕЙ ДЛИТЕЛЬНОСТИ СЕССИИ ---
+
+async def get_average_session_duration(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
+    """
+    Считает среднюю длительность сессии в минутах за указанный период.
+    """
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=30)
+
+    # Вычисляем разницу между last_seen и session_start для каждой сессии
+    session_duration = func.extract('epoch', models.UserSession.last_seen - models.UserSession.session_start)
+    
+    # Считаем среднее значение этой разницы в секундах
+    query = (
+        select(func.avg(session_duration))
+        .filter(models.UserSession.session_start.between(start_date, end_date))
+    )
+    
+    average_seconds = (await db.execute(query)).scalar_one_or_none() or 0
+    
+    # Конвертируем в минуты и округляем до сотых
+    average_minutes = round(average_seconds / 60, 2)
+    
+    return {"average_duration_minutes": average_minutes}
