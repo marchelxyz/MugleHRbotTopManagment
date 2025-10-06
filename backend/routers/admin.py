@@ -167,3 +167,75 @@ async def export_user_engagement(db: AsyncSession = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=leaders_report.xlsx"}
     )
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ СВОДНОГО ОТЧЁТА ---
+
+@router.get("/statistics/export/consolidated")
+async def export_consolidated_report(
+    start_date: Optional[date] = Query(None), 
+    end_date: Optional[date] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Экспортирует сводный отчет по всем метрикам в один Excel-файл.
+    """
+    # 1. Задаем период по умолчанию, если он не указан
+    if end_date is None: end_date = datetime.utcnow().date()
+    if start_date is None: start_date = end_date - timedelta(days=30)
+
+    # 2. Собираем все данные, вызывая наши CRUD-функции
+    general_stats = await crud.get_general_statistics(db, start_date, end_date)
+    engagement_data = await crud.get_user_engagement_stats(db)
+    popular_items_data = await crud.get_popular_items_stats(db)
+    inactive_users_data = await crud.get_inactive_users(db)
+    
+    # 3. Создаем Excel-файл в памяти с помощью pandas
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # --- Лист 1: Общая статистика ---
+        # Превращаем словарь в таблицу
+        df_general = pd.DataFrame.from_dict(general_stats, orient='index', columns=['Значение'])
+        df_general.index.name = 'Метрика'
+        df_general.to_excel(writer, sheet_name='Общая статистика')
+
+        # --- Лист 2: Топ Донаторы ---
+        senders_list = [
+            {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отправлено": count}
+            for i, (user, count) in enumerate(engagement_data["top_senders"], 1)
+        ]
+        df_senders = pd.DataFrame(senders_list)
+        df_senders.to_excel(writer, sheet_name='Топ Донаторы', index=False)
+
+        # --- Лист 3: Топ Инфлюенсеры ---
+        receivers_list = [
+            {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Получено": count}
+            for i, (user, count) in enumerate(engagement_data["top_receivers"], 1)
+        ]
+        df_receivers = pd.DataFrame(receivers_list)
+        df_receivers.to_excel(writer, sheet_name='Топ Инфлюенсеры', index=False)
+
+        # --- Лист 4: Популярные товары ---
+        items_list = [
+            {"#": i, "Название товара": item.name, "Цена": item.price, "Кол-во покупок": purchase_count}
+            for i, (item, purchase_count) in enumerate(popular_items_data, 1)
+        ]
+        df_items = pd.DataFrame(items_list)
+        df_items.to_excel(writer, sheet_name='Популярные товары', index=False)
+
+        # --- Лист 5: Неактивные пользователи ---
+        inactive_list = [
+            {"Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отдел": user.department}
+            for user in inactive_users_data
+        ]
+        df_inactive = pd.DataFrame(inactive_list)
+        df_inactive.to_excel(writer, sheet_name='Неактивные пользователи', index=False)
+        
+    output.seek(0)
+
+    # 4. Отдаем готовый файл
+    filename = f"consolidated_report_{start_date}_to_{end_date}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
