@@ -142,12 +142,13 @@ function RoulettePage({ user, onUpdateUser }) {
             </button>
 
             {/* --- ИЗМЕНЕНИЕ: Оборачиваем ТОЛЬКО историю в белую подложку --- */}
+            {/* --- ИЗМЕНЕНИЕ: Оборачиваем историю в белую подложку --- */}
             <div className={styles.historySection}>
                 <h3>Лента победителей</h3>
                 <div className={styles.historyContainer}>
                     {Object.keys(groupedHistory).length > 0 ? (
                         Object.keys(groupedHistory).map(dateKey => (
-                            <React.Fragment key={dateKey}>
+                            <div key={dateKey} className={styles.dayGroup}>
                                 <div className={styles.dateHeader}>
                                     <span>{formatFeedDate(groupedHistory[dateKey][0].timestamp)}</span>
                                 </div>
@@ -156,8 +157,12 @@ function RoulettePage({ user, onUpdateUser }) {
                                         <div key={win.id} className={styles.historyItem}>
                                             <UserAvatar user={win.user} size="small" />
                                             <div className={styles.historyInfo}>
-                                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
-                                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
+                                                <p className={styles.winnerTransaction}>
+                                                    <strong>{win.user.first_name} {win.user.last_name}</strong>
+                                                </p>
+                                                <p className={styles.winMessage}>
+                                                    выиграл(а) <strong>{win.amount} спасибок</strong>
+                                                </p>
                                             </div>
                                             <span className={styles.historyTimestamp}>
                                                 {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
@@ -165,7 +170,7 @@ function RoulettePage({ user, onUpdateUser }) {
                                         </div>
                                     ))}
                                 </div>
-                            </React.Fragment>
+                            </div>
                         ))
                     ) : (
                         <p>В рулетке еще никто не выигрывал.</p>
