@@ -77,49 +77,51 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                     />
                 </div>
 
-                {mainBanners.length > 0 && (
-                    <div className={styles.sliderContainer}>
-                        <div
-                            className={styles.sliderTrack}
-                            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                        >
-                            {mainBanners.map(banner => (
-                                <div key={banner.id} className={styles.slide} onClick={() => handleBannerClick(banner.link_url)}>
-                                    <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
-                                </div>
-                            ))}
-                        </div>
-                        {mainBanners.length > 1 && (
-                            <div className={styles.sliderDots}>
-                                {mainBanners.map((_, index) => (
-                                    <div
-                                        key={index}
-                                        className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
-                                        onClick={() => setCurrentSlide(index)}
-                                    ></div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+        {mainBanners.length > 0 && (
+          <div className={styles.sliderContainer}>
+            <div 
+              className={styles.sliderTrack}
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {mainBanners.map(banner => (
+                <div key={banner.id} className={styles.slide} onClick={() => handleBannerClick(banner.link_url)}>
+                  <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
+                </div>
+              ))}
+            </div>
+            {mainBanners.length > 1 && (
+              <div className={styles.sliderDots}>
+                {mainBanners.map((_, index) => (
+                  <div 
+                    key={index} 
+                    className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
+                    onClick={() => setCurrentSlide(index)}
+                  ></div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-                {photoFeedBanners.length > 0 && (
-                    <div className={styles.photoFeed}>
-                        <div className={styles.photoFeedTrack}>
-                            {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
-                                <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
-                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
+        {photoFeedBanners.length > 0 && (
+          <div className={styles.photoFeed}>
+            {/* Дублируем массив для создания бесшовной анимации */}
+            <div className={styles.photoFeedTrack}>
+              {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
+                <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
+                  <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+                
                 <div className={styles.feedSection}>
                     <h3 className={styles.feedTitle}>Последняя активность</h3>
                     <div className={styles.feedGrid}>
                         {isLoading ? <p>Загрузка...</p> : (
                             Object.keys(groupedFeed).length > 0 ? (
+                                // --- 3. ИЗМЕНЕНИЕ: Отрисовываем сгруппированную ленту ---
                                 Object.keys(groupedFeed).map(dateKey => (
                                     <React.Fragment key={dateKey}>
                                         <div className={styles.dateHeader}>
@@ -135,6 +137,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                                     <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
                                                 </div>
                                                 <div className={styles.feedTimestamp}>
+                                                    {/* Показываем только время */}
                                                     {formatToMsk(item.timestamp, { year: undefined, month: undefined, day: undefined })}
                                                 </div>
                                             </div>
