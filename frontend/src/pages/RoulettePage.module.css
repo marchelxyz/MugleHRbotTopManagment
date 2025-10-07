@@ -160,21 +160,25 @@
     border-radius: 8px;
     position: relative;
     padding-bottom: 30px; 
+    /* --- ИСПРАВЛЕНИЕ: Добавляем flex для центрирования --- */
+    display: flex;
+    justify-content: center;
 }
 
-/* --- НОВЫЙ СТИЛЬ ДЛЯ ГЛАВНОГО КОНТЕНТА КАРТОЧКИ --- */
 .historyItemMain {
     display: flex;
-    align-items: center; /* Теперь это выравнивание сработает правильно */
+    align-items: center;
+    /* Убираем лишние свойства, чтобы блок занимал ширину по контенту */
 }
 
 .historyInfo {
-    flex-grow: 1;
+    /* flex-grow убираем, чтобы блок не растягивался */
     margin-left: 10px;
 }
 .historyInfo p {
     margin: 0;
     font-size: 0.9rem;
+    white-space: nowrap; /* Запрещаем тексту переноситься, чтобы блок не ломался */
 }
 
 .historyTimestamp {
