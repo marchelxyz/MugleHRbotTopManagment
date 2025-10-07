@@ -99,9 +99,9 @@ function RoulettePage({ user, onUpdateUser }) {
 
     return (
         <PageLayout title="Рулетка">
-            {/* --- ИЗМЕНЕНИЕ: Добавляем белую подложку-контейнер --- */}
-            <div className={styles.rouletteContent}>
-                <FaInfoCircle className={styles.infoIcon} onClick={() => setInfoVisible(!infoVisible)} />
+            {winPrize && <WinModal prize={winPrize} onClose={() => setWinPrize(null)} />}
+            
+            <FaInfoCircle className={styles.infoIcon} onClick={() => setInfoVisible(!infoVisible)} />
 
                 {infoVisible && (
                     <div className={styles.infoModal}>
@@ -133,46 +133,45 @@ function RoulettePage({ user, onUpdateUser }) {
                     </div>
                 </div>
 
-                <button 
-                    onClick={handleSpin} 
-                    disabled={!user || user.tickets < 1 || isSpinning || winPrize} 
-                    className={styles.spinButton}
-                >
-                    {isSpinning ? 'Крутится...' : `Крутить (1 билет)`}
-                </button>
+            <button 
+                onClick={handleSpin} 
+                disabled={!user || user.tickets < 1 || isSpinning || winPrize} 
+                className={styles.spinButton}
+            >
+                {isSpinning ? 'Крутится...' : `Крутить (1 билет)`}
+            </button>
 
-                <div className={styles.historySection}>
-                    <h3>Лента победителей</h3>
-                    <div className={styles.historyContainer}>
-                        {Object.keys(groupedHistory).length > 0 ? (
-                            Object.keys(groupedHistory).map(dateKey => (
-                                <React.Fragment key={dateKey}>
-                                    <div className={styles.dateHeader}>
-                                        <span>{formatFeedDate(groupedHistory[dateKey][0].timestamp)}</span>
-                                    </div>
-                                    <div className={styles.historyGrid}>
-                                        {groupedHistory[dateKey].map(win => (
-                                            <div key={win.id} className={styles.historyItem}>
-                                                <UserAvatar user={win.user} size="small" />
-                                                <div className={styles.historyInfo}>
-                                                    <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
-                                                    <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
-                                                </div>
-                                                <span className={styles.historyTimestamp}>
-                                                    {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
-                                                </span>
+            {/* --- ИЗМЕНЕНИЕ: Оборачиваем ТОЛЬКО историю в белую подложку --- */}
+            <div className={styles.historySection}>
+                <h3>Лента победителей</h3>
+                <div className={styles.historyContainer}>
+                    {Object.keys(groupedHistory).length > 0 ? (
+                        Object.keys(groupedHistory).map(dateKey => (
+                            <React.Fragment key={dateKey}>
+                                <div className={styles.dateHeader}>
+                                    <span>{formatFeedDate(groupedHistory[dateKey][0].timestamp)}</span>
+                                </div>
+                                <div className={styles.historyGrid}>
+                                    {groupedHistory[dateKey].map(win => (
+                                        <div key={win.id} className={styles.historyItem}>
+                                            <UserAvatar user={win.user} size="small" />
+                                            <div className={styles.historyInfo}>
+                                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
+                                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
                                             </div>
-                                        ))}
-                                    </div>
-                                </React.Fragment>
-                            ))
-                        ) : (
-                            <p>В рулетке еще никто не выигрывал.</p>
-                        )}
-                    </div>
+                                            <span className={styles.historyTimestamp}>
+                                                {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </React.Fragment>
+                        ))
+                    ) : (
+                        <p>В рулетке еще никто не выигрывал.</p>
+                    )}
                 </div>
             </div>
-            {winPrize && <WinModal prize={winPrize} onClose={() => setWinPrize(null)} />}
         </PageLayout>
     );
 }
