@@ -124,6 +124,29 @@
 }
 .historySection h3 {
     margin-bottom: 15px;
+    text-align: center;
+}
+
+.historyContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* --- НОВЫЙ СТИЛЬ: Прямоугольник для даты (как на главной) --- */
+.dateHeader {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 5px;
+}
+
+.dateHeader span {
+    background-color: #e9eef2;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6E7A85;
 }
 
 .historyList {
@@ -138,6 +161,9 @@
     background: #fff;
     padding: 10px;
     border-radius: 8px;
+    /* --- ИЗМЕНЕНИЕ: Готовим карточку для позиционирования времени --- */
+    position: relative;
+    padding-bottom: 30px; /* Добавляем место для времени */
 }
 
 .historyInfo {
@@ -149,8 +175,11 @@
     font-size: 0.9rem;
 }
 
+/* --- ИЗМЕНЕНИЕ: Позиционируем время в углу --- */
 .historyTimestamp {
+    position: absolute; /* Абсолютное позиционирование */
+    bottom: 8px;        /* внизу */
+    right: 12px;        /* справа */
     font-size: 0.8rem;
     color: #6E7A85;
-    margin-left: auto;
 }

@@ -1,12 +1,12 @@
 // frontend/src/pages/RoulettePage.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import PageLayout from '../components/PageLayout';
 import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
 import styles from './RoulettePage.module.css';
 import { FaInfoCircle, FaTicketAlt } from 'react-icons/fa';
 import UserAvatar from '../components/UserAvatar';
-import { formatToMsk } from '../utils/dateFormatter';
+import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 import WinModal from '../components/WinModal';
 
 // Функция для создания "ленты" с призами для анимации
@@ -33,6 +33,19 @@ function RoulettePage({ user, onUpdateUser }) {
         getRouletteHistory().then(res => setHistory(res.data));
     }, []);
 
+    // --- НОВАЯ ЛОГИКА: Группируем историю по дням ---
+    const groupedHistory = useMemo(() => {
+        if (!history || history.length === 0) return {};
+        return history.reduce((acc, item) => {
+            const dateKey = formatToMsk(item.timestamp, { year: undefined, month: undefined, day: undefined, hour: undefined, minute: undefined });
+            if (!acc[dateKey]) {
+                acc[dateKey] = [];
+            }
+            acc[dateKey].push(item);
+            return acc;
+        }, {});
+    }, [history]);
+    
     const handleAssemble = async () => {
         if (!user || user.ticket_parts < 3) return;
         try {
@@ -133,17 +146,32 @@ function RoulettePage({ user, onUpdateUser }) {
 
             <div className={styles.historySection}>
                 <h3>Лента победителей</h3>
-                <div className={styles.historyList}>
-                    {history.map(win => (
-                        <div key={win.id} className={styles.historyItem}>
-                             <UserAvatar user={win.user} size="small" />
-                             <div className={styles.historyInfo}>
-                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
-                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
-                             </div>
-                             <span className={styles.historyTimestamp}>{formatToMsk(win.timestamp)}</span>
-                        </div>
-                    ))}
+                <div className={styles.historyContainer}>
+                    {Object.keys(groupedHistory).length > 0 ? (
+                        Object.keys(groupedHistory).map(dateKey => (
+                            <React.Fragment key={dateKey}>
+                                <div className={styles.dateHeader}>
+                                    <span>{formatFeedDate(groupedHistory[dateKey][0].timestamp)}</span>
+                                </div>
+                                <div className={styles.historyList}>
+                                    {groupedHistory[dateKey].map(win => (
+                                        <div key={win.id} className={styles.historyItem}>
+                                            <UserAvatar user={win.user} size="small" />
+                                            <div className={styles.historyInfo}>
+                                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
+                                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
+                                            </div>
+                                            <span className={styles.historyTimestamp}>
+                                                {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </React.Fragment>
+                        ))
+                    ) : (
+                        <p>В рулетке еще никто не выигрывал.</p>
+                    )}
                 </div>
             </div>
         </PageLayout>

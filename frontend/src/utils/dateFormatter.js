@@ -39,6 +39,7 @@ export const formatToMsk = (dateInput, options = {}) => {
 export const formatFeedDate = (dateInput) => {
     if (!dateInput) return '';
 
+    // Создаем объекты Date в часовом поясе Москвы для корректного сравнения дней
     const moscowTime = new Date(new Date(dateInput + 'Z').toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
     const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
     const yesterday = new Date(today);
@@ -52,6 +53,7 @@ export const formatFeedDate = (dateInput) => {
     if (moscowTime.toDateString() === yesterday.toDateString()) {
         return 'Вчера';
     }
+    // Для остальных дат выводим в формате "5 октября"
     return new Intl.DateTimeFormat('ru-RU', options).format(moscowTime);
 };
 
