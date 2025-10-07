@@ -48,7 +48,7 @@
   margin-left: 16px;
   flex-grow: 1;
   white-space: nowrap;
-  overflow: hidden; 
+  overflow: hidden;
   mask-image: linear-gradient(to right, black 85%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
 }
@@ -223,11 +223,11 @@
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
   padding: 15px;
   display: flex;
-  /* --- ИСПРАВЛЕНИЕ 1: Вертикальное центрирование контента --- */
-  align-items: center; 
+  /* --- ИСПРАВЛЕНИЕ 1: Вертикальное центрирование --- */
+  align-items: center;
   box-sizing: border-box;
   position: relative;
-  padding-bottom: 25px; 
+  padding-bottom: 25px;
 }
 
 .feedItemLogo {
@@ -241,6 +241,10 @@
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   overflow: hidden;
+  /* --- ИСПРАВЛЕНИЕ 1 (часть 2): Помогаем с центрированием --- */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .feedTransaction {
@@ -274,19 +278,22 @@
 /* --- СТИЛИ ТОЛЬКО ДЛЯ ПК --- */
 @media (min-width: 768px) {
   .feedGrid {
-    grid-template-columns: 1fr 1fr; 
+    grid-template-columns: 1fr 1fr;
   }
 
   .dateHeader {
-    grid-column: 1 / -1; 
+    grid-column: 1 / -1;
   }
 
-  /* --- ИСПРАВЛЕНИЕ 2: Центрирование одиночного блока на ПК --- */
-  /* Этот селектор сработает, только если последний элемент в гриде - нечетный */
-  .feedItem:last-child:nth-child(odd) {
-    grid-column: 1 / -1;      /* Занимает всю ширину грида */
-    width: calc(50% - 7.5px); /* Но сам становится шириной в одну колонку */
-    justify-self: center;     /* И центрируется внутри своей широкой ячейки */
+  /* --- ИСПРАВЛЕНИЕ 2: Умное центрирование одиночного блока --- */
+  /* Выбираем элемент .feedItem, который идет сразу после .dateHeader,
+     И (:) при этом является последним элементом в группе ИЛИ (,)
+     за которым сразу идет следующий .dateHeader */
+  .dateHeader + .feedItem:last-child,
+  .dateHeader + .feedItem:has(+ .dateHeader) {
+      grid-column: 1 / -1;
+      justify-self: center;
+      width: calc(50% - 7.5px);
   }
 
   .contentArea {
