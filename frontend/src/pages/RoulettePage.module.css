@@ -119,20 +119,21 @@
     cursor: not-allowed;
 }
 
-/* --- НОВЫЙ СТИЛЬ: Белая подложка --- */
-.rouletteContent {
+/* --- ИЗМЕНЕНИЕ: Применяем стиль подложки к секции истории --- */
+.historySection {
+    margin-top: 20px;
     background-color: #FFFFFF;
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
     padding: 35px 21px 21px 21px;
-    position: relative; /* Чтобы иконка FAQ была внутри */
-}
-
-.historySection {
-    margin-top: 20px;
+    /* Отрицательные отступы, чтобы растянуть блок на всю ширину */
+    margin-left: -21px;
+    margin-right: -21px;
+    margin-bottom: -21px;
 }
 .historySection h3 {
+    margin-top: 0;
     margin-bottom: 15px;
     text-align: center;
 }
