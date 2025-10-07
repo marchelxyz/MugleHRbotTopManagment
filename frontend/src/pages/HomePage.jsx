@@ -141,11 +141,11 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                                 </div>
                                             </div>
                                         ))}
-                                    </div>
-                                </div>
-                            ))
-                        ) : <p>Лента активности пуста.</p>
-                    )}
+                                    </React.Fragment>
+                                ))
+                            ) : <p>Лента активности пуста.</p>
+                        )}
+                    </div>
                 </div>
             </div> {/* <-- ВОТ ЭТОТ ТЕГ БЫЛ ПРОПУЩЕН */}
         </div>     {/* <-- И ВОТ ЭТОТ ТОЖЕ */}
