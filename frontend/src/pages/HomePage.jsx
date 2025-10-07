@@ -116,17 +116,16 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
           </div>
         )}
                 
-            <div className={styles.feedSection}>
-                <h3 className={styles.feedTitle}>Последняя активность</h3>
-                <div className={styles.feedContainer}> {/* Используем flex-контейнер для дней */}
-                    {isLoading ? <p>Загрузка...</p> : (
-                        Object.keys(groupedFeed).length > 0 ? (
-                            Object.keys(groupedFeed).map(dateKey => (
-                                <div key={dateKey} className={styles.dayGroup}>
-                                    <div className={styles.dateHeader}>
-                                        <span>{formatFeedDate(groupedFeed[dateKey][0].timestamp)}</span>
-                                    </div>
-                                    <div className={styles.feedGrid}>
+                <div className={styles.feedSection}>
+                    <h3 className={styles.feedTitle}>Последняя активность</h3>
+                    <div className={styles.feedGrid}>
+                        {isLoading ? <p>Загрузка...</p> : (
+                            Object.keys(groupedFeed).length > 0 ? (
+                                Object.keys(groupedFeed).map(dateKey => (
+                                    <React.Fragment key={dateKey}>
+                                        <div className={styles.dateHeader}>
+                                            <span>{formatFeedDate(groupedFeed[dateKey][0].timestamp)}</span>
+                                        </div>
                                         {groupedFeed[dateKey].map(item => (
                                             <div key={item.id} className={styles.feedItem}>
                                                 <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
