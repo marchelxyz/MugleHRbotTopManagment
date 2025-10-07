@@ -239,7 +239,8 @@
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
   padding: 15px;
   display: flex;
-  align-items: center;
+  /* --- ИСПРАВЛЕНИЕ 1: Вертикальное центрирование контента --- */
+  align-items: center; 
   box-sizing: border-box;
   position: relative;
   padding-bottom: 25px; 
@@ -298,6 +299,14 @@
     grid-column: 1 / -1; 
   }
 
+  /* --- ИСПРАВЛЕНИЕ 2: Центрирование одиночного блока на ПК --- */
+  .feedItem:last-child:nth-child(even) {
+    grid-column-start: 1;
+    grid-column-end: 3;
+    justify-self: center;
+    width: calc(50% - 7.5px); /* (100% / 2) - (gap / 2) */
+  }
+  
   /* Увеличиваем отступы в контентной зоне на ПК */
   .contentArea {
     padding: 30px;
