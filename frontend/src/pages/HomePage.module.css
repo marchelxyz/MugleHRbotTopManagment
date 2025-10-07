@@ -195,16 +195,20 @@
   margin: 0 0 24px 5px;
 }
 
-.feedGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px;
+.feedContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.dayGroup {
+    width: 100%;
 }
 
 .dateHeader {
   display: flex;
   justify-content: center;
-  margin: 10px 0 5px;
+  margin-bottom: 10px;
 }
 
 .dateHeader span {
@@ -216,18 +220,22 @@
   color: #6E7A85;
 }
 
+.feedGrid {
+  display: grid;
+  grid-template-columns: 1fr; /* Одна колонка для мобильных */
+  gap: 15px;
+}
+
 .feedItem {
-  width: 100%;
   background-color: #FFFFFF;
   border-radius: 20px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
   padding: 15px;
   display: flex;
-  /* --- ИСПРАВЛЕНИЕ 1: Вертикальное центрирование --- */
-  align-items: center;
+  align-items: center; 
   box-sizing: border-box;
   position: relative;
-  padding-bottom: 25px;
+  padding-bottom: 25px; 
 }
 
 .feedItemLogo {
@@ -241,30 +249,20 @@
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   overflow: hidden;
-  /* --- ИСПРАВЛЕНИЕ 1 (часть 2): Помогаем с центрированием --- */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 
 .feedTransaction {
   font-size: 14px;
   color: #408200;
   margin: 0;
-  white-space: normal;
-  word-break: break-word;
 }
 
-.arrow {
-  color: #6E7A85;
-}
+.arrow { color: #6E7A85; }
 
 .feedMessage {
   font-size: 12px;
   color: #6E7A85;
   margin-top: 6px;
-  white-space: normal;
-  word-break: break-word;
 }
 
 .feedTimestamp {
@@ -278,39 +276,16 @@
 /* --- СТИЛИ ТОЛЬКО ДЛЯ ПК --- */
 @media (min-width: 768px) {
   .feedGrid {
-    grid-template-columns: 1fr 1fr;
+    /* На ПК делаем 2 колонки */
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .dateHeader {
-    grid-column: 1 / -1;
+  /* --- ИСПРАВЛЕНИЕ: Центрируем одиночный блок на ПК --- */
+  .feedGrid .feedItem:only-child {
+    grid-column: 1 / -1;      /* Занимает всю ширину грида */
+    width: calc(50% - 7.5px); /* Но сам становится шириной в одну колонку */
+    justify-self: center;     /* И центрируется */
   }
-
-  /* --- ИСПРАВЛЕНИЕ 2: Умное центрирование одиночного блока --- */
-  /* Выбираем элемент .feedItem, который идет сразу после .dateHeader,
-     И (:) при этом является последним элементом в группе ИЛИ (,)
-     за которым сразу идет следующий .dateHeader */
-  .dateHeader + .feedItem:last-child,
-  .dateHeader + .feedItem:has(+ .dateHeader) {
-      grid-column: 1 / -1;
-      justify-self: center;
-      width: calc(50% - 7.5px);
-  }
-
-  .contentArea {
-    padding: 30px;
-  }
-}
-
-.headerDesktop {
-  height: 250px;
-  background-image: url('https://i.postimg.cc/9MvKPMj0/image.webp');
-  background-size: cover;
-  background-position: center;
-  position: sticky;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1;
 }
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ ДАТЫ И ВРЕМЕНИ --- */
