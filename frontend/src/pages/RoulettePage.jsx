@@ -156,10 +156,12 @@ function RoulettePage({ user, onUpdateUser }) {
                                 <div className={styles.historyList}>
                                     {groupedHistory[dateKey].map(win => (
                                         <div key={win.id} className={styles.historyItem}>
-                                            <UserAvatar user={win.user} size="small" />
-                                            <div className={styles.historyInfo}>
-                                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
-                                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
+                                            <div className={styles.historyItemMain}>
+                                                <UserAvatar user={win.user} size="small" />
+                                                <div className={styles.historyInfo}>
+                                                    <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
+                                                    <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
+                                                </div>
                                             </div>
                                             <span className={styles.historyTimestamp}>
                                                 {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
