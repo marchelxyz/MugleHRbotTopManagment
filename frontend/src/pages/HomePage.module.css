@@ -25,13 +25,12 @@
   position: relative;
   z-index: 2;
   margin-top: -20px;
-  padding-top: 30px;
+  padding: 30px 21px 21px 21px;
 }
 
 .userBlock {
   display: flex;
   align-items: center;
-  padding: 0 26px;
   margin-bottom: 30px;
 }
 
@@ -48,25 +47,10 @@
   color: #6E7A85;
   margin-left: 16px;
   flex-grow: 1;
-   /* 1. Запрещаем имени переноситься на новую строку */
   white-space: nowrap;
-  /* 2. Обрезаем (скрываем) все, что не помещается в блок */
   overflow: hidden; 
-
-  /* 3. Ваша маска-градиент: 
-     Мы говорим браузеру: "Покажи 85% контента (black), 
-     а затем плавно скрой оставшиеся 15% (transparent)" 
-  */
   mask-image: linear-gradient(to right, black 85%, transparent 100%);
-  
-  /* 4. То же самое для поддержки Safari (webkit) */
   -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
-
-  /* Примечание: так как .userName является flex-item, 
-    этих свойств достаточно, чтобы он не "выталкивал" 
-    соседние элементы.
-  */
-  /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
 }
 
 .thankYouButton {
@@ -212,8 +196,8 @@
 }
 
 .feedGrid {
-  display: grid; /* Используем grid layout */
-  grid-template-columns: 1fr; /* По умолчанию одна колонка для мобильных */
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 15px;
 }
 
@@ -287,35 +271,32 @@
   color: #6E7A85;
 }
 
-/* --- НОВЫЕ СТИЛИ ТОЛЬКО ДЛЯ ПК --- */
+/* --- СТИЛИ ТОЛЬКО ДЛЯ ПК --- */
 @media (min-width: 768px) {
   .feedGrid {
-    /* Делаем две колонки */
     grid-template-columns: 1fr 1fr; 
   }
 
   .dateHeader {
-    /* Заголовок даты должен занимать обе колонки */
     grid-column: 1 / -1; 
   }
 
   /* --- ИСПРАВЛЕНИЕ 2: Центрирование одиночного блока на ПК --- */
-  .feedItem:last-child:nth-child(even) {
-    grid-column-start: 1;
-    grid-column-end: 3;
-    justify-self: center;
-    width: calc(50% - 7.5px); /* (100% / 2) - (gap / 2) */
+  /* Этот селектор сработает, только если последний элемент в гриде - нечетный */
+  .feedItem:last-child:nth-child(odd) {
+    grid-column: 1 / -1;      /* Занимает всю ширину грида */
+    width: calc(50% - 7.5px); /* Но сам становится шириной в одну колонку */
+    justify-self: center;     /* И центрируется внутри своей широкой ячейки */
   }
-  
-  /* Увеличиваем отступы в контентной зоне на ПК */
+
   .contentArea {
     padding: 30px;
   }
 }
-/* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
+
 .headerDesktop {
   height: 250px;
-  background-image: url('https://i.postimg.cc/9MvKPMj0/image.webp'); /* <-- Новая картинка */
+  background-image: url('https://i.postimg.cc/9MvKPMj0/image.webp');
   background-size: cover;
   background-position: center;
   position: sticky;
