@@ -6,7 +6,7 @@ import { spinRoulette, assembleTickets, getRouletteHistory } from '../api';
 import styles from './RoulettePage.module.css';
 import { FaInfoCircle, FaTicketAlt } from 'react-icons/fa';
 import UserAvatar from '../components/UserAvatar';
-import { formatToMsk } from '../utils/dateFormatter';
+import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 import WinModal from '../components/WinModal';
 
 // Функция для создания "ленты" с призами для анимации
