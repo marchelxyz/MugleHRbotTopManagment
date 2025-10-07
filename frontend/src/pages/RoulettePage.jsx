@@ -9,7 +9,6 @@ import UserAvatar from '../components/UserAvatar';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 import WinModal from '../components/WinModal';
 
-// Функция для создания "ленты" с призами для анимации
 const generatePrizeReel = (finalPrize) => {
     const reelLength = 50;
     const prizes = [];
@@ -20,7 +19,6 @@ const generatePrizeReel = (finalPrize) => {
     return prizes;
 };
 
-// Принимаем user и onUpdateUser как пропсы
 function RoulettePage({ user, onUpdateUser }) {
     const [history, setHistory] = useState([]);
     const [isSpinning, setIsSpinning] = useState(false);
@@ -33,7 +31,6 @@ function RoulettePage({ user, onUpdateUser }) {
         getRouletteHistory().then(res => setHistory(res.data));
     }, []);
 
-    // --- НОВАЯ ЛОГИКА: Группируем историю по дням ---
     const groupedHistory = useMemo(() => {
         if (!history || history.length === 0) return {};
         return history.reduce((acc, item) => {
@@ -153,15 +150,13 @@ function RoulettePage({ user, onUpdateUser }) {
                                 <div className={styles.dateHeader}>
                                     <span>{formatFeedDate(groupedHistory[dateKey][0].timestamp)}</span>
                                 </div>
-                                <div className={styles.historyList}>
+                                <div className={styles.historyGrid}> {/* Используем Grid для карточек */}
                                     {groupedHistory[dateKey].map(win => (
                                         <div key={win.id} className={styles.historyItem}>
-                                            <div className={styles.historyItemMain}>
-                                                <UserAvatar user={win.user} size="small" />
-                                                <div className={styles.historyInfo}>
-                                                    <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
-                                                    <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
-                                                </div>
+                                            <UserAvatar user={win.user} size="small" />
+                                            <div className={styles.historyInfo}>
+                                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
+                                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
                                             </div>
                                             <span className={styles.historyTimestamp}>
                                                 {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
