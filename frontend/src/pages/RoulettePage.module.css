@@ -133,7 +133,6 @@
     gap: 10px;
 }
 
-/* --- НОВЫЙ СТИЛЬ: Прямоугольник для даты (как на главной) --- */
 .dateHeader {
     display: flex;
     justify-content: center;
@@ -156,14 +155,17 @@
 }
 
 .historyItem {
-    display: flex;
-    align-items: center;
     background: #fff;
     padding: 10px;
     border-radius: 8px;
-    /* --- ИЗМЕНЕНИЕ: Готовим карточку для позиционирования времени --- */
     position: relative;
-    padding-bottom: 30px; /* Добавляем место для времени */
+    padding-bottom: 30px; 
+}
+
+/* --- НОВЫЙ СТИЛЬ ДЛЯ ГЛАВНОГО КОНТЕНТА КАРТОЧКИ --- */
+.historyItemMain {
+    display: flex;
+    align-items: center; /* Теперь это выравнивание сработает правильно */
 }
 
 .historyInfo {
@@ -175,11 +177,10 @@
     font-size: 0.9rem;
 }
 
-/* --- ИЗМЕНЕНИЕ: Позиционируем время в углу --- */
 .historyTimestamp {
-    position: absolute; /* Абсолютное позиционирование */
-    bottom: 8px;        /* внизу */
-    right: 12px;        /* справа */
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
     font-size: 0.8rem;
     color: #6E7A85;
 }
