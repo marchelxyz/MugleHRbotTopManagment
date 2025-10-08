@@ -1,0 +1,83 @@
+/* frontend/src/components/OnboardingStories.module.css */
+/* (НОВЫЙ ФАЙЛ) */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #fff;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.skipButton {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+}
+
+.content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.image {
+  max-width: 80%;
+  height: auto;
+  margin-bottom: 30px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.text {
+  font-size: 16px;
+  color: #666;
+  max-width: 300px;
+}
+
+.footer {
+  padding-bottom: 20px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  transition: background-color 0.3s;
+}
+
+.activeDot {
+  background-color: #5CA14A;
+}
+
+.nextButton {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  background-color: #5CA14A;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
