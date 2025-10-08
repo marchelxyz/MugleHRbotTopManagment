@@ -9,7 +9,6 @@ import UserAvatar from '../components/UserAvatar';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 import WinModal from '../components/WinModal';
 
-// Функция для создания "ленты" с призами для анимации
 const generatePrizeReel = (finalPrize) => {
     const reelLength = 50;
     const prizes = [];
@@ -20,7 +19,6 @@ const generatePrizeReel = (finalPrize) => {
     return prizes;
 };
 
-// Принимаем user и onUpdateUser как пропсы
 function RoulettePage({ user, onUpdateUser }) {
     const [history, setHistory] = useState([]);
     const [isSpinning, setIsSpinning] = useState(false);
@@ -33,7 +31,6 @@ function RoulettePage({ user, onUpdateUser }) {
         getRouletteHistory().then(res => setHistory(res.data));
     }, []);
 
-    // --- НОВАЯ ЛОГИКА: Группируем историю по дням ---
     const groupedHistory = useMemo(() => {
         if (!history || history.length === 0) return {};
         return history.reduce((acc, item) => {
@@ -106,35 +103,35 @@ function RoulettePage({ user, onUpdateUser }) {
             
             <FaInfoCircle className={styles.infoIcon} onClick={() => setInfoVisible(!infoVisible)} />
 
-            {infoVisible && (
-                <div className={styles.infoModal}>
-                    <h3>Как работает рулетка?</h3>
-                    <p>• Каждая отправка "спасибо" дает вам 1 часть билета.</p>
-                    <p>• Соберите 3 части, чтобы получить 1 билет для рулетки.</p>
-                    <p>• Чем больше выигрыш, тем ниже шанс его выпадения.</p>
-                </div>
-            )}
+                {infoVisible && (
+                    <div className={styles.infoModal}>
+                        <h3>Как работает рулетка?</h3>
+                        <p>• Каждая отправка "спасибо" дает вам 1 часть билета.</p>
+                        <p>• Соберите 3 части, чтобы получить 1 билет для рулетки.</p>
+                        <p>• Чем больше выигрыш, тем ниже шанс его выпадения.</p>
+                    </div>
+                )}
 
-            <div className={styles.userBalance}>
-                <div className={styles.balanceBox}>
-                    <span>Части билетов</span>
-                    <strong>{user?.ticket_parts || 0} / 3</strong>
+                <div className={styles.userBalance}>
+                    <div className={styles.balanceBox}>
+                        <span>Части билетов</span>
+                        <strong>{user?.ticket_parts || 0} / 3</strong>
+                    </div>
+                    <button onClick={handleAssemble} disabled={!user || user.ticket_parts < 3}>Собрать</button>
+                    <div className={styles.balanceBox}>
+                        <FaTicketAlt />
+                        <strong>{user?.tickets || 0}</strong>
+                    </div>
                 </div>
-                <button onClick={handleAssemble} disabled={!user || user.ticket_parts < 3}>Собрать</button>
-                <div className={styles.balanceBox}>
-                    <span>Билеты</span>
-                    <strong>{user?.tickets || 0}</strong>
-                </div>
-            </div>
 
-            <div className={styles.rouletteContainer}>
-                <div className={styles.pointer}></div>
-                <div className={styles.rouletteTrack} ref={rouletteTrackRef}>
-                    {prizeReel.map((prize, index) => (
-                        <div key={index} className={styles.prizeItem}>{prize}</div>
-                    ))}
+                <div className={styles.rouletteContainer}>
+                    <div className={styles.pointer}></div>
+                    <div className={styles.rouletteTrack} ref={rouletteTrackRef}>
+                        {prizeReel.map((prize, index) => (
+                            <div key={index} className={styles.prizeItem}>{prize}</div>
+                        ))}
+                    </div>
                 </div>
-            </div>
 
             <button 
                 onClick={handleSpin} 
@@ -144,22 +141,28 @@ function RoulettePage({ user, onUpdateUser }) {
                 {isSpinning ? 'Крутится...' : `Крутить (1 билет)`}
             </button>
 
+            {/* --- ИЗМЕНЕНИЕ: Оборачиваем ТОЛЬКО историю в белую подложку --- */}
+            {/* --- ИЗМЕНЕНИЕ: Оборачиваем историю в белую подложку --- */}
             <div className={styles.historySection}>
                 <h3>Лента победителей</h3>
                 <div className={styles.historyContainer}>
                     {Object.keys(groupedHistory).length > 0 ? (
                         Object.keys(groupedHistory).map(dateKey => (
-                            <React.Fragment key={dateKey}>
+                            <div key={dateKey} className={styles.dayGroup}>
                                 <div className={styles.dateHeader}>
                                     <span>{formatFeedDate(groupedHistory[dateKey][0].timestamp)}</span>
                                 </div>
-                                <div className={styles.historyList}>
+                                <div className={styles.historyGrid}>
                                     {groupedHistory[dateKey].map(win => (
                                         <div key={win.id} className={styles.historyItem}>
                                             <UserAvatar user={win.user} size="small" />
                                             <div className={styles.historyInfo}>
-                                                <p><strong>{win.user.first_name} {win.user.last_name}</strong></p>
-                                                <p>выиграл(а) <strong>{win.amount} спасибок</strong></p>
+                                                <p className={styles.winnerTransaction}>
+                                                    <strong>{win.user.first_name} {win.user.last_name}</strong>
+                                                </p>
+                                                <p className={styles.winMessage}>
+                                                    выиграл(а) <strong>{win.amount} спасибок</strong>
+                                                </p>
                                             </div>
                                             <span className={styles.historyTimestamp}>
                                                 {formatToMsk(win.timestamp, { year: undefined, month: undefined, day: undefined })}
@@ -167,7 +170,7 @@ function RoulettePage({ user, onUpdateUser }) {
                                         </div>
                                     ))}
                                 </div>
-                            </React.Fragment>
+                            </div>
                         ))
                     ) : (
                         <p>В рулетке еще никто не выигрывал.</p>
