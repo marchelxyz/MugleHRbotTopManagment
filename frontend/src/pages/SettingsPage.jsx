@@ -2,10 +2,10 @@
 
 import React from 'react';
 import styles from './SettingsPage.module.css';
-import { FaQuestionCircle, FaHeadset, FaFileContract } from 'react-icons/fa';
+import { FaQuestionCircle, FaHeadset, FaFileContract, FaBookOpen } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
 
-function SettingsPage({ onBack, onNavigate }) {
+function SettingsPage({ onBack, onNavigate, onRepeatOnboarding }) {
 
   // Ссылка на ваш аккаунт поддержки в Telegram
   const supportUrl = 'https://t.me/your_support_account'; // <-- НЕ ЗАБУДЬТЕ ЗАМЕНИТЬ НА ВАШ АККАУНТ
@@ -21,6 +21,12 @@ function SettingsPage({ onBack, onNavigate }) {
 
       {/* 3. Основной список опций */}
       <div className={styles.settingsList}>
+
+        {/* 3. Добавляем новую кнопку */}
+        <button onClick={onRepeatOnboarding} className={styles.settingsItem}>
+          <FaBookOpen className={styles.icon} />
+          <span>Пройти обучение повторно</span>
+        </button>
         
         {/* Кнопка FAQ */}
         <button onClick={() => onNavigate('faq')} className={styles.settingsItem}>
