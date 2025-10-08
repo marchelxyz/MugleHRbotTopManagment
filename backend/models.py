@@ -35,16 +35,19 @@ class User(Base):
     sent_transactions = relationship(
         "Transaction",
         back_populates="sender",
-        foreign_keys="[Transaction.sender_id]",
+        # Правильный синтаксис: просто строка, без скобок []
+        foreign_keys="Transaction.sender_id",
         cascade="all, delete-orphan",
-        passive_deletes=True  # <--- ДОБАВЬ ЭТУ СТРОКУ
+        passive_deletes=True
     )
     received_transactions = relationship(
         "Transaction",
         back_populates="receiver",
-        foreign_keys="[Transaction.receiver_id]",
+        # И здесь тоже
+        foreign_keys="Transaction.receiver_id",
         cascade="all, delete-orphan",
-        passive_deletes=True  # <--- И ЭТУ СТРОКУ
+        passive_deletes=True
+    )
     purchases = relationship("Purchase", back_populates="user")
     pending_updates = relationship("PendingUpdate", back_populates="user")
 
