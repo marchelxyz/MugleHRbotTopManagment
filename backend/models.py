@@ -32,8 +32,19 @@ class User(Base):
     registration_date = Column(DateTime, default=func.now())
 
     has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
-    sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
-    received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
+    sent_transactions = relationship(
+        "Transaction",
+        back_populates="sender",
+        foreign_keys="[Transaction.sender_id]",
+        cascade="all, delete-orphan",
+        passive_deletes=True  # <--- ДОБАВЬ ЭТУ СТРОКУ
+    )
+    received_transactions = relationship(
+        "Transaction",
+        back_populates="receiver",
+        foreign_keys="[Transaction.receiver_id]",
+        cascade="all, delete-orphan",
+        passive_deletes=True  # <--- И ЭТУ СТРОКУ
     purchases = relationship("Purchase", back_populates="user")
     pending_updates = relationship("PendingUpdate", back_populates="user")
 
