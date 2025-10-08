@@ -1199,3 +1199,14 @@ async def get_average_session_duration(db: AsyncSession, start_date: Optional[da
     average_minutes = round(average_seconds / 60, 2)
     
     return {"average_duration_minutes": average_minutes}
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ ОБУЧЕНИЯ ---
+
+async def mark_onboarding_as_seen(db: AsyncSession, user_id: int):
+    """Отмечает, что пользователь прошел обучение."""
+    user = await db.get(models.User, user_id)
+    if user:
+        user.has_seen_onboarding = True
+        await db.commit()
+        await db.refresh(user)
+    return user
