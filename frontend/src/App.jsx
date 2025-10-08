@@ -143,8 +143,12 @@ const handleTransferSuccess = (updatedSenderData) => {
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
-        case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} 
-        onRepeatOnboarding={() => setShowOnboarding(true)} // <-- ДОБАВЛЯЕМ ЭТО
+  case 'settings': 
+    return (
+      <SettingsPage 
+        onBack={() => navigate('profile')} 
+        onNavigate={navigate} 
+        onRepeatOnboarding={() => setShowOnboarding(true)}
       />
     );
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
