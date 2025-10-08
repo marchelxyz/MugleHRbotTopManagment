@@ -24,6 +24,7 @@ import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
 import TransferPage from './pages/TransferPage'; // Убедимся, что TransferPage импортирован
 import { startSession, pingSession } from './api';
+import OnboardingStories from './components/OnboardingStories'; // 1. Импортируем новый компонент
 
 // Стили
 import './App.css';
