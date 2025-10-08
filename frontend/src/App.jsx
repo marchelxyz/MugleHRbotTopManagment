@@ -39,7 +39,9 @@ function App() {
   const [page, setPage] = useState('home');
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
   const [showPendingBanner, setShowPendingBanner] = useState(false);
-
+ // 2. Добавляем новое состояние для принудительного показа обучения
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  
   const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform);
 
   useEffect(() => {
@@ -103,6 +105,16 @@ const handleTransferSuccess = (updatedSenderData) => {
       setShowPendingBanner(true);
       setPage('profile');
   };
+
+  // 3. Создаем функцию-обработчик для завершения обучения
+  const handleOnboardingComplete = () => {
+    // Обновляем состояние пользователя локально, чтобы не перезагружать все приложение
+    if (user) {
+      setUser(prevUser => ({ ...prevUser, has_seen_onboarding: true }));
+    }
+    // Отключаем принудительный показ
+    setShowOnboarding(false);
+  };
   
   const renderPage = () => {
     if (loading) {
@@ -111,6 +123,12 @@ const handleTransferSuccess = (updatedSenderData) => {
     
     if (!user) {
       return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
+    }
+
+    // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
+    // Условие: (флаг в базе false ИЛИ мы включили принудительный показ)
+    if ((user && !user.has_seen_onboarding) || showOnboarding) {
+        return <OnboardingStories onComplete={handleOnboardingComplete} />;
     }
     
     if (user.status === 'blocked') { return <BlockedPage />; }
@@ -125,7 +143,10 @@ const handleTransferSuccess = (updatedSenderData) => {
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
-        case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
+        case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} 
+        onRepeatOnboarding={() => setShowOnboarding(true)} // <-- ДОБАВЛЯЕМ ЭТО
+      />
+    );
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
         // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
