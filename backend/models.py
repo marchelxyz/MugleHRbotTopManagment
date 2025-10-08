@@ -31,7 +31,7 @@ class User(Base):
     card_balance = Column(String, nullable=True) # Поле для хранения баланса карты
     registration_date = Column(DateTime, default=func.now())
 
-
+    has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
     sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
     received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
     purchases = relationship("Purchase", back_populates="user")
