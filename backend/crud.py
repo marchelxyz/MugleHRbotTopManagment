@@ -936,20 +936,21 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
 
 # --- ЗАМЕНИ ЭТУ ФУНКЦИЮ ---
 async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.User):
-    """
-    "Жесткое" удаление: полностью удаляет пользователя из базы данных.
-    """
-    user = await get_user(db, user_id)
+    """Удаляет пользователя и все связанные с ним данные (транзакции, сессии и т.д.)"""
+    user = await db.get(models.User, user_id)
     if not user:
-        return False
-    
-    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
-    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+        return None
+    if user.id == admin_user.id:
+        # Админ не может удалить сам себя
+        raise ValueError("Admin cannot delete themselves.")
 
-    # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Полностью удаляем пользователя ---
+    # Просто удаляем пользователя.
+    # SQLAlchemy, благодаря настройкам в models.py (cascade="all, delete-orphan"),
+    # автоматически удалит все связанные транзакции, сессии и другие данные.
+    # Руками ничего делать не нужно.
     await db.delete(user)
     await db.commit()
-
+    return user
     # Отправляем уведомление об удалении
     log_message = (
         f"🗑️ *Админ удалил пользователя*\n\n"
@@ -963,7 +964,7 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
         message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
     )
 
-    return True
+    return user
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
 async def get_leaderboards_status(db: AsyncSession):
