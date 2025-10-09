@@ -62,11 +62,12 @@ function OnboardingStories({ onComplete }) {
       <div className={styles.content}>
         <div className={styles.stickerContainer}>
             {/* Этот код остается без изменений */}
-            <Lottie
-              animationData={currentStory.animation}
-              loop={true}
-              className={styles.sticker}
-            />
+<Lottie
+  animationData={currentStory.animation}
+  loop
+  play // <-- ДОБАВЬ ЭТУ СТРОКУ
+  className={styles.sticker}
+/>
         </div>
         <h1 className={styles.title}>{currentStory.title}</h1>
         <p className={styles.text}>{currentStory.text}</p>
