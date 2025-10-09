@@ -1,24 +1,28 @@
 // frontend/src/components/OnboardingStories.jsx
-// (НОВЫЙ ФАЙЛ)
 
 import React, { useState } from 'react';
 import { completeOnboarding } from '../api';
 import styles from './OnboardingStories.module.css';
 
+import sticker1 from '../assets/AnimatedSticker1.json';
+import sticker2 from '../assets/AnimatedSticker3.json';
+import sticker3 from '../assets/AnimatedSticker2.json';
+
 // Здесь ты можешь определить свои "истории"
+// 2. Добавляем поле 'animation' к каждой истории
 const stories = [
   {
-    image: 'https://i.postimg.cc/d1wL9d7g/step1.png',
+    animation: sticker1,
     title: 'Добро пожаловать!',
     text: '«Спасибо» — это пространство для благодарности коллегам. Отправляйте "спасибки" и получайте их в ответ!',
   },
   {
-    image: 'https://i.postimg.cc/SKxgyj0h/step2.png',
+    animation: sticker2,
     title: 'Копите и тратьте',
     text: 'Накопленные "спасибки" можно обменять на мерч, сертификаты и другие приятные бонусы в нашем Магазине.',
   },
   {
-    image: 'https://i.postimg.cc/SRvN2f00/step3.png',
+    animation: sticker3,
     title: 'Соревнуйтесь',
     text: 'Следите за своим прогрессом в Рейтинге. Станьте самым щедрым или самым признанным сотрудником!',
   },
@@ -31,18 +35,16 @@ function OnboardingStories({ onComplete }) {
     if (currentStep < stories.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Когда пользователь на последнем шаге, завершаем обучение
       handleComplete();
     }
   };
 
   const handleComplete = async () => {
     try {
-      await completeOnboarding(); // Отправляем запрос на бэкенд
-      onComplete(); // Вызываем функцию из App.jsx для обновления состояния
+      await completeOnboarding();
+      onComplete();
     } catch (error) {
       console.error("Failed to complete onboarding:", error);
-      // Если произошла ошибка, все равно позволяем пользователю войти
       onComplete();
     }
   };
@@ -51,7 +53,6 @@ function OnboardingStories({ onComplete }) {
 
   return (
     <div className={styles.container}>
-      {/* Кнопка "Пропустить" появляется только на первом шаге */}
       {currentStep === 0 && (
         <button onClick={handleComplete} className={styles.skipButton}>
           Пропустить
@@ -59,7 +60,14 @@ function OnboardingStories({ onComplete }) {
       )}
 
       <div className={styles.content}>
-        <img src={currentStory.image} alt={currentStory.title} className={styles.image} />
+        <div className={styles.stickerContainer}>
+            {/* 3. Указываем Lottie использовать анимацию из текущей истории */}
+            <Lottie
+              animationData={currentStory.animation}
+              loop={true}
+              className={styles.sticker}
+            />
+        </div>
         <h1 className={styles.title}>{currentStory.title}</h1>
         <p className={styles.text}>{currentStory.text}</p>
       </div>
