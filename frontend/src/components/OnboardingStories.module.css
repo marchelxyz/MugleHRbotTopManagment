@@ -1,5 +1,4 @@
 /* frontend/src/components/OnboardingStories.module.css */
-/* (НОВЫЙ ФАЙЛ) */
 
 .container {
   display: flex;
@@ -29,11 +28,20 @@
   text-align: center;
 }
 
-.image {
-  max-width: 80%;
-  height: auto;
-  margin-bottom: 30px;
+/* --- НАЧАЛО ИЗМЕНЕНИЙ В СТИЛЯХ --- */
+
+.stickerContainer {
+  width: 200px;
+  height: 200px;
+  margin-bottom: 20px;
 }
+
+.sticker {
+  width: 100%;
+  height: 100%;
+}
+
+/* --- КОНЕЦ ИЗМЕНЕНИЙ В СТИЛЯХ --- */
 
 .title {
   font-size: 24px;
