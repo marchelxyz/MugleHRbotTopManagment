@@ -127,13 +127,20 @@ const handleTransferSuccess = (updatedSenderData) => {
 
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
     // Условие: (флаг в базе false ИЛИ мы включили принудительный показ)
-    if ((user && !user.has_seen_onboarding) || showOnboarding) {
+    if (user.status === 'pending') {
+      return <PendingPage />;
+    }
+    if (user.status === 'blocked') {
+      return <BlockedPage />;
+    }
+    if (user.status === 'rejected') {
+      return <RejectedPage />;
+    }
+
+    // 2. Только если пользователь одобрен, проверяем, видел ли он обучение.
+    if (user.status === 'approved' && (!user.has_seen_onboarding || showOnboarding)) {
         return <OnboardingStories onComplete={handleOnboardingComplete} />;
     }
-    
-    if (user.status === 'blocked') { return <BlockedPage />; }
-    if (user.status === 'pending') { return <PendingPage />; }
-    if (user.status === 'rejected') { return <RejectedPage />; }
     
     if (user.status === 'approved') {
       switch (page) {
