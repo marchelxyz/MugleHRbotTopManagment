@@ -925,7 +925,7 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             f"*Изменения:*\n" + "\n".join(changes_log)
         )
         
-        await send_telegram_message(
+        await bot.send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=log_message,
             message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
