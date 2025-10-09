@@ -7,6 +7,8 @@ from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 import random
+from . import bot
+from . import config
 from sqlalchemy.future import select
 from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -965,14 +967,10 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
         f"Запись пользователя была полностью удалена из системы."
     )
     
-    # Убедись, что эти функции и переменные импортированы и доступны в файле crud.py
-    from .bot import send_telegram_message
-    from .config import settings
-    
-    await send_telegram_message(
-        chat_id=settings.TELEGRAM_CHAT_ID,
+    await bot.send_telegram_message(
+        chat_id=config.settings.TELEGRAM_CHAT_ID,
         text=log_message,
-        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        message_thread_id=config.settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
     )
 
     # 4. Возвращаем результат в самом конце функции.
