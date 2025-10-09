@@ -1,7 +1,7 @@
 // frontend/src/components/OnboardingStories.jsx (ФИНАЛЬНАЯ ВЕРСИЯ)
 
 import React, { useState } from 'react';
-import Lottie from 'lottie-react';
+import Lottie from 'react-lottie-player';
 import { completeOnboarding } from '../api';
 import styles from './OnboardingStories.module.css';
 
