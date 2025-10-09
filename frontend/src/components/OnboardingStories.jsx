@@ -5,18 +5,10 @@ import Lottie from 'lottie-react';
 import { completeOnboarding } from '../api';
 import styles from './OnboardingStories.module.css';
 
-// --- НАЧАЛО ИЗМЕНЕНИЙ ---
-// Мы будем импортировать файлы "безопасно"
-let sticker1, sticker2, sticker3;
-try {
-  sticker1 = require('../assets/AnimatedSticker1.json');
-  sticker2 = require('../assets/AnimatedSticker3.json');
-  sticker3 = require('../assets/AnimatedSticker2.json');
-} catch (error) {
-  console.error("Could not load sticker animations. Check files in src/assets/", error);
-  // Если файлы не найдены, переменные останутся undefined
-}
-// --- КОНЕЦ ИЗМЕНЕНИЙ ---
+// --- ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ, СТАНДАРТНЫЙ ИМПОРТ ---
+import sticker1 from '../assets/AnimatedSticker1.json';
+import sticker2 from '../assets/AnimatedSticker3.json';
+import sticker3 from '../assets/AnimatedSticker2.json';
 
 
 const stories = [
@@ -38,7 +30,6 @@ const stories = [
 ];
 
 function OnboardingStories({ onComplete }) {
-  // ... (весь остальной код функции остается без изменений) ...
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleNext = () => {
@@ -70,19 +61,12 @@ function OnboardingStories({ onComplete }) {
       )}
       <div className={styles.content}>
         <div className={styles.stickerContainer}>
-            {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
-            {/* Показываем анимацию, только если она успешно загрузилась */}
-            {currentStory.animation ? (
-              <Lottie
-                animationData={currentStory.animation}
-                loop={true}
-                className={styles.sticker}
-              />
-            ) : (
-              // Иначе показываем заглушку
-              <p style={{ fontSize: '50px' }}>🖼️</p>
-            )}
-            {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
+            {/* Этот код остается без изменений */}
+            <Lottie
+              animationData={currentStory.animation}
+              loop={true}
+              className={styles.sticker}
+            />
         </div>
         <h1 className={styles.title}>{currentStory.title}</h1>
         <p className={styles.text}>{currentStory.text}</p>
