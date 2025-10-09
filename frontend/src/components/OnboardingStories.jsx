@@ -1,33 +1,44 @@
-// frontend/src/components/OnboardingStories.jsx (ТЕСТОВАЯ ВЕРСИЯ)
+// frontend/src/components/OnboardingStories.jsx (ФИНАЛЬНАЯ ВЕРСИЯ)
 
 import React, { useState } from 'react';
-// import Lottie from 'lottie-react'; // Временно отключаем
+import Lottie from 'lottie-react';
 import { completeOnboarding } from '../api';
 import styles from './OnboardingStories.module.css';
 
-// import sticker1 from '../assets/Sticker1.json'; // Временно отключаем
-// import sticker2 from '../assets/Sticker2.json';
-// import sticker3 from '../assets/Sticker3.json';
+// --- НАЧАЛО ИЗМЕНЕНИЙ ---
+// Мы будем импортировать файлы "безопасно"
+let sticker1, sticker2, sticker3;
+try {
+  sticker1 = require('../assets/AnimatedSticker1.json');
+  sticker2 = require('../assets/AnimatedSticker3.json');
+  sticker3 = require('../assets/AnimatedSticker2.json');
+} catch (error) {
+  console.error("Could not load sticker animations. Check files in src/assets/", error);
+  // Если файлы не найдены, переменные останутся undefined
+}
+// --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
 
 const stories = [
   {
-    // animation: sticker1,
+    animation: sticker1,
     title: 'Добро пожаловать!',
-    text: '«Спасибо» — это пространство для благодарности коллегам...',
+    text: '«Спасибо» — это пространство для благодарности коллегам. Отправляйте "спасибки" и получайте их в ответ!',
   },
   {
-    // animation: sticker2,
+    animation: sticker2,
     title: 'Копите и тратьте',
-    text: 'Накопленные "спасибки" можно обменять на мерч...',
+    text: 'Накопленные "спасибки" можно обменять на мерч, сертификаты и другие приятные бонусы в нашем Магазине.',
   },
   {
-    // animation: sticker3,
+    animation: sticker3,
     title: 'Соревнуйтесь',
-    text: 'Следите за своим прогрессом в Рейтинге...',
+    text: 'Следите за своим прогрессом в Рейтинге. Станьте самым щедрым или самым признанным сотрудником!',
   },
 ];
 
 function OnboardingStories({ onComplete }) {
+  // ... (весь остальной код функции остается без изменений) ...
   const [currentStep, setCurrentStep] = useState(0);
 
   const handleNext = () => {
@@ -52,19 +63,38 @@ function OnboardingStories({ onComplete }) {
 
   return (
     <div className={styles.container}>
+       {currentStep === 0 && (
+        <button onClick={handleComplete} className={styles.skipButton}>
+          Пропустить
+        </button>
+      )}
       <div className={styles.content}>
         <div className={styles.stickerContainer}>
-            {/* Вместо анимации ставим простую заглушку */}
-            <p style={{ fontSize: '50px' }}>🖼️</p>
+            {/* --- НАЧАЛО ИЗМЕНЕНИЙ --- */}
+            {/* Показываем анимацию, только если она успешно загрузилась */}
+            {currentStory.animation ? (
+              <Lottie
+                animationData={currentStory.animation}
+                loop={true}
+                className={styles.sticker}
+              />
+            ) : (
+              // Иначе показываем заглушку
+              <p style={{ fontSize: '50px' }}>🖼️</p>
+            )}
+            {/* --- КОНЕЦ ИЗМЕНЕНИЙ --- */}
         </div>
         <h1 className={styles.title}>{currentStory.title}</h1>
         <p className={styles.text}>{currentStory.text}</p>
       </div>
+
       <div className={styles.footer}>
-        {/* ... остальная часть без изменений ... */}
         <div className={styles.dots}>
           {stories.map((_, index) => (
-            <div key={index} className={`${styles.dot} ${index === currentStep ? styles.activeDot : ''}`} />
+            <div
+              key={index}
+              className={`${styles.dot} ${index === currentStep ? styles.activeDot : ''}`}
+            />
           ))}
         </div>
         <button onClick={handleNext} className={styles.nextButton}>
