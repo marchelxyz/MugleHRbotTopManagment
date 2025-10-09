@@ -7,8 +7,8 @@ from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 import random
-from . import bot
-from . import config
+import bot
+import config
 from sqlalchemy.future import select
 from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
