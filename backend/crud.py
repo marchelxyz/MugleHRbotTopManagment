@@ -163,10 +163,22 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Возвращаем обновленного отправителя ---
     return sender
     
+# crud.py
+
 async def get_feed(db: AsyncSession):
-    result = await db.execute(
-        select(models.Transaction).order_by(models.Transaction.timestamp.desc())
+    """
+    Получает ленту транзакций, гарантируя, что отправитель и получатель существуют.
+    """
+    Sender = aliased(models.User, name='sender_user')
+    Receiver = aliased(models.User, name='receiver_user')
+
+    stmt = (
+        select(models.Transaction)
+        .join(Sender, models.Transaction.sender_id == Sender.id)
+        .join(Receiver, models.Transaction.receiver_id == Receiver.id)
+        .order_by(models.Transaction.timestamp.desc())
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 async def get_user_transactions(db: AsyncSession, user_id: int):
