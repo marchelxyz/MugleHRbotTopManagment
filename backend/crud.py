@@ -170,11 +170,20 @@ async def get_feed(db: AsyncSession):
     return result.scalars().all()
 
 async def get_user_transactions(db: AsyncSession, user_id: int):
-    result = await db.execute(
+    """
+    Получает транзакции пользователя, гарантируя, что второй участник транзакции существует.
+    """
+    Sender = aliased(models.User, name='sender_user')
+    Receiver = aliased(models.User, name='receiver_user')
+
+    stmt = (
         select(models.Transaction)
+        .join(Sender, models.Transaction.sender_id == Sender.id)
+        .join(Receiver, models.Transaction.receiver_id == Receiver.id)
         .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
         .order_by(models.Transaction.timestamp.desc())
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 # Лидерборд
