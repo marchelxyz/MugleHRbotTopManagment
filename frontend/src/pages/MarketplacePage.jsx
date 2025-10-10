@@ -4,7 +4,7 @@ import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import styles from './MarketplacePage.module.css';
-import { FaStar } from 'react-icons/fa'; // 1. Импортируем иконку
+import { FaStar } from 'react-icons/fa';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
@@ -17,12 +17,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       try {
         const response = await getMarketItems();
         setItems(response.data);
-
-        // --- ШАГ 1: "ШПИОНСКАЯ" СТРОКА ---
-        // Эта строка выведет в консоль разработчика в браузере 
-        // массив с товарами, которые пришли с сервера.
-        console.log("Товары, полученные с сервера:", response.data);
         
+        // --- "ШПИОНСКАЯ" СТРОКА ---
+        console.log("Товары, полученные с сервера (после последнего исправления):", response.data);
+
       } catch (error) {
         console.error("Failed to fetch market items", error);
         showAlert("Не удалось загрузить товары. Попробуйте позже.");
@@ -67,45 +65,39 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
             const hasDiscount = item.original_price && item.original_price > item.price;
             const discountPercent = hasDiscount ? Math.round(((item.original_price - item.price) / item.original_price) * 100) : 0;
 
+  return (
+    <PageLayout title="Кафетерий">
+      <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
+      {isLoading ? <p>Загрузка товаров...</p> : (
+        <div className={styles.itemsGrid}>
+          {activeItems.map(item => {
+            const currentPrice = Number(item.price);
+            const originalPrice = Number(item.original_price);
+            const hasDiscount = originalPrice && originalPrice > currentPrice;
+            const discountPercent = hasDiscount ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
+
             return (
               <div key={item.id} className={styles.itemCard}>
-                
-                {/* Показываем скидку, только если hasDiscount === true */}
                 {hasDiscount && (
                   <div className={styles.discountBadge}>
                     <FaStar className={styles.discountIcon} />
-                    <span className={styles.discountText}>
-                      - {discountPercent}%
-                    </span>
+                    <span className={styles.discountText}>- {discountPercent}%</span>
                   </div>
                 )}
-
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
-                ) : (
-                  <div className={styles.imagePlaceholder}></div>
-                )}
-                
+                {item.image_url ? <img src={item.image_url} alt={item.name} className={styles.itemImage} /> : <div className={styles.imagePlaceholder}></div>}
                 <div className={styles.itemContent}>
                   <h2 className={styles.itemName}>{item.name}</h2>
                   <p className={styles.itemDescription}>{item.description}</p>
-                  
-                  {/* Блок цены теперь тоже с проверкой */}
                   <div className={styles.priceContainer}>
-                    <span className={styles.itemPrice}>{item.price} спасибок</span>
-                    {hasDiscount && (
-                      <span className={styles.originalPrice}>
-                        {item.original_price}
-                      </span>
-                    )}
+                    <span className={styles.itemPrice}>{currentPrice} спасибок</span>
+                    {hasDiscount && <span className={styles.originalPrice}>{originalPrice}</span>}
                   </div>
-
                 </div>
                 <div className={styles.buttonWrapper}>
                   <button 
-                    onClick={() => handlePurchase(item.id, item.name, item.price)} 
+                    onClick={() => handlePurchase(item.id, item.name, currentPrice)} 
                     className={styles.purchaseButton}
-                    disabled={user?.balance < item.price || item.stock <= 0} 
+                    disabled={user?.balance < currentPrice || item.stock <= 0} 
                   >
                     {item.stock > 0 ? 'Купить' : 'Нет в наличии'}
                   </button>
