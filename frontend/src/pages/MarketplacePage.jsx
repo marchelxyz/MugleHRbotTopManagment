@@ -1,13 +1,10 @@
-// frontend/src/pages/MarketplacePage.jsx (ТЕСТОВАЯ ВЕРСИЯ)
-
 import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import styles from './MarketplacePage.module.css';
-
-// import { FaStar } from 'react-icons/fa'; // Временно отключаем
+import { FaStar } from 'react-icons/fa'; // 1. Импортируем иконку
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
@@ -53,33 +50,57 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
-          {activeItems.map(item => (
-            // --- ВРЕМЕННО ВОЗВРАЩАЕМ СТАРУЮ ВЕРСТКУ КАРТОЧКИ ---
-            <div key={item.id} className={styles.itemCard}>
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} className={styles.itemImage} />
-              ) : (
-                <div className={styles.imagePlaceholder}></div>
-              )}
-              
-              <div className={styles.itemContent}>
-                <h2 className={styles.itemName}>{item.name}</h2>
-                <p className={styles.itemDescription}>{item.description}</p>
-                {/* Используем простой вывод цены, как было раньше */}
-                <p className={styles.itemPrice}>Цена: {item.price} спасибок</p>
-              </div>
+          {activeItems.map(item => {
+            // --- 2. ДОБАВЛЯЕМ ПРОВЕРКИ И РАСЧЕТЫ ПЕРЕД ОТРИСОВКОЙ ---
+            const hasDiscount = item.original_price && item.original_price > item.price;
+            const discountPercent = hasDiscount ? Math.round(((item.original_price - item.price) / item.original_price) * 100) : 0;
 
-              <div className={styles.buttonWrapper}>
-                <button 
-                  onClick={() => handlePurchase(item.id, item.name, item.price)} 
-                  className={styles.purchaseButton}
-                  disabled={user?.balance < item.price || item.stock <= 0} 
-                >
-                  {item.stock > 0 ? 'Купить' : 'Нет в наличии'}
-                </button>
+            return (
+              <div key={item.id} className={styles.itemCard}>
+                
+                {/* Показываем скидку, только если hasDiscount === true */}
+                {hasDiscount && (
+                  <div className={styles.discountBadge}>
+                    <FaStar className={styles.discountIcon} />
+                    <span className={styles.discountText}>
+                      - {discountPercent}%
+                    </span>
+                  </div>
+                )}
+
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+                ) : (
+                  <div className={styles.imagePlaceholder}></div>
+                )}
+                
+                <div className={styles.itemContent}>
+                  <h2 className={styles.itemName}>{item.name}</h2>
+                  <p className={styles.itemDescription}>{item.description}</p>
+                  
+                  {/* Блок цены теперь тоже с проверкой */}
+                  <div className={styles.priceContainer}>
+                    <span className={styles.itemPrice}>{item.price} спасибок</span>
+                    {hasDiscount && (
+                      <span className={styles.originalPrice}>
+                        {item.original_price}
+                      </span>
+                    )}
+                  </div>
+
+                </div>
+                <div className={styles.buttonWrapper}>
+                  <button 
+                    onClick={() => handlePurchase(item.id, item.name, item.price)} 
+                    className={styles.purchaseButton}
+                    disabled={user?.balance < item.price || item.stock <= 0} 
+                  >
+                    {item.stock > 0 ? 'Купить' : 'Нет в наличии'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </PageLayout>
