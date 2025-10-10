@@ -112,6 +112,7 @@ class MarketItemCreate(BaseModel):
     price_rub: int
     stock: int
     image_url: Optional[str] = None
+    original_price: Optional[int] = None
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
