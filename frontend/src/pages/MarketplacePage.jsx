@@ -28,8 +28,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   }, []);
 
   // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
-  const handlePurchase = async (itemId, itemName, itemPrice) => {
-    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
+const handlePurchase = async (itemId, itemName, itemPrice) => {
+    console.log(`ТЕСТ 1: Кнопка "Купить" для товара "${itemName}" нажата.`);
+    showAlert(`Кнопка для "${itemName}" работает!`);
+  };
     if (isConfirmed) {
       try {
         const response = await purchaseItem(user.id, itemId);
