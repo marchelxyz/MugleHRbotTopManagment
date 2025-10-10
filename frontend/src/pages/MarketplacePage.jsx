@@ -9,7 +9,7 @@ import { FaStar, FaCopy } from 'react-icons/fa';
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const showAlert = useModalAlert();
+  const { showAlert } = useModalAlert();
   const confirm = useConfirmation();
 
   useEffect(() => {
