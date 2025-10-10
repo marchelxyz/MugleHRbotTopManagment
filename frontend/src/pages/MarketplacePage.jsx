@@ -8,6 +8,7 @@ import PageLayout from '../components/PageLayout';
 import { getCachedData } from '../storage';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
+import { FaStar } from 'react-icons/fa';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const { showAlert } = useModalAlert();
@@ -62,8 +63,9 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
               {/* БЛОК ДЛЯ ОТОБРАЖЕНИЯ СКИДКИ (ЗВЕЗДОЧКА) */}
               {item.original_price && item.original_price > item.price && (
                 <div className={styles.discountBadge}>
-                  <img src="https://i.postimg.cc/MH2V321h/star.png" alt="discount" />
-                  <span>
+      {/* --- ИЗМЕНЕНИЕ: Используем иконку вместо картинки --- */}
+      <FaStar className={styles.discountIcon} />
+      <span className={styles.discountText}>
                     - {Math.round(((item.original_price - item.price) / item.original_price) * 100)}%
                   </span>
                 </div>
