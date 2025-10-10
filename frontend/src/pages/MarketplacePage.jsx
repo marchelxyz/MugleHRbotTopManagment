@@ -29,15 +29,23 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
   // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
   const handlePurchase = async (itemId, itemName, itemPrice) => {
-    console.log("ТЕСТ 2: Запрашиваем подтверждение...");
     const isConfirmed = await confirm(`Подтвердите покупку "${itemName}"`);
-    
     if (isConfirmed) {
-      console.log("ТЕСТ 2: Покупка подтверждена!");
-      showAlert("Вы подтвердили покупку!");
-    } else {
-      console.log("ТЕСТ 2: Покупка отменена.");
-      showAlert("Вы отменили покупку.");
+      try {
+        console.log("ТЕСТ 3: Отправляем запрос на покупку...");
+        const response = await purchaseItem(user.id, itemId);
+
+        // --- ГЛАВНЫЙ МОМЕНТ ---
+        // Мы НЕ вызываем onPurchaseSuccess или showAlert, а просто смотрим, что вернул сервер.
+        console.log("ТЕСТ 3: ПОЛУЧЕН ОТВЕТ ОТ СЕРВЕРА:", response);
+        console.log("ТЕСТ 3: ДАННЫЕ В ОТВЕТЕ:", response.data);
+
+        alert("Запрос к серверу прошел! Откройте консоль (F12), чтобы увидеть ответ.");
+
+      } catch (error) {
+        console.error("ТЕСТ 3: ОШИБКА ПРИ ПОКУПКЕ:", error);
+        showAlert("Произошла ошибка. См. консоль.");
+      }
     }
   };
   // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
