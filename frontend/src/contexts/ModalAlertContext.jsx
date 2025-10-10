@@ -16,6 +16,8 @@ export function ModalAlertProvider({ children }) {
     setAlertState({ message: null, type: 'success', title: '' });
   }, []);
 
+const value = showAlert;
+  
   return (
     <ModalAlertContext.Provider value={{ showAlert }}>
       {children}
