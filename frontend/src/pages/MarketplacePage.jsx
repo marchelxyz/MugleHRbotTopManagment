@@ -53,7 +53,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
           {activeItems.map(item => {
             const currentPrice = Number(item.price);
             const originalPrice = Number(item.original_price);
-            const hasDiscount = originalPrice && originalPrice > currentPrice;
+            const hasDiscount = typeof item.original_price === 'number' && item.original_price > item.price;
             const discountPercent = hasDiscount ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
 
             return (

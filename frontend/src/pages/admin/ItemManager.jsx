@@ -188,11 +188,17 @@ function ItemManager() {
           {(form.price_rub > 0 || form.original_price_rub > 0) && (
               <div className={styles.pricePreview}>
                 <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
-                {/* Показываем старую цену, если она введена */}
                 {calculatedOriginalPrice > 0 && (
                   <p>Старая цена в спасибках: <strong>{calculatedOriginalPrice}</strong></p>
                 )}
-                <p>Прогноз накопления: <strong>{forecast}</strong></p>
+                {/* Добавляем пояснение, если есть скидка */}
+                <p>
+                  Прогноз накопления
+                  <span style={{color: '#5CA14A', fontWeight: '500'}}>
+                    {calculatedOriginalPrice > 0 ? " (по скидке)" : ""}
+                  </span>: 
+                  <strong> {forecast}</strong>
+                </p>
               </div>
           )}
             
