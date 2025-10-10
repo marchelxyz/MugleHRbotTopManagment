@@ -521,6 +521,7 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
         price_rub=item.price_rub,
         stock=item.stock,
         image_url=item.image_url  # <-- ВОТ ДОБАВЛЕННАЯ СТРОКА
+        original_price=item.original_price
     )
 
     db.add(db_item)
@@ -545,6 +546,12 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_update: 
         if item_update.image_url is not None:
             db_item.image_url = item_update.image_url
         # <-- КОНЕЦ ДОБАВЛЕННОГО БЛОКА -->
+
+        # --- ДОБАВЬ ЭТОТ БЛОК ---
+        if item_update.original_price is not None:
+            # Позволяем установить старую цену или сбросить ее (если передали 0)
+            db_item.original_price = item_update.original_price if item_update.original_price > 0 else None
+        # --- КОНЕЦ БЛОКА ---
 
         await db.commit()
         await db.refresh(db_item)
