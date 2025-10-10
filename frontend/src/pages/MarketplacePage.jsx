@@ -33,12 +33,14 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     if (isConfirmed) {
       try {
         const response = await purchaseItem(user.id, itemId);
-        // 1. Правильно извлекаем данные из ответа сервера
+        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+        // 1. Сначала мы ПРАВИЛЬНО извлекаем данные из ответа сервера
         const { new_balance, issued_code } = response.data;
         
-        // 2. Обновляем баланс пользователя ОДИН РАЗ
+        // 2. Затем мы ОДИН РАЗ обновляем баланс пользователя
         onPurchaseSuccess({ balance: new_balance });
 
+        // 3. И только после этого проверяем, был ли выдан код
         if (issued_code) {
           // Если пришел код, показываем специальное окно
           showAlert(
@@ -60,7 +62,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
           showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
         }
         
-        // 3. Обновляем список товаров, чтобы показать актуальный сток
+        // 4. В конце обновляем список товаров
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
 
