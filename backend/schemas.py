@@ -13,6 +13,7 @@ class MarketItemBase(OrmBase):
     description: Optional[str]
     price: int # Цена в спасибках для отображения пользователю
     stock: int
+    original_price: Optional[int] = None # <-- ДОБАВЬ СЮДА
 
 # Базовая схема для пользователя (без связей)
 class UserBase(OrmBase):
