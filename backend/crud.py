@@ -512,17 +512,33 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
 
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    # Рассчитываем 'price' на основе 'price_rub'
     calculated_price = item.price_rub // 50
+    
+    codes = []
+    if item.is_auto_issuance and item.codes_text:
+        # Получаем коды из текстового поля, убираем пустые строки
+        codes = [code.strip() for code in item.codes_text.splitlines() if code.strip()]
+        # Если коды предоставлены, количество на складе равно количеству кодов
+        stock = len(codes)
+    else:
+        stock = item.stock
+
     db_item = models.MarketItem(
         name=item.name,
         description=item.description,
         price=calculated_price, 
         price_rub=item.price_rub,
-        stock=item.stock,
-        image_url=item.image_url,  # <-- ВОТ ДОБАВЛЕННАЯ СТРОКА
-        original_price=item.original_price
+        stock=stock, # Используем рассчитанный или указанный сток
+        image_url=item.image_url,
+        original_price=item.original_price,
+        is_auto_issuance=item.is_auto_issuance
     )
+    
+    # Если есть коды, создаем для них записи в новой таблице
+    if codes:
+        for code_value in codes:
+            db_code = models.ItemCode(code_value=code_value, market_item=db_item)
+            db.add(db_code)
 
     db.add(db_item)
     await db.commit()
