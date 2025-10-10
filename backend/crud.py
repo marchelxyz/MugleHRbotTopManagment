@@ -340,12 +340,11 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     if item.is_auto_issuance:
         # --- ЛОГИКА АВТОВЫДАЧИ ---
-        # Ищем свободный код и блокируем его для этой транзакции
         stmt = (
             select(models.ItemCode)
             .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
             .limit(1)
-            .with_for_update() # Блокируем строку, чтобы избежать гонки потоков
+            .with_for_update()
         )
         result = await db.execute(stmt)
         code_to_issue = result.scalars().first()
@@ -365,28 +364,36 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         user.balance -= item.price
         item.stock -= 1
 
-    # Создаем запись о покупке в любом случае
     db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id, price=item.price)
     db.add(db_purchase)
     
-    # Если был выдан код, привязываем его к покупке
     if 'code_to_issue' in locals():
-        # Нужно сначала получить ID покупки, поэтому делаем flush
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
-    # Отправка уведомлений (можно улучшить, добавив код)
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: БЛОК УВЕДОМЛЕНИЙ ---
     try:
+        # Уведомление для администратора (остается без изменений)
         admin_message = f"🛍️ Новая покупка: {user.first_name} купил(а) {item.name}."
         if issued_code_value:
              admin_message += f"\nВыдан код: `{issued_code_value}`"
-        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
+        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message, message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID)
+
+        # Новое уведомление для пользователя, если был выдан код!
+        if issued_code_value:
+            user_message = (
+                f"🎉 Поздравляем с покупкой \"{item.name}\"!\n\n"
+                f"Ваш уникальный код/ссылка:\n`{issued_code_value}`\n\n"
+                f"Вы также можете найти его в истории своих покупок."
+            )
+            await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+
     except Exception as e:
-        print(f"Could not send admin notification. Error: {e}")
+        print(f"Could not send notification. Error: {e}")
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     await db.commit()
     
-    # Возвращаем баланс и выданный код
     return {"new_balance": user.balance, "issued_code": issued_code_value}
 
     
