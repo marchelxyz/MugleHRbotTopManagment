@@ -70,7 +70,7 @@ class MarketItemResponse(OrmBase):
     price_rub: int
     image_url: Optional[str] = None
     is_archived: bool
-    original_price: Optional[int] = None # <-- Главное изменение: поле указано явно
+    original_price: Optional[int] = None # <-- Теперь это поле гарантированно будет в ответе
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
