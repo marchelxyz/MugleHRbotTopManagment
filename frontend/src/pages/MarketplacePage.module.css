@@ -14,6 +14,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* --- ИЗМЕНЕНИЕ: Добавляем position: relative для позиционирования скидки --- */
+  position: relative;
 }
 
 .itemImage {
@@ -43,12 +45,6 @@
   margin-bottom: 15px;
 }
 
-.itemPrice {
-  font-size: 16px;
-  font-weight: bold;
-  color: #5CA1A;
-}
-
 .buttonWrapper {
   padding: 0 15px 15px 15px;
 }
@@ -74,24 +70,44 @@
   cursor: not-allowed;
 }
 
-.marketItem {
-  /* Добавляем это свойство, чтобы позиционировать звездочку */
-  position: relative; 
+/* --- НАЧАЛО БЛОКА ИЗМЕНЕНИЙ ДЛЯ СКИДОК --- */
+
+/* 1. Стили для контейнера цен */
+.priceContainer {
+  display: flex;
+  flex-direction: column; /* Ставим цены друг под другом */
+  align-items: flex-start; /* Выравниваем по левому краю */
+  gap: 2px;
+  margin-top: auto; /* Прижимает блок с ценой к кнопке */
 }
 
+/* Стиль для новой цены (заменяет .itemPrice) */
+.itemPrice {
+  font-size: 18px; /* Сделаем чуть крупнее */
+  font-weight: bold;
+  color: #333; /* Сделаем черным для контраста */
+}
+
+/* Стиль для старой, зачеркнутой цены */
+.originalPrice {
+  font-size: 14px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+/* 2. Стили для значка скидки */
 .discountBadge {
   position: absolute;
-  top: 8px; /* Немного опустим для красоты */
-  right: 8px;
+  top: 10px; /* Отступ сверху */
+  right: 10px; /* Отступ справа */
   width: 45px;
   height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: 2; /* Размещаем поверх картинки */
 }
 
-/* --- ИЗМЕНЕНИЯ В СТИЛЯХ --- */
 .discountIcon {
   position: absolute;
   color: #ffc107; /* Яркий желтый цвет для звезды */
@@ -108,14 +124,4 @@
   text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
 }
 
-.priceContainer {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.originalPrice {
-  font-size: 14px;
-  color: #999;
-  text-decoration: line-through;
-}
+/* --- КОНЕЦ БЛОКА ИЗМЕНЕНИЙ --- */
