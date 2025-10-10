@@ -115,6 +115,10 @@ const handleTransferSuccess = (updatedSenderData) => {
     // Отключаем принудительный показ
     setShowOnboarding(false);
   };
+
+  // --- 1. НОВАЯ ПЕРЕМЕННАЯ ДЛЯ УДОБСТВА ---
+  // Эта переменная будет true, если нужно показать обучение, и false в противном случае.
+  const isOnboardingVisible = (user && !user.has_seen_onboarding) || showOnboarding;
   
   const renderPage = () => {
     if (loading) {
