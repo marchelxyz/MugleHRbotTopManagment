@@ -110,5 +110,5 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     </PageLayout>
   );
 }
-}
+
 export default MarketplacePage;
