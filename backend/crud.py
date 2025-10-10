@@ -329,66 +329,66 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     }
     
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
-    # 1. Получаем пользователя и товар, как и раньше
     item = await db.get(models.MarketItem, pr.item_id)
     user = await db.get(models.User, pr.user_id)
+    issued_code_value = None
 
     if not item or not user:
-        raise ValueError("Item or User not found")
-    if item.stock <= 0:
-        raise ValueError("Item out of stock")
+        raise ValueError("Товар или пользователь не найдены")
     if user.balance < item.price:
-        raise ValueError("Insufficient balance")
+        raise ValueError("Недостаточно средств")
 
-    # 2. Вместо изменения объектов, мы создаем явные запросы на обновление
-    new_balance = user.balance - item.price
-    
-    # Запрос на обновление баланса пользователя
-    user_update_stmt = (
-        update(models.User)
-        .where(models.User.id == pr.user_id)
-        .values(balance=new_balance)
-    )
-    # Запрос на уменьшение остатка товара
-    item_update_stmt = (
-        update(models.MarketItem)
-        .where(models.MarketItem.id == pr.item_id)
-        .values(stock=models.MarketItem.stock - 1)
-    )
+    if item.is_auto_issuance:
+        # --- ЛОГИКА АВТОВЫДАЧИ ---
+        # Ищем свободный код и блокируем его для этой транзакции
+        stmt = (
+            select(models.ItemCode)
+            .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
+            .limit(1)
+            .with_for_update() # Блокируем строку, чтобы избежать гонки потоков
+        )
+        result = await db.execute(stmt)
+        code_to_issue = result.scalars().first()
 
-    # Выполняем оба запроса
-    await db.execute(user_update_stmt)
-    await db.execute(item_update_stmt)
+        if not code_to_issue:
+            raise ValueError("Товар закончился (нет доступных кодов)")
 
-    # 3. Создаем запись о покупке, как и раньше
-    db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
+        user.balance -= item.price
+        code_to_issue.is_issued = True
+        code_to_issue.issued_to_user_id = user.id
+        issued_code_value = code_to_issue.code_value
+
+    else:
+        # --- СТАРАЯ ЛОГИКА ДЛЯ ОБЫЧНЫХ ТОВАРОВ ---
+        if item.stock <= 0:
+            raise ValueError("Товар закончился")
+        user.balance -= item.price
+        item.stock -= 1
+
+    # Создаем запись о покупке в любом случае
+    db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id, price=item.price)
     db.add(db_purchase)
     
-    # 4. Отправляем уведомления (эта часть не меняется)
+    # Если был выдан код, привязываем его к покупке
+    if 'code_to_issue' in locals():
+        # Нужно сначала получить ID покупки, поэтому делаем flush
+        await db.flush()
+        code_to_issue.purchase_id = db_purchase.id
+
+    # Отправка уведомлений (можно улучшить, добавив код)
     try:
-        admin_message = (
-            f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
-            f"💼 *Должность:* {user.position}\n\n"
-            f"🎁 *Товар:* {item.name}\n"
-            f"💰 *Стоимость:* {item.price} баллов\n\n"
-            f"📉 *Новый баланс пользователя:* {new_balance} баллов"
-        )
-        # Стало (добавляем ID топика для покупок):
-        await send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID, 
-            text=admin_message,
-            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
-        )
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+        admin_message = f"🛍️ Новая покупка: {user.first_name} купил(а) {item.name}."
+        if issued_code_value:
+             admin_message += f"\nВыдан код: `{issued_code_value}`"
+        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message)
     except Exception as e:
         print(f"Could not send admin notification. Error: {e}")
 
-    # 5. Сохраняем все изменения в базе данных
     await db.commit()
     
-    # 6. Возвращаем новый баланс
-    return new_balance
+    # Возвращаем баланс и выданный код
+    return {"new_balance": user.balance, "issued_code": issued_code_value}
+
     
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
