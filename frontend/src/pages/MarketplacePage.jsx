@@ -17,6 +17,12 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       try {
         const response = await getMarketItems();
         setItems(response.data);
+
+        // --- ШАГ 1: "ШПИОНСКАЯ" СТРОКА ---
+        // Эта строка выведет в консоль разработчика в браузере 
+        // массив с товарами, которые пришли с сервера.
+        console.log("Товары, полученные с сервера:", response.data);
+        
       } catch (error) {
         console.error("Failed to fetch market items", error);
         showAlert("Не удалось загрузить товары. Попробуйте позже.");
@@ -51,6 +57,12 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {activeItems.map(item => {
+
+            // --- ШАГ 2: БОЛЕЕ НАДЕЖНАЯ ПРОВЕРКА ---
+            // Преобразуем цены в числа на случай, если они пришли как строки
+            const currentPrice = Number(item.price);
+            const originalPrice = Number(item.original_price);
+          
             // --- 2. ДОБАВЛЯЕМ ПРОВЕРКИ И РАСЧЕТЫ ПЕРЕД ОТРИСОВКОЙ ---
             const hasDiscount = item.original_price && item.original_price > item.price;
             const discountPercent = hasDiscount ? Math.round(((item.original_price - item.price) / item.original_price) * 100) : 0;
