@@ -27,23 +27,23 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     fetchItems();
   }, []);
 
+  // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
   const handlePurchase = async (itemId, itemName, itemPrice) => {
     const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
     if (isConfirmed) {
       try {
         const response = await purchaseItem(user.id, itemId);
-        onPurchaseSuccess(response.data); 
-
-        // Обновляем баланс пользователя
+        // 1. Правильно извлекаем данные из ответа сервера
+        const { new_balance, issued_code } = response.data;
+        
+        // 2. Обновляем баланс пользователя ОДИН РАЗ
         onPurchaseSuccess({ balance: new_balance });
 
-        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
         if (issued_code) {
           // Если пришел код, показываем специальное окно
           showAlert(
             `Поздравляем с покупкой "${itemName}"!`,
             'success',
-            // Добавляем кастомный контент в модальное окно
             <div className={styles.issuedCodeContainer}>
               <p>Ваш уникальный код/ссылка:</p>
               <div className={styles.codeBox}>
@@ -60,14 +60,17 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
           showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
         }
         
+        // 3. Обновляем список товаров, чтобы показать актуальный сток
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
+
       } catch (error) {
         console.error("Purchase failed:", error);
         showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
       }
     }
   };
+  // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
   const activeItems = items.filter(item => !item.is_archived);
 
