@@ -176,6 +176,11 @@ const handleTransferSuccess = (updatedSenderData) => {
     return <div>Неизвестный статус пользователя.</div>;
   };
 
+  // 1. Создаем четкие флаги для отображения навигации
+  const isUserApproved = user && user.status === 'approved';
+  const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
+  const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
+  
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
     let sessionId = null;
@@ -223,17 +228,15 @@ const handleTransferSuccess = (updatedSenderData) => {
   
   return (
     <div className="app-container">
-      {user && user.status === 'approved' && (
-        isDesktop 
-          ? <SideNav user={user} activePage={page} onNavigate={navigate} />
-          // Показываем BottomNav, только если это НЕ десктоп И обучение НЕ видно
-          : !isOnboardingVisible && <BottomNav user={user} activePage={page} onNavigate={navigate} />
-      )}
+      {/* 2. Используем флаги для рендеринга меню */}
+      {showSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
+      {showBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
-      <main className={isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
+      {/* 3. Используем флаг, чтобы применять сдвигающий класс только когда нужно */}
+      <main className={showSideNav ? 'desktop-wrapper' : 'mobile-wrapper'}>
         {showPendingBanner && (
             <div className="pending-update-banner">
-                ⏳ Ваши изменения отправлены на согласование администраторам.
+              ⏳ Ваши изменения отправлены на согласование администраторам.
             </div>
         )}
         {renderPage()}
