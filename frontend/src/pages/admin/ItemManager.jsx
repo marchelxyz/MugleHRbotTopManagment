@@ -8,8 +8,17 @@ import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-// --- 1. ДОБАВЛЯЕМ original_price_rub В ИСХОДНОЕ СОСТОЯНИЕ ---
-const initialItemState = { name: '', description: '', price_rub: '', original_price_rub: '', stock: 1, image_url: '' };
+// Исходное состояние
+const initialItemState = {
+  name: '',
+  description: '',
+  price_rub: '',
+  original_price_rub: '',
+  stock: 1,
+  image_url: '',
+  is_auto_issuance: false, // Флаг автовыдачи
+  codes_text: '' // Текст с кодами
+};
 
 function ItemManager() {
   const { showAlert } = useModalAlert();
@@ -63,27 +72,42 @@ function ItemManager() {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
-
+  
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // --- 3. ОБНОВЛЯЕМ ЛОГИКУ ОТПРАВКИ ДАННЫХ ---
+    const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
+    
     const itemDataToSend = {
       name: form.name,
       description: form.description,
       price_rub: parseInt(form.price_rub, 10),
-      stock: parseInt(form.stock, 10),
+      // Если автовыдача, сток равен кол-ву кодов, иначе берем из формы
+      stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
       image_url: form.image_url,
-      // Рассчитываем и передаем original_price в спасибках
       original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+      is_auto_issuance: form.is_auto_issuance,
+      codes_text: form.codes_text,
     };
 
+    // Валидация: если автовыдача, то коды должны быть
+    if (itemDataToSend.is_auto_issuance && codes.length === 0) {
+        showAlert('Для товаров с автовыдачей необходимо добавить хотя бы один код/ссылку.', 'error');
+        setLoading(false);
+        return;
+    }
+    
     try {
       if (editingItemId) {
-        await updateMarketItem(editingItemId, itemDataToSend);
+        // При редактировании мы не отправляем коды, только флаг
+        const { codes_text, ...updateData } = itemDataToSend;
+        await updateMarketItem(editingItemId, updateData);
         showAlert('Товар успешно обновлен!', 'success');
       } else {
         await createMarketItem(itemDataToSend);
@@ -93,23 +117,25 @@ function ItemManager() {
       fetchItems();
       clearCache('market');
     } catch (error) {
-      showAlert('Произошла ошибка.', 'error');
+      showAlert(error.response?.data?.detail || 'Произошла ошибка.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleEdit = (item) => {
+    // --- 4. ОБНОВЛЯЕМ ЛОГИКУ РЕДАКТИРОВАНИЯ ---
+    // При редактировании товара с автовыдачей мы не загружаем обратно коды
     setEditingItemId(item.id);
     setForm({
         name: item.name,
         description: item.description || '',
         price_rub: item.price_rub,
-        // --- 4. ДОБАВЛЯЕМ original_price_rub В РЕДАКТИРОВАНИЕ ---
-        // Конвертируем старую цену из спасибок обратно в рубли для формы
         original_price_rub: item.original_price ? item.original_price * 50 : '',
         stock: item.stock,
-        image_url: item.image_url || ''
+        image_url: item.image_url || '',
+        is_auto_issuance: item.is_auto_issuance,
+        codes_text: '' // Поле кодов всегда пустое при редактировании
     });
     window.scrollTo(0, 0);
   };
@@ -216,6 +242,50 @@ function ItemManager() {
         <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
       </div>
 
+          {/* --- 5. НОВЫЙ БЛОК ДЛЯ АВТОВЫДАЧИ --- */}
+          <div className={styles.checkboxContainer}>
+            <input
+              type="checkbox"
+              id="is_auto_issuance"
+              name="is_auto_issuance"
+              checked={form.is_auto_issuance}
+              onChange={handleFormChange}
+              // Нельзя менять тип товара при редактировании
+              disabled={!!editingItemId} 
+            />
+            <label htmlFor="is_auto_issuance">Автовыдача товара (сертификаты, коды)</label>
+          </div>
+
+          {form.is_auto_issuance ? (
+            // Если автовыдача ВКЛЮЧЕНА
+            <>
+              <textarea
+                name="codes_text"
+                value={form.codes_text}
+                onChange={handleFormChange}
+                placeholder="Вставьте сюда коды или ссылки. Каждый код с новой строки."
+                className={styles.textarea}
+                rows={5}
+                // Нельзя добавлять/менять коды при редактировании
+                disabled={!!editingItemId}
+              />
+              <div className={styles.pricePreview}>
+                <p>Количество на складе (авто): <strong>{form.codes_text.split('\n').filter(Boolean).length}</strong></p>
+              </div>
+              {editingItemId && <p className={styles.warningText}>Изменение кодов/ссылок после создания товара недоступно.</p>}
+            </>
+          ) : (
+            // Если автовыдача ВЫКЛЮЧЕНА (старая логика)
+            <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
+          )}
+
+          <button type="submit" disabled={loading} className={styles.buttonGreen}>
+            {editingItemId ? 'Сохранить' : 'Создать'}
+          </button>
+          {editingItemId && <button type="button" onClick={resetForm} className={styles.buttonGrey}>Отмена</button>}
+        </form>
+      </div>
+      
       <div className={styles.card}>
         <h2>{view === 'active' ? 'Активные товары' : 'Архив товаров'}</h2>
         <div className={styles.list}>
