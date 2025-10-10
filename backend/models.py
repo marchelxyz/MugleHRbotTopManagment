@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 # Стало
 from database import Base
 from datetime import date, datetime
+from typing import Optional
 
 class User(Base):
     __tablename__ = "users"
