@@ -1,5 +1,3 @@
-// frontend/src/pages/MarketplacePage.jsx
-
 import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
@@ -11,8 +9,8 @@ import { FaStar, FaCopy } from 'react-icons/fa';
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-  const { showAlert } = useModalAlert(); // Правильно извлекаем функцию
+  // --- ТЕПЕРЬ ОБА ХУКА РАБОТАЮТ ОДИНАКОВО ---
+  const showAlert = useModalAlert();
   const confirm = useConfirmation();
 
   useEffect(() => {
@@ -22,13 +20,13 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         setItems(response.data);
       } catch (error) {
         console.error("Failed to fetch market items", error);
-        showAlert("Не удалось загрузить товары. Попробуйте позже.");
+        if (showAlert) showAlert("Не удалось загрузить товары. Попробуйте позже.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchItems();
-  }, [showAlert]); // Добавляем showAlert в зависимости, чтобы избежать предупреждений
+  }, [showAlert]); 
 
   const handlePurchase = async (itemId, itemName, itemPrice) => {
     const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
