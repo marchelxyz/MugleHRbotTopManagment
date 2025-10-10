@@ -65,6 +65,7 @@ class MarketItemResponse(MarketItemBase):
     price_rub: int
     image_url: Optional[str] = None
     is_archived: bool
+    original_price: Optional[int] = None # <-- ДОБАВЬ ЭТУ СТРОКУ
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
