@@ -61,11 +61,16 @@ class UserResponse(UserBase):
 
 # --- ИЗМЕНЕНИЕ: Финальная схема ответа для API ---
 # Она будет включать все поля для удобства
-class MarketItemResponse(MarketItemBase):
+class MarketItemResponse(OrmBase):
+    id: int
+    name: str
+    description: Optional[str]
+    price: int
+    stock: int
     price_rub: int
     image_url: Optional[str] = None
     is_archived: bool
-    original_price: Optional[int] = None # <-- ДОБАВЬ ЭТУ СТРОКУ
+    original_price: Optional[int] = None # <-- Главное изменение: поле указано явно
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
