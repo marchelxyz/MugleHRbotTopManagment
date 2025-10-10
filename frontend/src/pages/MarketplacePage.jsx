@@ -28,11 +28,18 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   }, []);
 
   // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
-const handlePurchase = async (itemId, itemName, itemPrice) => {
-    console.log(`ТЕСТ 1: Кнопка "Купить" для товара "${itemName}" нажата.`);
-    showAlert(`Кнопка для "${itemName}" работает!`);
+  const handlePurchase = async (itemId, itemName, itemPrice) => {
+    console.log("ТЕСТ 2: Запрашиваем подтверждение...");
+    const isConfirmed = await confirm(`Подтвердите покупку "${itemName}"`);
+    
+    if (isConfirmed) {
+      console.log("ТЕСТ 2: Покупка подтверждена!");
+      showAlert("Вы подтвердили покупку!");
+    } else {
+      console.log("ТЕСТ 2: Покупка отменена.");
+      showAlert("Вы отменили покупку.");
+    }
   };
-
   // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
   const activeItems = items.filter(item => !item.is_archived);
