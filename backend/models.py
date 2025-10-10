@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 # Стало
 from database import Base
 from datetime import date, datetime
+from typing import Optional
 
 class User(Base):
     __tablename__ = "users"
@@ -85,6 +86,7 @@ class MarketItem(Base):
     price = Column(Integer, nullable=False)
     price_rub = Column(Integer, nullable=False) 
     stock = Column(Integer, default=0)
+    original_price: Mapped[Optional[int]] # Старая цена, если есть скидка
     image_url = Column(String, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)

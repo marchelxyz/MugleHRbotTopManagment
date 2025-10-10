@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage';
-// Убедитесь, что здесь НЕТ импорта uploadItemImage
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
 import styles from '../AdminPage.module.css';
 import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-const initialItemState = { name: '', description: '', price_rub: '', stock: 1, image_url: '' };
+// --- 1. ДОБАВЛЯЕМ original_price_rub В ИСХОДНОЕ СОСТОЯНИЕ ---
+const initialItemState = { name: '', description: '', price_rub: '', original_price_rub: '', stock: 1, image_url: '' };
 
 function ItemManager() {
   const { showAlert } = useModalAlert();
@@ -41,10 +41,16 @@ function ItemManager() {
     fetchItems();
   }, []);
   
+  // --- 2. ДОБАВЛЯЕМ РАСЧЕТ ДЛЯ ОБОИХ ЦЕН ---
   const calculatedPrice = useMemo(() => {
       if (!form.price_rub || form.price_rub <= 0) return 0;
       return Math.round(form.price_rub / 50);
   }, [form.price_rub]);
+
+  const calculatedOriginalPrice = useMemo(() => {
+    if (!form.original_price_rub || form.original_price_rub <= 0) return 0;
+    return Math.round(form.original_price_rub / 50);
+  }, [form.original_price_rub]);
 
   const forecast = useMemo(() => {
       if (!calculatedPrice || calculatedPrice <= 0) return "-";
@@ -63,11 +69,16 @@ function ItemManager() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Убедитесь, что здесь нет логики по загрузке файла (formData, append и т.д.)
-    const { price, ...itemDataToSend } = {
-      ...form,
+
+    // --- 3. ОБНОВЛЯЕМ ЛОГИКУ ОТПРАВКИ ДАННЫХ ---
+    const itemDataToSend = {
+      name: form.name,
+      description: form.description,
       price_rub: parseInt(form.price_rub, 10),
       stock: parseInt(form.stock, 10),
+      image_url: form.image_url,
+      // Рассчитываем и передаем original_price в спасибках
+      original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
     };
 
     try {
@@ -94,6 +105,9 @@ function ItemManager() {
         name: item.name,
         description: item.description || '',
         price_rub: item.price_rub,
+        // --- 4. ДОБАВЛЯЕМ original_price_rub В РЕДАКТИРОВАНИЕ ---
+        // Конвертируем старую цену из спасибок обратно в рубли для формы
+        original_price_rub: item.original_price ? item.original_price * 50 : '',
         stock: item.stock,
         image_url: item.image_url || ''
     });
@@ -139,7 +153,7 @@ function ItemManager() {
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
           
-          {/* Вот новый блок, который должен появиться */}
+          {/* Блок с картинкой остается без изменений */}
           <div className={styles.imageUploader}>
             {form.image_url ? (
               <img 
@@ -161,15 +175,23 @@ function ItemManager() {
             placeholder="Прямая ссылка на изображение (URL) 300х620px" 
             className={styles.input} 
           />
-          {/* Старого блока с <input type="file"> здесь быть не должно */}
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
+          
+          {/* --- 5. ОБНОВЛЯЕМ БЛОК С ЦЕНАМИ В ФОРМЕ --- */}
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           
-          {form.price_rub > 0 && (
+          {/* Новое поле для старой цены */}
+          <input type="number" name="original_price_rub" value={form.original_price_rub} onChange={handleFormChange} placeholder="Старая цена в рублях (для скидки)" className={styles.input} min="0" />
+          
+          {(form.price_rub > 0 || form.original_price_rub > 0) && (
               <div className={styles.pricePreview}>
                 <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
+                {/* Показываем старую цену, если она введена */}
+                {calculatedOriginalPrice > 0 && (
+                  <p>Старая цена в спасибках: <strong>{calculatedOriginalPrice}</strong></p>
+                )}
                 <p>Прогноз накопления: <strong>{forecast}</strong></p>
               </div>
           )}
@@ -196,7 +218,14 @@ function ItemManager() {
               {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
-                <p>Цена: {item.price} спасибок ({item.price_rub} ₽)</p>
+                {/* --- 6. ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ЦЕНЫ В СПИСКЕ --- */}
+                {item.original_price && item.original_price > item.price ? (
+                  <p>
+                    Цена: {item.price} (было <s style={{color: '#999'}}>{item.original_price}</s>) спасибок
+                  </p>
+                ) : (
+                  <p>Цена: {item.price} спасибок ({item.price_rub} ₽)</p>
+                )}
                 <p>Остаток: {item.stock} шт.</p>
               </div>
               <div className={styles.listItemActions}>

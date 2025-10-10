@@ -13,6 +13,7 @@ class MarketItemBase(OrmBase):
     description: Optional[str]
     price: int # Цена в спасибках для отображения пользователю
     stock: int
+    original_price: Optional[int] = None # <-- ДОБАВЬ СЮДА
 
 # Базовая схема для пользователя (без связей)
 class UserBase(OrmBase):
@@ -60,10 +61,16 @@ class UserResponse(UserBase):
 
 # --- ИЗМЕНЕНИЕ: Финальная схема ответа для API ---
 # Она будет включать все поля для удобства
-class MarketItemResponse(MarketItemBase):
+class MarketItemResponse(OrmBase):
+    id: int
+    name: str
+    description: Optional[str]
+    price: int
+    stock: int
     price_rub: int
     image_url: Optional[str] = None
     is_archived: bool
+    original_price: Optional[int] = None # <-- Теперь это поле гарантированно будет в ответе
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
@@ -111,6 +118,7 @@ class MarketItemCreate(BaseModel):
     price_rub: int
     stock: int
     image_url: Optional[str] = None
+    original_price: Optional[int] = None
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
@@ -119,6 +127,7 @@ class MarketItemUpdate(BaseModel):
     price_rub: Optional[int] = None
     stock: Optional[int] = None
     image_url: Optional[str] = None
+    original_price: Optional[int] = None # <-- И СЮДА
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None

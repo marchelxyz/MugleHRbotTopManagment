@@ -1,83 +1,105 @@
-// frontend/src/pages/MarketplacePage.jsx
-
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
-import styles from './MarketplacePage.module.css';
-import PageLayout from '../components/PageLayout';
-import { getCachedData } from '../storage';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
+import PageLayout from '../components/PageLayout';
+import styles from './MarketplacePage.module.css';
+import { FaStar } from 'react-icons/fa';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
-  const { showAlert } = useModalAlert();
-  const { confirm } = useConfirmation();
-  const [items, setItems] = useState(() => getCachedData('market'));
-  const [isLoading, setIsLoading] = useState(!items); 
-  
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const showAlert = useModalAlert();
+  const confirm = useConfirmation();
+
   useEffect(() => {
-    if (!items) {
-      const fetchItems = async () => {
-        try {
-          const response = await getMarketItems();
-          setItems(response.data);
-        } catch (error) { 
-          console.error("Failed to fetch market items", error);
-          showAlert('Не удалось загрузить товары.', 'error');
-        } finally { 
-          setIsLoading(false); 
-        }
-      };
-      fetchItems();
-    }
-  }, [items, showAlert]);
+    const fetchItems = async () => {
+      try {
+        const response = await getMarketItems();
+        setItems(response.data);
+      } catch (error) {
+        console.error("Failed to fetch market items", error);
+        showAlert("Не удалось загрузить товары. Попробуйте позже.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchItems();
+  }, []);
 
-  const handlePurchase = async (itemId) => {
-    if (!user) {
-      showAlert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.", 'error');
-      return;
-    }
-
-    const isConfirmed = await confirm("Подтверждение покупки", "Вы уверены, что хотите купить этот товар?");
-    if (!isConfirmed) return;
-    
-    try {
-      const response = await purchaseItem(user.id, itemId);
-      onPurchaseSuccess({ balance: response.data.new_balance });
-      showAlert(`Покупка совершена! Детали отправлены вам в чат с ботом.`, 'success');
-    } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Не удалось совершить покупку.';
-      showAlert(errorMessage, 'error');
+  const handlePurchase = async (itemId, itemName, itemPrice) => {
+    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
+    if (isConfirmed) {
+      try {
+        const response = await purchaseItem(user.id, itemId);
+        onPurchaseSuccess(response.data); 
+        showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
+        const updatedItems = await getMarketItems();
+        setItems(updatedItems.data);
+      } catch (error) {
+        console.error("Purchase failed:", error);
+        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
+      }
     }
   };
-  
+
+  const activeItems = items.filter(item => !item.is_archived);
+
   return (
     <PageLayout title="Кафетерий">
-      <p>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
+      <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
-          {items.map(item => (
-            <div key={item.id} className={styles.itemCard}>
-              {/* Используем image_url напрямую */}
-              {item.image_url && (
-                <img src={item.image_url} alt={item.name} className={styles.itemImage} />
-              )}
-              <div className={styles.itemContent}>
-                <h2 className={styles.itemName}>{item.name}</h2>
-                <p className={styles.itemDescription}>{item.description}</p>
-                <p className={styles.itemPrice}>Цена: {item.price} спасибок </p>
+          {activeItems.map(item => {
+            const currentPrice = Number(item.price);
+            const originalPrice = Number(item.original_price);
+            const hasDiscount = originalPrice && originalPrice > currentPrice;
+            const discountPercent = hasDiscount ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
+
+            return (
+              <div key={item.id} className={styles.itemCard}>
+                
+                {hasDiscount && (
+                  <div className={styles.discountBadge}>
+                    <FaStar className={styles.discountIcon} />
+                    <span className={styles.discountText}>
+                      - {discountPercent}%
+                    </span>
+                  </div>
+                )}
+
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+                ) : (
+                  <div className={styles.imagePlaceholder}></div>
+                )}
+                
+                <div className={styles.itemContent}>
+                  <h2 className={styles.itemName}>{item.name}</h2>
+                  <p className={styles.itemDescription}>{item.description}</p>
+                  
+                  <div className={styles.priceContainer}>
+                    <span className={styles.itemPrice}>{currentPrice} спасибок</span>
+                    {hasDiscount && (
+                      <span className={styles.originalPrice}>
+                        {originalPrice}
+                      </span>
+                    )}
+                  </div>
+
+                </div>
+                <div className={styles.buttonWrapper}>
+                  <button 
+                    onClick={() => handlePurchase(item.id, item.name, currentPrice)} 
+                    className={styles.purchaseButton}
+                    disabled={user?.balance < currentPrice || item.stock <= 0} 
+                  >
+                    {item.stock > 0 ? 'Купить' : 'Нет в наличии'}
+                  </button>
+                </div>
               </div>
-              <div className={styles.buttonWrapper}>
-                <button 
-                  onClick={() => handlePurchase(item.id)} 
-                  className={styles.purchaseButton}
-                  disabled={user?.balance < item.price || item.stock <= 0} 
-                >
-                  {item.stock > 0 ? 'Купить' : 'Нет в наличии'}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </PageLayout>
