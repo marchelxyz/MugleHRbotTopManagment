@@ -85,6 +85,7 @@ class MarketItem(Base):
     price = Column(Integer, nullable=False)
     price_rub = Column(Integer, nullable=False) 
     stock = Column(Integer, default=0)
+    original_price: Mapped[Optional[int]] # Старая цена, если есть скидка
     image_url = Column(String, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
