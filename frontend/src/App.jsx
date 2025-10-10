@@ -226,25 +226,17 @@ const handleTransferSuccess = (updatedSenderData) => {
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
 
-  // Эта переменная, как и раньше, определяет, нужно ли показывать боковое меню
+  // Создаем переменные, которые четко определяют, когда показывать меню
   const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
+  const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
   
   return (
     <div className="app-container">
-      {/* Этот блок остается таким же, как в твоей работающей версии */}
-      {user && user.status === 'approved' && (
-        isDesktop 
-          ? <SideNav user={user} activePage={page} onNavigate={navigate} />
-          : !isOnboardingVisible && <BottomNav user={user} activePage={page} onNavigate={navigate} />
-      )}
+      {/* Теперь меню показываются на основе новых, правильных переменных */}
+      {shouldShowSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
+      {shouldShowBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
-      {/*
-        * ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ:
-        * 1. Если это десктоп (`isDesktop`), то мы смотрим:
-        * - Если боковое меню должно быть видно (`shouldShowSideNav`), добавляем класс `desktop-wrapper`.
-        * - Если боковое меню НЕ видно (регистрация, ожидание), НЕ добавляем НИКАКОГО класса.
-        * 2. Если это мобильное устройство (`!isDesktop`), всегда добавляем `mobile-wrapper`.
-      */}
+      {/* Логика для <main> остается такой же, как в прошлый раз */}
       <main className={
         isDesktop 
           ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
@@ -259,7 +251,7 @@ const handleTransferSuccess = (updatedSenderData) => {
       </main>
     </div>
   );
-  // --- КОНЕЦ ФИНАЛЬНОГО ИСПРАВЛЕНИЯ ---
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 }
 
 export default App;
