@@ -1,3 +1,5 @@
+// frontend/src/pages/MarketplacePage.jsx
+
 import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
@@ -9,7 +11,8 @@ import { FaStar, FaCopy } from 'react-icons/fa';
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { showAlert } = useModalAlert();
+  // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+  const { showAlert } = useModalAlert(); // Правильно извлекаем функцию
   const confirm = useConfirmation();
 
   useEffect(() => {
@@ -25,30 +28,45 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       }
     };
     fetchItems();
-  }, []);
+  }, [showAlert]); // Добавляем showAlert в зависимости, чтобы избежать предупреждений
 
-  // --- НАЧАЛО ИСПРАВЛЕНИЙ ---
   const handlePurchase = async (itemId, itemName, itemPrice) => {
-    const isConfirmed = await confirm(`Подтвердите покупку "${itemName}"`);
+    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
     if (isConfirmed) {
       try {
-        console.log("ТЕСТ 3: Отправляем запрос на покупку...");
         const response = await purchaseItem(user.id, itemId);
+        const { new_balance, issued_code } = response.data;
+        
+        onPurchaseSuccess({ balance: new_balance });
 
-        // --- ГЛАВНЫЙ МОМЕНТ ---
-        // Мы НЕ вызываем onPurchaseSuccess или showAlert, а просто смотрим, что вернул сервер.
-        console.log("ТЕСТ 3: ПОЛУЧЕН ОТВЕТ ОТ СЕРВЕРА:", response);
-        console.log("ТЕСТ 3: ДАННЫЕ В ОТВЕТЕ:", response.data);
-
-        alert("Запрос к серверу прошел! Откройте консоль (F12), чтобы увидеть ответ.");
+        if (issued_code) {
+          showAlert(
+            `Поздравляем с покупкой "${itemName}"!`,
+            'success',
+            <div className={styles.issuedCodeContainer}>
+              <p>Ваш уникальный код/ссылка:</p>
+              <div className={styles.codeBox}>
+                <code>{issued_code}</code>
+                <button onClick={() => navigator.clipboard.writeText(issued_code)} className={styles.copyButton}>
+                  <FaCopy />
+                </button>
+              </div>
+              <p className={styles.codeNote}>Код также отправлен вам в личные сообщения ботом.</p>
+            </div>
+          );
+        } else {
+          showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
+        }
+        
+        const updatedItems = await getMarketItems();
+        setItems(updatedItems.data);
 
       } catch (error) {
-        console.error("ТЕСТ 3: ОШИБКА ПРИ ПОКУПКЕ:", error);
-        showAlert("Произошла ошибка. См. консоль.");
+        console.error("Purchase failed:", error);
+        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
       }
     }
   };
-  // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
   const activeItems = items.filter(item => !item.is_archived);
 
@@ -65,35 +83,20 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
             return (
               <div key={item.id} className={styles.itemCard}>
-                
                 {hasDiscount && (
                   <div className={styles.discountBadge}>
                     <FaStar className={styles.discountIcon} />
-                    <span className={styles.discountText}>
-                      - {discountPercent}%
-                    </span>
+                    <span className={styles.discountText}>- {discountPercent}%</span>
                   </div>
                 )}
-
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
-                ) : (
-                  <div className={styles.imagePlaceholder}></div>
-                )}
-                
+                {item.image_url ? <img src={item.image_url} alt={item.name} className={styles.itemImage} /> : <div className={styles.imagePlaceholder}></div>}
                 <div className={styles.itemContent}>
                   <h2 className={styles.itemName}>{item.name}</h2>
                   <p className={styles.itemDescription}>{item.description}</p>
-                  
                   <div className={styles.priceContainer}>
                     <span className={styles.itemPrice}>{currentPrice} спасибок</span>
-                    {hasDiscount && (
-                      <span className={styles.originalPrice}>
-                        {originalPrice}
-                      </span>
-                    )}
+                    {hasDiscount && <span className={styles.originalPrice}>{originalPrice}</span>}
                   </div>
-
                 </div>
                 <div className={styles.buttonWrapper}>
                   <button 
