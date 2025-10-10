@@ -32,48 +32,7 @@ const handlePurchase = async (itemId, itemName, itemPrice) => {
     console.log(`ТЕСТ 1: Кнопка "Купить" для товара "${itemName}" нажата.`);
     showAlert(`Кнопка для "${itemName}" работает!`);
   };
-    if (isConfirmed) {
-      try {
-        const response = await purchaseItem(user.id, itemId);
-        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-        // 1. Сначала мы ПРАВИЛЬНО извлекаем данные из ответа сервера
-        const { new_balance, issued_code } = response.data;
-        
-        // 2. Затем мы ОДИН РАЗ обновляем баланс пользователя
-        onPurchaseSuccess({ balance: new_balance });
 
-        // 3. И только после этого проверяем, был ли выдан код
-        if (issued_code) {
-          // Если пришел код, показываем специальное окно
-          showAlert(
-            `Поздравляем с покупкой "${itemName}"!`,
-            'success',
-            <div className={styles.issuedCodeContainer}>
-              <p>Ваш уникальный код/ссылка:</p>
-              <div className={styles.codeBox}>
-                <code>{issued_code}</code>
-                <button onClick={() => navigator.clipboard.writeText(issued_code)} className={styles.copyButton}>
-                  <FaCopy />
-                </button>
-              </div>
-              <p className={styles.codeNote}>Код также отправлен вам в личные сообщения ботом.</p>
-            </div>
-          );
-        } else {
-          // Для обычных товаров показываем простое сообщение
-          showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
-        }
-        
-        // 4. В конце обновляем список товаров
-        const updatedItems = await getMarketItems();
-        setItems(updatedItems.data);
-
-      } catch (error) {
-        console.error("Purchase failed:", error);
-        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
-      }
-    }
-  };
   // --- КОНЕЦ ИСПРАВЛЕНИЙ ---
 
   const activeItems = items.filter(item => !item.is_archived);
