@@ -520,7 +520,7 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
         price=calculated_price, 
         price_rub=item.price_rub,
         stock=item.stock,
-        image_url=item.image_url  # <-- ВОТ ДОБАВЛЕННАЯ СТРОКА
+        image_url=item.image_url,  # <-- ВОТ ДОБАВЛЕННАЯ СТРОКА
         original_price=item.original_price
     )
 
