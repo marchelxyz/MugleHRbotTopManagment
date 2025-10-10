@@ -4,7 +4,7 @@ import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import styles from './MarketplacePage.module.css';
-import { FaStar } from 'react-icons/fa';
+import { FaStar, FaCopy } from 'react-icons/fa';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
@@ -33,7 +33,33 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       try {
         const response = await purchaseItem(user.id, itemId);
         onPurchaseSuccess(response.data); 
-        showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
+
+        // Обновляем баланс пользователя
+        onPurchaseSuccess({ balance: new_balance });
+
+        // --- НАЧАЛО ИЗМЕНЕНИЙ ---
+        if (issued_code) {
+          // Если пришел код, показываем специальное окно
+          showAlert(
+            `Поздравляем с покупкой "${itemName}"!`,
+            'success',
+            // Добавляем кастомный контент в модальное окно
+            <div className={styles.issuedCodeContainer}>
+              <p>Ваш уникальный код/ссылка:</p>
+              <div className={styles.codeBox}>
+                <code>{issued_code}</code>
+                <button onClick={() => navigator.clipboard.writeText(issued_code)} className={styles.copyButton}>
+                  <FaCopy />
+                </button>
+              </div>
+              <p className={styles.codeNote}>Код также отправлен вам в личные сообщения ботом.</p>
+            </div>
+          );
+        } else {
+          // Для обычных товаров показываем простое сообщение
+          showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
+        }
+        
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
       } catch (error) {
