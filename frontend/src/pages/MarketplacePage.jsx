@@ -17,10 +17,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       try {
         const response = await getMarketItems();
         setItems(response.data);
-        
-        // --- "ШПИОНСКАЯ" СТРОКА ---
-        console.log("Товары, полученные с сервера (после последнего исправления):", response.data);
-
       } catch (error) {
         console.error("Failed to fetch market items", error);
         showAlert("Не удалось загрузить товары. Попробуйте позже.");
@@ -55,22 +51,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {activeItems.map(item => {
-
-            // --- ШАГ 2: БОЛЕЕ НАДЕЖНАЯ ПРОВЕРКА ---
-            // Преобразуем цены в числа на случай, если они пришли как строки
-            const currentPrice = Number(item.price);
-            const originalPrice = Number(item.original_price);
-          
-            // --- 2. ДОБАВЛЯЕМ ПРОВЕРКИ И РАСЧЕТЫ ПЕРЕД ОТРИСОВКОЙ ---
-            const hasDiscount = item.original_price && item.original_price > item.price;
-            const discountPercent = hasDiscount ? Math.round(((item.original_price - item.price) / item.original_price) * 100) : 0;
-
-  return (
-    <PageLayout title="Кафетерий">
-      <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
-      {isLoading ? <p>Загрузка товаров...</p> : (
-        <div className={styles.itemsGrid}>
-          {activeItems.map(item => {
             const currentPrice = Number(item.price);
             const originalPrice = Number(item.original_price);
             const hasDiscount = originalPrice && originalPrice > currentPrice;
@@ -78,20 +58,35 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
             return (
               <div key={item.id} className={styles.itemCard}>
+                
                 {hasDiscount && (
                   <div className={styles.discountBadge}>
                     <FaStar className={styles.discountIcon} />
-                    <span className={styles.discountText}>- {discountPercent}%</span>
+                    <span className={styles.discountText}>
+                      - {discountPercent}%
+                    </span>
                   </div>
                 )}
-                {item.image_url ? <img src={item.image_url} alt={item.name} className={styles.itemImage} /> : <div className={styles.imagePlaceholder}></div>}
+
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+                ) : (
+                  <div className={styles.imagePlaceholder}></div>
+                )}
+                
                 <div className={styles.itemContent}>
                   <h2 className={styles.itemName}>{item.name}</h2>
                   <p className={styles.itemDescription}>{item.description}</p>
+                  
                   <div className={styles.priceContainer}>
                     <span className={styles.itemPrice}>{currentPrice} спасибок</span>
-                    {hasDiscount && <span className={styles.originalPrice}>{originalPrice}</span>}
+                    {hasDiscount && (
+                      <span className={styles.originalPrice}>
+                        {originalPrice}
+                      </span>
+                    )}
                   </div>
+
                 </div>
                 <div className={styles.buttonWrapper}>
                   <button 
