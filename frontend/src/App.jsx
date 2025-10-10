@@ -228,12 +228,15 @@ const handleTransferSuccess = (updatedSenderData) => {
   
   return (
     <div className="app-container">
-      {/* 2. Используем флаги для рендеринга меню */}
-      {showSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
-      {showBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
+      {user && user.status === 'approved' && (
+        isDesktop 
+          ? <SideNav user={user} activePage={page} onNavigate={navigate} />
+          : !isOnboardingVisible && <BottomNav user={user} activePage={page} onNavigate={navigate} />
+      )}
       
-      {/* 3. Используем флаг, чтобы применять сдвигающий класс только когда нужно */}
-      <main className={showSideNav ? 'desktop-wrapper' : 'mobile-wrapper'}>
+      {/* --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ --- */}
+      {/* Класс desktop-wrapper применяется, только если все условия для показа бокового меню соблюдены */}
+      <main className={user && user.status === 'approved' && isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
         {showPendingBanner && (
             <div className="pending-update-banner">
               ⏳ Ваши изменения отправлены на согласование администраторам.
