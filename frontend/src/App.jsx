@@ -226,20 +226,30 @@ const handleTransferSuccess = (updatedSenderData) => {
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
 
-  // Создаем переменную, которая определяет, нужно ли показывать боковое меню
+  // Эта переменная, как и раньше, определяет, нужно ли показывать боковое меню
   const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
   
   return (
     <div className="app-container">
-      {/* Здесь мы возвращаемся к твоей оригинальной, работающей структуре */}
+      {/* Этот блок остается таким же, как в твоей работающей версии */}
       {user && user.status === 'approved' && (
         isDesktop 
           ? <SideNav user={user} activePage={page} onNavigate={navigate} />
           : !isOnboardingVisible && <BottomNav user={user} activePage={page} onNavigate={navigate} />
       )}
       
-      {/* ИСПРАВЛЕНИЕ: Класс 'desktop-wrapper' применяется только тогда, когда SideNav действительно виден */}
-      <main className={shouldShowSideNav ? 'desktop-wrapper' : 'mobile-wrapper'}>
+      {/*
+        * ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ:
+        * 1. Если это десктоп (`isDesktop`), то мы смотрим:
+        * - Если боковое меню должно быть видно (`shouldShowSideNav`), добавляем класс `desktop-wrapper`.
+        * - Если боковое меню НЕ видно (регистрация, ожидание), НЕ добавляем НИКАКОГО класса.
+        * 2. Если это мобильное устройство (`!isDesktop`), всегда добавляем `mobile-wrapper`.
+      */}
+      <main className={
+        isDesktop 
+          ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
+          : 'mobile-wrapper'
+      }>
         {showPendingBanner && (
             <div className="pending-update-banner">
               ⏳ Ваши изменения отправлены на согласование администраторам.
@@ -249,6 +259,7 @@ const handleTransferSuccess = (updatedSenderData) => {
       </main>
     </div>
   );
+  // --- КОНЕЦ ФИНАЛЬНОГО ИСПРАВЛЕНИЯ ---
 }
 
 export default App;
