@@ -110,6 +110,8 @@ class PurchaseRequest(BaseModel):
 class PurchaseResponse(BaseModel):
     message: str
     new_balance: int
+    # Сюда будет приходить выданный код/ссылка, если товар с автовыдачей
+    issued_code: Optional[str] = None
 
 # --- ИЗМЕНЕНИЕ: Схема для СОЗДАНИЯ товара (принимаем только рубли) ---
 class MarketItemCreate(BaseModel):
@@ -119,6 +121,8 @@ class MarketItemCreate(BaseModel):
     stock: int
     image_url: Optional[str] = None
     original_price: Optional[int] = None
+    is_auto_issuance: bool = False
+    codes_text: Optional[str] = None # Поле для вставки кодов (каждый с новой строки)
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
@@ -128,6 +132,7 @@ class MarketItemUpdate(BaseModel):
     stock: Optional[int] = None
     image_url: Optional[str] = None
     original_price: Optional[int] = None # <-- И СЮДА
+    is_auto_issuance: Optional[bool] = None
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
