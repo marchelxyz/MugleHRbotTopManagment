@@ -1,76 +1,61 @@
-// frontend/src/pages/MarketplacePage.jsx
+// frontend/src/pages/MarketplacePage.jsx (ТЕСТОВАЯ ВЕРСИЯ)
 
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
-import styles from './MarketplacePage.module.css';
-import PageLayout from '../components/PageLayout';
-import { getCachedData } from '../storage';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
-import { FaStar } from 'react-icons/fa';
+import PageLayout from '../components/PageLayout';
+import styles from './MarketplacePage.module.css';
+
+// import { FaStar } from 'react-icons/fa'; // Временно отключаем
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
-  const { showAlert } = useModalAlert();
-  const { confirm } = useConfirmation();
-  const [items, setItems] = useState(() => getCachedData('market'));
-  const [isLoading, setIsLoading] = useState(!items); 
-  
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const showAlert = useModalAlert();
+  const confirm = useConfirmation();
+
   useEffect(() => {
-    if (!items) {
-      const fetchItems = async () => {
-        try {
-          const response = await getMarketItems();
-          setItems(response.data);
-        } catch (error) { 
-          console.error("Failed to fetch market items", error);
-          showAlert('Не удалось загрузить товары.', 'error');
-        } finally { 
-          setIsLoading(false); 
-        }
-      };
-      fetchItems();
-    }
-  }, [items, showAlert]);
+    const fetchItems = async () => {
+      try {
+        const response = await getMarketItems();
+        setItems(response.data);
+      } catch (error) {
+        console.error("Failed to fetch market items", error);
+        showAlert("Не удалось загрузить товары. Попробуйте позже.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchItems();
+  }, []);
 
-  const handlePurchase = async (itemId) => {
-    if (!user) {
-      showAlert("Не удалось определить пользователя. Пожалуйста, перезапустите приложение.", 'error');
-      return;
-    }
-
-    const isConfirmed = await confirm("Подтверждение покупки", "Вы уверены, что хотите купить этот товар?");
-    if (!isConfirmed) return;
-    
-    try {
-      const response = await purchaseItem(user.id, itemId);
-      onPurchaseSuccess({ balance: response.data.new_balance });
-      showAlert(`Покупка совершена! Детали отправлены вам в чат с ботом.`, 'success');
-    } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Не удалось совершить покупку.';
-      showAlert(errorMessage, 'error');
+  const handlePurchase = async (itemId, itemName, itemPrice) => {
+    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
+    if (isConfirmed) {
+      try {
+        const response = await purchaseItem(user.id, itemId);
+        onPurchaseSuccess(response.data); 
+        showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
+        const updatedItems = await getMarketItems();
+        setItems(updatedItems.data);
+      } catch (error) {
+        console.error("Purchase failed:", error);
+        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
+      }
     }
   };
-  
+
+  const activeItems = items.filter(item => !item.is_archived);
+
   return (
     <PageLayout title="Кафетерий">
       <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {activeItems.map(item => (
+            // --- ВРЕМЕННО ВОЗВРАЩАЕМ СТАРУЮ ВЕРСТКУ КАРТОЧКИ ---
             <div key={item.id} className={styles.itemCard}>
-              
-              {/* БЛОК ДЛЯ ОТОБРАЖЕНИЯ СКИДКИ (ЗВЕЗДОЧКА) */}
-              {item.original_price && item.original_price > item.price && (
-                <div className={styles.discountBadge}>
-      {/* --- ИЗМЕНЕНИЕ: Используем иконку вместо картинки --- */}
-      <FaStar className={styles.discountIcon} />
-      <span className={styles.discountText}>
-                    - {Math.round(((item.original_price - item.price) / item.original_price) * 100)}%
-                  </span>
-                </div>
-              )}
-
               {item.image_url ? (
                 <img src={item.image_url} alt={item.name} className={styles.itemImage} />
               ) : (
@@ -80,18 +65,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
               <div className={styles.itemContent}>
                 <h2 className={styles.itemName}>{item.name}</h2>
                 <p className={styles.itemDescription}>{item.description}</p>
-                
-                {/* ИЗМЕНЕННЫЙ БЛОК ЦЕНЫ */}
-                <div className={styles.priceContainer}>
-                  <span className={styles.itemPrice}>{item.price} спасибок</span>
-                  {item.original_price && item.original_price > item.price && (
-                    <span className={styles.originalPrice}>
-                      {item.original_price}
-                    </span>
-                  )}
-                </div>
-
+                {/* Используем простой вывод цены, как было раньше */}
+                <p className={styles.itemPrice}>Цена: {item.price} спасибок</p>
               </div>
+
               <div className={styles.buttonWrapper}>
                 <button 
                   onClick={() => handlePurchase(item.id, item.name, item.price)} 
@@ -107,6 +84,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       )}
     </PageLayout>
   );
-} // <--- Вот здесь была лишняя скобка. Теперь она одна, как и положено.
+}
 
 export default MarketplacePage;
