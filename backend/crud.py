@@ -7,7 +7,10 @@ from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 import random
+import bot
+import config
 from sqlalchemy.future import select
+from sqlalchemy.orm import aliased
 from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
@@ -160,18 +163,39 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Возвращаем обновленного отправителя ---
     return sender
     
+# crud.py
+
 async def get_feed(db: AsyncSession):
-    result = await db.execute(
-        select(models.Transaction).order_by(models.Transaction.timestamp.desc())
+    """
+    Получает ленту транзакций, гарантируя, что отправитель и получатель существуют.
+    """
+    Sender = aliased(models.User, name='sender_user')
+    Receiver = aliased(models.User, name='receiver_user')
+
+    stmt = (
+        select(models.Transaction)
+        .join(Sender, models.Transaction.sender_id == Sender.id)
+        .join(Receiver, models.Transaction.receiver_id == Receiver.id)
+        .order_by(models.Transaction.timestamp.desc())
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 async def get_user_transactions(db: AsyncSession, user_id: int):
-    result = await db.execute(
+    """
+    Получает транзакции пользователя, гарантируя, что второй участник транзакции существует.
+    """
+    Sender = aliased(models.User, name='sender_user')
+    Receiver = aliased(models.User, name='receiver_user')
+
+    stmt = (
         select(models.Transaction)
+        .join(Sender, models.Transaction.sender_id == Sender.id)
+        .join(Receiver, models.Transaction.receiver_id == Receiver.id)
         .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
         .order_by(models.Transaction.timestamp.desc())
     )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 # Лидерборд
@@ -923,7 +947,7 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             f"*Изменения:*\n" + "\n".join(changes_log)
         )
         
-        await send_telegram_message(
+        await bot.send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=log_message,
             message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
@@ -934,36 +958,45 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
 
     return user
 
-# --- ЗАМЕНИ ЭТУ ФУНКЦИЮ ---
+# --- удаление пользователей ---
 async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.User):
-    """
-    "Жесткое" удаление: полностью удаляет пользователя из базы данных.
-    """
-    user = await get_user(db, user_id)
+    """Удаляет пользователя и все связанные с ним данные (транзакции, сессии и т.д.)"""
+    user = await db.get(models.User, user_id)
     if not user:
-        return False
-    
-    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
-    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+        return None
+    if user.id == admin_user.id:
+        # Админ не может удалить сам себя
+        raise ValueError("Admin cannot delete themselves.")
 
-    # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Полностью удаляем пользователя ---
+    # --- ИСПРАВЛЕНИЕ НАЧИНАЕТСЯ ЗДЕСЬ ---
+
+    # 1. Заранее сохраняем имена для лога, пока объект 'user' еще существует.
+    # (Предполагаем, что у юзера есть поля first_name и last_name)
+    admin_name = f"{admin_user.first_name} {admin_user.last_name or ''}".strip()
+    target_user_name = f"{user.first_name} {user.last_name or ''}".strip()
+
+    # 2. Удаляем пользователя из базы данных.
+    # SQLAlchemy и ON DELETE CASCADE позаботятся об удалении связанных данных.
     await db.delete(user)
     await db.commit()
 
-    # Отправляем уведомление об удалении
+    # 3. Теперь, после успешного удаления, отправляем уведомление.
+    # Этот код теперь достижим и будет выполняться.
     log_message = (
         f"🗑️ *Админ удалил пользователя*\n\n"
-        f"👤 *Администратор:* {admin_name}\n"
-        f"🎯 *Пользователь:* {target_user_name}\n\n"
+        f"👤 *Администратор:* {admin_name} (`{admin_user.id}`)\n"
+        f"🎯 *Пользователь:* {target_user_name} (`{user_id}`)\n\n"
         f"Запись пользователя была полностью удалена из системы."
     )
-    await send_telegram_message(
-        chat_id=settings.TELEGRAM_CHAT_ID,
+    
+    await bot.send_telegram_message(
+        chat_id=config.settings.TELEGRAM_CHAT_ID,
         text=log_message,
-        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        message_thread_id=config.settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
     )
 
-    return True
+    # 4. Возвращаем результат в самом конце функции.
+    return user
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
 async def get_leaderboards_status(db: AsyncSession):
@@ -1199,3 +1232,14 @@ async def get_average_session_duration(db: AsyncSession, start_date: Optional[da
     average_minutes = round(average_seconds / 60, 2)
     
     return {"average_duration_minutes": average_minutes}
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ ОБУЧЕНИЯ ---
+
+async def mark_onboarding_as_seen(db: AsyncSession, user_id: int):
+    """Отмечает, что пользователь прошел обучение."""
+    user = await db.get(models.User, user_id)
+    if user:
+        user.has_seen_onboarding = True
+        await db.commit()
+        await db.refresh(user)
+    return user

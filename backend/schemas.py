@@ -49,6 +49,7 @@ class UserResponse(UserBase):
     card_balance: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
+    has_seen_onboarding: bool
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
 
     @field_serializer('date_of_birth')

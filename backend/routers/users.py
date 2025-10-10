@@ -87,3 +87,12 @@ async def search_users(
     
     users = await crud.search_users_by_name(db, query=query)
     return users
+
+# --- ЭНДПОИНТ ДЛЯ ИСТОРИЙ-ОБУЧЕНИЯ ---
+@router.post("/me/complete-onboarding", response_model=schemas.UserResponse)
+async def complete_onboarding_route(
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Эндпоинт для отметки о завершении просмотра обучения."""
+    return await crud.mark_onboarding_as_seen(db, user_id=user.id)

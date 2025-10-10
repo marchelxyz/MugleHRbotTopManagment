@@ -31,33 +31,46 @@ class User(Base):
     card_balance = Column(String, nullable=True) # Поле для хранения баланса карты
     registration_date = Column(DateTime, default=func.now())
 
-
-    sent_transactions = relationship("Transaction", back_populates="sender", foreign_keys="[Transaction.sender_id]")
-    received_transactions = relationship("Transaction", back_populates="receiver", foreign_keys="[Transaction.receiver_id]")
+    has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
+    sent_transactions = relationship(
+        "Transaction",
+        back_populates="sender",
+        # Правильный синтаксис: просто строка, без скобок []
+        foreign_keys="Transaction.sender_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+    received_transactions = relationship(
+        "Transaction",
+        back_populates="receiver",
+        # И здесь тоже
+        foreign_keys="Transaction.receiver_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
     purchases = relationship("Purchase", back_populates="user")
     pending_updates = relationship("PendingUpdate", back_populates="user")
 
-    sessions = relationship("UserSession", back_populates="user")
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
 
 # --- НОВАЯ ТАБЛИЦА ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИЙ ---
 class UserSession(Base):
     __tablename__ = 'user_sessions'
-    
+
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
-    
-    # Время, когда сессия началась
+    # Добавляем ondelete="CASCADE" прямо сюда
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete="CASCADE"))
+
     session_start: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    # Время, когда пользователь был активен в последний раз
     last_seen: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="sessions")
-
+    
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
     message = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)

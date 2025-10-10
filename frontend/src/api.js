@@ -316,3 +316,11 @@ export const getAverageSessionDuration = (startDate, endDate) => {
 
     return apiClient.get(`/admin/statistics/average_session_duration?${params.toString()}`, getAdminHeaders());
 };
+
+// --- ОБУЧАЮЩИЕ ИСТОРИИ ---
+export const completeOnboarding = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/users/me/complete-onboarding', {}, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};

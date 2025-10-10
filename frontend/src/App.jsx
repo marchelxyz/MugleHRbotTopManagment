@@ -24,6 +24,7 @@ import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
 import TransferPage from './pages/TransferPage'; // Убедимся, что TransferPage импортирован
 import { startSession, pingSession } from './api';
+import OnboardingStories from './components/OnboardingStories'; // 1. Импортируем новый компонент
 
 // Стили
 import './App.css';
@@ -38,7 +39,9 @@ function App() {
   const [page, setPage] = useState('home');
   const [telegramPhotoUrl, setTelegramPhotoUrl] = useState(null);
   const [showPendingBanner, setShowPendingBanner] = useState(false);
-
+ // 2. Добавляем новое состояние для принудительного показа обучения
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  
   const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform);
 
   useEffect(() => {
@@ -102,6 +105,20 @@ const handleTransferSuccess = (updatedSenderData) => {
       setShowPendingBanner(true);
       setPage('profile');
   };
+
+  // 3. Создаем функцию-обработчик для завершения обучения
+  const handleOnboardingComplete = () => {
+    // Обновляем состояние пользователя локально, чтобы не перезагружать все приложение
+    if (user) {
+      setUser(prevUser => ({ ...prevUser, has_seen_onboarding: true }));
+    }
+    // Отключаем принудительный показ
+    setShowOnboarding(false);
+  };
+
+  // --- 1. НОВАЯ ПЕРЕМЕННАЯ ДЛЯ УДОБСТВА ---
+  // Эта переменная будет true, если нужно показать обучение, и false в противном случае.
+  const isOnboardingVisible = (user && !user.has_seen_onboarding) || showOnboarding;
   
   const renderPage = () => {
     if (loading) {
@@ -111,10 +128,23 @@ const handleTransferSuccess = (updatedSenderData) => {
     if (!user) {
       return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
-    
-    if (user.status === 'blocked') { return <BlockedPage />; }
-    if (user.status === 'pending') { return <PendingPage />; }
-    if (user.status === 'rejected') { return <RejectedPage />; }
+
+    // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
+    // Условие: (флаг в базе false ИЛИ мы включили принудительный показ)
+    if (user.status === 'pending') {
+      return <PendingPage />;
+    }
+    if (user.status === 'blocked') {
+      return <BlockedPage />;
+    }
+    if (user.status === 'rejected') {
+      return <RejectedPage />;
+    }
+
+    // 2. Только если пользователь одобрен, проверяем, видел ли он обучение.
+    if (user.status === 'approved' && (!user.has_seen_onboarding || showOnboarding)) {
+        return <OnboardingStories onComplete={handleOnboardingComplete} />;
+    }
     
     if (user.status === 'approved') {
       switch (page) {
@@ -124,7 +154,14 @@ const handleTransferSuccess = (updatedSenderData) => {
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
-        case 'settings': return <SettingsPage onBack={() => navigate('profile')} onNavigate={navigate} />;
+  case 'settings': 
+    return (
+      <SettingsPage 
+        onBack={() => navigate('profile')} 
+        onNavigate={navigate} 
+        onRepeatOnboarding={() => setShowOnboarding(true)}
+      />
+    );
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
         // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
@@ -139,6 +176,11 @@ const handleTransferSuccess = (updatedSenderData) => {
     return <div>Неизвестный статус пользователя.</div>;
   };
 
+  // 1. Создаем четкие флаги для отображения навигации
+  const isUserApproved = user && user.status === 'approved';
+  const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
+  const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
+  
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
     let sessionId = null;
@@ -183,25 +225,33 @@ const handleTransferSuccess = (updatedSenderData) => {
       }
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+
+  // Создаем переменные, которые четко определяют, когда показывать меню
+  const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
+  const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
   
   return (
     <div className="app-container">
-      {user && user.status === 'approved' && (
-        isDesktop 
-          ? <SideNav user={user} activePage={page} onNavigate={navigate} />
-          : <BottomNav user={user} activePage={page} onNavigate={navigate} />
-      )}
+      {/* Теперь меню показываются на основе новых, правильных переменных */}
+      {shouldShowSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
+      {shouldShowBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
-      <main className={isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
+      {/* Логика для <main> остается такой же, как в прошлый раз */}
+      <main className={
+        isDesktop 
+          ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
+          : 'mobile-wrapper'
+      }>
         {showPendingBanner && (
             <div className="pending-update-banner">
-                ⏳ Ваши изменения отправлены на согласование администраторам.
+              ⏳ Ваши изменения отправлены на согласование администраторам.
             </div>
         )}
         {renderPage()}
       </main>
     </div>
   );
+  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 }
 
 export default App;
