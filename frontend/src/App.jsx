@@ -225,18 +225,21 @@ const handleTransferSuccess = (updatedSenderData) => {
       }
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+
+  // 1. Создаем одну переменную, которая отвечает за показ основного интерфейса
+  const showAppUI = user && user.status === 'approved' && !isOnboardingVisible;
   
   return (
     <div className="app-container">
-      {user && user.status === 'approved' && (
+      {/* 2. Показываем меню, только если основной интерфейс активен */}
+      {showAppUI && (
         isDesktop 
           ? <SideNav user={user} activePage={page} onNavigate={navigate} />
-          : !isOnboardingVisible && <BottomNav user={user} activePage={page} onNavigate={navigate} />
+          : <BottomNav user={user} activePage={page} onNavigate={navigate} />
       )}
       
-      {/* --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ --- */}
-      {/* Класс desktop-wrapper применяется, только если все условия для показа бокового меню соблюдены */}
-      <main className={user && user.status === 'approved' && isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
+      {/* 3. Применяем класс для отступа, только если активен основной интерфейс И это десктоп */}
+      <main className={showAppUI && isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
         {showPendingBanner && (
             <div className="pending-update-banner">
               ⏳ Ваши изменения отправлены на согласование администраторам.
