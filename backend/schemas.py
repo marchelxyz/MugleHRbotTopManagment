@@ -120,6 +120,7 @@ class MarketItemUpdate(BaseModel):
     price_rub: Optional[int] = None
     stock: Optional[int] = None
     image_url: Optional[str] = None
+    original_price: Optional[int] = None # <-- И СЮДА
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
