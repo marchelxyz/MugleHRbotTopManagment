@@ -226,7 +226,8 @@ const handleTransferSuccess = (updatedSenderData) => {
       {user && user.status === 'approved' && (
         isDesktop 
           ? <SideNav user={user} activePage={page} onNavigate={navigate} />
-          : <BottomNav user={user} activePage={page} onNavigate={navigate} />
+          // Показываем BottomNav, только если это НЕ десктоп И обучение НЕ видно
+          : !isOnboardingVisible && <BottomNav user={user} activePage={page} onNavigate={navigate} />
       )}
       
       <main className={isDesktop ? 'desktop-wrapper' : 'mobile-wrapper'}>
