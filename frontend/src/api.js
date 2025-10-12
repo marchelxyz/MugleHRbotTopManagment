@@ -65,32 +65,9 @@ export const getLeaderboardStatus = () => {
 
 export const getMarketItems = () => apiClient.get('/market/items');
 
-// --- ВРЕМЕННЫЙ ТЕСТ с помощью FETCH ---
-export const purchaseItem = async (userId, itemId) => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-  const url = `${API_BASE_URL}/market/purchase/`;
-
-  console.log(`Отправляем FETCH POST запрос на: ${url}`);
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      user_id: userId,
-      item_id: itemId,
-    }),
-  });
-
-  if (!response.ok) {
-    // Если сервер ответил ошибкой, извлекаем ее и выбрасываем
-    const errorData = await response.json();
-    throw new Error(errorData.detail || `Ошибка сервера: ${response.status}`);
-  }
-
-  // Если все хорошо, возвращаем данные как это делает axios
-  return { data: await response.json() };
+export const purchaseItem = (userId, itemId) => {
+  // Убедись, что user_id здесь это telegram_id
+  return apiClient.post('/market/purchase/', { user_id: userId, item_id: itemId });
 };
 
 export const getUserTransactions = (userId) => {
