@@ -65,7 +65,7 @@ export const getLeaderboardStatus = () => {
 
 export const getMarketItems = () => apiClient.get('/market/items');
 export const purchaseItem = (userId, itemId) => {
-  return apiClient.post('/market/purchase', { user_id: userId, item_id: itemId });
+  return apiClient.post('/market/purchase/', { user_id: userId, item_id: itemId });
 };
 
 export const getUserTransactions = (userId) => {
