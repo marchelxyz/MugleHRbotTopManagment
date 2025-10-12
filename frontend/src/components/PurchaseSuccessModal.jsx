@@ -1,11 +1,12 @@
 // frontend/src/components/PurchaseSuccessModal.jsx
 
 import React from 'react';
+import Lottie from 'lottie-react'; // <-- 1. Импортируем Lottie
 import styles from './PurchaseSuccessModal.module.css';
-import { FaCheckCircle, FaTimes } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
+import animationData from '../assets/AnimatedSticker4.json'; // <-- 2. Импортируем твой стикер
 
 function PurchaseSuccessModal({ item, onClose }) {
-  // item содержит всю информацию о товаре, включая выданный код
   const { name, image_url, issued_code } = item;
 
   return (
@@ -16,7 +17,12 @@ function PurchaseSuccessModal({ item, onClose }) {
         </button>
 
         <div className={styles.iconContainer}>
-          <FaCheckCircle className={styles.successIcon} />
+          {/* --- 3. ЗАМЕНЯЕМ ИКОНКУ НА АНИМАЦИЮ --- */}
+          <Lottie
+            animationData={animationData}
+            loop={false}
+            style={{ width: 120, height: 120 }}
+          />
         </div>
 
         <h2 className={styles.title}>Покупка совершена!</h2>
