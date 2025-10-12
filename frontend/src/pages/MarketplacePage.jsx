@@ -4,11 +4,13 @@ import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import styles from './MarketplacePage.module.css';
+import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
 import { FaStar, FaCopy } from 'react-icons/fa';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [purchaseSuccessData, setPurchaseSuccessData] = useState(null); // <-- ДОБАВЬ ЭТО
   // --- ИСПРАВЛЕНИЕ №1: Правильно извлекаем функцию showAlert из объекта ---
   const { showAlert } = useModalAlert();
   const { confirm } = useConfirmation();
@@ -30,42 +32,26 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   }, [showAlert]); // Добавляем showAlert в зависимости, чтобы избежать предупреждений
 
   // --- ИСПРАВЛЕНИЕ №2: Полностью переписанная, корректная логика покупки ---
-  const handlePurchase = async (itemId, itemName, itemPrice) => {
-    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
+  const handlePurchase = async (item) => {
+    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${item.name}" за ${item.price} спасибок?`);
     if (isConfirmed) {
       try {
-  const response = await purchaseItem(user.telegram_id, itemId);
+        const response = await purchaseItem(user.telegram_id, item.id);
         const { new_balance, issued_code } = response.data;
         
         onPurchaseSuccess({ balance: new_balance });
 
-        if (issued_code) {
-          showAlert(
-            `Поздравляем с покупкой "${itemName}"!`,
-            'success',
-            <div className={styles.issuedCodeContainer}>
-              <p>Ваш уникальный код/ссылка:</p>
-              <div className={styles.codeBox}>
-                <code>{issued_code}</code>
-                <button onClick={() => navigator.clipboard.writeText(issued_code)} className={styles.copyButton}>
-                  <FaCopy />
-                </button>
-              </div>
-              <p className={styles.codeNote}>Код также отправлен вам в личные сообщения ботом.</p>
-            </div>
-          );
-        } else {
-          showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
-        }
+        // Сохраняем данные для модального окна, включая полученный код
+        setPurchaseSuccessData({ ...item, issued_code });
         
+        // Обновляем список товаров, чтобы показать актуальный сток
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
 
-} catch (error) {
-  console.error("Purchase failed:", error);
-  // Теперь мы явно указываем второй аргумент - 'error'
-  showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.", 'error');
-}
+      } catch (error) {
+        console.error("Purchase failed:", error);
+        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.", 'error');
+      }
     }
   };
 
@@ -116,7 +102,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
                 </div>
                 <div className={styles.buttonWrapper}>
                   <button 
-                    onClick={() => handlePurchase(item.id, item.name, currentPrice)} 
+                    onClick={() => handlePurchase(item)}
                     className={styles.purchaseButton}
                     disabled={user?.balance < currentPrice || item.stock <= 0} 
                   >
@@ -127,6 +113,15 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
             );
           })}
         </div>
+            {purchaseSuccessData && (
+        <PurchaseSuccessModal
+          item={purchaseSuccessData}
+          onClose={() => setPurchaseSuccessData(null)}
+        />
+      )}
+    </PageLayout>
+  );
+}
       )}
     </PageLayout>
   );
