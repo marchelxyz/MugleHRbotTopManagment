@@ -61,10 +61,11 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
 
-      } catch (error) {
-        console.error("Purchase failed:", error);
-        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
-      }
+} catch (error) {
+  console.error("Purchase failed:", error);
+  // Теперь мы явно указываем второй аргумент - 'error'
+  showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.", 'error');
+}
     }
   };
 
