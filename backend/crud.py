@@ -330,11 +330,11 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
         "price": db_item.price, "stock": db_item.stock,
     }
     
+# backend/crud.py
+
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     issued_code_value = None
-
     item = await db.get(models.MarketItem, pr.item_id)
-
     result = await db.execute(
         select(models.User).where(models.User.telegram_id == pr.user_id)
     )
@@ -342,7 +342,6 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     if not item or not user:
         raise ValueError("Товар или пользователь не найдены")
-
     if user.balance < item.price:
         raise ValueError("Недостаточно средств")
 
@@ -355,10 +354,8 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         )
         result = await db.execute(stmt)
         code_to_issue = result.scalars().first()
-
         if not code_to_issue:
             raise ValueError("Товар закончился (нет доступных кодов)")
-
         user.balance -= item.price
         code_to_issue.is_issued = True
         code_to_issue.issued_to_user_id = user.id
@@ -371,17 +368,39 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id)
     db.add(db_purchase)
-
     if 'code_to_issue' in locals() and code_to_issue:
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
+    # --- ИЗМЕНЕНИЕ: УЛУЧШЕННЫЕ УВЕДОМЛЕНИЯ ---
     try:
-        admin_message = f"🛍️ Новая покупка: {user.first_name} купил(а) {item.name}."
-        if issued_code_value:
-             admin_message += f"\nВыдан код: `{issued_code_value}`"
-        await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message, message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID)
+        # Собираем основную часть сообщения
+        admin_message = (
+            f"🛍️ *Новая покупка в магазине!*\n\n"
+            f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
+            f"💼 *Должность:* {user.position}\n\n"
+            f"🎁 *Товар:* {item.name}\n"
+            f"💰 *Стоимость:* {item.price} спасибок"
+        )
 
+        # Если был выдан код, добавляем специальный блок
+        if issued_code_value:
+            admin_message += (
+                f"\n\n✨ *Товар с автовыдачей*\n"
+                f"🔑 *Выданный код:* `{issued_code_value}`"
+            )
+
+        # Добавляем новый баланс пользователя в конец сообщения
+        admin_message += f"\n\n📉 *Новый баланс пользователя:* {user.balance} спасибок"
+
+        # Отправляем готовое сообщение
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=admin_message,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+
+        # Уведомление для пользователя (если был выдан код)
         if issued_code_value:
             user_message = (
                 f"🎉 Поздравляем с покупкой \"{item.name}\"!\n\n"
@@ -389,11 +408,12 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
                 f"Вы также можете найти его в истории своих покупок."
             )
             await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
 
     await db.commit()
-
+    
     return {"new_balance": user.balance, "issued_code": issued_code_value}
     
 # Админ
