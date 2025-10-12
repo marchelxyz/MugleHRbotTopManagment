@@ -16,14 +16,20 @@ async def list_items(db: AsyncSession = Depends(get_db)):
     # --- ИЗМЕНЕНИЕ: Получаем только активные товары ---
     return await crud.get_active_items(db)
 
-
 @router.post("/market/purchase", response_model=schemas.PurchaseResponse)
 async def purchase_item(
     request: schemas.PurchaseRequest, db: AsyncSession = Depends(get_db)
 ):
     try:
-        new_balance = await crud.create_purchase(db, request)
-        return {"message": "Purchase successful", "new_balance": new_balance}
+        # --- ИСПРАВЛЕНИЕ: Получаем результат в виде словаря ---
+        purchase_result = await crud.create_purchase(db, request)
+
+        # --- ИСПРАВЛЕНИЕ: Собираем правильный ответ для фронтенда ---
+        return {
+            "message": "Purchase successful",
+            "new_balance": purchase_result["new_balance"],
+            "issued_code": purchase_result["issued_code"],
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

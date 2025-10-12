@@ -90,7 +90,9 @@ class MarketItem(Base):
     image_url = Column(String, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
+    is_auto_issuance: Mapped[bool] = mapped_column(default=False) # Флаг автовыдачи
     purchases = relationship("Purchase", back_populates="item")
+    codes = relationship("ItemCode", back_populates="market_item", cascade="all, delete-orphan")
 
 class Purchase(Base):
     __tablename__ = "purchases"
@@ -100,6 +102,21 @@ class Purchase(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="purchases")
     item = relationship("MarketItem", back_populates="purchases")
+
+# --- ДОБАВЬ ЭТОТ НОВЫЙ КЛАСС ПОЛНОСТЬЮ ---
+class ItemCode(Base):
+    __tablename__ = 'item_codes'
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    code_value: Mapped[str] = mapped_column(unique=True, index=True) # Уникальный код или ссылка
+    is_issued: Mapped[bool] = mapped_column(default=False) # Выдан ли код?
+
+    market_item_id: Mapped[int] = mapped_column(ForeignKey('market_items.id', ondelete="CASCADE"))
+    issued_to_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id', ondelete="SET NULL"))
+    purchase_id: Mapped[Optional[int]] = mapped_column(ForeignKey('purchases.id', ondelete="SET NULL"))
+    
+    market_item = relationship("MarketItem", back_populates="codes")
+    issued_to_user = relationship("User")
 
 class Banner(Base):
     __tablename__ = "banners"

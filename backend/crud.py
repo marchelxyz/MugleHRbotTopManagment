@@ -14,11 +14,13 @@ from sqlalchemy.orm import aliased
 from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
+from config import settings
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
 from sqlalchemy import or_
 from sqlalchemy import text
+from sqlalchemy import select
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -328,67 +330,87 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
         "price": db_item.price, "stock": db_item.stock,
     }
     
+# backend/crud.py
+
+# backend/crud.py
+
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
-    # 1. Получаем пользователя и товар, как и раньше
+    issued_code_value = None
     item = await db.get(models.MarketItem, pr.item_id)
-    user = await db.get(models.User, pr.user_id)
+    result = await db.execute(
+        select(models.User).where(models.User.telegram_id == pr.user_id)
+    )
+    user = result.scalar_one_or_none()
 
     if not item or not user:
-        raise ValueError("Item or User not found")
-    if item.stock <= 0:
-        raise ValueError("Item out of stock")
+        raise ValueError("Товар или пользователь не найдены")
     if user.balance < item.price:
-        raise ValueError("Insufficient balance")
+        raise ValueError("Недостаточно средств")
 
-    # 2. Вместо изменения объектов, мы создаем явные запросы на обновление
-    new_balance = user.balance - item.price
-    
-    # Запрос на обновление баланса пользователя
-    user_update_stmt = (
-        update(models.User)
-        .where(models.User.id == pr.user_id)
-        .values(balance=new_balance)
-    )
-    # Запрос на уменьшение остатка товара
-    item_update_stmt = (
-        update(models.MarketItem)
-        .where(models.MarketItem.id == pr.item_id)
-        .values(stock=models.MarketItem.stock - 1)
-    )
+    if item.is_auto_issuance:
+        stmt = (
+            select(models.ItemCode)
+            .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
+            .limit(1)
+            .with_for_update()
+        )
+        result = await db.execute(stmt)
+        code_to_issue = result.scalars().first()
+        if not code_to_issue:
+            raise ValueError("Товар закончился (нет доступных кодов)")
+        user.balance -= item.price
+        code_to_issue.is_issued = True
+        code_to_issue.issued_to_user_id = user.id
+        issued_code_value = code_to_issue.code_value
+    else:
+        if item.stock <= 0:
+            raise ValueError("Товар закончился")
+        user.balance -= item.price
+        item.stock -= 1
 
-    # Выполняем оба запроса
-    await db.execute(user_update_stmt)
-    await db.execute(item_update_stmt)
-
-    # 3. Создаем запись о покупке, как и раньше
-    db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id)
+    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id)
     db.add(db_purchase)
-    
-    # 4. Отправляем уведомления (эта часть не меняется)
+    if 'code_to_issue' in locals() and code_to_issue:
+        await db.flush()
+        code_to_issue.purchase_id = db_purchase.id
+
+    # --- ФИНАЛЬНАЯ ВЕРСИЯ УВЕДОМЛЕНИЙ ---
     try:
+        # Уведомление для администратора (без изменений)
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
             f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
             f"💼 *Должность:* {user.position}\n\n"
             f"🎁 *Товар:* {item.name}\n"
-            f"💰 *Стоимость:* {item.price} баллов\n\n"
-            f"📉 *Новый баланс пользователя:* {new_balance} баллов"
+            f"💰 *Стоимость:* {item.price} спасибок"
         )
-        # Стало (добавляем ID топика для покупок):
+        if issued_code_value:
+            admin_message += (
+                f"\n\n✨ *Товар с автовыдачей*\n"
+                f"🔑 *Выданный код:* `{issued_code_value}`"
+            )
+        admin_message += f"\n\n📉 *Новый баланс пользователя:* {user.balance} спасибок"
+        
         await send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID, 
+            chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
             message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
         )
-        # --- КОНЕЦ ИЗМЕНЕНИЙ ---
-    except Exception as e:
-        print(f"Could not send admin notification. Error: {e}")
 
-    # 5. Сохраняем все изменения в базе данных
+        # Уведомление для пользователя (теперь для всех покупок)
+        user_message = f"🎉 Поздравляем с покупкой \"{item.name}\"!"
+        if issued_code_value:
+            # Для товаров с кодом добавляем сам код
+            user_message += f"\n\nВаш уникальный код/ссылка:\n`{issued_code_value}`"
+        
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+
+    except Exception as e:
+        print(f"Could not send notification. Error: {e}")
+
     await db.commit()
     
-    # 6. Возвращаем новый баланс
-    return new_balance
+    return {"new_balance": user.balance, "issued_code": issued_code_value}
     
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
@@ -512,17 +534,33 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
 
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    # Рассчитываем 'price' на основе 'price_rub'
     calculated_price = item.price_rub // 50
+    
+    codes = []
+    if item.is_auto_issuance and item.codes_text:
+        # Получаем коды из текстового поля, убираем пустые строки
+        codes = [code.strip() for code in item.codes_text.splitlines() if code.strip()]
+        # Если коды предоставлены, количество на складе равно количеству кодов
+        stock = len(codes)
+    else:
+        stock = item.stock
+
     db_item = models.MarketItem(
         name=item.name,
         description=item.description,
         price=calculated_price, 
         price_rub=item.price_rub,
-        stock=item.stock,
-        image_url=item.image_url,  # <-- ВОТ ДОБАВЛЕННАЯ СТРОКА
-        original_price=item.original_price
+        stock=stock, # Используем рассчитанный или указанный сток
+        image_url=item.image_url,
+        original_price=item.original_price,
+        is_auto_issuance=item.is_auto_issuance
     )
+    
+    # Если есть коды, создаем для них записи в новой таблице
+    if codes:
+        for code_value in codes:
+            db_code = models.ItemCode(code_value=code_value, market_item=db_item)
+            db.add(db_code)
 
     db.add(db_item)
     await db.commit()

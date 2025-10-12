@@ -1,16 +1,20 @@
+// frontend/src/pages/MarketplacePage.jsx
+
 import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import styles from './MarketplacePage.module.css';
-import { FaStar } from 'react-icons/fa';
+import { FaStar, FaCopy } from 'react-icons/fa';
+import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const showAlert = useModalAlert();
-  const confirm = useConfirmation();
+  const [purchaseSuccessData, setPurchaseSuccessData] = useState(null);
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -19,26 +23,31 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         setItems(response.data);
       } catch (error) {
         console.error("Failed to fetch market items", error);
-        showAlert("Не удалось загрузить товары. Попробуйте позже.");
+        showAlert("Не удалось загрузить товары. Попробуйте позже.", 'error');
       } finally {
         setIsLoading(false);
       }
     };
     fetchItems();
-  }, []);
+  }, [showAlert]);
 
-  const handlePurchase = async (itemId, itemName, itemPrice) => {
-    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
+  const handlePurchase = async (item) => {
+    const isConfirmed = await confirm(`Вы уверены, что хотите купить "${item.name}" за ${item.price} спасибок?`);
     if (isConfirmed) {
       try {
-        const response = await purchaseItem(user.id, itemId);
-        onPurchaseSuccess(response.data); 
-        showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
+        const response = await purchaseItem(user.telegram_id, item.id);
+        const { new_balance, issued_code } = response.data;
+        
+        onPurchaseSuccess({ balance: new_balance });
+
+        setPurchaseSuccessData({ ...item, issued_code });
+        
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
+
       } catch (error) {
         console.error("Purchase failed:", error);
-        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
+        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.", 'error');
       }
     }
   };
@@ -90,7 +99,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
                 </div>
                 <div className={styles.buttonWrapper}>
                   <button 
-                    onClick={() => handlePurchase(item.id, item.name, currentPrice)} 
+                    onClick={() => handlePurchase(item)}
                     className={styles.purchaseButton}
                     disabled={user?.balance < currentPrice || item.stock <= 0} 
                   >
@@ -101,6 +110,13 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
             );
           })}
         </div>
+      )}
+
+      {purchaseSuccessData && (
+        <PurchaseSuccessModal
+          item={purchaseSuccessData}
+          onClose={() => setPurchaseSuccessData(null)}
+        />
       )}
     </PageLayout>
   );

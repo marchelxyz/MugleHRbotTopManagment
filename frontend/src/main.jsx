@@ -1,4 +1,6 @@
 // frontend/src/main.jsx
+console.log('--- Application bootstrap sequence initiated ---'); 
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';

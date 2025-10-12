@@ -125,3 +125,40 @@
 }
 
 /* --- КОНЕЦ БЛОКА ИЗМЕНЕНИЙ --- */
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ ОКНА С КОДОМ --- */
+
+.issuedCodeContainer {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.codeBox {
+  background-color: #f0f0f0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  word-break: break-all;
+}
+
+.codeBox code {
+  font-family: monospace;
+  font-size: 1.1em;
+}
+
+.copyButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2em;
+  color: #555;
+  margin-left: 15px;
+}
+
+.codeNote {
+  font-size: 0.9em;
+  color: #888;
+}

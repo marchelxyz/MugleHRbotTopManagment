@@ -8,8 +8,16 @@ import { FaArchive } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-// --- 1. ДОБАВЛЯЕМ original_price_rub В ИСХОДНОЕ СОСТОЯНИЕ ---
-const initialItemState = { name: '', description: '', price_rub: '', original_price_rub: '', stock: 1, image_url: '' };
+const initialItemState = {
+  name: '',
+  description: '',
+  price_rub: '',
+  original_price_rub: '',
+  stock: 1,
+  image_url: '',
+  is_auto_issuance: false,
+  codes_text: ''
+};
 
 function ItemManager() {
   const { showAlert } = useModalAlert();
@@ -41,7 +49,6 @@ function ItemManager() {
     fetchItems();
   }, []);
   
-  // --- 2. ДОБАВЛЯЕМ РАСЧЕТ ДЛЯ ОБОИХ ЦЕН ---
   const calculatedPrice = useMemo(() => {
       if (!form.price_rub || form.price_rub <= 0) return 0;
       return Math.round(form.price_rub / 50);
@@ -62,28 +69,40 @@ function ItemManager() {
   }, [calculatedPrice]);
 
   const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // --- 3. ОБНОВЛЯЕМ ЛОГИКУ ОТПРАВКИ ДАННЫХ ---
+    const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
+    
     const itemDataToSend = {
       name: form.name,
       description: form.description,
       price_rub: parseInt(form.price_rub, 10),
-      stock: parseInt(form.stock, 10),
+      stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
       image_url: form.image_url,
-      // Рассчитываем и передаем original_price в спасибках
       original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+      is_auto_issuance: form.is_auto_issuance,
+      codes_text: form.codes_text,
     };
+
+    if (itemDataToSend.is_auto_issuance && codes.length === 0 && !editingItemId) {
+        showAlert('Для товаров с автовыдачей необходимо добавить хотя бы один код/ссылку.', 'error');
+        setLoading(false);
+        return;
+    }
 
     try {
       if (editingItemId) {
-        await updateMarketItem(editingItemId, itemDataToSend);
+        const { codes_text, ...updateData } = itemDataToSend;
+        await updateMarketItem(editingItemId, updateData);
         showAlert('Товар успешно обновлен!', 'success');
       } else {
         await createMarketItem(itemDataToSend);
@@ -93,7 +112,7 @@ function ItemManager() {
       fetchItems();
       clearCache('market');
     } catch (error) {
-      showAlert('Произошла ошибка.', 'error');
+      showAlert(error.response?.data?.detail || 'Произошла ошибка.', 'error');
     } finally {
       setLoading(false);
     }
@@ -105,11 +124,11 @@ function ItemManager() {
         name: item.name,
         description: item.description || '',
         price_rub: item.price_rub,
-        // --- 4. ДОБАВЛЯЕМ original_price_rub В РЕДАКТИРОВАНИЕ ---
-        // Конвертируем старую цену из спасибок обратно в рубли для формы
         original_price_rub: item.original_price ? item.original_price * 50 : '',
         stock: item.stock,
-        image_url: item.image_url || ''
+        image_url: item.image_url || '',
+        is_auto_issuance: item.is_auto_issuance,
+        codes_text: ''
     });
     window.scrollTo(0, 0);
   };
@@ -152,8 +171,6 @@ function ItemManager() {
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
-          
-          {/* Блок с картинкой остается без изменений */}
           <div className={styles.imageUploader}>
             {form.image_url ? (
               <img 
@@ -179,10 +196,7 @@ function ItemManager() {
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
           <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
           
-          {/* --- 5. ОБНОВЛЯЕМ БЛОК С ЦЕНАМИ В ФОРМЕ --- */}
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
-          
-          {/* Новое поле для старой цены */}
           <input type="number" name="original_price_rub" value={form.original_price_rub} onChange={handleFormChange} placeholder="Старая цена в рублях (для скидки)" className={styles.input} min="0" />
           
           {(form.price_rub > 0 || form.original_price_rub > 0) && (
@@ -191,7 +205,6 @@ function ItemManager() {
                 {calculatedOriginalPrice > 0 && (
                   <p>Старая цена в спасибках: <strong>{calculatedOriginalPrice}</strong></p>
                 )}
-                {/* Добавляем пояснение, если есть скидка */}
                 <p>
                   Прогноз накопления
                   <span style={{color: '#5CA14A', fontWeight: '500'}}>
@@ -201,8 +214,39 @@ function ItemManager() {
                 </p>
               </div>
           )}
-            
-          <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
+          
+          <div className={styles.checkboxContainer}>
+            <input
+              type="checkbox"
+              id="is_auto_issuance"
+              name="is_auto_issuance"
+              checked={form.is_auto_issuance}
+              onChange={handleFormChange}
+              disabled={!!editingItemId} 
+            />
+            <label htmlFor="is_auto_issuance">Автовыдача товара (сертификаты, коды)</label>
+          </div>
+
+          {form.is_auto_issuance ? (
+            <>
+              <textarea
+                name="codes_text"
+                value={form.codes_text}
+                onChange={handleFormChange}
+                placeholder="Вставьте сюда коды или ссылки. Каждый код с новой строки."
+                className={styles.textarea}
+                rows={5}
+                disabled={!!editingItemId}
+              />
+              <div className={styles.pricePreview}>
+                <p>Количество на складе (авто): <strong>{form.codes_text.split('\n').filter(Boolean).length}</strong></p>
+              </div>
+              {editingItemId && <p className={styles.warningText}>Изменение кодов/ссылок после создания товара недоступно.</p>}
+            </>
+          ) : (
+            <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
+          )}
+
           <button type="submit" disabled={loading} className={styles.buttonGreen}>
             {editingItemId ? 'Сохранить' : 'Создать'}
           </button>
@@ -210,7 +254,6 @@ function ItemManager() {
         </form>
       </div>
       
-      {/* Остальная часть компонента без изменений */}
       <div className={styles.tabs}>
         <button onClick={() => setView('active')} className={view === 'active' ? styles.tabActive : styles.tab}>Активные ({items.length})</button>
         <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
@@ -224,7 +267,7 @@ function ItemManager() {
               {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
-                {/* --- 6. ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ЦЕНЫ В СПИСКЕ --- */}
+                {item.is_auto_issuance && <p style={{color: '#007bff', fontSize: '12px', fontWeight: 'bold'}}>Автовыдача</p>}
                 {item.original_price && item.original_price > item.price ? (
                   <p>
                     Цена: {item.price} (было <s style={{color: '#999'}}>{item.original_price}</s>) спасибок
