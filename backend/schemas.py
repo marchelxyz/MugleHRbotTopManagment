@@ -110,9 +110,8 @@ class PurchaseRequest(BaseModel):
 class PurchaseResponse(BaseModel):
     message: str
     new_balance: int
-    # Сюда будет приходить выданный код/ссылка, если товар с автовыдачей
     issued_code: Optional[str] = None
-
+    
 # --- ИЗМЕНЕНИЕ: Схема для СОЗДАНИЯ товара (принимаем только рубли) ---
 class MarketItemCreate(BaseModel):
     name: str
