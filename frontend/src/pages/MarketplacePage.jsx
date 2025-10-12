@@ -34,7 +34,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
     if (isConfirmed) {
       try {
-        const response = await purchaseItem(user.id, itemId);
+  const response = await purchaseItem(user.telegram_id, itemId);
         const { new_balance, issued_code } = response.data;
         
         onPurchaseSuccess({ balance: new_balance });
