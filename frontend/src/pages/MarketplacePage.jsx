@@ -35,36 +35,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     if (isConfirmed) {
       try {
         const response = await purchaseItem(user.id, itemId);
-        // Правильно извлекаем данные из ответа сервера
-        const { new_balance, issued_code } = response.data;
-        
-        // Обновляем баланс пользователя ОДИН РАЗ и правильно
-        onPurchaseSuccess({ balance: new_balance });
-
-        if (issued_code) {
-          // Если пришел код, показываем специальное окно
-          showAlert(
-            `Поздравляем с покупкой "${itemName}"!`,
-            'success',
-            <div className={styles.issuedCodeContainer}>
-              <p>Ваш уникальный код/ссылка:</p>
-              <div className={styles.codeBox}>
-                <code>{issued_code}</code>
-                <button onClick={() => navigator.clipboard.writeText(issued_code)} className={styles.copyButton}>
-                  <FaCopy />
-                </button>
-              </div>
-              <p className={styles.codeNote}>Код также отправлен вам в личные сообщения ботом.</p>
-            </div>
-          );
-        } else {
-          // Для обычных товаров показываем простое сообщение
-          showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
-        }
-        
-        // Обновляем список товаров, чтобы показать актуальный сток
-        const updatedItems = await getMarketItems();
-        setItems(updatedItems.data);
 
       } catch (error) {
         console.error("Purchase failed:", error);
