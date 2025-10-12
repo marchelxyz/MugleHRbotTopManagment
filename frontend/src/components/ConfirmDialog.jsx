@@ -3,8 +3,10 @@ import React from 'react';
 import styles from './ConfirmDialog.module.css';
 
 function ConfirmDialog({ title, message, onConfirm, onCancel }) {
-  if (!message) return null;
-
+  // --- НАШ "ЖУЧОК" ---
+  // Эта строка поможет нам понять, пытается ли React нарисовать это окно.
+  console.log('!!! ConfirmDialog пытается отрендериться с заголовком:', title);
+  
   return (
     <div className={styles.backdrop}>
       <div className={styles.modal}>
