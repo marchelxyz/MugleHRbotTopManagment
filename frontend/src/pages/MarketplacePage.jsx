@@ -122,9 +122,5 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     </PageLayout>
   );
 }
-      )}
-    </PageLayout>
-  );
-}
 
 export default MarketplacePage;
