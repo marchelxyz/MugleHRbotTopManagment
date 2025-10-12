@@ -329,13 +329,27 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
         "price": db_item.price, "stock": db_item.stock,
     }
     
-async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
-    item = await db.get(models.MarketItem, pr.item_id)
-    result = await db.execute(
-        select(models.User).where(models.User.telegram_id == request.user_id))
+# backend/crud.py
 
+async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
+    # Сначала инициализируем переменную для кода, чтобы она всегда была
+    issued_code_value = None
+
+    # Ищем товар (здесь все было правильно)
+    item = await db.get(models.MarketItem, pr.item_id)
+
+    # --- ИСПРАВЛЕНИЕ №1: Ищем пользователя ---
+    # Используем `pr.user_id` вместо `request.user_id`
+    # и извлекаем пользователя из результата с помощью `.scalar_one_or_none()`
+    result = await db.execute(
+        select(models.User).where(models.User.telegram_id == pr.user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    # --- ИСПРАВЛЕНИЕ №2: Проверяем пользователя и товар правильно ---
     if not item or not user:
         raise ValueError("Товар или пользователь не найдены")
+    
     if user.balance < item.price:
         raise ValueError("Недостаточно средств")
 
@@ -356,6 +370,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         user.balance -= item.price
         code_to_issue.is_issued = True
         code_to_issue.issued_to_user_id = user.id
+        # Присваиваем значение нашей переменной
         issued_code_value = code_to_issue.code_value
 
     else:
@@ -365,22 +380,21 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         user.balance -= item.price
         item.stock -= 1
 
-    db_purchase = models.Purchase(user_id=pr.user_id, item_id=pr.item_id, price=item.price)
+    # Здесь создается запись о покупке (все было правильно)
+    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id, price=item.price) # Используем user.id для корректности
     db.add(db_purchase)
     
-    if 'code_to_issue' in locals():
+    if 'code_to_issue' in locals() and code_to_issue:
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
-    # --- НАЧАЛО ИЗМЕНЕНИЙ: БЛОК УВЕДОМЛЕНИЙ ---
+    # --- БЛОК УВЕДОМЛЕНИЙ (здесь все было правильно) ---
     try:
-        # Уведомление для администратора (остается без изменений)
         admin_message = f"🛍️ Новая покупка: {user.first_name} купил(а) {item.name}."
         if issued_code_value:
              admin_message += f"\nВыдан код: `{issued_code_value}`"
         await send_telegram_message(chat_id=settings.TELEGRAM_CHAT_ID, text=admin_message, message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID)
 
-        # Новое уведомление для пользователя, если был выдан код!
         if issued_code_value:
             user_message = (
                 f"🎉 Поздравляем с покупкой \"{item.name}\"!\n\n"
@@ -391,7 +405,6 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
-    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     await db.commit()
     
