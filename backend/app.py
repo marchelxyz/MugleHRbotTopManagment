@@ -19,11 +19,11 @@ app = FastAPI(lifespan=lifespan)
 
 # Настройка CORS
 origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:5173",
+    # 1. Адрес твоего рабочего приложения (ПРОДАКШЕН)
     "https://mugle-h-rbot-top-managment-m11i.vercel.app",
-    "*"
+    
+    # 2. Адрес для локальной разработки (РАЗРАБОТКА)
+    "http://localhost:8080", # (или 3000, 8000 в зависимости от твоих настроек)
 ]
 
 app.add_middleware(
