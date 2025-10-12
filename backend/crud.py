@@ -19,6 +19,7 @@ from database import settings
 from datetime import datetime, timedelta, date
 from sqlalchemy import or_
 from sqlalchemy import text
+from sqlalchemy import select
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -330,8 +331,8 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
-    user = await db.get(models.User, pr.user_id)
-    issued_code_value = None
+    result = await db.execute(select(models.User).where(models.User.telegram_id == request.user_id))
+    user = result.scalar_one_or_none()    issued_code_value = None
 
     if not item or not user:
         raise ValueError("Товар или пользователь не найдены")
