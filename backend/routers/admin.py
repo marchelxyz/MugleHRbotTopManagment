@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError # <-- ДОБАВЬ ЭТУ СТРОКУ
 from typing import List, Optional
 from datetime import date, datetime, timedelta  # <--- ИСПРАВЛЕНИЕ ЗДЕСЬ
 import crud
