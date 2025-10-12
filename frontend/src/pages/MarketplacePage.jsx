@@ -1,17 +1,18 @@
+// frontend/src/pages/MarketplacePage.jsx
+
 import React, { useState, useEffect } from 'react';
 import { getMarketItems, purchaseItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import styles from './MarketplacePage.module.css';
-import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
 import { FaStar, FaCopy } from 'react-icons/fa';
+import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
 
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [purchaseSuccessData, setPurchaseSuccessData] = useState(null); // <-- ДОБАВЬ ЭТО
-  // --- ИСПРАВЛЕНИЕ №1: Правильно извлекаем функцию showAlert из объекта ---
+  const [purchaseSuccessData, setPurchaseSuccessData] = useState(null);
   const { showAlert } = useModalAlert();
   const { confirm } = useConfirmation();
 
@@ -22,16 +23,14 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         setItems(response.data);
       } catch (error) {
         console.error("Failed to fetch market items", error);
-        // Добавляем проверку, чтобы избежать ошибок при первой загрузке, когда showAlert еще может быть undefined
-        if (showAlert) showAlert("Не удалось загрузить товары. Попробуйте позже.");
+        showAlert("Не удалось загрузить товары. Попробуйте позже.", 'error');
       } finally {
         setIsLoading(false);
       }
     };
     fetchItems();
-  }, [showAlert]); // Добавляем showAlert в зависимости, чтобы избежать предупреждений
+  }, [showAlert]);
 
-  // --- ИСПРАВЛЕНИЕ №2: Полностью переписанная, корректная логика покупки ---
   const handlePurchase = async (item) => {
     const isConfirmed = await confirm(`Вы уверены, что хотите купить "${item.name}" за ${item.price} спасибок?`);
     if (isConfirmed) {
@@ -41,10 +40,8 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         
         onPurchaseSuccess({ balance: new_balance });
 
-        // Сохраняем данные для модального окна, включая полученный код
         setPurchaseSuccessData({ ...item, issued_code });
         
-        // Обновляем список товаров, чтобы показать актуальный сток
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
 
@@ -57,7 +54,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
   const activeItems = items.filter(item => !item.is_archived);
 
- return (
+  return (
     <PageLayout title="Кафетерий">
       <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
@@ -115,7 +112,6 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         </div>
       )}
 
-      {/* --- ВОТ ПРАВИЛЬНОЕ МЕСТО ДЛЯ МОДАЛЬНОГО ОКНА --- */}
       {purchaseSuccessData && (
         <PurchaseSuccessModal
           item={purchaseSuccessData}
@@ -125,3 +121,5 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     </PageLayout>
   );
 }
+
+export default MarketplacePage;
