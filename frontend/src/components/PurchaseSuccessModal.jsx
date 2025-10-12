@@ -1,10 +1,11 @@
 // frontend/src/components/PurchaseSuccessModal.jsx
 
 import React from 'react';
-import Lottie from 'lottie-react'; // <-- 1. Импортируем Lottie
+// --- 1. ИСПРАВЛЕНИЕ: Импортируем из правильной библиотеки ---
+import Lottie from 'react-lottie-player'; 
 import styles from './PurchaseSuccessModal.module.css';
 import { FaTimes } from 'react-icons/fa';
-import animationData from '../assets/AnimatedSticker4.json'; // <-- 2. Импортируем твой стикер
+import animationData from '../assets/AnimatedSticker4.json';
 
 function PurchaseSuccessModal({ item, onClose }) {
   const { name, image_url, issued_code } = item;
@@ -17,11 +18,12 @@ function PurchaseSuccessModal({ item, onClose }) {
         </button>
 
         <div className={styles.iconContainer}>
-          {/* --- 3. ЗАМЕНЯЕМ ИКОНКУ НА АНИМАЦИЮ --- */}
+          {/* --- 2. ИСПРАВЛЕНИЕ: Добавляем 'play', чтобы анимация проигрывалась --- */}
           <Lottie
             animationData={animationData}
             loop={false}
-            style={{ width: 120, height: 120 }}
+            play={true} // <-- Эта библиотека требует 'play'
+            style={{ width: 120, height: 120, margin: '0 auto' }}
           />
         </div>
 
