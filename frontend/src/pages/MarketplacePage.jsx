@@ -31,25 +31,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
   // --- ИСПРАВЛЕНИЕ №2: Полностью переписанная, корректная логика покупки ---
   const handlePurchase = async (itemId, itemName, itemPrice) => {
-    console.log("--- Начало процесса покупки ---");
-    console.log("Данные товара:", { itemId, itemName, itemPrice });
-    console.log("Данные пользователя:", user);
-
-    if (!user || !user.id) {
-      console.error("ОШИБКА: ID пользователя не найден. Покупка невозможна.");
-      showAlert("Не удалось определить ваш ID. Пожалуйста, перезагрузите страницу.");
-      return;
-    }
-
     const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
-    
     if (isConfirmed) {
-      console.log("Пользователь подтвердил покупку. Отправляем запрос на сервер...");
       try {
         const response = await purchaseItem(user.id, itemId);
-        
-        console.log("Сервер ответил успешно:", response);
-
         const { new_balance, issued_code } = response.data;
         
         onPurchaseSuccess({ balance: new_balance });
@@ -77,25 +62,9 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         setItems(updatedItems.data);
 
       } catch (error) {
-        console.error("--- ОШИБКА ПРИ ПОКУПКЕ ---");
-        if (error.response) {
-          // Ошибка пришла с сервера (например, 404, 500)
-          console.error("Данные ответа сервера:", error.response.data);
-          console.error("Статус код:", error.response.status);
-          showAlert(error.response.data.detail || `Ошибка сервера: ${error.response.status}`);
-        } else if (error.request) {
-          // Запрос был сделан, но ответа не было
-          console.error("Запрос был отправлен, но ответ не получен:", error.request);
-          showAlert("Не удалось связаться с сервером. Проверьте ваше интернет-соединение.");
-        } else {
-          // Произошла ошибка при настройке запроса
-          console.error("Ошибка настройки запроса:", error.message);
-          showAlert("Произошла внутренняя ошибка. Не удалось отправить запрос.");
-        }
-        console.log("Полный объект ошибки:", error);
+        console.error("Purchase failed:", error);
+        showAlert(error.response?.data?.detail || "Произошла ошибка при покупке.");
       }
-    } else {
-      console.log("Пользователь отменил покупку.");
     }
   };
 
