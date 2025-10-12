@@ -11,7 +11,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   const [isLoading, setIsLoading] = useState(true);
   // --- ИСПРАВЛЕНИЕ №1: Правильно извлекаем функцию showAlert из объекта ---
   const { showAlert } = useModalAlert();
-  const confirm = useConfirmation();
+  const { confirm } = useConfirmation();
 
   useEffect(() => {
     const fetchItems = async () => {
