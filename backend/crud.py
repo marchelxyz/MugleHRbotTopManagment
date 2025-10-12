@@ -14,6 +14,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy import func, update, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
+from config import settings
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
@@ -329,19 +330,11 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
         "price": db_item.price, "stock": db_item.stock,
     }
     
-# backend/crud.py
-
-# backend/crud.py
-
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
-    # --- НАЧАЛО ДИАГНОСТИКИ ---
-    print("--- ЗАПУСК ПРОЦЕССА ПОКУПКИ ---")
-    print(f"ID товара из запроса: {pr.item_id}")
-    print(f"ID пользователя (Telegram) из запроса: {pr.user_id}")
-    # --- КОНЕЦ ДИАГНОСТИКИ ---
-
     issued_code_value = None
+
     item = await db.get(models.MarketItem, pr.item_id)
+
     result = await db.execute(
         select(models.User).where(models.User.telegram_id == pr.user_id)
     )
@@ -350,18 +343,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     if not item or not user:
         raise ValueError("Товар или пользователь не найдены")
 
-    # --- НАЧАЛО ДИАГНОСТИКИ ---
-    print(f"Найден товар: '{item.name}' (ID: {item.id})")
-    print(f"Его флаг is_auto_issuance: {item.is_auto_issuance} (Тип данных: {type(item.is_auto_issuance)})")
-    # --- КОНЕЦ ДИАГНОСТИКИ ---
-
     if user.balance < item.price:
         raise ValueError("Недостаточно средств")
 
     if item.is_auto_issuance:
-        # --- НАЧАЛО ДИАГНОСТИКИ ---
-        print(">>> ВХОДИМ В ЛОГИКУ АВТОВЫДАЧИ <<<")
-        # --- КОНЕЦ ДИАГНОСТИКИ ---
         stmt = (
             select(models.ItemCode)
             .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
@@ -371,13 +356,6 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         result = await db.execute(stmt)
         code_to_issue = result.scalars().first()
 
-        # --- НАЧАЛО ДИАГНОСТИКИ ---
-        if code_to_issue:
-            print(f"Найден свободный код: {code_to_issue.code_value}")
-        else:
-            print("!!! Не найдено свободных кодов для этого товара !!!")
-        # --- КОНЕЦ ДИАГНОСТИКИ ---
-
         if not code_to_issue:
             raise ValueError("Товар закончился (нет доступных кодов)")
 
@@ -385,11 +363,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         code_to_issue.is_issued = True
         code_to_issue.issued_to_user_id = user.id
         issued_code_value = code_to_issue.code_value
-
     else:
-        # --- НАЧАЛО ДИАГНОСТИКИ ---
-        print(">>> ВХОДИМ В ЛОГИКУ ОБЫЧНОГО ТОВАРА (списание со склада) <<<")
-        # --- КОНЕЦ ДИАГНОСТИКИ ---
         if item.stock <= 0:
             raise ValueError("Товар закончился")
         user.balance -= item.price
@@ -397,7 +371,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id, price=item.price)
     db.add(db_purchase)
-    
+
     if 'code_to_issue' in locals() and code_to_issue:
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
@@ -419,7 +393,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         print(f"Could not send notification. Error: {e}")
 
     await db.commit()
-    
+
     return {"new_balance": user.balance, "issued_code": issued_code_value}
     
 # Админ
