@@ -9,8 +9,8 @@ import { FaStar, FaCopy } from 'react-icons/fa';
 function MarketplacePage({ user, onPurchaseSuccess }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  // --- ТЕПЕРЬ ОБА ХУКА РАБОТАЮТ ОДИНАКОВО ---
-  const showAlert = useModalAlert();
+  // --- ИСПРАВЛЕНИЕ №1: Правильно извлекаем функцию showAlert из объекта ---
+  const { showAlert } = useModalAlert();
   const confirm = useConfirmation();
 
   useEffect(() => {
@@ -20,24 +20,29 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         setItems(response.data);
       } catch (error) {
         console.error("Failed to fetch market items", error);
+        // Добавляем проверку, чтобы избежать ошибок при первой загрузке, когда showAlert еще может быть undefined
         if (showAlert) showAlert("Не удалось загрузить товары. Попробуйте позже.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchItems();
-  }, [showAlert]); 
+  }, [showAlert]); // Добавляем showAlert в зависимости, чтобы избежать предупреждений
 
+  // --- ИСПРАВЛЕНИЕ №2: Полностью переписанная, корректная логика покупки ---
   const handlePurchase = async (itemId, itemName, itemPrice) => {
     const isConfirmed = await confirm(`Вы уверены, что хотите купить "${itemName}" за ${itemPrice} спасибок?`);
     if (isConfirmed) {
       try {
         const response = await purchaseItem(user.id, itemId);
+        // Правильно извлекаем данные из ответа сервера
         const { new_balance, issued_code } = response.data;
         
+        // Обновляем баланс пользователя ОДИН РАЗ и правильно
         onPurchaseSuccess({ balance: new_balance });
 
         if (issued_code) {
+          // Если пришел код, показываем специальное окно
           showAlert(
             `Поздравляем с покупкой "${itemName}"!`,
             'success',
@@ -53,9 +58,11 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
             </div>
           );
         } else {
+          // Для обычных товаров показываем простое сообщение
           showAlert(`Поздравляем! Вы успешно приобрели "${itemName}".`);
         }
         
+        // Обновляем список товаров, чтобы показать актуальный сток
         const updatedItems = await getMarketItems();
         setItems(updatedItems.data);
 
@@ -81,20 +88,35 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
             return (
               <div key={item.id} className={styles.itemCard}>
+                
                 {hasDiscount && (
                   <div className={styles.discountBadge}>
                     <FaStar className={styles.discountIcon} />
-                    <span className={styles.discountText}>- {discountPercent}%</span>
+                    <span className={styles.discountText}>
+                      - {discountPercent}%
+                    </span>
                   </div>
                 )}
-                {item.image_url ? <img src={item.image_url} alt={item.name} className={styles.itemImage} /> : <div className={styles.imagePlaceholder}></div>}
+
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+                ) : (
+                  <div className={styles.imagePlaceholder}></div>
+                )}
+                
                 <div className={styles.itemContent}>
                   <h2 className={styles.itemName}>{item.name}</h2>
                   <p className={styles.itemDescription}>{item.description}</p>
+                  
                   <div className={styles.priceContainer}>
                     <span className={styles.itemPrice}>{currentPrice} спасибок</span>
-                    {hasDiscount && <span className={styles.originalPrice}>{originalPrice}</span>}
+                    {hasDiscount && (
+                      <span className={styles.originalPrice}>
+                        {originalPrice}
+                      </span>
+                    )}
                   </div>
+
                 </div>
                 <div className={styles.buttonWrapper}>
                   <button 
