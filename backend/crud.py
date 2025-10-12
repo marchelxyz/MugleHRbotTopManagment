@@ -369,7 +369,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         user.balance -= item.price
         item.stock -= 1
 
-    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id, price=item.price)
+    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id)
     db.add(db_purchase)
 
     if 'code_to_issue' in locals() and code_to_issue:
