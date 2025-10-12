@@ -57,7 +57,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
   const activeItems = items.filter(item => !item.is_archived);
 
-  return (
+ return (
     <PageLayout title="Кафетерий">
       <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
       {isLoading ? <p>Загрузка товаров...</p> : (
@@ -113,7 +113,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
             );
           })}
         </div>
-            {purchaseSuccessData && (
+      )}
+
+      {/* --- ВОТ ПРАВИЛЬНОЕ МЕСТО ДЛЯ МОДАЛЬНОГО ОКНА --- */}
+      {purchaseSuccessData && (
         <PurchaseSuccessModal
           item={purchaseSuccessData}
           onClose={() => setPurchaseSuccessData(null)}
@@ -122,5 +125,3 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     </PageLayout>
   );
 }
-
-export default MarketplacePage;
