@@ -331,30 +331,37 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     
 # backend/crud.py
 
+# backend/crud.py
+
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
-    # Сначала инициализируем переменную для кода, чтобы она всегда была
+    # --- НАЧАЛО ДИАГНОСТИКИ ---
+    print("--- ЗАПУСК ПРОЦЕССА ПОКУПКИ ---")
+    print(f"ID товара из запроса: {pr.item_id}")
+    print(f"ID пользователя (Telegram) из запроса: {pr.user_id}")
+    # --- КОНЕЦ ДИАГНОСТИКИ ---
+
     issued_code_value = None
-
-    # Ищем товар (здесь все было правильно)
     item = await db.get(models.MarketItem, pr.item_id)
-
-    # --- ИСПРАВЛЕНИЕ №1: Ищем пользователя ---
-    # Используем `pr.user_id` вместо `request.user_id`
-    # и извлекаем пользователя из результата с помощью `.scalar_one_or_none()`
     result = await db.execute(
         select(models.User).where(models.User.telegram_id == pr.user_id)
     )
     user = result.scalar_one_or_none()
 
-    # --- ИСПРАВЛЕНИЕ №2: Проверяем пользователя и товар правильно ---
     if not item or not user:
         raise ValueError("Товар или пользователь не найдены")
-    
+
+    # --- НАЧАЛО ДИАГНОСТИКИ ---
+    print(f"Найден товар: '{item.name}' (ID: {item.id})")
+    print(f"Его флаг is_auto_issuance: {item.is_auto_issuance} (Тип данных: {type(item.is_auto_issuance)})")
+    # --- КОНЕЦ ДИАГНОСТИКИ ---
+
     if user.balance < item.price:
         raise ValueError("Недостаточно средств")
 
     if item.is_auto_issuance:
-        # --- ЛОГИКА АВТОВЫДАЧИ ---
+        # --- НАЧАЛО ДИАГНОСТИКИ ---
+        print(">>> ВХОДИМ В ЛОГИКУ АВТОВЫДАЧИ <<<")
+        # --- КОНЕЦ ДИАГНОСТИКИ ---
         stmt = (
             select(models.ItemCode)
             .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
@@ -364,31 +371,37 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         result = await db.execute(stmt)
         code_to_issue = result.scalars().first()
 
+        # --- НАЧАЛО ДИАГНОСТИКИ ---
+        if code_to_issue:
+            print(f"Найден свободный код: {code_to_issue.code_value}")
+        else:
+            print("!!! Не найдено свободных кодов для этого товара !!!")
+        # --- КОНЕЦ ДИАГНОСТИКИ ---
+
         if not code_to_issue:
             raise ValueError("Товар закончился (нет доступных кодов)")
 
         user.balance -= item.price
         code_to_issue.is_issued = True
         code_to_issue.issued_to_user_id = user.id
-        # Присваиваем значение нашей переменной
         issued_code_value = code_to_issue.code_value
 
     else:
-        # --- СТАРАЯ ЛОГИКА ДЛЯ ОБЫЧНЫХ ТОВАРОВ ---
+        # --- НАЧАЛО ДИАГНОСТИКИ ---
+        print(">>> ВХОДИМ В ЛОГИКУ ОБЫЧНОГО ТОВАРА (списание со склада) <<<")
+        # --- КОНЕЦ ДИАГНОСТИКИ ---
         if item.stock <= 0:
             raise ValueError("Товар закончился")
         user.balance -= item.price
         item.stock -= 1
 
-    # Здесь создается запись о покупке (все было правильно)
-    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id, price=item.price) # Используем user.id для корректности
+    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id, price=item.price)
     db.add(db_purchase)
     
     if 'code_to_issue' in locals() and code_to_issue:
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
-    # --- БЛОК УВЕДОМЛЕНИЙ (здесь все было правильно) ---
     try:
         admin_message = f"🛍️ Новая покупка: {user.first_name} купил(а) {item.name}."
         if issued_code_value:
@@ -402,14 +415,12 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
                 f"Вы также можете найти его в истории своих покупок."
             )
             await send_telegram_message(chat_id=user.telegram_id, text=user_message)
-
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
 
     await db.commit()
     
     return {"new_balance": user.balance, "issued_code": issued_code_value}
-
     
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
