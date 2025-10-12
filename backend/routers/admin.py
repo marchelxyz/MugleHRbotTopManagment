@@ -43,16 +43,43 @@ async def add_tickets(request: AddTicketsRequest, db: AsyncSession = Depends(get
     return {"detail": f"Successfully added {request.amount} tickets to all users"}
 
 @router.post("/market-items", response_model=schemas.MarketItemResponse)
-async def create_new_market_item(item: schemas.MarketItemCreate, db: AsyncSession = Depends(get_db)):
-    new_item = await crud.admin_create_market_item(db=db, item=item)
-    return {**new_item.__dict__, "price_spasibki": new_item.price}
+async def create_new_market_item(
+    item: schemas.MarketItemCreate, 
+    db: AsyncSession = Depends(get_db),
+    # Я добавил зависимость от админа, чтобы защитить этот эндпоинт
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    try:
+        new_item = await crud.admin_create_market_item(db=db, item=item)
+        # Возвращаем ответ так, чтобы он соответствовал схеме
+        return new_item
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Один или несколько из предоставленных кодов уже существуют. Убедитесь, что все коды уникальны."
+        )
 
 @router.put("/market-items/{item_id}", response_model=schemas.MarketItemResponse)
-async def update_market_item_route(item_id: int, item_data: schemas.MarketItemUpdate, db: AsyncSession = Depends(get_db)):
-    updated_item = await crud.admin_update_market_item(db, item_id, item_data)
-    if not updated_item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return {**updated_item.__dict__, "price_spasibki": updated_item.price}
+async def update_market_item_route(
+    item_id: int, 
+    item_data: schemas.MarketItemUpdate, 
+    db: AsyncSession = Depends(get_db),
+    # Я добавил зависимость от админа, чтобы защитить и этот эндпоинт
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    try:
+        updated_item = await crud.admin_update_market_item(db, item_id, item_data)
+        if not updated_item:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+        # Возвращаем ответ так, чтобы он соответствовал схеме
+        return updated_item
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Один или несколько из предоставленных кодов уже существуют. Убедитесь, что все коды уникальны."
+        )
 
 @router.delete("/market-items/{item_id}", status_code=204)
 async def archive_item_route(item_id: int, db: AsyncSession = Depends(get_db)):
