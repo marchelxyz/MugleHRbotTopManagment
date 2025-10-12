@@ -332,7 +332,7 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item = await db.get(models.MarketItem, pr.item_id)
     result = await db.execute(
-        select(models.User).where(models.User.telegram_id == request.user_id)
+        select(models.User).where(models.User.telegram_id == request.user_id))
 
     if not item or not user:
         raise ValueError("Товар или пользователь не найдены")
