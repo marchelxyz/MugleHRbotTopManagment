@@ -332,6 +332,8 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     
 # backend/crud.py
 
+# backend/crud.py
+
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     issued_code_value = None
     item = await db.get(models.MarketItem, pr.item_id)
@@ -372,9 +374,9 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
-    # --- ИЗМЕНЕНИЕ: УЛУЧШЕННЫЕ УВЕДОМЛЕНИЯ ---
+    # --- ФИНАЛЬНАЯ ВЕРСИЯ УВЕДОМЛЕНИЙ ---
     try:
-        # Собираем основную часть сообщения
+        # Уведомление для администратора (без изменений)
         admin_message = (
             f"🛍️ *Новая покупка в магазине!*\n\n"
             f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
@@ -382,32 +384,26 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
             f"🎁 *Товар:* {item.name}\n"
             f"💰 *Стоимость:* {item.price} спасибок"
         )
-
-        # Если был выдан код, добавляем специальный блок
         if issued_code_value:
             admin_message += (
                 f"\n\n✨ *Товар с автовыдачей*\n"
                 f"🔑 *Выданный код:* `{issued_code_value}`"
             )
-
-        # Добавляем новый баланс пользователя в конец сообщения
         admin_message += f"\n\n📉 *Новый баланс пользователя:* {user.balance} спасибок"
-
-        # Отправляем готовое сообщение
+        
         await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
             message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
         )
 
-        # Уведомление для пользователя (если был выдан код)
+        # Уведомление для пользователя (теперь для всех покупок)
+        user_message = f"🎉 Поздравляем с покупкой \"{item.name}\"!"
         if issued_code_value:
-            user_message = (
-                f"🎉 Поздравляем с покупкой \"{item.name}\"!\n\n"
-                f"Ваш уникальный код/ссылка:\n`{issued_code_value}`\n\n"
-                f"Вы также можете найти его в истории своих покупок."
-            )
-            await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+            # Для товаров с кодом добавляем сам код
+            user_message += f"\n\nВаш уникальный код/ссылка:\n`{issued_code_value}`"
+        
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
 
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
