@@ -194,7 +194,9 @@ function ItemManager() {
           />
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
-          <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара" className={styles.textarea} />
+          <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара (до 120 символов)" className={styles.textarea} 
+          maxLength="120"
+         />
           
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           <input type="number" name="original_price_rub" value={form.original_price_rub} onChange={handleFormChange} placeholder="Старая цена в рублях (для скидки)" className={styles.input} min="0" />
