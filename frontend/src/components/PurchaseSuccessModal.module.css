@@ -145,3 +145,33 @@
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ КОПИРОВАНИЯ --- */
+.codeBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: monospace;
+  background: #e5e5ea;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 1rem;
+  word-break: break-all;
+  color: #1c1c1e;
+}
+
+.codeValue {
+  flex-grow: 1; /* Занимает все доступное место */
+  text-align: left; /* Текст кода слева */
+}
+
+.copyButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 10px; /* Отступ слева */
+  font-size: 1.1rem;
+  color: #8e8e93;
+  display: flex;
+  align-items: center;
+}
