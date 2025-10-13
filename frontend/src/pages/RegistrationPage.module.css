@@ -48,3 +48,6 @@
   color: red;
   margin-top: 15px;
 }
+
+/* Кнопка "Назад" */
+.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }
