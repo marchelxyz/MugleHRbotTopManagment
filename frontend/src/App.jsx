@@ -22,9 +22,10 @@ import RoulettePage from './pages/RoulettePage';
 import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
-import TransferPage from './pages/TransferPage'; // Убедимся, что TransferPage импортирован
+import TransferPage from './pages/TransferPage'; // Страница отправки спасибок
 import { startSession, pingSession } from './api';
-import OnboardingStories from './components/OnboardingStories'; // 1. Импортируем новый компонент
+import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
+import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
 
 // Стили
 import './App.css';
@@ -122,9 +123,9 @@ const handleTransferSuccess = (updatedSenderData) => {
   
   const renderPage = () => {
     if (loading) {
-      return <div>Загрузка...</div>;
+      return <LoadingScreen />;
     }
-    
+  
     if (!user) {
       return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
