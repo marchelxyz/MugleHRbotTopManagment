@@ -61,7 +61,7 @@ function ItemManager() {
 
   const forecast = useMemo(() => {
       if (!calculatedPrice || calculatedPrice <= 0) return "-";
-      const monthsNeeded = calculatedPrice / 15;
+      const monthsNeeded = calculatedPrice / 50;
       if (monthsNeeded <= 1) return "около 1 месяца";
       if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
       const years = (monthsNeeded / 12).toFixed(1);
