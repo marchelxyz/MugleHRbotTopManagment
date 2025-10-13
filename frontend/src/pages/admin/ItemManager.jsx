@@ -166,6 +166,9 @@ function ItemManager() {
     }
   };
 
+  // --- ИЗМЕНЕНИЕ: Определяем текущее описание для счетчика ---
+  const currentDescription = isEditing ? (editingItem.description || '') : (newItem.description || '');
+  
   return (
     <>
       <div className={styles.card}>
@@ -194,9 +197,17 @@ function ItemManager() {
           />
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
-          <textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Описание товара (до 120 символов)" className={styles.textarea} 
-          maxLength="120"
-         />
+        {/* --- ИЗМЕНЕНИЕ: Оборачиваем textarea в контейнер для позиционирования счетчика --- */}
+        <div className={styles.descriptionWrapper}>
+          <textarea
+            name="description"
+            placeholder="Описание"
+            value={currentDescription}
+            onChange={(e) => handleInputChange(e, isEditing)}
+            maxLength="120"
+          />
+          <span className={styles.charCounter}>{currentDescription.length} / 120</span>
+        </div>
           
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           <input type="number" name="original_price_rub" value={form.original_price_rub} onChange={handleFormChange} placeholder="Старая цена в рублях (для скидки)" className={styles.input} min="0" />
