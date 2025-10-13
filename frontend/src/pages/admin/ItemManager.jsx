@@ -82,27 +82,23 @@ function ItemManager() {
 
     const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
     
+    // Создаем объект с данными для отправки, чтобы не мутировать состояние
     const itemDataToSend = {
       name: form.name,
       description: form.description,
+      price: calculatedPrice, // Отправляем посчитанную цену в спасибках
       price_rub: parseInt(form.price_rub, 10),
       stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
       image_url: form.image_url,
       original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
       is_auto_issuance: form.is_auto_issuance,
-      codes_text: form.codes_text,
+      // В зависимости от режима, отправляем либо new_item_codes, либо item_codes
+      ...(editingItemId ? { new_item_codes: codes } : { item_codes: codes })
     };
-
-    if (itemDataToSend.is_auto_issuance && codes.length === 0 && !editingItemId) {
-        showAlert('Для товаров с автовыдачей необходимо добавить хотя бы один код/ссылку.', 'error');
-        setLoading(false);
-        return;
-    }
 
     try {
       if (editingItemId) {
-        const { codes_text, ...updateData } = itemDataToSend;
-        await updateMarketItem(editingItemId, updateData);
+        await updateMarketItem(editingItemId, itemDataToSend);
         showAlert('Товар успешно обновлен!', 'success');
       } else {
         await createMarketItem(itemDataToSend);
@@ -128,7 +124,7 @@ function ItemManager() {
         stock: item.stock,
         image_url: item.image_url || '',
         is_auto_issuance: item.is_auto_issuance,
-        codes_text: ''
+        codes_text: '' // Коды не загружаем для редактирования
     });
     window.scrollTo(0, 0);
   };
@@ -165,9 +161,6 @@ function ItemManager() {
         }
     }
   };
-
-  // --- ИЗМЕНЕНИЕ: Определяем текущее описание для счетчика ---
-  const currentDescription = isEditing ? (editingItem.description || '') : (newItem.description || '');
   
   return (
     <>
@@ -197,17 +190,23 @@ function ItemManager() {
           />
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
-        {/* --- ИЗМЕНЕНИЕ: Оборачиваем textarea в контейнер для позиционирования счетчика --- */}
-        <div className={styles.descriptionWrapper}>
-          <textarea
-            name="description"
-            placeholder="Описание"
-            value={currentDescription}
-            onChange={(e) => handleInputChange(e, isEditing)}
-            maxLength="120"
-          />
-          <span className={styles.charCounter}>{currentDescription.length} / 120</span>
-        </div>
+
+          {/* --- НАЧАЛО ИСПРАВЛЕНИЙ --- */}
+          <div className={styles.descriptionWrapper}>
+            <textarea
+              name="description"
+              placeholder="Описание"
+              // 1. Используем значение из правильного состояния `form`
+              value={form.description}
+              // 2. Используем правильный обработчик
+              onChange={handleFormChange}
+              maxLength="120"
+              className={styles.textarea}
+            />
+            {/* 3. Длину считаем тоже от `form.description` */}
+            <span className={styles.charCounter}>{(form.description || '').length} / 120</span>
+          </div>
+          {/* --- КОНЕЦ ИСПРАВЛЕНИЙ --- */}
           
           <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
           <input type="number" name="original_price_rub" value={form.original_price_rub} onChange={handleFormChange} placeholder="Старая цена в рублях (для скидки)" className={styles.input} min="0" />
