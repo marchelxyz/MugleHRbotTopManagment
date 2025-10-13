@@ -1,0 +1,50 @@
+/* frontend/src/components/LoadingScreen.module.css */
+
+.loadingContainer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* --- Фон: темный радиальный градиент --- */
+  background: radial-gradient(circle, #2c2c2e 0%, #1c1c1e 100%);
+  z-index: 9999;
+}
+
+.content {
+  text-align: center;
+}
+
+.loadingBar {
+  width: 200px;
+  height: 6px;
+  background-color: #48484a; /* Цвет фона полосы */
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.loadingBarInner {
+  width: 100%;
+  height: 100%;
+  background-color: #007aff; /* Цвет самой полосы (синий) */
+  border-radius: 3px;
+  animation: loadingAnimation 1.5s infinite linear;
+}
+
+/* Анимация для полосы загрузки */
+@keyframes loadingAnimation {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
