@@ -267,3 +267,25 @@
   color: #aaa;
   font-size: 14px;
 }
+
+/* --- СТИЛИ ДЛЯ СЧЕТЧИКА СИМВОЛОВ В ITEM --- */
+
+.descriptionWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.descriptionWrapper textarea {
+  /* Убедимся, что textarea занимает всю ширину контейнера */
+  width: 100%;
+  /* Добавим немного отступа снизу, чтобы счетчик не налезал на текст */
+  padding-bottom: 25px;
+}
+
+.charCounter {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  font-size: 0.8rem;
+  color: #8e8e93;
+}
