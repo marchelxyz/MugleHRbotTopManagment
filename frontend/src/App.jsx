@@ -123,7 +123,7 @@ const handleTransferSuccess = (updatedSenderData) => {
   
   const renderPage = () => {
     if (loading) {
-      return <div>Загрузка...</div>;
+      return return <LoadingScreen />;
     }
     
     if (!user) {
