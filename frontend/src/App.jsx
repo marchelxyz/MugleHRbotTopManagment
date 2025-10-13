@@ -123,9 +123,9 @@ const handleTransferSuccess = (updatedSenderData) => {
   
   const renderPage = () => {
     if (loading) {
-      return return <LoadingScreen />;
+      return <LoadingScreen />;
     }
-  }
+  
     if (!user) {
       return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
