@@ -26,13 +26,15 @@
   line-height: 1.6;
 }
 
+/* Кнопка "Назад" */
 .backButton {
   background: none;
   border: none;
-  color: var(--link-color); /* Используем цвет ссылок из темы */
-  font-size: 1rem;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  margin-bottom: 24px;
+  color: #5CA14A;
   padding: 0;
-  display: inline-block;
+  margin-bottom: 25px;
+  display: block;
 }
