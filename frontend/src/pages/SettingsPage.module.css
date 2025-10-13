@@ -1,17 +1,6 @@
 /* frontend/src/pages/SettingsPage.module.css */
 
-/* Кнопка "Назад" */
-.backButton {
-  background: none;
-  border: none;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  color: #5CA14A;
-  padding: 0;
-  margin-bottom: 25px;
-  display: block;
-}
+.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }
 
 /* Контейнер для списка опций */
 .settingsList {
