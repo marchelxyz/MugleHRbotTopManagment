@@ -279,12 +279,12 @@
   /* Убедимся, что textarea занимает всю ширину контейнера */
   width: 100%;
   /* Добавим немного отступа снизу, чтобы счетчик не налезал на текст */
-  padding-bottom: 15px;
+  padding-bottom: 25px;
 }
 
 .charCounter {
   position: absolute;
-  bottom: 10px;
+  bottom: 15px;
   right: 10px;
   font-size: 0.8rem;
   color: #8e8e93;
