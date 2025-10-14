@@ -51,17 +51,17 @@ function ItemManager() {
   
   const calculatedPrice = useMemo(() => {
       if (!form.price_rub || form.price_rub <= 0) return 0;
-      return Math.round(form.price_rub / 50);
+      return Math.round(form.price_rub / 30);
   }, [form.price_rub]);
 
   const calculatedOriginalPrice = useMemo(() => {
     if (!form.original_price_rub || form.original_price_rub <= 0) return 0;
-    return Math.round(form.original_price_rub / 50);
+    return Math.round(form.original_price_rub / 30);
   }, [form.original_price_rub]);
 
   const forecast = useMemo(() => {
       if (!calculatedPrice || calculatedPrice <= 0) return "-";
-      const monthsNeeded = calculatedPrice / 15;
+      const monthsNeeded = calculatedPrice / 50;
       if (monthsNeeded <= 1) return "около 1 месяца";
       if (monthsNeeded <= 18) return `около ${Math.round(monthsNeeded)} мес.`;
       const years = (monthsNeeded / 12).toFixed(1);
