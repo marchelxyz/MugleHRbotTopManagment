@@ -203,7 +203,7 @@
 .tabs {
   display: flex;
   gap: 10px;
-  margin-bottom: -1px; /* Чтобы вкладки "прилипли" к карточке */
+  margin-bottom: -8px; /* Чтобы вкладки "прилипли" к карточке */
 }
 .tab, .tabActive {
   padding: 10px 15px;
@@ -212,6 +212,7 @@
   border-radius: 8px 8px 0 0;
   cursor: pointer;
   background-color: #f0f0f0;
+  -webkit-tap-highlight-color: transparent;
 }
 .tabActive {
   background-color: #fff;
@@ -288,4 +289,42 @@
   right: 10px;
   font-size: 0.8rem;
   color: #8e8e93;
+}
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ АДАПТИВНОСТИ КАРТОЧКИ ТОВАРА --- */
+
+/* 1. Стили для самой кнопки "Восстановить" */
+.restoreButton {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #28a745; /* Зеленый цвет для действия восстановления */
+  color: #28a745;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap; /* Чтобы текст не переносился */
+}
+
+/* 2. Медиа-запрос для экранов шириной 600px и меньше (мобильные) */
+@media (max-width: 600px) {
+  .listItem {
+    /* Карточка теперь будет располагать элементы вертикально */
+    flex-direction: column;
+    align-items: flex-start; /* Выравниваем все по левому краю */
+  }
+
+  .listItemActions {
+    /* Блок с кнопками теперь занимает всю ширину */
+    width: 100%;
+    margin-top: 15px; /* Добавляем отступ сверху */
+  }
+  
+  /* Растягиваем кнопку восстановления на всю ширину блока */
+  .restoreButton {
+    width: 100%;
+  }
 }

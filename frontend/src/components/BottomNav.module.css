@@ -34,6 +34,9 @@
   cursor: pointer;
   color: #62A650;
   height: 100%; /* Растягиваем кнопку на всю высоту */
+
+  /* --- ВОТ ИЗМЕНЕНИЕ: Убираем синее выделение при нажатии --- */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .navButton.active {
