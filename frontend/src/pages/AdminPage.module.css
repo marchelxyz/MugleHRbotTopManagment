@@ -297,7 +297,7 @@
   padding: 8px 12px;
   font-size: 14px;
   background-color: #28a745; /* Зеленый цвет для действия восстановления */
-  color: white;
+  color: #28a745;
   border: none;
   border-radius: 5px;
   cursor: pointer;
