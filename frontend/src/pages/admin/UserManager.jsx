@@ -106,8 +106,10 @@ function UserManager() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await adminGetAllUsers();
-            setAllUsers(response.data);
+    const response = await adminGetAllUsers();
+    // Фильтруем пользователей, чтобы не показывать удаленных
+    const activeUsers = response.data.filter(user => user.status !== 'deleted');
+            setUsers(activeUsers);
         } catch (error) {
             setMessage('Ошибка загрузки пользователей.');
         } finally {
