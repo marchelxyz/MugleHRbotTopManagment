@@ -626,19 +626,27 @@ async def get_archived_items(db: AsyncSession):
 
 # --- Функция полного удаления товара ---
 async def admin_delete_item_permanently(db: AsyncSession, item_id: int):
-    # Находим товар, который хотим удалить
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: Безопасное удаление ---
+
+    # 1. Проверяем, есть ли у товара связанные покупки
+    purchases_count = await db.scalar(
+        select(func.count(models.Purchase.id)).where(models.Purchase.item_id == item_id)
+    )
+
+    # 2. Если есть хотя бы одна покупка, вызываем ошибку
+    if purchases_count > 0:
+        raise ValueError("Невозможно удалить товар, так как он связан с историей покупок.")
+
+    # 3. Если покупок нет, находим и удаляем товар
     db_item = await db.get(models.MarketItem, item_id)
     if not db_item:
-        # Если товара нет, возвращаем False
-        return False
-    
-    # Удаляем товар
+        return False  # Товар не найден
+
     await db.delete(db_item)
     await db.commit()
-    # Возвращаем True в случае успеха
-    return True
-
-# --- НОВЫЕ ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
+    return True # Успешное удаление
+    
+# --- ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
 
 async def assemble_tickets(db: AsyncSession, user_id: int):
     """Собирает части билетиков в целые билеты (2 к 1)."""
