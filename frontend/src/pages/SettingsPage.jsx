@@ -8,7 +8,7 @@ import PageLayout from '../components/PageLayout';
 function SettingsPage({ onBack, onNavigate, onRepeatOnboarding }) {
 
   // Ссылка на ваш аккаунт поддержки в Telegram
-  const supportUrl = 'https://t.me/your_support_account'; // <-- НЕ ЗАБУДЬТЕ ЗАМЕНИТЬ НА ВАШ АККАУНТ
+  const supportUrl = 'https://t.me/fix2Form'; // <-- НЕ ЗАБУДЬТЕ ЗАМЕНИТЬ НА ВАШ АККАУНТ
 
   return (
     // 1. Используем PageLayout с названием "Настройки", которое отобразится в шапке
