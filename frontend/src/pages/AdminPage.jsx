@@ -13,6 +13,7 @@ import { addPointsToAll, addTicketsToAll } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 
+/*
 // Компонент для массовых начислений (без изменений)
 function MassActions() {
   const { showAlert } = useModalAlert();
@@ -78,6 +79,8 @@ function MassActions() {
     </>
   );
 }
+
+*/
 
 // --- ИСПРАВЛЕННЫЙ ГЛАВНЫЙ КОМПОНЕНТ ---
 function AdminPage() {
