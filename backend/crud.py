@@ -11,7 +11,7 @@ import bot
 import config
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
-from sqlalchemy import func, update, extract
+from sqlalchemy import func, update, delete, extract
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
