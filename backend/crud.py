@@ -5,7 +5,7 @@ import json
 import math 
 from typing import Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 import random
 import bot
 import config
