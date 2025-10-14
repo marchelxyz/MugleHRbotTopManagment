@@ -18,7 +18,7 @@ class MarketItemBase(OrmBase):
 # Базовая схема для пользователя (без связей)
 class UserBase(OrmBase):
     id: int
-    telegram_id: int
+    telegram_id: Optional[int] = None
     position: str
     first_name: Optional[str] = None
     last_name: str
