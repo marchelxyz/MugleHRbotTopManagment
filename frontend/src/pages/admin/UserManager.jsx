@@ -11,7 +11,7 @@ import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { formatDateForDisplay } from '../../utils/dateFormatter';
 
 // Модальное окно для редактирования (остается без изменений)
-function EditUserModal({ user, onClose, onSave }) {
+function EditUserModal({ user, onClose, onSave, onDelete }) {
     const { confirm } = useConfirmation();
     const [formData, setFormData] = useState({
         ...user,
@@ -28,13 +28,14 @@ function EditUserModal({ user, onClose, onSave }) {
         onSave(user.id, formData);
     };
 
+   // --- ИЗМЕНЕНИЕ: Логика кнопки теперь соответствует анонимизации ---
     const handleDelete = async () => {
         const isConfirmed = await confirm(
-            'Сброс пользователя',
-            `Вы уверены, что хотите сбросить пользователя ${user.first_name}? Он будет отправлен на повторную регистрацию.`
+            'Анонимизация пользователя',
+            `Вы уверены, что хотите анонимизировать пользователя ${user.first_name}? Его личные данные будут стерты, но история транзакций останется. Это действие необратимо.`
         );
         if (isConfirmed) {
-            onSave(user.id, { ...formData, id_to_delete: user.id, action: 'delete' });
+            onDelete(user.id); // Вызываем новую функцию
         }
     };
 
@@ -106,12 +107,12 @@ function UserManager() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-    const response = await adminGetAllUsers();
-    // Фильтруем пользователей, чтобы не показывать удаленных
-    const activeUsers = response.data.filter(user => user.status !== 'deleted');
-            setUsers(activeUsers);
+            const response = await adminGetAllUsers();
+            // --- ВОТ ИСПРАВЛЕНИЕ: Добавляем "санитайзер" данных ---
+            const cleanedUsers = response.data.filter(user => user && user.id && user.status !== 'deleted');
+            setAllUsers(cleanedUsers);
         } catch (error) {
-            setMessage('Ошибка загрузки пользователей.');
+            showAlert('Ошибка загрузки пользователей.', 'error');
         } finally {
             setLoading(false);
         }
@@ -141,6 +142,18 @@ function UserManager() {
         }
     };
 
+    // --- ИЗМЕНЕНИЕ: Новая функция для анонимизации ---
+    const handleDeleteUser = async (userId) => {
+        try {
+            await adminDeleteUser(userId);
+            showAlert('Пользователь успешно анонимизирован.', 'success');
+            setEditingUser(null);
+            fetchUsers();
+        } catch (error) {
+             showAlert(error.response?.data?.detail || 'Ошибка при анонимизации.', 'error');
+        }
+    };
+    
     const filteredUsers = useMemo(() => {
         const targetStatus = view === 'blocked' ? 'blocked' : 'approved';
         let users = allUsers.filter(user => user.status === targetStatus);
@@ -180,7 +193,14 @@ function UserManager() {
 
     return (
         <>
-            {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />}
+            {editingUser && (
+                <EditUserModal 
+                    user={editingUser} 
+                    onClose={() => setEditingUser(null)} 
+                    onSave={handleSaveUser}
+                    onDelete={handleDeleteUser} // <-- Передаем новую функцию
+                />
+            )}
             
             {/* --- ИЗМЕНЕНИЕ: Добавляем div-обертку для заголовка и кнопки --- */}
             <div className={userManagerStyles.header}>
