@@ -318,15 +318,15 @@ async def get_active_items(db: AsyncSession):
     result = await db.execute(
         select(models.MarketItem)
         .where(models.MarketItem.is_archived == False)
-        .options(selectinload(models.MarketItem.item_codes)) # Загружаем коды вместе с товарами
+        # --- ИЗМЕНЕНИЕ №1: Используем 'codes' ---
+        .options(selectinload(models.MarketItem.codes)) 
     )
     items = result.scalars().all()
     
-    # Пересчитываем реальный остаток для товаров с автовыдачей
     for item in items:
         if item.is_auto_issuance:
-            # Считаем только НЕвыданные коды
-            available_codes = sum(1 for code in item.item_codes if not code.is_issued)
+            # --- ИЗМЕНЕНИЕ №2: Используем 'codes' и здесь ---
+            available_codes = sum(1 for code in item.codes if not code.is_issued)
             item.stock = available_codes
             
     return items
