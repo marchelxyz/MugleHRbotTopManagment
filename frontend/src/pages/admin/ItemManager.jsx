@@ -20,8 +20,8 @@ const initialItemState = {
   image_url: '',
   is_auto_issuance: false,
   codes_text: '',
-  added_stock: '', // Для пополнения обычных товаров
-  new_item_codes: '' // Для пополнения кодов
+  added_stock: '',      // Для пополнения обычных товаров
+  new_item_codes: ''    // Для пополнения кодов
 };
 
 function ItemManager() {
@@ -87,48 +87,43 @@ function ItemManager() {
     setLoading(true);
 
     const isEditing = !!editingItemId;
-
     let itemDataToSend;
-
-    if (isEditing) {
-      // Логика для РЕДАКТИРОВАНИЯ
-      const newCodes = form.is_auto_issuance ? form.new_item_codes.split('\n').filter(Boolean) : [];
-      itemDataToSend = {
-        name: form.name,
-        description: form.description,
-        price: calculatedPrice,
-        price_rub: parseInt(form.price_rub, 10),
-        image_url: form.image_url,
-        original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
-        added_stock: form.is_auto_issuance ? 0 : parseInt(form.added_stock, 10) || 0,
-        new_item_codes: newCodes
-      };
-    } else {
-      // Логика для СОЗДАНИЯ
-      const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
-      if (form.is_auto_issuance && codes.length === 0) {
-        showAlert('Для товаров с автовыдачей добавьте хотя бы один код.', 'error');
-        setLoading(false);
-        return;
-      }
-      itemDataToSend = {
-        name: form.name,
-        description: form.description,
-        price: calculatedPrice,
-        price_rub: parseInt(form.price_rub, 10),
-        stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
-        image_url: form.image_url,
-        original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
-        is_auto_issuance: form.is_auto_issuance,
-        item_codes: codes
-      };
-    }
 
     try {
       if (isEditing) {
+        // Логика для РЕДАКТИРОВАНИЯ
+        const newCodes = form.is_auto_issuance ? form.new_item_codes.split('\n').filter(Boolean) : [];
+        itemDataToSend = {
+          name: form.name,
+          description: form.description,
+          price: calculatedPrice,
+          price_rub: parseInt(form.price_rub, 10),
+          image_url: form.image_url,
+          original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+          added_stock: form.is_auto_issuance ? 0 : parseInt(form.added_stock, 10) || 0,
+          new_item_codes: newCodes
+        };
         await updateMarketItem(editingItemId, itemDataToSend);
         showAlert('Товар успешно обновлен!', 'success');
       } else {
+        // Логика для СОЗДАНИЯ
+        const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
+        if (form.is_auto_issuance && codes.length === 0) {
+          showAlert('Для товаров с автовыдачей добавьте хотя бы один код.', 'error');
+          setLoading(false);
+          return;
+        }
+        itemDataToSend = {
+          name: form.name,
+          description: form.description,
+          price: calculatedPrice,
+          price_rub: parseInt(form.price_rub, 10),
+          stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
+          image_url: form.image_url,
+          original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+          is_auto_issuance: form.is_auto_issuance,
+          item_codes: codes
+        };
         await createMarketItem(itemDataToSend);
         showAlert('Товар успешно создан!', 'success');
       }
@@ -150,9 +145,10 @@ function ItemManager() {
         description: item.description || '',
         price_rub: item.price_rub,
         original_price_rub: item.original_price ? item.original_price * 30 : '', // Исправлено на 30, как в калькуляторе
-        stock: item.stock,
+        stock: item.stock, // Показываем текущий остаток
         image_url: item.image_url || '',
         is_auto_issuance: item.is_auto_issuance,
+        // Очищаем поля для создания и пополнения
         codes_text: '',
         added_stock: '',
         new_item_codes: ''
@@ -211,13 +207,71 @@ function ItemManager() {
     }
   };
   
-  return (
+   return (
     <>
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
-          {/* ... Поля image_url, name, description, price_rub, original_price_rub ... */}
+          <div className={styles.imageUploader}>
+            {form.image_url ? (
+              <img 
+                src={form.image_url} 
+                alt="Предпросмотр" 
+                className={styles.imagePreview} 
+                onError={(e) => { e.target.style.display = 'none'; }} 
+                onLoad={(e) => { e.target.style.display = 'block'; }}
+              />
+            ) : (
+              <div className={styles.imagePlaceholder}>Фото</div>
+            )}
+          </div>
+          <input 
+            type="text" 
+            name="image_url" 
+            value={form.image_url} 
+            onChange={handleFormChange} 
+            placeholder="Прямая ссылка на изображение (URL) 300х620px" 
+            className={styles.input} 
+          />
           
+          <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />
+
+          {/* --- НАЧАЛО ИСПРАВЛЕНИЙ --- */}
+          <div className={styles.descriptionWrapper}>
+            <textarea
+              name="description"
+              placeholder="Описание"
+              // 1. Используем значение из правильного состояния `form`
+              value={form.description}
+              // 2. Используем правильный обработчик
+              onChange={handleFormChange}
+              maxLength="120"
+              className={styles.textarea}
+            />
+            {/* 3. Длину считаем тоже от `form.description` */}
+            <span className={styles.charCounter}>{(form.description || '').length} / 120</span>
+          </div>
+          {/* --- КОНЕЦ ИСПРАВЛЕНИЙ --- */}
+          
+          <input type="number" name="price_rub" value={form.price_rub} onChange={handleFormChange} placeholder="Цена в рублях" className={styles.input} required min="0" />
+          <input type="number" name="original_price_rub" value={form.original_price_rub} onChange={handleFormChange} placeholder="Старая цена в рублях (для скидки)" className={styles.input} min="0" />
+          
+          {(form.price_rub > 0 || form.original_price_rub > 0) && (
+              <div className={styles.pricePreview}>
+                <p>Цена в спасибках: <strong>{calculatedPrice}</strong></p>
+                {calculatedOriginalPrice > 0 && (
+                  <p>Старая цена в спасибках: <strong>{calculatedOriginalPrice}</strong></p>
+                )}
+                <p>
+                  Прогноз накопления
+                  <span style={{color: '#5CA14A', fontWeight: '500'}}>
+                    {calculatedOriginalPrice > 0 ? " (по скидке)" : ""}
+                  </span>: 
+                  <strong> {forecast}</strong>
+                </p>
+              </div>
+          )}
+
           {/* --- 7. ОБНОВЛЯЕМ JSX ДЛЯ ОТОБРАЖЕНИЯ ПОЛЕЙ СКЛАДА --- */}
           <div className={styles.checkboxContainer}>
             <input
@@ -232,8 +286,10 @@ function ItemManager() {
           </div>
 
           {form.is_auto_issuance ? (
+            // --- Логика для товаров с автовыдачей ---
             <>
               {editingItemId ? (
+                // Поле для ПОПОЛНЕНИЯ кодов в режиме редактирования
                 <textarea
                   name="new_item_codes"
                   value={form.new_item_codes}
@@ -243,6 +299,7 @@ function ItemManager() {
                   rows={4}
                 />
               ) : (
+                // Поле для ПЕРВИЧНОГО добавления кодов в режиме создания
                 <textarea
                   name="codes_text"
                   value={form.codes_text}
@@ -258,10 +315,13 @@ function ItemManager() {
               </div>
             </>
           ) : (
+            // --- Логика для ОБЫЧНЫХ товаров ---
             <>
               {editingItemId ? (
+                // Поле для ПОПОЛНЕНИЯ остатка в режиме редактирования
                 <input type="number" name="added_stock" value={form.added_stock} onChange={handleFormChange} placeholder={`Текущий остаток: ${form.stock}. Добавить еще:`} className={styles.input} min="0" />
               ) : (
+                // Поле для ПЕРВИЧНОГО указания остатка в режиме создания
                 <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
               )}
             </>
@@ -274,14 +334,29 @@ function ItemManager() {
         </form>
       </div>
       
-      {/* ... Табы ... */}
+      <div className={styles.tabs}>
+        <button onClick={() => setView('active')} className={view === 'active' ? styles.tabActive : styles.tab}>Активные ({items.length})</button>
+        <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
+      </div>
 
-      <div className={styles.card}>
+       <div className={styles.card}>
         <h2>{view === 'active' ? 'Активные товары' : 'Архив товаров'}</h2>
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
-              {/* ... Отображение товара ... */}
+              {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
+              <div className={styles.listItemContent}>
+                <p><strong>{item.name}</strong></p>
+                {item.is_auto_issuance && <p style={{color: '#007bff', fontSize: '12px', fontWeight: 'bold'}}>Автовыдача</p>}
+                {item.original_price && item.original_price > item.price ? (
+                  <p>
+                    Цена: {item.price} (было <s style={{color: '#999'}}>{item.original_price}</s>) спасибок
+                  </p>
+                ) : (
+                  <p>Цена: {item.price} спасибок ({item.price_rub} ₽)</p>
+                )}
+                <p>Остаток: {item.stock} шт.</p>
+              </div>
               <div className={styles.listItemActions}>
                 {view === 'active' ? (
                   <>
