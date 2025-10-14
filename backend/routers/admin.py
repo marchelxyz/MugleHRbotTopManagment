@@ -365,7 +365,21 @@ async def delete_item_permanently_route(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_admin_user)
 ):
-    success = await crud.admin_delete_item_permanently(db, item_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Товар не найден")
-    return {"ok": True} # Возвращаем пустой ответ 204
+    try:
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Ловим нашу новую ошибку ---
+        success = await crud.admin_delete_item_permanently(db, item_id)
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
+    except ValueError as e:
+        # Если CRUD вернул ValueError, значит товар нельзя удалять
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e) # Показываем понятное сообщение об ошибке
+        )
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+    # Возвращаем успешный ответ без тела, если удаление прошло
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+# Также убедись, что вверху файла есть импорт Response:
+from fastapi import Response
