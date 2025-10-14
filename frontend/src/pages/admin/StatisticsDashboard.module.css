@@ -106,39 +106,24 @@
 }
 
 .statCard {
-    background-color: #f9f9f9;
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid #f0f0f0;
-    /* Убираем общее выравнивание по центру */
-    text-align: left; 
-    /* Применяем единый шрифт ко всей карточке */
-    font-family: 'Inter', sans-serif; 
-    /* Используем flexbox для лучшего контроля над элементами */
-    display: flex;
-    flex-direction: column;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid #f0f0f0;
 }
 
 .statCard h4 {
-    margin: 0 0 10px;
-    font-size: 0.9rem;
-    color: #6E7A85;
-    font-weight: 500; /* Делаем шрифт заголовка стандартным */
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    color: #6E7A85;
 }
 
-/* --- ИЗМЕНЕНИЕ №2: Центрируем только цифру --- */
 .statCard p {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
-    /* Теперь только цифра будет по центру */
-    text-align: center; 
-    /* Заставляем этот блок занять все оставшееся место в карточке */
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
 }
 
 .controlsContainer {
