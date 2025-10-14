@@ -203,7 +203,7 @@
 .tabs {
   display: flex;
   gap: 10px;
-  margin-bottom: -2px; /* Чтобы вкладки "прилипли" к карточке */
+  margin-bottom: -7px; /* Чтобы вкладки "прилипли" к карточке */
 }
 .tab, .tabActive {
   padding: 10px 15px;
