@@ -326,3 +326,10 @@ export const completeOnboarding = () => {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
+
+export const deleteMarketItemPermanently = (itemId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/admin/market-items/${itemId}/permanent`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};

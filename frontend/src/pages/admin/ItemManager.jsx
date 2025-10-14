@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage';
-import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem } from '../../api';
+// --- 1. ИМПОРТИРУЕМ НОВУЮ ФУНКЦИЮ ---
+import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, deleteMarketItemPermanently } from '../../api';
 import styles from '../AdminPage.module.css';
-import { FaArchive } from 'react-icons/fa';
+// --- 2. ИМПОРТИРУЕМ НОВЫЕ ИКОНКИ ---
+import { FaArchive, FaTrash } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
+// --- 3. РАСШИРЯЕМ НАЧАЛЬНОЕ СОСТОЯНИЕ ФОРМЫ ---
 const initialItemState = {
   name: '',
   description: '',
@@ -16,7 +19,9 @@ const initialItemState = {
   stock: 1,
   image_url: '',
   is_auto_issuance: false,
-  codes_text: ''
+  codes_text: '',
+  added_stock: '',      // Для пополнения обычных товаров
+  new_item_codes: ''    // Для пополнения кодов
 };
 
 function ItemManager() {
@@ -76,31 +81,49 @@ function ItemManager() {
     }));
   };
 
+  // --- 4. ОБНОВЛЯЕМ ЛОГИКУ ОТПРАВКИ ФОРМЫ ---
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
-    
-    // Создаем объект с данными для отправки, чтобы не мутировать состояние
-    const itemDataToSend = {
-      name: form.name,
-      description: form.description,
-      price: calculatedPrice, // Отправляем посчитанную цену в спасибках
-      price_rub: parseInt(form.price_rub, 10),
-      stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
-      image_url: form.image_url,
-      original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
-      is_auto_issuance: form.is_auto_issuance,
-      // В зависимости от режима, отправляем либо new_item_codes, либо item_codes
-      ...(editingItemId ? { new_item_codes: codes } : { item_codes: codes })
-    };
+    const isEditing = !!editingItemId;
+    let itemDataToSend;
 
     try {
-      if (editingItemId) {
+      if (isEditing) {
+        // Логика для РЕДАКТИРОВАНИЯ
+        const newCodes = form.is_auto_issuance ? form.new_item_codes.split('\n').filter(Boolean) : [];
+        itemDataToSend = {
+          name: form.name,
+          description: form.description,
+          price: calculatedPrice,
+          price_rub: parseInt(form.price_rub, 10),
+          image_url: form.image_url,
+          original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+          added_stock: form.is_auto_issuance ? 0 : parseInt(form.added_stock, 10) || 0,
+          new_item_codes: newCodes
+        };
         await updateMarketItem(editingItemId, itemDataToSend);
         showAlert('Товар успешно обновлен!', 'success');
       } else {
+        // Логика для СОЗДАНИЯ
+        const codes = form.is_auto_issuance ? form.codes_text.split('\n').filter(Boolean) : [];
+        if (form.is_auto_issuance && codes.length === 0) {
+          showAlert('Для товаров с автовыдачей добавьте хотя бы один код.', 'error');
+          setLoading(false);
+          return;
+        }
+        itemDataToSend = {
+          name: form.name,
+          description: form.description,
+          price: calculatedPrice,
+          price_rub: parseInt(form.price_rub, 10),
+          stock: form.is_auto_issuance ? codes.length : parseInt(form.stock, 10),
+          image_url: form.image_url,
+          original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+          is_auto_issuance: form.is_auto_issuance,
+          item_codes: codes
+        };
         await createMarketItem(itemDataToSend);
         showAlert('Товар успешно создан!', 'success');
       }
@@ -114,17 +137,21 @@ function ItemManager() {
     }
   };
 
+  // --- 5. ОБНОВЛЯЕМ ЛОГИКУ РЕДАКТИРОВАНИЯ ---
   const handleEdit = (item) => {
     setEditingItemId(item.id);
     setForm({
         name: item.name,
         description: item.description || '',
         price_rub: item.price_rub,
-        original_price_rub: item.original_price ? item.original_price * 50 : '',
-        stock: item.stock,
+        original_price_rub: item.original_price ? item.original_price * 30 : '', // Исправлено на 30, как в калькуляторе
+        stock: item.stock, // Показываем текущий остаток
         image_url: item.image_url || '',
         is_auto_issuance: item.is_auto_issuance,
-        codes_text: '' // Коды не загружаем для редактирования
+        // Очищаем поля для создания и пополнения
+        codes_text: '',
+        added_stock: '',
+        new_item_codes: ''
     });
     window.scrollTo(0, 0);
   };
@@ -161,8 +188,26 @@ function ItemManager() {
         }
     }
   };
+
+  // --- 6. ДОБАВЛЯЕМ НОВУЮ ФУНКЦИЮ ПОЛНОГО УДАЛЕНИЯ ---
+  const handleDeletePermanently = async (itemId, itemName) => {
+    const isConfirmed = await confirm('ПОЛНОЕ УДАЛЕНИЕ', `Вы уверены, что хотите НАВСЕГДА удалить товар "${itemName}"? Это действие необратимо.`);
+    if (isConfirmed) {
+      setLoading(true);
+      try {
+        await deleteMarketItemPermanently(itemId);
+        showAlert('Товар удален навсегда.', 'success');
+        fetchItems();
+        clearCache('market');
+      } catch (error) {
+        showAlert('Ошибка при удалении.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
   
-  return (
+   return (
     <>
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
@@ -226,7 +271,8 @@ function ItemManager() {
                 </p>
               </div>
           )}
-          
+
+          {/* --- 7. ОБНОВЛЯЕМ JSX ДЛЯ ОТОБРАЖЕНИЯ ПОЛЕЙ СКЛАДА --- */}
           <div className={styles.checkboxContainer}>
             <input
               type="checkbox"
@@ -240,23 +286,45 @@ function ItemManager() {
           </div>
 
           {form.is_auto_issuance ? (
+            // --- Логика для товаров с автовыдачей ---
             <>
-              <textarea
-                name="codes_text"
-                value={form.codes_text}
-                onChange={handleFormChange}
-                placeholder="Вставьте сюда коды или ссылки. Каждый код с новой строки."
-                className={styles.textarea}
-                rows={5}
-                disabled={!!editingItemId}
-              />
+              {editingItemId ? (
+                // Поле для ПОПОЛНЕНИЯ кодов в режиме редактирования
+                <textarea
+                  name="new_item_codes"
+                  value={form.new_item_codes}
+                  onChange={handleFormChange}
+                  placeholder="Добавить новые коды/ссылки (каждый с новой строки)"
+                  className={styles.textarea}
+                  rows={4}
+                />
+              ) : (
+                // Поле для ПЕРВИЧНОГО добавления кодов в режиме создания
+                <textarea
+                  name="codes_text"
+                  value={form.codes_text}
+                  onChange={handleFormChange}
+                  placeholder="Вставьте сюда коды или ссылки. Каждый код с новой строки."
+                  className={styles.textarea}
+                  rows={5}
+                />
+              )}
               <div className={styles.pricePreview}>
-                <p>Количество на складе (авто): <strong>{form.codes_text.split('\n').filter(Boolean).length}</strong></p>
+                <p>Текущий остаток: <strong>{editingItemId ? form.stock : '...'}</strong></p>
+                <p>Будет добавлено: <strong>{(editingItemId ? form.new_item_codes : form.codes_text).split('\n').filter(Boolean).length}</strong></p>
               </div>
-              {editingItemId && <p className={styles.warningText}>Изменение кодов/ссылок после создания товара недоступно.</p>}
             </>
           ) : (
-            <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
+            // --- Логика для ОБЫЧНЫХ товаров ---
+            <>
+              {editingItemId ? (
+                // Поле для ПОПОЛНЕНИЯ остатка в режиме редактирования
+                <input type="number" name="added_stock" value={form.added_stock} onChange={handleFormChange} placeholder={`Текущий остаток: ${form.stock}. Добавить еще:`} className={styles.input} min="0" />
+              ) : (
+                // Поле для ПЕРВИЧНОГО указания остатка в режиме создания
+                <input type="number" name="stock" value={form.stock} onChange={handleFormChange} placeholder="Количество на складе" className={styles.input} required min="0" />
+              )}
+            </>
           )}
 
           <button type="submit" disabled={loading} className={styles.buttonGreen}>
@@ -271,7 +339,7 @@ function ItemManager() {
         <button onClick={() => setView('archived')} className={view === 'archived' ? styles.tabActive : styles.tab}>Архив ({archivedItems.length})</button>
       </div>
 
-      <div className={styles.card}>
+       <div className={styles.card}>
         <h2>{view === 'active' ? 'Активные товары' : 'Архив товаров'}</h2>
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
@@ -296,7 +364,11 @@ function ItemManager() {
                     <button onClick={() => handleArchive(item.id)} className={styles.buttonSmallRed}>🗑️</button>
                   </>
                 ) : (
-                  <button onClick={() => handleRestore(item.id)} className={styles.restoreButton}><FaArchive />Восстановить</button>
+                  // --- 8. ОБНОВЛЯЕМ КНОПКИ В АРХИВЕ ---
+                  <>
+                    <button onClick={() => handleRestore(item.id)} className={styles.restoreButton}><FaArchive />Восстановить</button>
+                    <button onClick={() => handleDeletePermanently(item.id, item.name)} className={styles.buttonSmallRed}><FaTrash /> Удалить</button>
+                  </>
                 )}
               </div>
             </div>

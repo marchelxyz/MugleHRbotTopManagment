@@ -1,6 +1,6 @@
 # backend/routers/admin.py
 
-from fastapi import APIRouter, Depends, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError # <-- ДОБАВЬ ЭТУ СТРОКУ
@@ -357,3 +357,29 @@ async def export_all_users(db: AsyncSession = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+# --- НАШ НОВЫЙ ЭНДПОИНТ ДЛЯ УДАЛЕНИЯ ---
+@router.delete("/market-items/{item_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_item_permanently_route(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    try:
+        # --- НАЧАЛО ИЗМЕНЕНИЙ: Ловим нашу новую ошибку ---
+        success = await crud.admin_delete_item_permanently(db, item_id)
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
+    except ValueError as e:
+        # Если CRUD вернул ValueError, значит товар нельзя удалять
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e) # Показываем понятное сообщение об ошибке
+        )
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+    # Возвращаем успешный ответ без тела, если удаление прошло
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+# Также убедись, что вверху файла есть импорт Response:
+from fastapi import Response

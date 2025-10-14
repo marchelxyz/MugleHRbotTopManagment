@@ -132,6 +132,9 @@ class MarketItemUpdate(BaseModel):
     image_url: Optional[str] = None
     original_price: Optional[int] = None # <-- И СЮДА
     is_auto_issuance: Optional[bool] = None
+    # --- НАШИ НОВЫЕ ПОЛЯ ---
+    added_stock: Optional[int] = None # Для пополнения обычных товаров
+    new_item_codes: Optional[List[str]] = [] # Для добавления новых кодов/ссылок
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None

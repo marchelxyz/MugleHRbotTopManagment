@@ -1,5 +1,6 @@
 # backend/models.py
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date, func 
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date, func
+from sqlalchemy.orm import declarative_base, relationship # <-- ДОБАВЬ ИЗМЕНЕНИЕ
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 # Стало
