@@ -13,6 +13,7 @@ import { addPointsToAll, addTicketsToAll } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 
+/*
 // Компонент для массовых начислений (без изменений)
 function MassActions() {
   const { showAlert } = useModalAlert();
@@ -79,6 +80,8 @@ function MassActions() {
   );
 }
 
+*/
+
 // --- ИСПРАВЛЕННЫЙ ГЛАВНЫЙ КОМПОНЕНТ ---
 function AdminPage() {
   // Используем одну переменную для навигации. null - это главное меню.
@@ -93,7 +96,7 @@ function AdminPage() {
           <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
           <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
-          <button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>
+          {/*<button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>*/}
         </div>
       );
     }
@@ -103,7 +106,7 @@ function AdminPage() {
       case 'stats': return <StatisticsDashboard />;
       case 'banners': return <BannerManager />;
       case 'items': return <ItemManager />;
-      case 'mass-actions': return <MassActions />;
+        {/*case 'mass-actions': return <MassActions />;*/}
       case 'users': return <UserManager />;
       default: return null; // На случай непредвиденного значения
     }
