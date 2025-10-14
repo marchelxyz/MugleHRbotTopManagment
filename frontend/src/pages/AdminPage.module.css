@@ -289,3 +289,41 @@
   font-size: 0.8rem;
   color: #8e8e93;
 }
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ АДАПТИВНОСТИ КАРТОЧКИ ТОВАРА --- */
+
+/* 1. Стили для самой кнопки "Восстановить" */
+.restoreButton {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #28a745; /* Зеленый цвет для действия восстановления */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap; /* Чтобы текст не переносился */
+}
+
+/* 2. Медиа-запрос для экранов шириной 600px и меньше (мобильные) */
+@media (max-width: 600px) {
+  .listItem {
+    /* Карточка теперь будет располагать элементы вертикально */
+    flex-direction: column;
+    align-items: flex-start; /* Выравниваем все по левому краю */
+  }
+
+  .listItemActions {
+    /* Блок с кнопками теперь занимает всю ширину */
+    width: 100%;
+    margin-top: 15px; /* Добавляем отступ сверху */
+  }
+  
+  /* Растягиваем кнопку восстановления на всю ширину блока */
+  .restoreButton {
+    width: 100%;
+  }
+}
