@@ -296,7 +296,7 @@ function ItemManager() {
                     <button onClick={() => handleArchive(item.id)} className={styles.buttonSmallRed}>🗑️</button>
                   </>
                 ) : (
-                  <button onClick={() => handleRestore(item.id)} className={styles.buttonSmall}><FaArchive /> Восстановить</button>
+                  <button onClick={() => handleRestore(item.id)} className={styles.restoreButton}><FaArchive />Восстановить</button>
                 )}
               </div>
             </div>
