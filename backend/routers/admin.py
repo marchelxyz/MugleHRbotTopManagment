@@ -357,3 +357,15 @@ async def export_all_users(db: AsyncSession = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+# --- НАШ НОВЫЙ ЭНДПОИНТ ДЛЯ УДАЛЕНИЯ ---
+@router.delete("/market-items/{item_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_item_permanently_route(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    success = await crud.admin_delete_item_permanently(db, item_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return {"ok": True} # Возвращаем пустой ответ 204
