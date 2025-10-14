@@ -315,9 +315,21 @@ async def get_market_items(db: AsyncSession):
     return result.scalars().all()
 
 async def get_active_items(db: AsyncSession):
-    """Получает список активных товаров для магазина."""
-    result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == False))
-    return result.scalars().all()
+    result = await db.execute(
+        select(models.MarketItem)
+        .where(models.MarketItem.is_archived == False)
+        .options(selectinload(models.MarketItem.item_codes)) # Загружаем коды вместе с товарами
+    )
+    items = result.scalars().all()
+    
+    # Пересчитываем реальный остаток для товаров с автовыдачей
+    for item in items:
+        if item.is_auto_issuance:
+            # Считаем только НЕвыданные коды
+            available_codes = sum(1 for code in item.item_codes if not code.is_issued)
+            item.stock = available_codes
+            
+    return items
 
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     db_item = models.MarketItem(**item.model_dump())
@@ -516,13 +528,13 @@ def calculate_spasibki_price(price_rub: int) -> int:
     """Рассчитывает стоимость в 'спасибках' по курсу 50 рублей за 1 спасибку."""
     if price_rub <= 0:
         return 0
-    return round(price_rub / 50)
+    return round(price_rub / 30)
 
 def calculate_accumulation_forecast(price_spasibki: int) -> str:
     """Рассчитывает примерный прогноз накопления."""
     # Это очень упрощенная модель, основанная на ваших примерах.
     # Предполагаем, что средний пользователь получает около 1000 спасибок в месяц.
-    months_needed = price_spasibki / 15
+    months_needed = price_spasibki / 50
     
     if months_needed <= 1:
         return "около 1 месяца"
@@ -534,7 +546,7 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
 
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
-    calculated_price = item.price_rub // 50
+    calculated_price = item.price_rub // 30
     
     codes = []
     if item.is_auto_issuance and item.codes_text:
@@ -567,32 +579,34 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
     await db.refresh(db_item)
     return db_item
 
-async def admin_update_market_item(db: AsyncSession, item_id: int, item_update: schemas.MarketItemUpdate):
+async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
     db_item = await db.get(models.MarketItem, item_id)
-    if db_item:
-        if item_update.name is not None:
-            db_item.name = item_update.name
-        if item_update.description is not None:
-            db_item.description = item_update.description
-        if item_update.price_rub is not None:
-            db_item.price_rub = item_update.price_rub
-            db_item.price = item_update.price_rub // 50
-        if item_update.stock is not None:
-            db_item.stock = item_update.stock
+    if not db_item:
+        return None
 
-        # <-- НАЧАЛО ДОБАВЛЕННОГО БЛОКА -->
-        if item_update.image_url is not None:
-            db_item.image_url = item_update.image_url
-        # <-- КОНЕЦ ДОБАВЛЕННОГО БЛОКА -->
+    # Обновляем основные данные товара
+    update_data = item_data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        # Исключаем наши новые поля, чтобы не было ошибок
+        if key not in ["added_stock", "new_item_codes"]:
+            setattr(db_item, key, value)
 
-        # --- ДОБАВЬ ЭТОТ БЛОК ---
-        if item_update.original_price is not None:
-            # Позволяем установить старую цену или сбросить ее (если передали 0)
-            db_item.original_price = item_update.original_price if item_update.original_price > 0 else None
-        # --- КОНЕЦ БЛОКА ---
+    # Логика для обычных товаров: добавляем к текущему остатку
+    if not db_item.is_auto_issuance and item_data.added_stock is not None and item_data.added_stock > 0:
+        db_item.stock += item_data.added_stock
 
-        await db.commit()
-        await db.refresh(db_item)
+    # Логика для автовыдачи: добавляем новые уникальные коды
+    if db_item.is_auto_issuance and item_data.new_item_codes:
+        for code_value in item_data.new_item_codes:
+            new_code = models.ItemCode(code_value=code_value.strip(), market_item_id=db_item.id)
+            db.add(new_code)
+        # Обновляем общий сток (на случай если он был неверный)
+        current_codes_count = await db.scalar(select(func.count(models.ItemCode.id)).where(models.ItemCode.market_item_id == db_item.id))
+        db_item.stock = current_codes_count
+
+
+    await db.commit()
+    await db.refresh(db_item)
     return db_item
     
 async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = False):
@@ -609,6 +623,20 @@ async def get_archived_items(db: AsyncSession):
     """Получает список архивированных товаров."""
     result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
     return result.scalars().all()
+
+# --- Функция полного удаления товара ---
+async def admin_delete_item_permanently(db: AsyncSession, item_id: int):
+    # Находим товар, который хотим удалить
+    db_item = await db.get(models.MarketItem, item_id)
+    if not db_item:
+        # Если товара нет, возвращаем False
+        return False
+    
+    # Удаляем товар
+    await db.delete(db_item)
+    await db.commit()
+    # Возвращаем True в случае успеха
+    return True
 
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
 
