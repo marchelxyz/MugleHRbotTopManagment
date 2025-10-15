@@ -113,7 +113,7 @@ function AdminPage() {
   };
   
   return (
-    <PageLayout title="Панель администратора">
+    <PageLayout title="Админ-панель">
       {/* Кнопка "Назад" появляется, только если мы не в главном меню */}
       {activeSection && (
         <button onClick={() => setActiveSection(null)} className={styles.backButton}>
