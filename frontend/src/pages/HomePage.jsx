@@ -61,14 +61,14 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     }, [feed]);
 
     // --- НАЧАЛО ИЗМЕНЕНИЙ: Логика для расчета сдвига слайдера ---
-    const getSliderOffset = () => {
+    const getSliderTransform = () => {
+      // Для мобильных устройств оставляем старую логику
       if (!isDesktop) {
-        return { transform: `translateX(-${currentSlide * 100}%)` };
+        return `translateX(-${currentSlide * 100}%)`;
       }
-      
-      // Для ПК рассчитываем сдвиг через margin-left
+      // Для ПК рассчитываем сдвиг, чтобы центрировать активный слайд
       const offset = 15 - (currentSlide * 70);
-      return { marginLeft: `${offset}%` };
+      return `translateX(${offset}%)`;
     };
     // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
