@@ -1126,14 +1126,28 @@ async def get_leaderboards_status(db: AsyncSession):
 async def get_general_statistics(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
-
-    query_total_users = select(func.count(models.User.id))
+        
+    # Запрос на общее число пользователей уже был правильным
+    query_total_users = select(func.count(models.User.id)).where(models.User.status != 'deleted')
     total_users = (await db.execute(query_total_users)).scalar_one()
 
-    active_senders = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
-    active_receivers = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
-    active_senders_ids = (await db.execute(active_senders)).scalars().all()
-    active_receivers_ids = (await db.execute(active_receivers)).scalars().all()
+    # --- ИЗМЕНЕНИЕ: Считаем активных пользователей, исключая удаленных ---
+    active_senders_q = select(models.Transaction.sender_id).join(
+        models.User, models.User.id == models.Transaction.sender_id
+    ).where(
+        models.Transaction.timestamp.between(start_date, end_date),
+        models.User.status != 'deleted'
+    ).distinct()
+
+    active_receivers_q = select(models.Transaction.receiver_id).join(
+        models.User, models.User.id == models.Transaction.receiver_id
+    ).where(
+        models.Transaction.timestamp.between(start_date, end_date),
+        models.User.status != 'deleted'
+    ).distinct()
+
+    active_senders_ids = (await db.execute(active_senders_q)).scalars().all()
+    active_receivers_ids = (await db.execute(active_receivers_q)).scalars().all()
     active_users_count = len(set(active_senders_ids).union(set(active_receivers_ids)))
 
     query_transactions = select(func.count(models.Transaction.id)).filter(models.Transaction.timestamp.between(start_date, end_date))
@@ -1164,16 +1178,20 @@ async def get_general_statistics(db: AsyncSession, start_date: Optional[date] = 
 async def get_hourly_activity_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
-
-    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Правильная конвертация времени из UTC в MSK ---
+    
     moscow_time = models.Transaction.timestamp.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
     
+    # --- ИЗМЕНЕНИЕ: Добавляем проверку, что отправитель не удален ---
     query = (
         select(
             extract('hour', moscow_time).label('hour'),
             func.count(models.Transaction.id).label('transaction_count')
         )
-        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .join(models.User, models.User.id == models.Transaction.sender_id)
+        .filter(
+            models.Transaction.timestamp.between(start_date, end_date),
+            models.User.status != 'deleted'
+        )
         .group_by(extract('hour', moscow_time))
     )
     result = await db.execute(query)
@@ -1187,15 +1205,18 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
     
-    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Правильная конвертация времени из UTC в MSK ---
     moscow_time = models.User.last_login_date.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
 
+    # --- ИЗМЕНЕНИЕ: Добавляем фильтр по статусу ---
     query = (
         select(
             extract('hour', moscow_time).label('hour'),
             func.count(models.User.id).label('login_count')
         )
-        .filter(models.User.last_login_date.between(start_date, end_date))
+        .filter(
+            models.User.last_login_date.between(start_date, end_date),
+            models.User.status != 'deleted'
+        )
         .group_by(extract('hour', moscow_time))
     )
     result = await db.execute(query)
@@ -1207,23 +1228,29 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     
 async def get_user_engagement_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 5):
     if end_date is None: end_date = datetime.utcnow().date()
-    if start_date is None: start_date = end_date - timedelta(days=365*5) # Берем большой диапазон по умолчанию
+    if start_date is None: start_date = end_date - timedelta(days=365*5)
 
-    # Добавляем фильтр по дате в запрос
+    # --- ИЗМЕНЕНИЕ: Добавляем фильтр по статусу ---
     query_senders = (
         select(models.User, func.count(models.Transaction.id).label('sent_count'))
         .join(models.Transaction, models.User.id == models.Transaction.sender_id)
-        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .filter(
+            models.Transaction.timestamp.between(start_date, end_date),
+            models.User.status != 'deleted'
+        )
         .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
     top_senders = (await db.execute(query_senders)).all()
 
-    # Добавляем фильтр по дате в запрос
+    # --- ИЗМЕНЕНИЕ: Добавляем фильтр по статусу ---
     query_receivers = (
         select(models.User, func.count(models.Transaction.id).label('received_count'))
         .join(models.Transaction, models.User.id == models.Transaction.receiver_id)
-        .filter(models.Transaction.timestamp.between(start_date, end_date))
+        .filter(
+            models.Transaction.timestamp.between(start_date, end_date),
+            models.User.status != 'deleted'
+        )
         .group_by(models.User.id)
         .order_by(func.count(models.Transaction.id).desc()).limit(limit)
     )
@@ -1235,7 +1262,6 @@ async def get_popular_items_stats(db: AsyncSession, start_date: Optional[date] =
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=365*5)
 
-    # Добавляем фильтр по дате в запрос
     query = (
         select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
         .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
@@ -1248,7 +1274,6 @@ async def get_inactive_users(db: AsyncSession, start_date: Optional[date] = None
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
-    # Находим ID тех, кто был активен в УКАЗАННЫЙ ПЕРИОД
     active_senders_q = select(models.Transaction.sender_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
     active_recipients_q = select(models.Transaction.receiver_id).filter(models.Transaction.timestamp.between(start_date, end_date)).distinct()
     
@@ -1257,17 +1282,36 @@ async def get_inactive_users(db: AsyncSession, start_date: Optional[date] = None
     
     active_user_ids = set(active_senders).union(set(active_recipients))
     
-    # Возвращаем всех пользователей, КРОМЕ тех, кто был активен в этот период
-    return (await db.execute(select(models.User).filter(models.User.id.notin_(active_user_ids)))).scalars().all()
+    # --- ИЗМЕНЕНИЕ: Добавляем фильтр, чтобы не показывать удаленных в списке неактивных ---
+    return (await db.execute(select(models.User).filter(
+        models.User.id.notin_(active_user_ids),
+        models.User.status != 'deleted'
+    ))).scalars().all()
     
 async def get_total_balance(db: AsyncSession):
-    total = (await db.execute(select(func.sum(models.User.balance)))).scalar_one_or_none()
+    # --- ИЗМЕНЕНИЕ: Добавляем фильтр по статусу ---
+    total = (await db.execute(
+        select(func.sum(models.User.balance)).where(models.User.status != 'deleted')
+    )).scalar_one_or_none()
     return total or 0
 
 async def get_active_user_ratio(db: AsyncSession):
-    total_users = (await db.execute(select(func.count(models.User.id)))).scalar_one()
-    active_senders = (await db.execute(select(models.Transaction.sender_id).distinct())).scalars().all()
-    active_recipients = (await db.execute(select(models.Transaction.receiver_id).distinct())).scalars().all()
+    # --- ИЗМЕНЕНИЕ: Добавляем фильтр по статусу в оба запроса ---
+    total_users = (await db.execute(
+        select(func.count(models.User.id)).where(models.User.status != 'deleted')
+    )).scalar_one()
+
+    active_senders_q = select(models.Transaction.sender_id).join(
+        models.User, models.User.id == models.Transaction.sender_id
+    ).where(models.User.status != 'deleted').distinct()
+    
+    active_recipients_q = select(models.Transaction.receiver_id).join(
+        models.User, models.User.id == models.Transaction.receiver_id
+    ).where(models.User.status != 'deleted').distinct()
+
+    active_senders = (await db.execute(active_senders_q)).scalars().all()
+    active_recipients = (await db.execute(active_recipients_q)).scalars().all()
+    
     active_user_ids_count = len(set(active_senders).union(set(active_recipients)))
     inactive_users_count = total_users - active_user_ids_count
     return {"active_users": active_user_ids_count, "inactive_users": inactive_users_count}
@@ -1288,8 +1332,6 @@ async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[model
     session = result.scalar_one_or_none()
     
     if session:
-        # SQLAlchemy onupdate=func.now() должен сработать автоматически при коммите,
-        # но для явности можно обновить вручную.
         session.last_seen = datetime.utcnow()
         await db.commit()
         await db.refresh(session)
@@ -1299,24 +1341,23 @@ async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[model
 # --- НОВАЯ ФУНКЦИЯ ДЛЯ РАСЧЁТА СРЕДНЕЙ ДЛИТЕЛЬНОСТИ СЕССИИ ---
 
 async def get_average_session_duration(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
-    """
-    Считает среднюю длительность сессии в минутах за указанный период.
-    """
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=30)
 
-    # Вычисляем разницу между last_seen и session_start для каждой сессии
     session_duration = func.extract('epoch', models.UserSession.last_seen - models.UserSession.session_start)
     
-    # Считаем среднее значение этой разницы в секундах
+    # --- ИЗМЕНЕНИЕ: Добавляем join и фильтр по статусу ---
     query = (
         select(func.avg(session_duration))
-        .filter(models.UserSession.session_start.between(start_date, end_date))
+        .join(models.User, models.User.id == models.UserSession.user_id)
+        .filter(
+            models.UserSession.session_start.between(start_date, end_date),
+            models.User.status != 'deleted'
+        )
     )
     
     average_seconds = (await db.execute(query)).scalar_one_or_none() or 0
     
-    # Конвертируем в минуты и округляем до сотых
     average_minutes = round(average_seconds / 60, 2)
     
     return {"average_duration_minutes": average_minutes}
