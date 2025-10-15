@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
-// --- 1. Убедимся, что импортируем обе функции ---
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
@@ -49,7 +48,6 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
         }
     };
 
-    // --- 2. НОВАЯ ЛОГИКА: Группируем ленту по дням ---
     const groupedFeed = useMemo(() => {
         if (!feed || feed.length === 0) return {};
         return feed.reduce((acc, item) => {
@@ -61,6 +59,20 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             return acc;
         }, {});
     }, [feed]);
+
+    // --- НАЧАЛО ИЗМЕНЕНИЙ: Логика для расчета сдвига слайдера ---
+    const getSliderTransform = () => {
+      // Для мобильных устройств оставляем старую логику
+      if (!isDesktop) {
+        return `translateX(-${currentSlide * 100}%)`;
+      }
+      // Для ПК рассчитываем сдвиг, чтобы центрировать активный слайд
+      // Ширина слайда 70%, значит сдвиг на 70% для каждого шага.
+      // Дополнительный сдвиг в 15% нужен, чтобы отцентрировать первый слайд.
+      const offset = 15 - (currentSlide * 70);
+      return `translateX(${offset}%)`;
+    };
+    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     return (
         <div className={styles.pageContainer}>
@@ -81,10 +93,16 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
           <div className={styles.sliderContainer}>
             <div 
               className={styles.sliderTrack}
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              // --- ИЗМЕНЕНИЕ: Используем новую функцию для расчета сдвига ---
+              style={{ transform: getSliderTransform() }}
             >
-              {mainBanners.map(banner => (
-                <div key={banner.id} className={styles.slide} onClick={() => handleBannerClick(banner.link_url)}>
+              {mainBanners.map((banner, index) => (
+                // --- ИЗМЕНЕНИЕ: Добавляем класс .active для центрального слайда ---
+                <div 
+                  key={banner.id} 
+                  className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
+                  onClick={() => handleBannerClick(banner.link_url)}
+                >
                   <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
                 </div>
               ))}
