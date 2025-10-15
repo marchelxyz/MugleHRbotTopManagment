@@ -91,7 +91,7 @@
 
 .sliderTrack {
   display: flex;
-  transition: transform 0.5s ease-in-out; /* Плавная анимация */
+  transition: margin-left 0.5s ease-in-out; /* Плавная анимация */
 }
 
 .slide {
