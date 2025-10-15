@@ -97,6 +97,22 @@ async def get_archived_items_route(db: AsyncSession = Depends(get_db)):
 async def get_all_active_items_route(db: AsyncSession = Depends(get_db)):
     return await crud.get_active_items(db)
 
+# --- НАЧАЛО БЛОКА: Добавляем роутер для восстановления товара ---
+
+@router.post("/market-items/{item_id}/restore", response_model=schemas.MarketItemResponse)
+async def restore_item_route(
+    item_id: int, 
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user) # Защищаем эндпоинт
+):
+    """Восстанавливает товар из архива."""
+    restored_item = await crud.admin_restore_market_item(db, item_id)
+    if not restored_item:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+    return restored_item
+
+# --- КОНЕЦ БЛОКА ---
+
 @router.post("/reset-balances")
 async def reset_balances_route(db: AsyncSession = Depends(get_db)):
     await crud.reset_balances(db)

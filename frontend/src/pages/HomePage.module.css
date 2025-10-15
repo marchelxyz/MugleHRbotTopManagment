@@ -4,6 +4,7 @@
   background-color: #F4F4F8;
   position: relative;
   padding-bottom: 80px;
+  overflow-x: hidden;
 }
 
 .header {
@@ -90,7 +91,7 @@
 
 .sliderTrack {
   display: flex;
-  transition: transform 0.5s ease-in-out; /* Плавная анимация */
+  transition: margin-left 0.5s ease-in-out; /* Плавная анимация */
 }
 
 .slide {
@@ -101,7 +102,6 @@
 .bannerImage {
   width: 100%;
   border-radius: 20px;
-  box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
   display: block; /* Убирает лишний отступ у картинки */
 }
 
@@ -345,4 +345,42 @@
     right: 12px;        /* справа */
     font-size: 0.8rem;
     color: #6E7A85;
+}
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ АДАПТИВНОГО СЛАЙДЕРА НА ПК --- */
+@media (min-width: 768px) {
+  
+  .sliderContainer {
+    /* Контейнер должен обрезать всё лишнее */
+    overflow: hidden; 
+    margin: 0 auto 50px auto; 
+    max-width: 1000px;
+  }
+
+  .sliderTrack {
+    /* Выравниваем слайды по центру, если они не занимают всю высоту */
+    align-items: center;
+  }
+
+  .slide {
+    /* Каждый слайд занимает 80% ширины контейнера */
+    flex: 0 0 80%;
+    /* Добавляем отступы по 2% с каждой стороны */
+    margin: 0 2%;
+    box-sizing: border-box;
+
+    /* Эффект глубины для неактивных слайдов */
+    transform: scale(0.9);
+    opacity: 0.7;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+  }
+
+  .slide.active { 
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  .sliderDots {
+    bottom: 3px; 
+  }
 }

@@ -90,8 +90,8 @@ const UserEngagementPage = () => {
             </div>
             <div className={styles.container}>
                 {/* Теперь мы просто используем компонент LeaderList, а не объявляем его заново */}
-                <LeaderList title="🏆 Топ-5 Донаторов" users={stats?.top_senders} />
-                <LeaderList title="🌟 Топ-5 Инфлюенсеров" users={stats?.top_receivers} />
+                <LeaderList title="Топ-5 Отправителей" users={stats?.top_senders} />
+                <LeaderList title="Топ-5 Получателей" users={stats?.top_receivers} />
             </div>
         </div>
     );

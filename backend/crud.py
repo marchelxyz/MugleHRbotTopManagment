@@ -1,4 +1,4 @@
-# backend/crud.py
+# backend/crud.py 
 import io
 import zipfile
 import json
@@ -342,9 +342,27 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
         "price": db_item.price, "stock": db_item.stock,
     }
     
-# backend/crud.py
+# --- Функция восстановления товара ---
 
-# backend/crud.py
+async def admin_restore_market_item(db: AsyncSession, item_id: int):
+    """Восстанавливает товар из архива."""
+    # Находим товар по его ID
+    db_item = await db.get(models.MarketItem, item_id)
+    if not db_item:
+        # Если товар не найден, выходим
+        return None
+    
+    # Меняем флаг "is_archived" обратно на False
+    db_item.is_archived = False
+    
+    # Сохраняем изменения в базе данных
+    await db.commit()
+    await db.refresh(db_item)
+    
+    # Возвращаем восстановленный товар
+    return db_item
+
+# --- КОНЕЦ БЛОКА ---
 
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     issued_code_value = None
@@ -1347,3 +1365,25 @@ async def mark_onboarding_as_seen(db: AsyncSession, user_id: int):
         await db.commit()
         await db.refresh(user)
     return user
+
+# --- НАЧАЛО БЛОКА: Возвращаем функции для работы с сессиями ---
+
+async def start_user_session(db: AsyncSession, user_id: int) -> models.UserSession:
+    """Создает новую запись о сессии для пользователя."""
+    new_session = models.UserSession(user_id=user_id)
+    db.add(new_session)
+    await db.commit()
+    await db.refresh(new_session)
+    return new_session
+
+async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[models.UserSession]:
+    """Обновляет время 'last_seen' для существующей сессии."""
+    result = await db.execute(select(models.UserSession).filter(models.UserSession.id == session_id))
+    session = result.scalar_one_or_none()
+    
+    if session:
+        session.last_seen = datetime.utcnow()
+        await db.commit()
+        await db.refresh(session)
+    
+    return session
