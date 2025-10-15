@@ -315,17 +315,22 @@ async def get_market_items(db: AsyncSession):
     return result.scalars().all()
 
 async def get_active_items(db: AsyncSession):
+    """Возвращает список всех активных товаров с корректно посчитанным остатком."""
+    
+    # --- НАЧАЛО ИЗМЕНЕНИЙ: Оптимизированный запрос ---
+    
+    # 1. Запрашиваем все товары И сразу же подгружаем связанные с ними коды
     result = await db.execute(
         select(models.MarketItem)
         .where(models.MarketItem.is_archived == False)
-        # --- ИЗМЕНЕНИЕ №1: Используем 'codes' ---
         .options(selectinload(models.MarketItem.codes)) 
     )
-    items = result.scalars().all()
+    items = result.scalars().unique().all()
     
+    # 2. Теперь считаем остаток в Python, а не в базе данных
     for item in items:
         if item.is_auto_issuance:
-            # --- ИЗМЕНЕНИЕ №2: Используем 'codes' и здесь ---
+            # Считаем только НЕвыданные коды
             available_codes = sum(1 for code in item.codes if not code.is_issued)
             item.stock = available_codes
             
