@@ -570,10 +570,8 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
     calculated_price = item.price_rub // 30
     
     codes = []
-    if item.is_auto_issuance and item.codes_text:
-        # Получаем коды из текстового поля, убираем пустые строки
-        codes = [code.strip() for code in item.codes_text.splitlines() if code.strip()]
-        # Если коды предоставлены, количество на складе равно количеству кодов
+    if item.is_auto_issuance and item.item_codes: # Проверяем правильное поле из схемы
+        codes = [code.strip() for code in item.item_codes if code.strip()]
         stock = len(codes)
     else:
         stock = item.stock
@@ -583,22 +581,37 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
         description=item.description,
         price=calculated_price, 
         price_rub=item.price_rub,
-        stock=stock, # Используем рассчитанный или указанный сток
+        stock=stock,
         image_url=item.image_url,
         original_price=item.original_price,
         is_auto_issuance=item.is_auto_issuance
     )
     
-    # Если есть коды, создаем для них записи в новой таблице
+    # Сначала добавляем основной товар в сессию, чтобы он получил ID
+    db.add(db_item)
+    await db.flush() # Это важно, чтобы db_item.id стал доступен
+
+    # Теперь создаем коды, связанные с этим ID
     if codes:
         for code_value in codes:
-            db_code = models.ItemCode(code_value=code_value, market_item=db_item)
+            # Используем db_item.id напрямую
+            db_code = models.ItemCode(code_value=code_value, market_item_id=db_item.id)
             db.add(db_code)
 
-    db.add(db_item)
     await db.commit()
-    await db.refresh(db_item)
-    return db_item
+
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
+    # После сохранения, заново запрашиваем товар из базы,
+    # но на этот раз сразу же подгружаем все связанные с ним коды.
+    result = await db.execute(
+        select(models.MarketItem)
+        .where(models.MarketItem.id == db_item.id)
+        .options(selectinload(models.MarketItem.codes))
+    )
+    created_item_with_codes = result.scalar_one_or_none()
+    
+    # Возвращаем полностью загруженный объект
+    return created_item_with_codes
 
 async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
     # Находим товар, который нужно обновить
@@ -627,7 +640,7 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
         
         # Если были добавлены новые коды, нужно пересчитать общий сток
         if new_codes_added:
-            # Сначала сохраняем новые коды, чтобы они получили ID
+            # Сначала сохраняем новые коды в сессию, чтобы они были учтены в запросе ниже
             await db.flush() 
             # Теперь считаем общее количество кодов у этого товара
             current_codes_count = await db.scalar(select(func.count(models.ItemCode.id)).where(models.ItemCode.market_item_id == db_item.id))
