@@ -1347,3 +1347,25 @@ async def mark_onboarding_as_seen(db: AsyncSession, user_id: int):
         await db.commit()
         await db.refresh(user)
     return user
+
+# --- НАЧАЛО БЛОКА: Возвращаем функции для работы с сессиями ---
+
+async def start_user_session(db: AsyncSession, user_id: int) -> models.UserSession:
+    """Создает новую запись о сессии для пользователя."""
+    new_session = models.UserSession(user_id=user_id)
+    db.add(new_session)
+    await db.commit()
+    await db.refresh(new_session)
+    return new_session
+
+async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[models.UserSession]:
+    """Обновляет время 'last_seen' для существующей сессии."""
+    result = await db.execute(select(models.UserSession).filter(models.UserSession.id == session_id))
+    session = result.scalar_one_or_none()
+    
+    if session:
+        session.last_seen = datetime.utcnow()
+        await db.commit()
+        await db.refresh(session)
+    
+    return session
