@@ -230,7 +230,7 @@ function ItemManager() {
             name="image_url" 
             value={form.image_url} 
             onChange={handleFormChange} 
-            placeholder="Прямая ссылка на изображение (URL) 620х300px" 
+            placeholder="Ссылка на изображение (URL) 1080х720px" 
             className={styles.input} 
           />
           
