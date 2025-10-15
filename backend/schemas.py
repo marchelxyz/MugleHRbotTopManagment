@@ -130,6 +130,7 @@ class MarketItemCreate(BaseModel):
     original_price: Optional[int] = None
     is_auto_issuance: bool = False
     codes_text: Optional[str] = None # Поле для вставки кодов (каждый с новой строки)
+    item_codes: Optional[List[str]] = []
 
 # --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
