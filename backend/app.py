@@ -21,6 +21,8 @@ app = FastAPI(lifespan=lifespan)
 origins = [
     # 1. Адрес твоего рабочего приложения (ПРОДАКШЕН)
     "https://mugle-h-rbot-top-managment-m11i.vercel.app",
+
+    "https://mugle-h-rbot-top-managment-git-main-marchelxyzs-projects.vercel.app",
     
     # 2. Адрес для локальной разработки (РАЗРАБОТКА)
     "http://localhost:8080", # (или 3000, 8000 в зависимости от твоих настроек)
