@@ -350,6 +350,7 @@
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ АДАПТИВНОГО СЛАЙДЕРА НА ПК --- */
 @media (min-width: 768px) {
+  
   .sliderContainer {
     /* Контейнер должен обрезать всё лишнее */
     overflow: hidden; 
@@ -383,3 +384,4 @@
   .sliderDots {
     bottom: 3px; 
   }
+}
