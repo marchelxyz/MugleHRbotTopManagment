@@ -4,6 +4,7 @@
   background-color: #F4F4F8;
   position: relative;
   padding-bottom: 80px;
+  overflow-x: hidden;
 }
 
 .header {
