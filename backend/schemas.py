@@ -59,6 +59,12 @@ class UserResponse(UserBase):
             return None
         return dob.isoformat()
 
+# --- 1. ДОБАВЬ ЭТУ НОВУЮ СХЕМУ ДЛЯ ОПИСАНИЯ КОДА ---
+class ItemCodeResponse(OrmBase):
+    id: int
+    code_value: str
+    is_issued: bool
+        
 # --- ИЗМЕНЕНИЕ: Финальная схема ответа для API ---
 # Она будет включать все поля для удобства
 class MarketItemResponse(OrmBase):
@@ -71,6 +77,8 @@ class MarketItemResponse(OrmBase):
     image_url: Optional[str] = None
     is_archived: bool
     original_price: Optional[int] = None # <-- Теперь это поле гарантированно будет в ответе
+    is_auto_issuance: bool
+    codes: List[ItemCodeResponse] = []
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
