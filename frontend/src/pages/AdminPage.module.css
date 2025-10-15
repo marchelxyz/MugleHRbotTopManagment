@@ -253,8 +253,8 @@
 }
 
 .imagePreview, .imagePlaceholder {
-  width: 108px;
-  height: 72px;
+  width: 200px;
+  height: 150px;
   border-radius: 8px;
   object-fit: cover;
   border: 1px solid #ddd;
