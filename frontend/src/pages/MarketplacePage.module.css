@@ -20,8 +20,9 @@
 
 .itemImage {
   width: 100%;
-  height: 150px;
+  aspect-ratio: 1080 / 720; /* <-- ВОТ ИЗМЕНЕНИЕ */
   object-fit: cover;
+  border-radius: 8px; /* Добавил для красоты, если нужно */
 }
 
 .itemContent {
