@@ -62,12 +62,19 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     // --- НАЧАЛО ИЗМЕНЕНИЙ: Логика для расчета сдвига слайдера ---
     const getSliderTransform = () => {
-      // Для мобильных устройств оставляем старую логику
+      // Для мобильных устройств логика остаётся прежней
       if (!isDesktop) {
         return `translateX(-${currentSlide * 100}%)`;
       }
-      // Для ПК рассчитываем сдвиг, чтобы центрировать активный слайд
-      const offset = 15 - (currentSlide * 70);
+      
+      // Для ПК используем новую, более простую математику
+      // Один слайд занимает 80% ширины + по 2% отступа с каждой стороны = 84%
+      const slideTotalWidth = 84; 
+      // Чтобы отцентрировать первый слайд (80%), нужно оставить по 10% по бокам.
+      // Так как у нас уже есть отступ 2%, начальный сдвиг должен быть 8%.
+      const initialOffset = 8;
+      
+      const offset = initialOffset - (currentSlide * slideTotalWidth);
       return `translateX(${offset}%)`;
     };
     // --- КОНЕЦ ИЗМЕНЕНИЙ ---
