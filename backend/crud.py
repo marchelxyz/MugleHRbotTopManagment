@@ -342,9 +342,27 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
         "price": db_item.price, "stock": db_item.stock,
     }
     
-# backend/crud.py
+# --- Функция восстановления товара ---
 
-# backend/crud.py
+async def admin_restore_market_item(db: AsyncSession, item_id: int):
+    """Восстанавливает товар из архива."""
+    # Находим товар по его ID
+    db_item = await db.get(models.MarketItem, item_id)
+    if not db_item:
+        # Если товар не найден, выходим
+        return None
+    
+    # Меняем флаг "is_archived" обратно на False
+    db_item.is_archived = False
+    
+    # Сохраняем изменения в базе данных
+    await db.commit()
+    await db.refresh(db_item)
+    
+    # Возвращаем восстановленный товар
+    return db_item
+
+# --- КОНЕЦ БЛОКА ---
 
 async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     issued_code_value = None
