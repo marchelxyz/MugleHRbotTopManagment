@@ -570,8 +570,8 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
     calculated_price = item.price_rub // 30
     
     codes = []
-    if item.is_auto_issuance and item.codes_text:
-        codes = [code.strip() for code in item.codes_text.splitlines() if code.strip()]
+    if item.is_auto_issuance and item.item_codes: # Проверяем правильное поле из схемы
+        codes = [code.strip() for code in item.item_codes if code.strip()]
         stock = len(codes)
     else:
         stock = item.stock
