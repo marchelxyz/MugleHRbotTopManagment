@@ -600,6 +600,8 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
     await db.refresh(db_item)
     return db_item
 
+# backend/crud.py
+
 async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
     # Находим товар, который нужно обновить
     db_item = await db.get(models.MarketItem, item_id)
@@ -627,7 +629,7 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
         
         # Если были добавлены новые коды, нужно пересчитать общий сток
         if new_codes_added:
-            # Сначала сохраняем новые коды, чтобы они получили ID
+            # Сначала сохраняем новые коды в сессию, чтобы они были учтены в запросе ниже
             await db.flush() 
             # Теперь считаем общее количество кодов у этого товара
             current_codes_count = await db.scalar(select(func.count(models.ItemCode.id)).where(models.ItemCode.market_item_id == db_item.id))
