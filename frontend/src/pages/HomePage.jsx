@@ -61,16 +61,14 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     }, [feed]);
 
     // --- НАЧАЛО ИЗМЕНЕНИЙ: Логика для расчета сдвига слайдера ---
-    const getSliderTransform = () => {
-      // Для мобильных устройств оставляем старую логику
+    const getSliderOffset = () => {
       if (!isDesktop) {
-        return `translateX(-${currentSlide * 100}%)`;
+        return { transform: `translateX(-${currentSlide * 100}%)` };
       }
-      // Для ПК рассчитываем сдвиг, чтобы центрировать активный слайд
-      // Ширина слайда 70%, значит сдвиг на 70% для каждого шага.
-      // Дополнительный сдвиг в 15% нужен, чтобы отцентрировать первый слайд.
+      
+      // Для ПК рассчитываем сдвиг через margin-left
       const offset = 15 - (currentSlide * 70);
-      return `translateX(${offset}%)`;
+      return { marginLeft: `${offset}%` };
     };
     // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
