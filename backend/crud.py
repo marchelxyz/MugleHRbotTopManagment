@@ -316,39 +316,22 @@ async def get_market_items(db: AsyncSession):
 
 async def get_active_items(db: AsyncSession):
     """Возвращает список всех активных товаров с корректно посчитанным остатком."""
-
-    # --- НАЧАЛО ФИНАЛЬНОГО ИСПРАВЛЕНИЯ ---
-
-    # 1. Создаем подзапрос, который считает количество НЕВЫДАННЫХ кодов для каждого товара
-    available_codes_subquery = (
-        select(
-            models.ItemCode.market_item_id,
-            func.count(models.ItemCode.id).label("available_stock")
-        )
-        .where(models.ItemCode.is_issued == False)
-        .group_by(models.ItemCode.market_item_id)
-        .subquery()
-    )
-
-    # 2. Основной запрос: получаем все товары и присоединяем к ним посчитанное кол-во кодов
-    query = (
-        select(models.MarketItem, available_codes_subquery.c.available_stock)
-        .outerjoin(
-            available_codes_subquery,
-            models.MarketItem.id == available_codes_subquery.c.market_item_id
-        )
-        .where(models.MarketItem.is_archived == False)
-    )
-
-    result = await db.execute(query)
     
-    items = []
-    for item, available_stock in result.all():
-        # 3. Если товар с автовыдачей, его остаток = посчитанное кол-во кодов
+    # 1. Запрашиваем все товары И сразу же подгружаем связанные с ними коды
+    result = await db.execute(
+        select(models.MarketItem)
+        .where(models.MarketItem.is_archived == False)
+        .options(selectinload(models.MarketItem.codes)) 
+    )
+    items = result.scalars().unique().all()
+    
+    # 2. Теперь считаем остаток в коде, а не в базе
+    for item in items:
         if item.is_auto_issuance:
-            item.stock = available_stock if available_stock is not None else 0
-        items.append(item)
-        
+            # Считаем только НЕвыданные коды
+            available_codes = sum(1 for code in item.codes if not code.is_issued)
+            item.stock = available_codes
+            
     return items
     
 async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
