@@ -149,7 +149,7 @@ function ItemManager() {
         image_url: item.image_url || '',
         is_auto_issuance: item.is_auto_issuance,
         // Очищаем поля для создания и пополнения
-        codes_text: '',
+        codes_text: item.codes ? item.codes.map(c => c.code_value).join('\n') : '',
         added_stock: '',
         new_item_codes: ''
     });
