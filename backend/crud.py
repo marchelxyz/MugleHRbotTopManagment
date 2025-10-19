@@ -1317,16 +1317,21 @@ async def get_user_engagement_stats(db: AsyncSession, start_date: Optional[date]
     return {"top_senders": top_senders, "top_receivers": top_receivers}
 
 async def get_popular_items_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 10):
+    # Используем твою логику обработки дат
     if end_date is None: end_date = datetime.utcnow().date()
     if start_date is None: start_date = end_date - timedelta(days=365*5)
     end_date_inclusive = end_date + timedelta(days=1)
 
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
+    # Добавляем options(selectinload(...)) чтобы сразу загрузить коды
     query = (
         select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
         .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
         .filter(models.Purchase.timestamp.between(start_date, end_date_inclusive))
+        .options(selectinload(models.MarketItem.codes)) # <-- ВОТ ИЗМЕНЕНИЕ
         .group_by(models.MarketItem.id).order_by(func.count(models.Purchase.id).desc()).limit(limit)
     )
+    # Возвращаем результат как есть, FastAPI/Pydantic сами преобразуют его
     return (await db.execute(query)).all()
 
 async def get_inactive_users(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
