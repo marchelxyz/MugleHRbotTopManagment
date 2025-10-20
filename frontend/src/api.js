@@ -126,12 +126,7 @@ export const getAllMarketItems = () => {
 };
 
 export const updateMarketItem = (itemId, itemData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-
-// --- ВОТ ИЗМЕНЕНИЕ: Очищаем кэш ПЕРЕД отправкой запроса ---
-  clearCache('market'); 
-  // --- КОНЕЦ ИЗМЕНЕНИЯ ---
-  
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;  
     return apiClient.put(`/admin/market-items/${itemId}`, itemData, {
         headers: { 'X-Telegram-Id': telegramId },
     });
