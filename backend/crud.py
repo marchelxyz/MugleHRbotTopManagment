@@ -614,44 +614,56 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
     return created_item_with_codes
 
 async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
-    # Находим товар, который нужно обновить
+    print(f"--- [UPDATE ITEM {item_id}] Начало обновления ---") # <-- Лог 1
+    print(f"Полученные данные item_data: {item_data.model_dump()}") # <-- Лог 2
+
     db_item = await db.get(models.MarketItem, item_id)
     if not db_item:
+        print(f"--- [UPDATE ITEM {item_id}] ОШИБКА: Товар не найден ---") # <-- Лог ошибки
         return None
 
-    # Обновляем основные данные товара (название, цена и т.д.)
+    print(f"Текущие данные товара ДО обновления: name='{db_item.name}', price={db_item.price}, stock={db_item.stock}") # <-- Лог 3
+
+    # Обновляем основные данные товара
     update_data = item_data.model_dump(exclude_unset=True)
+    updated_fields = []
     for key, value in update_data.items():
         if key not in ["added_stock", "new_item_codes"]:
-            setattr(db_item, key, value)
+            if getattr(db_item, key) != value: # Проверяем, изменилось ли значение
+                 setattr(db_item, key, value)
+                 updated_fields.append(key)
 
-    # Логика пополнения для обычных товаров (из твоего кода)
+    # Логика для обычных товаров
     if not db_item.is_auto_issuance and item_data.added_stock is not None and item_data.added_stock > 0:
+        print(f"Добавляем к стоку обычного товара: {item_data.added_stock}") # <-- Лог 4a
         db_item.stock += item_data.added_stock
+        updated_fields.append("stock")
 
-    # Логика добавления новых кодов для товаров с автовыдачей (из твоего кода)
+    # Логика для автовыдачи
     if db_item.is_auto_issuance and item_data.new_item_codes:
         new_codes_added = False
+        print(f"Добавляем новые коды: {item_data.new_item_codes}") # <-- Лог 4b
         for code_value in item_data.new_item_codes:
-            if code_value.strip(): # Проверяем, что строка не пустая
+            if code_value.strip():
                 new_code = models.ItemCode(code_value=code_value.strip(), market_item_id=db_item.id)
                 db.add(new_code)
                 new_codes_added = True
-        
-        # Если были добавлены новые коды, нужно пересчитать общий сток
+
         if new_codes_added:
-            # Сначала сохраняем новые коды в сессию, чтобы они были учтены в запросе ниже
-            await db.flush() 
-            # Теперь считаем общее количество кодов у этого товара
+            await db.flush()
             current_codes_count = await db.scalar(select(func.count(models.ItemCode.id)).where(models.ItemCode.market_item_id == db_item.id))
-            db_item.stock = current_codes_count
+            print(f"Новое общее кол-во кодов (сток): {current_codes_count}") # <-- Лог 4c
+            if db_item.stock != current_codes_count:
+                 db_item.stock = current_codes_count
+                 updated_fields.append("stock")
 
-    # Сохраняем все изменения в базе
+    if not updated_fields and not (db_item.is_auto_issuance and item_data.new_item_codes):
+         print(f"--- [UPDATE ITEM {item_id}] Нет изменений для сохранения ---") # <-- Лог 5
+
     await db.commit()
+    print(f"--- [UPDATE ITEM {item_id}] Изменения сохранены (commit выполнен) ---") # <-- Лог 6
 
-    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
-    # После сохранения, заново запрашиваем товар из базы,
-    # но на этот раз сразу же подгружаем все связанные с ним коды.
+    # Перечитываем объект из базы
     result = await db.execute(
         select(models.MarketItem)
         .where(models.MarketItem.id == item_id)
@@ -659,7 +671,11 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
     )
     updated_item_with_codes = result.scalar_one_or_none()
 
-    # Возвращаем полностью загруженный объект
+    if updated_item_with_codes:
+         print(f"Данные товара ПОСЛЕ обновления: name='{updated_item_with_codes.name}', price={updated_item_with_codes.price}, stock={updated_item_with_codes.stock}") # <-- Лог 7
+    else:
+         print(f"--- [UPDATE ITEM {item_id}] ОШИБКА: Не удалось перечитать товар после обновления ---") # <-- Лог ошибки
+
     return updated_item_with_codes
     
 async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = False):
