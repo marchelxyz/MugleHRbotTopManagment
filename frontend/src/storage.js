@@ -110,7 +110,11 @@ export const refreshAllData = async () => {
  * @param {'feed' | 'market' | 'leaderboard' | 'history'} key Ключ данных для очистки.
  */
 export const clearCache = (key) => {
-  memoryCache[key] = null;
-  storage.removeItem(key);
-  console.log(`Cache for "${key}" has been cleared.`);
+  try {
+    const cacheKey = `cache_${key}`;
+    localStorage.removeItem(cacheKey); // Используем removeItem для надежности
+    console.log(`Cache for "${key}" has been cleared.`); // Добавляем лог для проверки
+  } catch (error) {
+    console.error(`Failed to clear cache for key "${key}":`, error);
+  }
 };
