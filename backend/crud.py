@@ -614,56 +614,80 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
     return created_item_with_codes
 
 async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: schemas.MarketItemUpdate):
-    print(f"--- [UPDATE ITEM {item_id}] Начало обновления ---") # <-- Лог 1
-    print(f"Полученные данные item_data: {item_data.model_dump()}") # <-- Лог 2
+    # --- НАЧАЛО ЛОГОВ ---
+    print(f"--- [CRUD UPDATE {item_id}] Вызвана функция admin_update_market_item ---")
+    print(f"--- [CRUD UPDATE {item_id}] Входные данные item_data: {item_data.model_dump(exclude_unset=True)}")
+    # --- КОНЕЦ ЛОГОВ ---
 
     db_item = await db.get(models.MarketItem, item_id)
     if not db_item:
-        print(f"--- [UPDATE ITEM {item_id}] ОШИБКА: Товар не найден ---") # <-- Лог ошибки
+        print(f"--- [CRUD UPDATE {item_id}] Товар с ID {item_id} не найден в БД ---") # <-- Лог
         return None
 
-    print(f"Текущие данные товара ДО обновления: name='{db_item.name}', price={db_item.price}, stock={db_item.stock}") # <-- Лог 3
+    print(f"--- [CRUD UPDATE {item_id}] Найден товар: Имя='{db_item.name}', Сток={db_item.stock}, Автовыдача={db_item.is_auto_issuance} ---") # <-- Лог
 
     # Обновляем основные данные товара
     update_data = item_data.model_dump(exclude_unset=True)
-    updated_fields = []
+    fields_to_update = {}
     for key, value in update_data.items():
         if key not in ["added_stock", "new_item_codes"]:
-            if getattr(db_item, key) != value: # Проверяем, изменилось ли значение
-                 setattr(db_item, key, value)
-                 updated_fields.append(key)
+            # Обновляем поле, только если оно реально изменилось
+            if hasattr(db_item, key) and getattr(db_item, key) != value:
+                print(f"--- [CRUD UPDATE {item_id}] Поле '{key}' изменилось: '{getattr(db_item, key)}' -> '{value}' ---") # <-- Лог
+                setattr(db_item, key, value)
+                fields_to_update[key] = value
 
-    # Логика для обычных товаров
+    # Логика для обычных товаров: добавляем к текущему остатку
     if not db_item.is_auto_issuance and item_data.added_stock is not None and item_data.added_stock > 0:
-        print(f"Добавляем к стоку обычного товара: {item_data.added_stock}") # <-- Лог 4a
+        print(f"--- [CRUD UPDATE {item_id}] Добавляем сток для обычного товара: {item_data.added_stock} ---") # <-- Лог
         db_item.stock += item_data.added_stock
-        updated_fields.append("stock")
+        fields_to_update['stock'] = db_item.stock # Фиксируем изменение стока
 
-    # Логика для автовыдачи
+    # Логика для автовыдачи: добавляем новые уникальные коды
+    new_codes_added = False
     if db_item.is_auto_issuance and item_data.new_item_codes:
-        new_codes_added = False
-        print(f"Добавляем новые коды: {item_data.new_item_codes}") # <-- Лог 4b
+        added_code_values = []
         for code_value in item_data.new_item_codes:
-            if code_value.strip():
-                new_code = models.ItemCode(code_value=code_value.strip(), market_item_id=db_item.id)
+            stripped_code = code_value.strip()
+            if stripped_code: # Проверяем, что строка не пустая
+                new_code = models.ItemCode(code_value=stripped_code, market_item_id=db_item.id)
                 db.add(new_code)
+                added_code_values.append(stripped_code)
                 new_codes_added = True
-
         if new_codes_added:
-            await db.flush()
-            current_codes_count = await db.scalar(select(func.count(models.ItemCode.id)).where(models.ItemCode.market_item_id == db_item.id))
-            print(f"Новое общее кол-во кодов (сток): {current_codes_count}") # <-- Лог 4c
-            if db_item.stock != current_codes_count:
-                 db_item.stock = current_codes_count
-                 updated_fields.append("stock")
+            print(f"--- [CRUD UPDATE {item_id}] Подготовлены к добавлению новые коды: {added_code_values} ---") # <-- Лог
 
-    if not updated_fields and not (db_item.is_auto_issuance and item_data.new_item_codes):
-         print(f"--- [UPDATE ITEM {item_id}] Нет изменений для сохранения ---") # <-- Лог 5
+    # Пересчитываем сток для автовыдачи ТОЛЬКО если были добавлены новые коды
+    if db_item.is_auto_issuance and new_codes_added:
+        await db.flush() # Сохраняем новые коды, чтобы получить их ID и учесть в count
+        current_codes_count = await db.scalar(select(func.count(models.ItemCode.id)).where(models.ItemCode.market_item_id == db_item.id))
+        print(f"--- [CRUD UPDATE {item_id}] Пересчитанный общий сток (кол-во кодов): {current_codes_count} ---") # <-- Лог
+        if db_item.stock != current_codes_count:
+             db_item.stock = current_codes_count
+             fields_to_update['stock'] = db_item.stock # Фиксируем изменение стока
 
-    await db.commit()
-    print(f"--- [UPDATE ITEM {item_id}] Изменения сохранены (commit выполнен) ---") # <-- Лог 6
+    # Проверяем, были ли реальные изменения перед коммитом
+    if not fields_to_update and not new_codes_added:
+         print(f"--- [CRUD UPDATE {item_id}] Нет фактических изменений для сохранения. Пропускаем commit. ---") # <-- Лог
+         # Все равно перечитываем с кодами для консистентного ответа
+         result = await db.execute(
+             select(models.MarketItem)
+             .where(models.MarketItem.id == item_id)
+             .options(selectinload(models.MarketItem.codes))
+         )
+         return result.scalar_one_or_none()
 
-    # Перечитываем объект из базы
+    try:
+        print(f"--- [CRUD UPDATE {item_id}] Пытаемся сохранить изменения: {fields_to_update}, новые коды: {new_codes_added} ---") # <-- Лог
+        await db.commit()
+        print(f"--- [CRUD UPDATE {item_id}] Commit успешно выполнен ---") # <-- Лог
+    except Exception as e:
+        print(f"--- [CRUD UPDATE {item_id}] ОШИБКА во время commit: {type(e).__name__} - {e} ---") # <-- Лог
+        await db.rollback()
+        # Пробрасываем ошибку дальше, чтобы роутер ее поймал
+        raise
+
+    # Перечитываем объект из базы с кодами для корректного ответа
     result = await db.execute(
         select(models.MarketItem)
         .where(models.MarketItem.id == item_id)
@@ -672,9 +696,9 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
     updated_item_with_codes = result.scalar_one_or_none()
 
     if updated_item_with_codes:
-         print(f"Данные товара ПОСЛЕ обновления: name='{updated_item_with_codes.name}', price={updated_item_with_codes.price}, stock={updated_item_with_codes.stock}") # <-- Лог 7
+         print(f"--- [CRUD UPDATE {item_id}] Товар после перечитки: Имя='{updated_item_with_codes.name}', Сток={updated_item_with_codes.stock} ---") # <-- Лог
     else:
-         print(f"--- [UPDATE ITEM {item_id}] ОШИБКА: Не удалось перечитать товар после обновления ---") # <-- Лог ошибки
+         print(f"--- [CRUD UPDATE {item_id}] ОШИБКА: Не удалось перечитать товар после commit ---") # <-- Лог
 
     return updated_item_with_codes
     
