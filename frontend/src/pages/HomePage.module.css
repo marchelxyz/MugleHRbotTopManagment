@@ -196,15 +196,11 @@
 }
 
 .feedSection {
-    margin-top: 30px;
-    background-color: #FFFFFF;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
-    padding: 35px 21px 21px 21px;
-    margin-left: -21px; /* Растягиваем на всю ширину PageLayout */
-    margin-right: -21px;
-    margin-bottom: -21px;
+  background-color: #FFFFFF;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
+  padding: 35px 21px 21px 21px;
 }
   
 .feedTitle {
