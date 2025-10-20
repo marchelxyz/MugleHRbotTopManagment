@@ -103,6 +103,11 @@ function ItemManager() {
           added_stock: form.is_auto_issuance ? 0 : parseInt(form.added_stock, 10) || 0,
           new_item_codes: newCodes
         };
+
+// --- ВОТ ИЗМЕНЕНИЕ: Добавляем лог перед отправкой ---
+        console.log("[UPDATE ITEM] Данные для отправки на сервер:", JSON.stringify(itemDataToSend, null, 2));
+        // --- КОНЕЦ ИЗМЕНЕНИЯ ---
+        
         await updateMarketItem(editingItemId, itemDataToSend);
         showAlert('Товар успешно обновлен!', 'success');
       } else {

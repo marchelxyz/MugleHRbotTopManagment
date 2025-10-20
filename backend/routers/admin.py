@@ -62,23 +62,45 @@ async def create_new_market_item(
 
 @router.put("/market-items/{item_id}", response_model=schemas.MarketItemResponse)
 async def update_market_item_route(
-    item_id: int, 
-    item_data: schemas.MarketItemUpdate, 
+    item_id: int,
+    item_data: schemas.MarketItemUpdate,
     db: AsyncSession = Depends(get_db),
-    # Я добавил зависимость от админа, чтобы защитить и этот эндпоинт
     current_user: models.User = Depends(get_current_admin_user)
 ):
+    # --- НАЧАЛО ЛОГОВ ---
+    print(f"--- [ROUTER UPDATE {item_id}] Получен PUT запрос ---")
+    print(f"--- [ROUTER UPDATE {item_id}] Данные от фронтенда: {item_data.model_dump(exclude_unset=True)}")
+    # --- КОНЕЦ ЛОГОВ ---
     try:
         updated_item = await crud.admin_update_market_item(db, item_id, item_data)
         if not updated_item:
-            raise HTTPException(status_code=404, detail="Товар не найден")
-        # Возвращаем ответ так, чтобы он соответствовал схеме
+             # --- ЛОГ ---
+             print(f"--- [ROUTER UPDATE {item_id}] CRUD вернул None (Товар не найден) ---")
+             raise HTTPException(status_code=404, detail="Товар не найден")
+        # --- ЛОГ ---
+        print(f"--- [ROUTER UPDATE {item_id}] CRUD успешно вернул обновленный товар: {updated_item.name} ---")
         return updated_item
     except IntegrityError:
+        # --- ЛОГ ---
+        print(f"--- [ROUTER UPDATE {item_id}] Произошла ошибка IntegrityError ---")
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Один или несколько из предоставленных кодов уже существуют. Убедитесь, что все коды уникальны."
+            detail="Один или несколько из предоставленных кодов уже существуют."
+        )
+    except ValueError as e: # Ловим ошибки из CRUD (например, если нет изменений)
+        print(f"--- [ROUTER UPDATE {item_id}] Произошла ошибка ValueError: {e} ---")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e: # Ловим любые другие неожиданные ошибки
+        print(f"--- [ROUTER UPDATE {item_id}] НЕОЖИДАННАЯ ОШИБКА: {type(e).__name__} - {e} ---")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Произошла внутренняя ошибка сервера при обновлении."
         )
 
 @router.delete("/market-items/{item_id}", status_code=204)
