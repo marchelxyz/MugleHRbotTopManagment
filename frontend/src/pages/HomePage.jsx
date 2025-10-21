@@ -105,7 +105,7 @@ return (
                             className={styles.sliderTrack}
                             style={{ transform: getSliderTransform() }}
                         >
-                            {/* --- 3. ГЛАВNAYА ЛОГИКА РЕНДЕРИНГА --- */}
+                            {/* --- 3. ГЛАВНАЯ ЛОГИКА РЕНДЕРИНГА --- */}
                             {mainBanners.map((banner, index) => (
                                 <div 
                                     key={banner.id} 
@@ -114,7 +114,11 @@ return (
                                 >
                                     {banner.banner_type === 'image' ? (
                                         // Старая логика для обычных баннеров-картинок
-                                        <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
+                                        <img 
+                                            src={banner.image_url} 
+                                            alt="Banner" 
+                                            className={styles.bannerImage} 
+                                        />
                                     ) : (
                                         // Новая логика для баннеров-компонентов
                                         <LeaderboardBanner 
@@ -126,7 +130,7 @@ return (
                             ))}
                         </div>
                         
-                        {/* --- !!! ЭТОТ БЛОК БЫЛ ПОТЕРЯН В ТВОЕЙ ВЕРСИИ !!! --- */}
+                        {/* --- БЛОК С ТОЧКАМИ (КОТОРЫЙ ТЕРЯЛСЯ) --- */}
                         {mainBanners.length > 1 && (
                             <div className={styles.sliderDots}>
                                 {mainBanners.map((_, index) => (
@@ -138,19 +142,22 @@ return (
                                 ))}
                             </div>
                         )}
+                        
+                    </div>
+                )}
 
-        {photoFeedBanners.length > 0 && (
-          <div className={styles.photoFeed}>
-            {/* Дублируем массив для создания бесшовной анимации */}
-            <div className={styles.photoFeedTrack}>
-              {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
-                <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
-                  <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                {photoFeedBanners.length > 0 && (
+                    <div className={styles.photoFeed}>
+                        {/* Дублируем массив для создания бесшовной анимации */}
+                        <div className={styles.photoFeedTrack}>
+                            {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
+                                <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
+                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 
                 <div className={styles.feedSection}>
                     <h3 className={styles.feedTitle}>Последняя активность</h3>
@@ -168,7 +175,7 @@ return (
                                                 <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
-    @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
+                                                        @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
                                                     </p>
                                                     <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
                                                 </div>
