@@ -84,7 +84,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     };
     // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
-    return (
+return (
         <div className={styles.pageContainer}>
             <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
             <div className={styles.contentArea}>
@@ -99,40 +99,45 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                     />
                 </div>
 
-        {mainBanners.length > 0 && (
-          <div className={styles.sliderContainer}>
-            <div 
-              className={styles.sliderTrack}
-              // --- ИЗМЕНЕНИЕ: Используем новую функцию для расчета сдвига ---
-              style={{ transform: getSliderTransform() }}
-            >
-{/* --- 3. ГЛАВНАЯ ЛОГИКА РЕНДЕРИНГА --- */}
-                        {mainBanners.map((banner, index) => (
-                            <div 
-                                key={banner.id} 
-                                className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
-                                // Передаем клик в handleBannerClick только для картинок, 
-                                // у компонента рейтинга будет своя кнопка
-                                onClick={() => banner.banner_type === 'image' && handleBannerClick(banner.link_url)}
-                            >
-                                {banner.banner_type === 'image' ? (
-                                    // Старая логика для обычных баннеров-картинок
-                                    <img 
-                                      src={banner.image_url} 
-                                      alt="Banner" 
-                                      className={styles.bannerImage} 
-                                    />
-                                ) : (
-                                    // Новая логика для баннеров-компонентов
-                                    <LeaderboardBanner 
-                                      banner={banner} 
-                                      onNavigate={onNavigate} 
-                                    />
-                                )}
+                {mainBanners.length > 0 && (
+                    <div className={styles.sliderContainer}>
+                        <div 
+                            className={styles.sliderTrack}
+                            style={{ transform: getSliderTransform() }}
+                        >
+                            {/* --- 3. ГЛАВNAYА ЛОГИКА РЕНДЕРИНГА --- */}
+                            {mainBanners.map((banner, index) => (
+                                <div 
+                                    key={banner.id} 
+                                    className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
+                                    onClick={() => banner.banner_type === 'image' && handleBannerClick(banner.link_url)}
+                                >
+                                    {banner.banner_type === 'image' ? (
+                                        // Старая логика для обычных баннеров-картинок
+                                        <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
+                                    ) : (
+                                        // Новая логика для баннеров-компонентов
+                                        <LeaderboardBanner 
+                                            banner={banner} 
+                                            onNavigate={onNavigate} 
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* --- !!! ЭТОТ БЛОК БЫЛ ПОТЕРЯН В ТВОЕЙ ВЕРСИИ !!! --- */}
+                        {mainBanners.length > 1 && (
+                            <div className={styles.sliderDots}>
+                                {mainBanners.map((_, index) => (
+                                    <div 
+                                        key={index} 
+                                        className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
+                                        onClick={() => setCurrentSlide(index)}
+                                    ></div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-        )}
+                        )}
 
         {photoFeedBanners.length > 0 && (
           <div className={styles.photoFeed}>
