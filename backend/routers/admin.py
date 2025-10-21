@@ -421,3 +421,55 @@ async def delete_item_permanently_route(
 
 # Также убедись, что вверху файла есть импорт Response:
 from fastapi import Response
+
+# --- ЭНДПОИНТЫ ДЛЯ УПРАВЛЕНИЯ STATIX BONUS ---
+@router.get("/statix-bonus", response_model=schemas.StatixBonusItemResponse)
+async def get_statix_bonus_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Получить настройки товара Statix Bonus"""
+    item = await crud.get_statix_bonus_item(db)
+    if not item:
+        # Создаем товар по умолчанию, если его нет
+        default_item = {
+            "name": "Бонусы Statix",
+            "description": "Покупка бонусов для платформы Statix",
+            "thanks_to_statix_rate": 10,  # 10 спасибок за 100 бонусов
+            "min_bonus_per_step": 100,
+            "max_bonus_per_step": 10000,
+            "bonus_step": 100
+        }
+        item = await crud.create_statix_bonus_item(db, default_item)
+    return item
+
+@router.put("/statix-bonus", response_model=schemas.StatixBonusItemResponse)
+async def update_statix_bonus_settings(
+    item_data: schemas.StatixBonusItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Обновить настройки товара Statix Bonus"""
+    # Получаем существующий товар или создаем новый
+    existing_item = await crud.get_statix_bonus_item(db)
+    
+    if existing_item:
+        # Обновляем существующий
+        updated_item = await crud.update_statix_bonus_item(
+            db, existing_item.id, item_data.model_dump(exclude_unset=True)
+        )
+    else:
+        # Создаем новый с переданными данными
+        default_data = {
+            "name": "Бонусы Statix",
+            "description": "Покупка бонусов для платформы Statix",
+            "thanks_to_statix_rate": 10,
+            "min_bonus_per_step": 100,
+            "max_bonus_per_step": 10000,
+            "bonus_step": 100
+        }
+        # Объединяем с переданными данными
+        update_data = {**default_data, **item_data.model_dump(exclude_unset=True)}
+        updated_item = await crud.create_statix_bonus_item(db, update_data)
+    
+    return updated_item

@@ -35,3 +35,33 @@ async def purchase_item(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+# --- ЭНДПОИНТЫ ДЛЯ STATIX BONUS ---
+@router.get("/market/statix-bonus", response_model=schemas.StatixBonusItemResponse)
+async def get_statix_bonus_item(db: AsyncSession = Depends(get_db)):
+    """Получить настройки товара Statix Bonus"""
+    item = await crud.get_statix_bonus_item(db)
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Statix Bonus товар не настроен"
+        )
+    return item
+
+@router.post("/market/statix-bonus/purchase", response_model=schemas.StatixBonusPurchaseResponse)
+async def purchase_statix_bonus(
+    request: schemas.StatixBonusPurchaseRequest, db: AsyncSession = Depends(get_db)
+):
+    """Купить бонусы Statix"""
+    try:
+        result = await crud.create_statix_bonus_purchase(db, request.user_id, request.bonus_amount)
+        return {
+            "message": "Statix бонусы успешно приобретены",
+            "new_balance": result["new_balance"],
+            "purchased_bonus_amount": result["purchased_bonus_amount"]
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

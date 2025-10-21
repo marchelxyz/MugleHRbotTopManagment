@@ -328,3 +328,45 @@
     width: 100%;
   }
 }
+
+/* --- СТИЛИ ДЛЯ STATIX BONUS НАСТРОЕК --- */
+.statixSettingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.settingGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.settingGroup label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.settingGroup input {
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.settingGroup input:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+/* Адаптивность для Statix настроек */
+@media (max-width: 600px) {
+  .statixSettingsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
