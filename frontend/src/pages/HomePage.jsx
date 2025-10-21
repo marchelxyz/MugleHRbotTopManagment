@@ -179,7 +179,8 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
                                                         @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
-                                                    </T>
+                                                    {/* --- !!! ВОТ ИСПРАВЛЕНИЕ ОПЕЧАТКИ !!! --- */}
+                                                    </p>
                                                     <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
                                                 </div>
                                                 <div className={styles.feedTimestamp}>
