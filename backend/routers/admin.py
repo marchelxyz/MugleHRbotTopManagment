@@ -491,3 +491,21 @@ async def trigger_leaderboard_banner_generation(
     except Exception as e:
         print(f"Ошибка при ручной генерации баннеров: {e}")
         raise HTTPException(status_code=500, detail="Не удалось сгенерировать баннеры")
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ ТЕСТИРОВАНИЯ ---
+@router.post("/generate-test-banners", status_code=status.HTTP_201_CREATED)
+async def trigger_leaderboard_test_banner_generation(
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Принудительно генерирует баннеры с Топ-3 (для тестирования)
+    на основе данных ТЕКУЩЕГО месяца.
+    """
+    try:
+        # Вызываем новую тестовую функцию
+        await crud.generate_current_month_test_banners(db)
+        return {"detail": "Тестовые баннеры (на основе ТЕКУЩЕГО месяца) успешно сгенерированы."}
+    except Exception as e:
+        print(f"Ошибка при ручной генерации ТЕСТОВЫХ баннеров: {e}")
+        raise HTTPException(status_code=500, detail="Не удалось сгенерировать тестовые баннеры")
