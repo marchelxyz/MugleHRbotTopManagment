@@ -9,7 +9,7 @@ import BannerManager from './admin/BannerManager';
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import StatisticsDashboard from './admin/StatisticsDashboard';
-import { addPointsToAll, addTicketsToAll } from '../api';
+import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 
@@ -87,6 +87,32 @@ function AdminPage() {
   // Используем одну переменную для навигации. null - это главное меню.
   const [activeSection, setActiveSection] = useState(null);
 
+// --- 1. ДОБАВЛЯЕМ ХУКИ И ЛОАДЕР ---
+  // (Они у тебя уже импортированы, просто используем их)
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
+  const [loading, setLoading] = useState(false); // Для отслеживания загрузки
+
+  // --- 2. ДОБАВЛЯЕМ ОБРАБОТЧИК ДЛЯ НОВОЙ КНОПКИ ---
+  const handleGenerateBanners = async () => {
+    const isConfirmed = await confirm(
+        'Подтверждение',
+        'Вы уверены, что хотите сгенерировать баннеры рейтинга? Это удалит старые баннеры рейтинга и создаст новые на основе данных *прошлого* месяца.'
+    );
+    if (!isConfirmed) return;
+
+    setLoading(true); // Включаем лоадер
+    try {
+        const response = await adminGenerateLeaderboardBanners();
+        showAlert(response.data.detail || 'Баннеры успешно сгенерированы!', 'success');
+    } catch (error) {
+        const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+        showAlert(errorMsg, 'error');
+    } finally {
+        setLoading(false); // Выключаем лоадер
+    }
+  };
+  
   const renderContent = () => {
     // Если секция не выбрана, показываем меню
     if (!activeSection) {
@@ -96,6 +122,14 @@ function AdminPage() {
           <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
           <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
+{/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
+          <button 
+            onClick={handleGenerateBanners} 
+            disabled={loading} 
+            className={styles.gridButton}
+          >
+            {loading ? 'Генерация...' : 'Создать Баннеры Рейтинга'}
+          </button>
           {/*<button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>*/}
         </div>
       );
