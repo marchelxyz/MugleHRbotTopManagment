@@ -5,6 +5,7 @@ import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
+// --- 1. ДОБАВЛЕН ИМПОРТ ---
 import LeaderboardBanner from '../components/LeaderboardBanner';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
@@ -43,7 +44,10 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     const photoFeedBanners = banners.filter(b => b.position === 'feed');
 
-// --- 2. УЛУЧШАЕМ ЛОГИКУ КЛИКА ---
+    // --- 2. ОБНОВЛЕНА ФУНКЦИЯ КЛИКА ---
+    const handleBannerClick = (url) => {
+        if (!url) return;
+        
         if (url.startsWith('/')) {
             // Это внутренняя ссылка, используем onNavigate
             onNavigate(url.replace('/', '')); // '/leaderboard' -> 'leaderboard'
@@ -65,7 +69,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
         }, {});
     }, [feed]);
 
-    // --- НАЧАЛО ИЗМЕНЕНИЙ: Логика для расчета сдвига слайдера ---
+    // --- (Твой код, оставлен без изменений) ---
     const getSliderTransform = () => {
       // Для мобильных устройств логика остаётся прежней
       if (!isDesktop) {
@@ -82,9 +86,9 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
       const offset = initialOffset - (currentSlide * slideTotalWidth);
       return `translateX(${offset}%)`;
     };
-    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    // --- (Конец твоего кода) ---
 
-return (
+    return (
         <div className={styles.pageContainer}>
             <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
             <div className={styles.contentArea}>
@@ -105,22 +109,21 @@ return (
                             className={styles.sliderTrack}
                             style={{ transform: getSliderTransform() }}
                         >
-                            {/* --- 3. ГЛАВНАЯ ЛОГИКА РЕНДЕРИНГА --- */}
+                            {/* --- 3. ОБНОВЛЕНА ЛОГИКА РЕНДЕРИНГА СЛАЙДОВ --- */}
                             {mainBanners.map((banner, index) => (
                                 <div 
                                     key={banner.id} 
                                     className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
-                                    onClick={() => banner.banner_type === 'image' && handleBannerClick(banner.link_url)}
+                                    // Клик обрабатывается только если это баннер-картинка
+                                    // (У баннера-рейтинга своя кнопка внутри)
+                                    onClick={() => (banner.banner_type === 'image' || !banner.banner_type) && handleBannerClick(banner.link_url)}
                                 >
-                                    {banner.banner_type === 'image' ? (
-                                        // Старая логика для обычных баннеров-картинок
-                                        <img 
-                                            src={banner.image_url} 
-                                            alt="Banner" 
-                                            className={styles.bannerImage} 
-                                        />
+                                    {/* Условный рендеринг: Картинка ИЛИ Компонент */}
+                                    {(banner.banner_type === 'image' || !banner.banner_type) ? (
+                                        // Старая логика, если это 'image' или тип не указан
+                                        <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
                                     ) : (
-                                        // Новая логика для баннеров-компонентов
+                                        // Новая логика для других типов (leaderboard_...)
                                         <LeaderboardBanner 
                                             banner={banner} 
                                             onNavigate={onNavigate} 
@@ -130,7 +133,7 @@ return (
                             ))}
                         </div>
                         
-                        {/* --- !!! ВОТ БЛОК, КОТОРЫЙ МЫ ТЕРЯЛИ !!! --- */}
+                        {/* (Этот блок у тебя был, он на месте) */}
                         {mainBanners.length > 1 && (
                             <div className={styles.sliderDots}>
                                 {mainBanners.map((_, index) => (
@@ -142,11 +145,10 @@ return (
                                 ))}
                             </div>
                         )}
-                        {/* --- !!! КОНЕЦ ВОССТАНОВЛЕННОГО БЛОКА !!! --- */}
-                        
                     </div>
                 )}
 
+                {/* (Весь остальной код твой, оставлен без изменений) */}
                 {photoFeedBanners.length > 0 && (
                     <div className={styles.photoFeed}>
                         {/* Дублируем массив для создания бесшовной анимации */}
@@ -177,7 +179,7 @@ return (
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
                                                         @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
-                                                    </p>
+                                                    </T>
                                                     <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
                                                 </div>
                                                 <div className={styles.feedTimestamp}>
