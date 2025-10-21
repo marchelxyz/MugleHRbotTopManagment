@@ -43,7 +43,8 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     const photoFeedBanners = banners.filter(b => b.position === 'feed');
 
-// --- 2. УЛУЧШАЕМ ЛОГИКУ КЛИКА ---
+    // --- 2. УЛУЧШАЕМ ЛОГИКУ КЛИКА ---
+    const handleBannerClick = (url) => {
         if (url.startsWith('/')) {
             // Это внутренняя ссылка, используем onNavigate
             onNavigate(url.replace('/', '')); // '/leaderboard' -> 'leaderboard'

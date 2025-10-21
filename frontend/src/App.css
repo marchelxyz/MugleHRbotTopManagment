@@ -2,25 +2,15 @@
 
 .app-wrapper {
   margin: 0 auto;
-  max-width: 450px;
-  min-height: 100vh;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  position: relative;
-  background-color: #F4F4F8;
-
-  /* --- ДОБАВЛЯЕМ ЭТО СВОЙСТВО --- */
-  user-select: none; /* Запрещаем выделение текста */
-  -webkit-user-select: none; /* Для поддержки Safari */
-}
-  
-  /* --- Ограничение ширины --- */
   max-width: 450px; /* Максимальная ширина, как у телефона */
   min-height: 100vh; /* Минимальная высота на весь экран */
-  
-  /* --- Визуальное оформление (необязательно, но красиво) --- */
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Тень для объема */
   position: relative; /* Нужно для корректной работы дочерних position: fixed */
   background-color: #F4F4F8; /* Фоновый цвет, если основной фон body другой */
+  
+  /* --- ДОБАВЛЯЕМ ЭТО СВОЙСТВО --- */
+  user-select: none; /* Запрещаем выделение текста */
+  -webkit-user-select: none; /* Для поддержки Safari */
 }
 
 .content-scrollable {
