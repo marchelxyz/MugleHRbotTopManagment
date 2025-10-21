@@ -122,10 +122,14 @@ class ItemCode(Base):
 class Banner(Base):
     __tablename__ = "banners"
     id = Column(Integer, primary_key=True, index=True)
-    image_url = Column(String, nullable=False)
+    image_url = Column(String, nullable=True) # Было nullable=False
     link_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     position = Column(String, default='feed', nullable=False)
+    # Тип баннера: 'image' (по умолч.), 'leaderboard_receivers', 'leaderboard_senders'
+    banner_type: Mapped[str] = mapped_column(String(50), default='image', server_default='image', nullable=False)
+    # Поле для хранения данных (например, списка топ-3 пользователей)
+    data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 class RouletteWin(Base):
     __tablename__ = "roulette_wins"
