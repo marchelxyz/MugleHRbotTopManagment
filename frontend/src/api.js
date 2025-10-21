@@ -362,3 +362,10 @@ export const updateStatixBonusSettings = (settings) => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+export const adminGenerateLeaderboardBanners = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/generate-leaderboard-banners', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
