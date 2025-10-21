@@ -369,3 +369,11 @@ export const adminGenerateLeaderboardBanners = () => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ ---
+export const adminGenerateTestLeaderboardBanners = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/generate-test-banners', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
