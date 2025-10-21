@@ -19,8 +19,18 @@ async def run_daily_tasks(db: AsyncSession = Depends(get_db)):
     await crud.reset_daily_transfer_limits(db)
     return {"status": "ok", "birthdays_processed": birthdays_processed}
 
-@router.post("/scheduler/run-monthly-tasks", dependencies=[Depends(verify_cron_secret)])
-async def run_monthly_tasks(db: AsyncSession = Depends(get_db)):
-    """Выполняет ежемесячные задачи: сброс баланса для переводов."""
-    await crud.reset_monthly_balances(db)
-    return {"status": "ok", "message": "Monthly transfer balances have been reset."}
+@router.post("/run-monthly-tasks")
+async def run_monthly_tasks(
+    x_cron_secret: str = Header(None),
+    db: AsyncSession = Depends(get_db)
+):
+    if x_cron_secret != settings.ADMIN_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid secret")
+    
+    # --- ДОБАВЛЯЕМ ВЫЗОВ НОВОЙ ФУНКЦИИ ---
+    try:
+        await crud.generate_monthly_leaderboard_banners(db)
+        return {"status": "monthly leaderboard banners generated"}
+    except Exception as e:
+        print(f"Error during monthly tasks: {e}")
+        raise HTTPException(status_code=500, detail="Error processing monthly tasks")
