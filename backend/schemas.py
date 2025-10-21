@@ -175,10 +175,14 @@ class AdminUserUpdate(BaseModel):
     is_admin: Optional[bool] = None
 
 class BannerBase(OrmBase):
-    image_url: str
+# --- ИЗМЕНЕНИЕ: Сделай image_url опциональным ---
+    image_url: Optional[str] = None
     link_url: Optional[str] = None
     is_active: bool
     position: str
+    # --- НОВЫЕ ПОЛЯ ---
+    banner_type: str = 'image'
+    data: Optional[dict] = None
 
 class BannerCreate(BannerBase):
     pass
@@ -188,9 +192,15 @@ class BannerUpdate(BaseModel):
     link_url: Optional[str] = None
     is_active: Optional[bool] = None
     position: Optional[str] = None
+    banner_type: Optional[str] = None
+    data: Optional[dict] = None
 
 class BannerResponse(BannerBase):
     id: int
+    image_url: Optional[str] # Убедимся, что он Optional
+    
+    class Config:
+        from_attributes = True # Было orm_mode = True
 
 # --- НОВЫЕ СХЕМЫ ДЛЯ РУЛЕТКИ ---
 class RouletteWinResponse(OrmBase):
