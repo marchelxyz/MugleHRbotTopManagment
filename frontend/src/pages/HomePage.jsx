@@ -5,6 +5,7 @@ import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
+import LeaderboardBanner from '../components/LeaderboardBanner';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [feed, setFeed] = useState(() => getCachedData('feed'));
@@ -42,8 +43,12 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     const photoFeedBanners = banners.filter(b => b.position === 'feed');
 
-    const handleBannerClick = (url) => {
-        if (url) {
+// --- 2. УЛУЧШАЕМ ЛОГИКУ КЛИКА ---
+        if (url.startsWith('/')) {
+            // Это внутренняя ссылка, используем onNavigate
+            onNavigate(url.replace('/', '')); // '/leaderboard' -> 'leaderboard'
+        } else {
+            // Это внешняя ссылка, открываем в браузере
             window.open(url, '_blank', 'noopener,noreferrer');
         }
     };
@@ -101,29 +106,32 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
               // --- ИЗМЕНЕНИЕ: Используем новую функцию для расчета сдвига ---
               style={{ transform: getSliderTransform() }}
             >
-              {mainBanners.map((banner, index) => (
-                // --- ИЗМЕНЕНИЕ: Добавляем класс .active для центрального слайда ---
-                <div 
-                  key={banner.id} 
-                  className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
-                  onClick={() => handleBannerClick(banner.link_url)}
-                >
-                  <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
-                </div>
-              ))}
-            </div>
-            {mainBanners.length > 1 && (
-              <div className={styles.sliderDots}>
-                {mainBanners.map((_, index) => (
-                  <div 
-                    key={index} 
-                    className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
-                    onClick={() => setCurrentSlide(index)}
-                  ></div>
-                ))}
-              </div>
-            )}
-          </div>
+{/* --- 3. ГЛАВНАЯ ЛОГИКА РЕНДЕРИНГА --- */}
+                        {mainBanners.map((banner, index) => (
+                            <div 
+                                key={banner.id} 
+                                className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
+                                // Передаем клик в handleBannerClick только для картинок, 
+                                // у компонента рейтинга будет своя кнопка
+                                onClick={() => banner.banner_type === 'image' && handleBannerClick(banner.link_url)}
+                            >
+                                {banner.banner_type === 'image' ? (
+                                    // Старая логика для обычных баннеров-картинок
+                                    <img 
+                                      src={banner.image_url} 
+                                      alt="Banner" 
+                                      className={styles.bannerImage} 
+                                    />
+                                ) : (
+                                    // Новая логика для баннеров-компонентов
+                                    <LeaderboardBanner 
+                                      banner={banner} 
+                                      onNavigate={onNavigate} 
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
         )}
 
         {photoFeedBanners.length > 0 && (
