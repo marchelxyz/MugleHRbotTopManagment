@@ -109,7 +109,7 @@ function AdminPage() {
         const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
         showAlert(errorMsg, 'error');
     } finally {
-        setLoading(null); // Выключаем лоадер
+        setLoading(false); // Выключаем лоадер
     }
   };
 
@@ -128,7 +128,7 @@ function AdminPage() {
         const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
         showAlert(errorMsg, 'error');
     } finally {
-        setLoading(null); // Выключаем лоадер
+        setLoading(false); // Выключаем лоадер
     }
   };
   
@@ -144,7 +144,7 @@ function AdminPage() {
 {/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
           <button 
             onClick={handleGenerateBanners} 
-            disabled={loading !== null} 
+            disabled={loading} 
             className={styles.gridButton}
           >
             {loading === 'monthly' ? 'Генерация...' : 'Создать Баннеры (Прошлый мес.)'}
@@ -153,7 +153,7 @@ function AdminPage() {
           {/* Новая кнопка (для текущего месяца) */}
           <button 
             onClick={handleGenerateTestBanners} 
-            disabled={loading !== null} 
+            disabled={loading} 
             className={styles.gridButton}
           >
             {loading === 'test' ? 'Генерация...' : 'Создать Баннеры (Текущий мес. / Тест)'}
