@@ -1472,3 +1472,88 @@ async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[model
         await db.refresh(session)
     
     return session
+
+async def generate_monthly_leaderboard_banners(db: AsyncSession):
+    """
+    Создает баннеры для Топ-3 прошлого месяца (получатели и отправители).
+    Удаляет старые баннеры рейтинга.
+    """
+    
+    # 1. Удаляем все старые баннеры рейтинга
+    await db.execute(
+        delete(models.Banner).where(
+            models.Banner.banner_type.in_(['leaderboard_receivers', 'leaderboard_senders'])
+        )
+    )
+    
+    # 2. Получаем Топ-3 Получателей (за прошлый месяц)
+    try:
+        top_receivers_data = await get_leaderboard_data(
+            db, 
+            period='last_month', 
+            leaderboard_type='received'
+        )
+        
+        # 3. Форматируем данные (берем только топ-3)
+        top_3_receivers = [
+            {
+                "rank": i + 1,
+                "first_name": item["user"].first_name,
+                "last_name": item["user"].last_name,
+                "telegram_photo_url": item["user"].telegram_photo_url,
+                "total_received": item["total_received"]
+            }
+            for i, item in enumerate(top_receivers_data[:3])
+        ]
+
+        # 4. Создаем новый баннер для Получателей (если есть данные)
+        if top_3_receivers:
+            receivers_banner = models.Banner(
+                banner_type='leaderboard_receivers',
+                position='main', # Чтобы был в главном слайдере
+                is_active=True,
+                link_url='/leaderboard', # Фронтенд поймет этот "внутренний" URL
+                data={"users": top_3_receivers}
+            )
+            db.add(receivers_banner)
+
+    except Exception as e:
+        print(f"Failed to generate 'receivers' leaderboard banner: {e}")
+
+    # 5. Получаем Топ-3 Отправителей (Щедрость, за прошлый месяц)
+    try:
+        top_senders_data = await get_leaderboard_data(
+            db, 
+            period='last_month', # <-- Убедись, что твоя функция get_leaderboard_data
+                                 #     корректно работает с 'last_month' для 'sent'
+            leaderboard_type='sent'
+        )
+        
+        top_3_senders = [
+            {
+                "rank": i + 1,
+                "first_name": item["user"].first_name,
+                "last_name": item["user"].last_name,
+                "telegram_photo_url": item["user"].telegram_photo_url,
+                "total_received": item["total_received"] # В схеме это total_received, даже для 'sent'
+            }
+            for i, item in enumerate(top_senders_data[:3])
+        ]
+
+        # 6. Создаем новый баннер для Отправителей (если есть данные)
+        if top_3_senders:
+            senders_banner = models.Banner(
+                banner_type='leaderboard_senders',
+                position='main',
+                is_active=True,
+                link_url='/leaderboard', # TODO: Можно уточнить ссылку, если рейтинг щедрости отдельно
+                data={"users": top_3_senders}
+            )
+            db.add(senders_banner)
+
+    except Exception as e:
+        print(f"Failed to generate 'senders' leaderboard banner: {e}")
+
+    # 7. Сохраняем все изменения (удаление старых, добавление новых)
+    await db.commit()
+    print("Monthly leaderboard banners generated successfully.")
