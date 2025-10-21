@@ -1557,3 +1557,69 @@ async def generate_monthly_leaderboard_banners(db: AsyncSession):
     # 7. Сохраняем все изменения (удаление старых, добавление новых)
     await db.commit()
     print("Monthly leaderboard banners generated successfully.")
+
+# --- CRUD ОПЕРАЦИИ ДЛЯ STATIX BONUS ---
+async def get_statix_bonus_item(db: AsyncSession):
+    """Получить активный товар Statix Bonus"""
+    result = await db.execute(
+        select(models.StatixBonusItem).where(models.StatixBonusItem.is_active == True)
+    )
+    return result.scalars().first()
+
+async def create_statix_bonus_item(db: AsyncSession, item_data: dict):
+    """Создать товар Statix Bonus"""
+    db_item = models.StatixBonusItem(**item_data)
+    db.add(db_item)
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+
+async def update_statix_bonus_item(db: AsyncSession, item_id: int, item_data: dict):
+    """Обновить товар Statix Bonus"""
+    result = await db.execute(
+        select(models.StatixBonusItem).where(models.StatixBonusItem.id == item_id)
+    )
+    db_item = result.scalars().first()
+    if not db_item:
+        return None
+    
+    for key, value in item_data.items():
+        if value is not None:
+            setattr(db_item, key, value)
+    
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+
+async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amount: int):
+    """Создать покупку бонусов Statix"""
+    # Получаем настройки товара
+    statix_item = await get_statix_bonus_item(db)
+    if not statix_item:
+        raise ValueError("Statix Bonus товар не настроен")
+    
+    # Рассчитываем стоимость в спасибках
+    thanks_cost = (bonus_amount / 100) * statix_item.thanks_to_statix_rate
+    
+    # Получаем пользователя
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Проверяем баланс
+    if user.balance < thanks_cost:
+        raise ValueError("Недостаточно спасибок для покупки")
+    
+    # Списываем спасибки
+    user.balance -= thanks_cost
+    
+    # TODO: Здесь будет интеграция с API Statix Bonus для начисления бонусов
+    # Пока что просто сохраняем информацию о покупке
+    
+    await db.commit()
+    
+    return {
+        "new_balance": user.balance,
+        "purchased_bonus_amount": bonus_amount,
+        "thanks_spent": thanks_cost
+    }

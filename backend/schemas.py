@@ -280,3 +280,36 @@ class SessionResponse(SessionBase):
 
 class AverageSessionDurationStats(BaseModel):
     average_duration_minutes: float
+
+# --- НОВЫЕ СХЕМЫ ДЛЯ STATIX BONUS ---
+class StatixBonusItemResponse(OrmBase):
+    id: int
+    name: str
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: bool
+    thanks_to_statix_rate: int
+    min_bonus_per_step: int
+    max_bonus_per_step: int
+    bonus_step: int
+    created_at: datetime
+    updated_at: datetime
+
+class StatixBonusItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: Optional[bool] = None
+    thanks_to_statix_rate: Optional[int] = None
+    min_bonus_per_step: Optional[int] = None
+    max_bonus_per_step: Optional[int] = None
+    bonus_step: Optional[int] = None
+
+class StatixBonusPurchaseRequest(BaseModel):
+    user_id: int
+    bonus_amount: int  # Количество бонусов Statix для покупки
+
+class StatixBonusPurchaseResponse(BaseModel):
+    message: str
+    new_balance: int
+    purchased_bonus_amount: int

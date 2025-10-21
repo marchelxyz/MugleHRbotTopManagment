@@ -8,7 +8,7 @@ import { FaTimes, FaCopy, FaCheck } from 'react-icons/fa';
 import animationData from '../assets/AnimatedSticker4.json';
 
 function PurchaseSuccessModal({ item, onClose }) {
-  const { name, image_url, issued_code } = item;
+  const { name, image_url, issued_code, purchased_bonus_amount } = item;
   const [isCopied, setIsCopied] = useState(false); // <-- 3. Состояние для отслеживания копирования
 
   // --- 4. Функция для копирования кода ---
@@ -44,6 +44,12 @@ function PurchaseSuccessModal({ item, onClose }) {
             <div className={styles.imagePlaceholder}></div>
           )}
           <h3 className={styles.itemName}>{name}</h3>
+          {purchased_bonus_amount && (
+            <div className={styles.bonusAmount}>
+              <span className={styles.bonusNumber}>{purchased_bonus_amount}</span>
+              <span className={styles.bonusLabel}>бонусов Statix</span>
+            </div>
+          )}
         </div>
 
         {issued_code && (
