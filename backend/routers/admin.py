@@ -473,3 +473,21 @@ async def update_statix_bonus_settings(
         updated_item = await crud.create_statix_bonus_item(db, update_data)
     
     return updated_item
+
+@router.post("/generate-leaderboard-banners", status_code=status.HTTP_201_CREATED)
+async def trigger_leaderboard_banner_generation(
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Принудительно генерирует баннеры с Топ-3 (для тестирования).
+    Удаляет старые баннеры рейтинга и создает новые
+    на основе данных "прошлого месяца".
+    """
+    try:
+        # Вызываем ту же самую функцию, что и планировщик
+        await crud.generate_monthly_leaderboard_banners(db)
+        return {"detail": "Баннеры рейтинга успешно сгенерированы."}
+    except Exception as e:
+        print(f"Ошибка при ручной генерации баннеров: {e}")
+        raise HTTPException(status_code=500, detail="Не удалось сгенерировать баннеры")
