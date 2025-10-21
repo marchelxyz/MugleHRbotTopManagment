@@ -1472,3 +1472,244 @@ async def ping_user_session(db: AsyncSession, session_id: int) -> Optional[model
         await db.refresh(session)
     
     return session
+
+async def generate_monthly_leaderboard_banners(db: AsyncSession):
+    """
+    Создает баннеры для Топ-3 прошлого месяца (получатели и отправители).
+    Удаляет старые баннеры рейтинга.
+    """
+    
+    # 1. Удаляем все старые баннеры рейтинга
+    await db.execute(
+        delete(models.Banner).where(
+            models.Banner.banner_type.in_(['leaderboard_receivers', 'leaderboard_senders'])
+        )
+    )
+    
+    # 2. Получаем Топ-3 Получателей (за прошлый месяц)
+    try:
+        top_receivers_data = await get_leaderboard_data(
+            db, 
+            period='last_month', 
+            leaderboard_type='received'
+        )
+        
+        # 3. Форматируем данные (берем только топ-3)
+        top_3_receivers = [
+            {
+                "rank": i + 1,
+                "first_name": item["user"].first_name,
+                "last_name": item["user"].last_name,
+                "telegram_photo_url": item["user"].telegram_photo_url,
+                "total_received": item["total_received"]
+            }
+            for i, item in enumerate(top_receivers_data[:3])
+        ]
+
+        # 4. Создаем новый баннер для Получателей (если есть данные)
+        if top_3_receivers:
+            receivers_banner = models.Banner(
+                banner_type='leaderboard_receivers',
+                position='main', # Чтобы был в главном слайдере
+                is_active=True,
+                link_url='/leaderboard', # Фронтенд поймет этот "внутренний" URL
+                data={"users": top_3_receivers}
+            )
+            db.add(receivers_banner)
+
+    except Exception as e:
+        print(f"Failed to generate 'receivers' leaderboard banner: {e}")
+
+    # 5. Получаем Топ-3 Отправителей (Щедрость, за прошлый месяц)
+    try:
+        top_senders_data = await get_leaderboard_data(
+            db, 
+            period='last_month', # <-- Убедись, что твоя функция get_leaderboard_data
+                                 #     корректно работает с 'last_month' для 'sent'
+            leaderboard_type='sent'
+        )
+        
+        top_3_senders = [
+            {
+                "rank": i + 1,
+                "first_name": item["user"].first_name,
+                "last_name": item["user"].last_name,
+                "telegram_photo_url": item["user"].telegram_photo_url,
+                "total_received": item["total_received"] # В схеме это total_received, даже для 'sent'
+            }
+            for i, item in enumerate(top_senders_data[:3])
+        ]
+
+        # 6. Создаем новый баннер для Отправителей (если есть данные)
+        if top_3_senders:
+            senders_banner = models.Banner(
+                banner_type='leaderboard_senders',
+                position='main',
+                is_active=True,
+                link_url='/leaderboard', # TODO: Можно уточнить ссылку, если рейтинг щедрости отдельно
+                data={"users": top_3_senders}
+            )
+            db.add(senders_banner)
+
+    except Exception as e:
+        print(f"Failed to generate 'senders' leaderboard banner: {e}")
+
+    # 7. Сохраняем все изменения (удаление старых, добавление новых)
+    await db.commit()
+    print("Monthly leaderboard banners generated successfully.")
+
+# --- CRUD ОПЕРАЦИИ ДЛЯ STATIX BONUS ---
+async def get_statix_bonus_item(db: AsyncSession):
+    """Получить активный товар Statix Bonus"""
+    result = await db.execute(
+        select(models.StatixBonusItem).where(models.StatixBonusItem.is_active == True)
+    )
+    return result.scalars().first()
+
+async def create_statix_bonus_item(db: AsyncSession, item_data: dict):
+    """Создать товар Statix Bonus"""
+    db_item = models.StatixBonusItem(**item_data)
+    db.add(db_item)
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+
+async def update_statix_bonus_item(db: AsyncSession, item_id: int, item_data: dict):
+    """Обновить товар Statix Bonus"""
+    result = await db.execute(
+        select(models.StatixBonusItem).where(models.StatixBonusItem.id == item_id)
+    )
+    db_item = result.scalars().first()
+    if not db_item:
+        return None
+    
+    for key, value in item_data.items():
+        if value is not None:
+            setattr(db_item, key, value)
+    
+    await db.commit()
+    await db.refresh(db_item)
+    return db_item
+
+async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amount: int):
+    """Создать покупку бонусов Statix"""
+    # Получаем настройки товара
+    statix_item = await get_statix_bonus_item(db)
+    if not statix_item:
+        raise ValueError("Statix Bonus товар не настроен")
+    
+    # Рассчитываем стоимость в спасибках
+    thanks_cost = (bonus_amount / 100) * statix_item.thanks_to_statix_rate
+    
+    # Получаем пользователя
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Проверяем баланс
+    if user.balance < thanks_cost:
+        raise ValueError("Недостаточно спасибок для покупки")
+    
+    # Списываем спасибки
+    user.balance -= thanks_cost
+    
+    # TODO: Здесь будет интеграция с API Statix Bonus для начисления бонусов
+    # Пока что просто сохраняем информацию о покупке
+    
+    await db.commit()
+    
+    return {
+        "new_balance": user.balance,
+        "purchased_bonus_amount": bonus_amount,
+        "thanks_spent": thanks_cost
+    }
+
+# --- НОВАЯ ФУНКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ ---
+# (Она почти идентична generate_monthly_leaderboard_banners,
+# но использует period='current_month')
+
+async def generate_current_month_test_banners(db: AsyncSession):
+    """
+    Создает баннеры для Топ-3 ТЕКУЩЕГО месяца (для тестирования).
+    Удаляет старые баннеры (типа 'leaderboard_...'), чтобы заменить их.
+    """
+    
+    # 1. Удаляем все старые баннеры рейтинга (чтобы не было дублей)
+    await db.execute(
+        delete(models.Banner).where(
+            models.Banner.banner_type.in_(['leaderboard_receivers', 'leaderboard_senders'])
+        )
+    )
+    
+    # 2. Получаем Топ-3 Получателей (за ТЕКУЩИЙ месяц)
+    try:
+        top_receivers_data = await get_leaderboard_data(
+            db, 
+            period='current_month', # <-- ГЛАВНОЕ ИЗМЕНЕНИЕ
+            leaderboard_type='received'
+        )
+        
+        top_3_receivers = [
+            {
+                "rank": i + 1,
+                "first_name": item["user"].first_name,
+                "last_name": item["user"].last_name,
+                "telegram_photo_url": item["user"].telegram_photo_url,
+                "total_received": item["total_received"]
+            }
+            for i, item in enumerate(top_receivers_data[:3])
+        ]
+
+        if top_3_receivers:
+            receivers_banner = models.Banner(
+                banner_type='leaderboard_receivers',
+                position='main', 
+                is_active=True,
+                link_url='/leaderboard', 
+                data={"users": top_3_receivers}
+            )
+            db.add(receivers_banner)
+            print("TEST banner for receivers CREATED.")
+        else:
+            print("No data for TEST receivers banner (current_month).")
+
+    except Exception as e:
+        print(f"Failed to generate 'receivers' test banner: {e}")
+
+    # 5. Получаем Топ-3 Отправителей (за ТЕКУЩИЙ месяц)
+    try:
+        top_senders_data = await get_leaderboard_data(
+            db, 
+            period='current_month', # <-- ГЛАВНОЕ ИЗМЕНЕНИЕ
+            leaderboard_type='sent'
+        )
+        
+        top_3_senders = [
+            {
+                "rank": i + 1,
+                "first_name": item["user"].first_name,
+                "last_name": item["user"].last_name,
+                "telegram_photo_url": item["user"].telegram_photo_url,
+                "total_received": item["total_received"] 
+            }
+            for i, item in enumerate(top_senders_data[:3])
+        ]
+
+        if top_3_senders:
+            senders_banner = models.Banner(
+                banner_type='leaderboard_senders',
+                position='main',
+                is_active=True,
+                link_url='/leaderboard', 
+                data={"users": top_3_senders}
+            )
+            db.add(senders_banner)
+            print("TEST banner for senders CREATED.")
+        else:
+            print("No data for TEST senders banner (current_month).")
+
+    except Exception as e:
+        print(f"Failed to generate 'senders' test banner: {e}")
+
+    await db.commit()
+    print("TEST leaderboard banners generation finished.")

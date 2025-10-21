@@ -333,3 +333,47 @@ export const deleteMarketItemPermanently = (itemId) => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- API ФУНКЦИИ ДЛЯ STATIX BONUS ---
+export const getStatixBonusItem = () => {
+    return apiClient.get('/market/statix-bonus');
+};
+
+export const purchaseStatixBonus = (telegramId, bonusAmount) => {
+    return apiClient.post('/market/statix-bonus/purchase', {
+        user_id: telegramId,
+        bonus_amount: bonusAmount
+    }, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// --- АДМИН API ДЛЯ STATIX BONUS ---
+export const getStatixBonusSettings = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.get('/admin/statix-bonus', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const updateStatixBonusSettings = (settings) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.put('/admin/statix-bonus', settings, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const adminGenerateLeaderboardBanners = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/generate-leaderboard-banners', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// --- НОВАЯ ФУНКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ ---
+export const adminGenerateTestLeaderboardBanners = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/generate-test-banners', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};

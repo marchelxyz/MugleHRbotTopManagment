@@ -421,3 +421,91 @@ async def delete_item_permanently_route(
 
 # Также убедись, что вверху файла есть импорт Response:
 from fastapi import Response
+
+# --- ЭНДПОИНТЫ ДЛЯ УПРАВЛЕНИЯ STATIX BONUS ---
+@router.get("/statix-bonus", response_model=schemas.StatixBonusItemResponse)
+async def get_statix_bonus_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Получить настройки товара Statix Bonus"""
+    item = await crud.get_statix_bonus_item(db)
+    if not item:
+        # Создаем товар по умолчанию, если его нет
+        default_item = {
+            "name": "Бонусы Statix",
+            "description": "Покупка бонусов для платформы Statix",
+            "thanks_to_statix_rate": 10,  # 10 спасибок за 100 бонусов
+            "min_bonus_per_step": 100,
+            "max_bonus_per_step": 10000,
+            "bonus_step": 100
+        }
+        item = await crud.create_statix_bonus_item(db, default_item)
+    return item
+
+@router.put("/statix-bonus", response_model=schemas.StatixBonusItemResponse)
+async def update_statix_bonus_settings(
+    item_data: schemas.StatixBonusItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(get_current_admin_user)
+):
+    """Обновить настройки товара Statix Bonus"""
+    # Получаем существующий товар или создаем новый
+    existing_item = await crud.get_statix_bonus_item(db)
+    
+    if existing_item:
+        # Обновляем существующий
+        updated_item = await crud.update_statix_bonus_item(
+            db, existing_item.id, item_data.model_dump(exclude_unset=True)
+        )
+    else:
+        # Создаем новый с переданными данными
+        default_data = {
+            "name": "Бонусы Statix",
+            "description": "Покупка бонусов для платформы Statix",
+            "thanks_to_statix_rate": 10,
+            "min_bonus_per_step": 100,
+            "max_bonus_per_step": 10000,
+            "bonus_step": 100
+        }
+        # Объединяем с переданными данными
+        update_data = {**default_data, **item_data.model_dump(exclude_unset=True)}
+        updated_item = await crud.create_statix_bonus_item(db, update_data)
+    
+    return updated_item
+
+@router.post("/generate-leaderboard-banners", status_code=status.HTTP_201_CREATED)
+async def trigger_leaderboard_banner_generation(
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Принудительно генерирует баннеры с Топ-3 (для тестирования).
+    Удаляет старые баннеры рейтинга и создает новые
+    на основе данных "прошлого месяца".
+    """
+    try:
+        # Вызываем ту же самую функцию, что и планировщик
+        await crud.generate_monthly_leaderboard_banners(db)
+        return {"detail": "Баннеры рейтинга успешно сгенерированы."}
+    except Exception as e:
+        print(f"Ошибка при ручной генерации баннеров: {e}")
+        raise HTTPException(status_code=500, detail="Не удалось сгенерировать баннеры")
+
+# --- НОВЫЙ ЭНДПОИНТ ДЛЯ ТЕСТИРОВАНИЯ ---
+@router.post("/generate-test-banners", status_code=status.HTTP_201_CREATED)
+async def trigger_leaderboard_test_banner_generation(
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Принудительно генерирует баннеры с Топ-3 (для тестирования)
+    на основе данных ТЕКУЩЕГО месяца.
+    """
+    try:
+        # Вызываем новую тестовую функцию
+        await crud.generate_current_month_test_banners(db)
+        return {"detail": "Тестовые баннеры (на основе ТЕКУЩЕГО месяца) успешно сгенерированы."}
+    except Exception as e:
+        print(f"Ошибка при ручной генерации ТЕСТОВЫХ баннеров: {e}")
+        raise HTTPException(status_code=500, detail="Не удалось сгенерировать тестовые баннеры")

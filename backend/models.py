@@ -122,10 +122,14 @@ class ItemCode(Base):
 class Banner(Base):
     __tablename__ = "banners"
     id = Column(Integer, primary_key=True, index=True)
-    image_url = Column(String, nullable=False)
+    image_url = Column(String, nullable=True) # Было nullable=False
     link_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     position = Column(String, default='feed', nullable=False)
+    # Тип баннера: 'image' (по умолч.), 'leaderboard_receivers', 'leaderboard_senders'
+    banner_type: Mapped[str] = mapped_column(String(50), default='image', server_default='image', nullable=False)
+    # Поле для хранения данных (например, списка топ-3 пользователей)
+    data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 class RouletteWin(Base):
     __tablename__ = "roulette_wins"
@@ -145,3 +149,20 @@ class PendingUpdate(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="pending_updates")
+
+class StatixBonusItem(Base):
+    __tablename__ = "statix_bonus_items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, default="Бонусы Statix", nullable=False)
+    description = Column(String, nullable=True)
+    image_url = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    # Курс валют: сколько спасибок за 100 бонусов Statix
+    thanks_to_statix_rate = Column(Integer, default=10, nullable=False)
+    # Минимальное и максимальное количество бонусов за один шаг
+    min_bonus_per_step = Column(Integer, default=100, nullable=False)
+    max_bonus_per_step = Column(Integer, default=10000, nullable=False)
+    # Шаг увеличения бонусов
+    bonus_step = Column(Integer, default=100, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

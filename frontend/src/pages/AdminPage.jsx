@@ -9,7 +9,7 @@ import BannerManager from './admin/BannerManager';
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import StatisticsDashboard from './admin/StatisticsDashboard';
-import { addPointsToAll, addTicketsToAll } from '../api';
+import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 
@@ -87,6 +87,51 @@ function AdminPage() {
   // Используем одну переменную для навигации. null - это главное меню.
   const [activeSection, setActiveSection] = useState(null);
 
+// --- 1. ДОБАВЛЯЕМ ХУКИ И ЛОАДЕР ---
+  // (Они у тебя уже импортированы, просто используем их)
+  const { showAlert } = useModalAlert();
+  const { confirm } = useConfirmation();
+  const [loading, setLoading] = useState(false); // Для отслеживания загрузки
+
+// Это твоя старая функция, она вызывает баннеры за ПРОШЛЫЙ МЕСЯЦ
+  const handleGenerateBanners = async () => {
+    const isConfirmed = await confirm(
+        'Подтверждение (Прошлый месяц)',
+        'Вы уверены? Будут созданы баннеры на основе данных ПРОШЛОГО месяца. Старые баннеры рейтинга удалятся.'
+    );
+    if (!isConfirmed) return;
+
+    setLoading('monthly'); // Включаем лоадер для этой кнопки
+    try {
+        const response = await adminGenerateLeaderboardBanners();
+        showAlert(response.data.detail || 'Баннеры (прошлый месяц) успешно сгенерированы!', 'success');
+    } catch (error) {
+        const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+        showAlert(errorMsg, 'error');
+    } finally {
+        setLoading(false); // Выключаем лоадер
+    }
+  };
+
+  const handleGenerateTestBanners = async () => {
+    const isConfirmed = await confirm(
+        'Подтверждение (Тест)',
+        'Вы уверены? Будут созданы ТЕСТОВЫЕ баннеры на основе данных ТЕКУЩЕГО месяца. Старые баннеры рейтинга удалятся.'
+    );
+    if (!isConfirmed) return;
+
+    setLoading('test'); // Включаем лоадер для этой кнопки
+    try {
+        const response = await adminGenerateTestLeaderboardBanners();
+        showAlert(response.data.detail || 'Тестовые баннеры (текущий месяц) успешно сгенерированы!', 'success');
+    } catch (error) {
+        const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+        showAlert(errorMsg, 'error');
+    } finally {
+        setLoading(false); // Выключаем лоадер
+    }
+  };
+  
   const renderContent = () => {
     // Если секция не выбрана, показываем меню
     if (!activeSection) {
@@ -96,6 +141,23 @@ function AdminPage() {
           <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
           <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
+{/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
+          <button 
+            onClick={handleGenerateBanners} 
+            disabled={loading} 
+            className={styles.gridButton}
+          >
+            {loading === 'monthly' ? 'Генерация...' : 'Создать Баннеры (Прошлый мес.)'}
+          </button>
+
+          {/* Новая кнопка (для текущего месяца) */}
+          <button 
+            onClick={handleGenerateTestBanners} 
+            disabled={loading} 
+            className={styles.gridButton}
+          >
+            {loading === 'test' ? 'Генерация...' : 'Создать Баннеры (Текущий мес. / Тест)'}
+          </button>
           {/*<button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>*/}
         </div>
       );

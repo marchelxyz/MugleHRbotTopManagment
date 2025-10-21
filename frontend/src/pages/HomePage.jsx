@@ -5,6 +5,8 @@ import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
+// --- 1. ДОБАВЛЕН ИМПОРТ ---
+import LeaderboardBanner from '../components/LeaderboardBanner';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [feed, setFeed] = useState(() => getCachedData('feed'));
@@ -42,8 +44,15 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     const photoFeedBanners = banners.filter(b => b.position === 'feed');
 
+    // --- 2. ОБНОВЛЕНА ФУНКЦИЯ КЛИКА ---
     const handleBannerClick = (url) => {
-        if (url) {
+        if (!url) return;
+        
+        if (url.startsWith('/')) {
+            // Это внутренняя ссылка, используем onNavigate
+            onNavigate(url.replace('/', '')); // '/leaderboard' -> 'leaderboard'
+        } else {
+            // Это внешняя ссылка, открываем в браузере
             window.open(url, '_blank', 'noopener,noreferrer');
         }
     };
@@ -60,7 +69,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
         }, {});
     }, [feed]);
 
-    // --- НАЧАЛО ИЗМЕНЕНИЙ: Логика для расчета сдвига слайдера ---
+    // --- (Твой код, оставлен без изменений) ---
     const getSliderTransform = () => {
       // Для мобильных устройств логика остаётся прежней
       if (!isDesktop) {
@@ -77,7 +86,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
       const offset = initialOffset - (currentSlide * slideTotalWidth);
       return `translateX(${offset}%)`;
     };
-    // --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    // --- (Конец твоего кода) ---
 
     return (
         <div className={styles.pageContainer}>
@@ -94,50 +103,64 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                     />
                 </div>
 
-        {mainBanners.length > 0 && (
-          <div className={styles.sliderContainer}>
-            <div 
-              className={styles.sliderTrack}
-              // --- ИЗМЕНЕНИЕ: Используем новую функцию для расчета сдвига ---
-              style={{ transform: getSliderTransform() }}
-            >
-              {mainBanners.map((banner, index) => (
-                // --- ИЗМЕНЕНИЕ: Добавляем класс .active для центрального слайда ---
-                <div 
-                  key={banner.id} 
-                  className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
-                  onClick={() => handleBannerClick(banner.link_url)}
-                >
-                  <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
-                </div>
-              ))}
-            </div>
-            {mainBanners.length > 1 && (
-              <div className={styles.sliderDots}>
-                {mainBanners.map((_, index) => (
-                  <div 
-                    key={index} 
-                    className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
-                    onClick={() => setCurrentSlide(index)}
-                  ></div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                {mainBanners.length > 0 && (
+                    <div className={styles.sliderContainer}>
+                        <div 
+                            className={styles.sliderTrack}
+                            style={{ transform: getSliderTransform() }}
+                        >
+                            {/* --- 3. ОБНОВЛЕНА ЛОГИКА РЕНДЕРИНГА СЛАЙДОВ --- */}
+                            {mainBanners.map((banner, index) => (
+                                <div 
+                                    key={banner.id} 
+                                    className={`${styles.slide} ${currentSlide === index ? styles.active : ''}`}
+                                    // Клик обрабатывается только если это баннер-картинка
+                                    // (У баннера-рейтинга своя кнопка внутри)
+                                    onClick={() => (banner.banner_type === 'image' || !banner.banner_type) && handleBannerClick(banner.link_url)}
+                                >
+                                    {/* Условный рендеринг: Картинка ИЛИ Компонент */}
+                                    {(banner.banner_type === 'image' || !banner.banner_type) ? (
+                                        // Старая логика, если это 'image' или тип не указан
+                                        <img src={banner.image_url} alt="Banner" className={styles.bannerImage} />
+                                    ) : (
+                                        // Новая логика для других типов (leaderboard_...)
+                                        <LeaderboardBanner 
+                                            banner={banner} 
+                                            onNavigate={onNavigate} 
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* (Этот блок у тебя был, он на месте) */}
+                        {mainBanners.length > 1 && (
+                            <div className={styles.sliderDots}>
+                                {mainBanners.map((_, index) => (
+                                    <div 
+                                        key={index} 
+                                        className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
+                                        onClick={() => setCurrentSlide(index)}
+                                    ></div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
-        {photoFeedBanners.length > 0 && (
-          <div className={styles.photoFeed}>
-            {/* Дублируем массив для создания бесшовной анимации */}
-            <div className={styles.photoFeedTrack}>
-              {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
-                <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
-                  <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                {/* (Весь остальной код твой, оставлен без изменений) */}
+                {photoFeedBanners.length > 0 && (
+                    <div className={styles.photoFeed}>
+                        {/* Дублируем массив для создания бесшовной анимации */}
+                        <div className={styles.photoFeedTrack}>
+                            {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
+                                <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
+                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 
                 <div className={styles.feedSection}>
                     <h3 className={styles.feedTitle}>Последняя активность</h3>
@@ -155,7 +178,8 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                                 <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
-    @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
+                                                        @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
+                                                    {/* --- !!! ВОТ ИСПРАВЛЕНИЕ ОПЕЧАТКИ !!! --- */}
                                                     </p>
                                                     <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
                                                 </div>

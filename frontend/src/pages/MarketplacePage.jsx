@@ -5,6 +5,7 @@ import { getMarketItems, purchaseItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
+import StatixBonusCard from '../components/StatixBonusCard';
 import styles from './MarketplacePage.module.css';
 import { FaStar, FaCopy } from 'react-icons/fa';
 import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
@@ -57,6 +58,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   return (
     <PageLayout title="Кафетерий">
       <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
+      
+      {/* Statix Bonus Card - показываем первым */}
+      <StatixBonusCard user={user} onPurchaseSuccess={onPurchaseSuccess} />
+      
       {isLoading ? <p>Загрузка товаров...</p> : (
         <div className={styles.itemsGrid}>
           {activeItems.map(item => {

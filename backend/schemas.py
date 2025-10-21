@@ -175,10 +175,14 @@ class AdminUserUpdate(BaseModel):
     is_admin: Optional[bool] = None
 
 class BannerBase(OrmBase):
-    image_url: str
+# --- ИЗМЕНЕНИЕ: Сделай image_url опциональным ---
+    image_url: Optional[str] = None
     link_url: Optional[str] = None
     is_active: bool
     position: str
+    # --- НОВЫЕ ПОЛЯ ---
+    banner_type: str = 'image'
+    data: Optional[dict] = None
 
 class BannerCreate(BannerBase):
     pass
@@ -188,9 +192,15 @@ class BannerUpdate(BaseModel):
     link_url: Optional[str] = None
     is_active: Optional[bool] = None
     position: Optional[str] = None
+    banner_type: Optional[str] = None
+    data: Optional[dict] = None
 
 class BannerResponse(BannerBase):
     id: int
+    image_url: Optional[str] # Убедимся, что он Optional
+    
+    class Config:
+        from_attributes = True # Было orm_mode = True
 
 # --- НОВЫЕ СХЕМЫ ДЛЯ РУЛЕТКИ ---
 class RouletteWinResponse(OrmBase):
@@ -270,3 +280,36 @@ class SessionResponse(SessionBase):
 
 class AverageSessionDurationStats(BaseModel):
     average_duration_minutes: float
+
+# --- НОВЫЕ СХЕМЫ ДЛЯ STATIX BONUS ---
+class StatixBonusItemResponse(OrmBase):
+    id: int
+    name: str
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: bool
+    thanks_to_statix_rate: int
+    min_bonus_per_step: int
+    max_bonus_per_step: int
+    bonus_step: int
+    created_at: datetime
+    updated_at: datetime
+
+class StatixBonusItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: Optional[bool] = None
+    thanks_to_statix_rate: Optional[int] = None
+    min_bonus_per_step: Optional[int] = None
+    max_bonus_per_step: Optional[int] = None
+    bonus_step: Optional[int] = None
+
+class StatixBonusPurchaseRequest(BaseModel):
+    user_id: int
+    bonus_amount: int  # Количество бонусов Statix для покупки
+
+class StatixBonusPurchaseResponse(BaseModel):
+    message: str
+    new_balance: int
+    purchased_bonus_amount: int
