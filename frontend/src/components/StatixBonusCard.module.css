@@ -4,7 +4,7 @@
   padding: 24px;
   margin-bottom: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 2px solid #e3f2fd;
+  border: 2px solid #d4edda;
   position: relative;
   overflow: hidden;
 }
@@ -16,7 +16,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #2196f3, #21cbf3, #2196f3);
+  background: linear-gradient(90deg, #5CA14A, #4a8c3a, #5CA14A);
 }
 
 .loading {
@@ -34,7 +34,7 @@
 .title {
   font-size: 24px;
   font-weight: 700;
-  color: #1976d2;
+  color: #5CA14A;
   margin: 0 0 8px 0;
 }
 
@@ -68,15 +68,15 @@
   text-align: center;
   margin-bottom: 20px;
   padding: 16px;
-  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+  background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
   border-radius: 12px;
-  border: 2px solid #e1f5fe;
+  border: 2px solid #d4edda;
 }
 
 .bonusAmount {
   font-size: 32px;
   font-weight: 700;
-  color: #1976d2;
+  color: #5CA14A;
   display: block;
   line-height: 1;
 }
@@ -108,9 +108,9 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2196f3, #21cbf3);
+  background: linear-gradient(135deg, #5CA14A, #4a8c3a);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 2px 6px rgba(92, 161, 74, 0.3);
   border: 2px solid white;
 }
 
@@ -118,9 +118,9 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2196f3, #21cbf3);
+  background: linear-gradient(135deg, #5CA14A, #4a8c3a);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 2px 6px rgba(92, 161, 74, 0.3);
   border: 2px solid white;
   border: none;
 }
@@ -164,7 +164,7 @@
 .price {
   font-size: 20px;
   font-weight: 700;
-  color: #1976d2;
+  color: #5CA14A;
 }
 
 .rateInfo {
@@ -179,17 +179,17 @@
   font-size: 16px;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #2196f3, #21cbf3);
+  background: linear-gradient(135deg, #5CA14A, #4a8c3a);
   border: none;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 4px 12px rgba(92, 161, 74, 0.3);
 }
 
 .purchaseButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+  box-shadow: 0 6px 16px rgba(92, 161, 74, 0.4);
 }
 
 .purchaseButton:active:not(:disabled) {

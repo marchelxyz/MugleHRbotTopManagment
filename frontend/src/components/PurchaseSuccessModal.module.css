@@ -180,15 +180,15 @@
 .bonusAmount {
   margin-top: 12px;
   padding: 12px;
-  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+  background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
   border-radius: 12px;
-  border: 2px solid #e1f5fe;
+  border: 2px solid #d4edda;
 }
 
 .bonusNumber {
   font-size: 24px;
   font-weight: 700;
-  color: #1976d2;
+  color: #5CA14A;
   display: block;
   line-height: 1;
 }
