@@ -70,7 +70,31 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
                 # Если status == None, значит запрос уже был обработан, ничего не делаем.
 
-            # 2. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
+            # 2. ПРОВЕРЯЕМ КОЛБЭКИ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ
+            elif callback_data.startswith("accept_shared_gift_") or callback_data.startswith("reject_shared_gift_"):
+                invitation_id = int(callback_data.split("_")[-1])
+                user_telegram_id = callback_query["from"]["id"]
+                
+                # Получаем пользователя по telegram_id
+                user = await crud.get_user_by_telegram(db, user_telegram_id)
+                if not user:
+                    await send_telegram_message(user_telegram_id, "❌ Пользователь не найден")
+                    return {"ok": False, "error": "User not found"}
+                
+                if callback_data.startswith("accept_shared_gift_"):
+                    try:
+                        result = await crud.accept_shared_gift_invitation(db, invitation_id, user.id)
+                        await send_telegram_message(user_telegram_id, result["message"])
+                    except ValueError as e:
+                        await send_telegram_message(user_telegram_id, f"❌ {str(e)}")
+                else:  # reject_shared_gift_
+                    try:
+                        result = await crud.reject_shared_gift_invitation(db, invitation_id, user.id)
+                        await send_telegram_message(user_telegram_id, result["message"])
+                    except ValueError as e:
+                        await send_telegram_message(user_telegram_id, f"❌ {str(e)}")
+
+            # 3. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
             elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
                 # --- Это СТАРАЯ ЛОГИКА (оставляем ее) ---
                 user_id = int(callback_data.split("_")[1])

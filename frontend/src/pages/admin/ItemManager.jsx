@@ -19,6 +19,7 @@ const initialItemState = {
   stock: 1,
   image_url: '',
   is_auto_issuance: false,
+  is_shared_gift: false,
   codes_text: '',
   added_stock: '',      // Для пополнения обычных товаров
   new_item_codes: ''    // Для пополнения кодов
@@ -100,10 +101,26 @@ function ItemManager() {
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    // Логика блокировки автовыдачи при выборе совместного подарка
+    if (name === 'is_shared_gift' && checked) {
+      setForm(prev => ({
+        ...prev,
+        [name]: checked,
+        is_auto_issuance: false // Блокируем автовыдачу
+      }));
+    } else if (name === 'is_auto_issuance' && checked) {
+      setForm(prev => ({
+        ...prev,
+        [name]: checked,
+        is_shared_gift: false // Блокируем совместный подарок
+      }));
+    } else {
+      setForm(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   // --- 4. ОБНОВЛЯЕМ ЛОГИКУ ОТПРАВКИ ФОРМЫ ---
@@ -125,6 +142,7 @@ function ItemManager() {
           price_rub: parseInt(form.price_rub, 10),
           image_url: form.image_url,
           original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
+          is_shared_gift: form.is_shared_gift,
           added_stock: form.is_auto_issuance ? 0 : parseInt(form.added_stock, 10) || 0,
           new_item_codes: newCodes
         };
@@ -152,6 +170,7 @@ function ItemManager() {
           image_url: form.image_url,
           original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
           is_auto_issuance: form.is_auto_issuance,
+          is_shared_gift: form.is_shared_gift,
           item_codes: codes
         };
         await createMarketItem(itemDataToSend);
@@ -178,6 +197,7 @@ function ItemManager() {
         stock: item.stock, // Показываем текущий остаток
         image_url: item.image_url || '',
         is_auto_issuance: item.is_auto_issuance,
+        is_shared_gift: item.is_shared_gift || false,
         // Очищаем поля для создания и пополнения
         codes_text: item.codes ? item.codes.map(c => c.code_value).join('\n') : '',
         added_stock: '',
@@ -445,9 +465,21 @@ function ItemManager() {
               name="is_auto_issuance"
               checked={form.is_auto_issuance}
               onChange={handleFormChange}
-              disabled={!!editingItemId} 
+              disabled={!!editingItemId || form.is_shared_gift} 
             />
             <label htmlFor="is_auto_issuance">Автовыдача товара (сертификаты, коды)</label>
+          </div>
+
+          <div className={styles.checkboxContainer}>
+            <input
+              type="checkbox"
+              id="is_shared_gift"
+              name="is_shared_gift"
+              checked={form.is_shared_gift}
+              onChange={handleFormChange}
+              disabled={!!editingItemId || form.is_auto_issuance} 
+            />
+            <label htmlFor="is_shared_gift">Совместный подарок</label>
           </div>
 
           {form.is_auto_issuance ? (
@@ -513,6 +545,7 @@ function ItemManager() {
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
                 {item.is_auto_issuance && <p style={{color: '#007bff', fontSize: '12px', fontWeight: 'bold'}}>Автовыдача</p>}
+                {item.is_shared_gift && <p style={{color: '#28a745', fontSize: '12px', fontWeight: 'bold'}}>Совместный подарок</p>}
                 {item.original_price && item.original_price > item.price ? (
                   <p>
                     Цена: {item.price} (было <s style={{color: '#999'}}>{item.original_price}</s>) спасибок
