@@ -113,7 +113,7 @@ async def archive_item_route(item_id: int, db: AsyncSession = Depends(get_db)):
 @router.get("/market-items/archived", response_model=list[schemas.MarketItemResponse])
 async def get_archived_items_route(db: AsyncSession = Depends(get_db)):
     items = await crud.get_archived_items(db)
-    return [{**item.__dict__, "price_spasibki": item.price} for item in items]
+    return items
 
 @router.get("/market-items", response_model=List[schemas.MarketItemResponse])
 async def get_all_active_items_route(db: AsyncSession = Depends(get_db)):
