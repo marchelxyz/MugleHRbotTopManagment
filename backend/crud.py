@@ -6,6 +6,7 @@ import math
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
 import random
 import bot
 import config
@@ -311,7 +312,10 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
 async def get_market_items(db: AsyncSession):
     # Теперь можно просто вернуть объекты SQLAlchemy,
     # Pydantic сам преобразует их согласно response_model в роутере.
-    result = await db.execute(select(models.MarketItem))
+    result = await db.execute(
+        select(models.MarketItem)
+        .options(selectinload(models.MarketItem.codes))
+    )
     return result.scalars().all()
 
 async def get_active_items(db: AsyncSession):
@@ -349,8 +353,15 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
 
 async def admin_restore_market_item(db: AsyncSession, item_id: int):
     """Восстанавливает товар из архива."""
-    # Находим товар по его ID
-    db_item = await db.get(models.MarketItem, item_id)
+    # Находим товар по его ID с загрузкой связанных кодов
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(models.MarketItem)
+        .options(selectinload(models.MarketItem.codes))
+        .where(models.MarketItem.id == item_id)
+    )
+    db_item = result.scalar_one_or_none()
+    
     if not db_item:
         # Если товар не найден, выходим
         return None
@@ -724,7 +735,11 @@ async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = Fa
 
 async def get_archived_items(db: AsyncSession):
     """Получает список архивированных товаров."""
-    result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
+    result = await db.execute(
+        select(models.MarketItem)
+        .options(selectinload(models.MarketItem.codes))
+        .where(models.MarketItem.is_archived == True)
+    )
     return result.scalars().all()
 
 # --- Функция полного удаления товара ---
