@@ -20,7 +20,8 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
-      setFilteredUsers(users.filter(user => user.id !== currentUserId));
+      // Не показываем пользователей, если нет поискового запроса
+      setFilteredUsers([]);
     } else {
       const filtered = users.filter(user => 
         user.id !== currentUserId && (
@@ -76,7 +77,7 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
             <div className={styles.loading}>Загрузка...</div>
           ) : filteredUsers.length === 0 ? (
             <div className={styles.noResults}>
-              {searchTerm ? 'Пользователи не найдены' : 'Нет доступных пользователей'}
+              {searchTerm ? 'Пользователи не найдены' : 'Введите имя, фамилию или тег для поиска'}
             </div>
           ) : (
             filteredUsers.map(user => (
