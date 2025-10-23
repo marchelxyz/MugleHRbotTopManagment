@@ -71,6 +71,30 @@
   cursor: not-allowed;
 }
 
+.sharedGiftButton {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: #17a2b8;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sharedGiftButton:hover {
+  background-color: #138496;
+}
+
+.sharedGiftButton:disabled {
+  background-color: #a3d9b1;
+  cursor: not-allowed;
+}
+
 /* --- НАЧАЛО БЛОКА ИЗМЕНЕНИЙ ДЛЯ СКИДОК --- */
 
 /* 1. Стили для контейнера цен */

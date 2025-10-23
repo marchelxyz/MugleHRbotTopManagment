@@ -46,3 +46,60 @@ async def answer_callback_query(callback_query_id: str):
         except Exception as e:
             print(f"Could not answer callback query. Error: {e}")
 # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+
+# --- ФУНКЦИИ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
+async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name: str, item_name: str, invitation_id: int):
+    """Отправить уведомление о приглашении на совместный подарок"""
+    text = (
+        f"🎁 *Приглашение на совместный подарок!*\n\n"
+        f"👤 *{buyer_name}* приглашает вас разделить товар *{item_name}*\n\n"
+        f"💰 Стоимость будет разделена 50/50\n"
+        f"⏰ Приглашение действует 24 часа"
+    )
+    
+    reply_markup = {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "✅ Принять",
+                    "callback_data": f"accept_shared_gift_{invitation_id}"
+                },
+                {
+                    "text": "❌ Отказаться", 
+                    "callback_data": f"reject_shared_gift_{invitation_id}"
+                }
+            ]
+        ]
+    }
+    
+    await send_telegram_message(invited_user_telegram_id, text, reply_markup)
+
+async def send_shared_gift_accepted_notification(buyer_telegram_id: int, invited_user_name: str, item_name: str):
+    """Уведомить покупателя о принятии приглашения"""
+    text = (
+        f"✅ *Приглашение принято!*\n\n"
+        f"👤 *{invited_user_name}* согласился разделить товар *{item_name}*\n\n"
+        f"💰 Вам возвращена половина стоимости товара"
+    )
+    
+    await send_telegram_message(buyer_telegram_id, text)
+
+async def send_shared_gift_rejected_notification(buyer_telegram_id: int, invited_user_name: str, item_name: str):
+    """Уведомить покупателя об отклонении приглашения"""
+    text = (
+        f"❌ *Приглашение отклонено*\n\n"
+        f"👤 *{invited_user_name}* отклонил приглашение на товар *{item_name}*\n\n"
+        f"💰 Вам возвращена полная стоимость товара"
+    )
+    
+    await send_telegram_message(buyer_telegram_id, text)
+
+async def send_shared_gift_expired_notification(buyer_telegram_id: int, item_name: str):
+    """Уведомить покупателя об истечении приглашения"""
+    text = (
+        f"⏰ *Приглашение истекло*\n\n"
+        f"Время на принятие приглашения на товар *{item_name}* истекло\n\n"
+        f"💰 Вам возвращена полная стоимость товара"
+    )
+    
+    await send_telegram_message(buyer_telegram_id, text)

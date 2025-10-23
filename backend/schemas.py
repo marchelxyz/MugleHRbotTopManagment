@@ -78,6 +78,7 @@ class MarketItemResponse(OrmBase):
     is_archived: bool
     original_price: Optional[int] = None # <-- Теперь это поле гарантированно будет в ответе
     is_auto_issuance: bool
+    is_shared_gift: bool
     codes: List[ItemCodeResponse] = []
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
@@ -129,6 +130,7 @@ class MarketItemCreate(BaseModel):
     image_url: Optional[str] = None
     original_price: Optional[int] = None
     is_auto_issuance: bool = False
+    is_shared_gift: bool = False
     codes_text: Optional[str] = None # Поле для вставки кодов (каждый с новой строки)
     item_codes: Optional[List[str]] = []
 
@@ -141,6 +143,7 @@ class MarketItemUpdate(BaseModel):
     image_url: Optional[str] = None
     original_price: Optional[int] = None # <-- И СЮДА
     is_auto_issuance: Optional[bool] = None
+    is_shared_gift: Optional[bool] = None
     # --- НАШИ НОВЫЕ ПОЛЯ ---
     added_stock: Optional[int] = None # Для пополнения обычных товаров
     new_item_codes: Optional[List[str]] = [] # Для добавления новых кодов/ссылок
@@ -313,3 +316,35 @@ class StatixBonusPurchaseResponse(BaseModel):
     message: str
     new_balance: int
     purchased_bonus_amount: int
+
+# --- СХЕМЫ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
+class SharedGiftInvitationResponse(OrmBase):
+    id: int
+    buyer_id: int
+    invited_user_id: int
+    item_id: int
+    status: str
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: Optional[datetime] = None
+    rejected_at: Optional[datetime] = None
+    buyer: UserBase
+    invited_user: UserBase
+    item: MarketItemBase
+
+class CreateSharedGiftInvitationRequest(BaseModel):
+    buyer_id: int
+    invited_user_id: int
+    item_id: int
+
+class AcceptSharedGiftRequest(BaseModel):
+    invitation_id: int
+    user_id: int
+
+class RejectSharedGiftRequest(BaseModel):
+    invitation_id: int
+    user_id: int
+
+class SharedGiftInvitationActionResponse(BaseModel):
+    message: str
+    new_balance: Optional[int] = None
