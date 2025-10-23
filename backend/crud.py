@@ -1847,23 +1847,17 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
     if not buyer or not item:
         raise ValueError("Ошибка получения данных")
     
-    # Покупатель уже заплатил полную стоимость, возвращаем половину
-    half_price = item.price // 2
-    buyer.balance += half_price
+    # Покупатель уже заплатил полную стоимость, ничего не возвращаем
+    # Деление стоимости убрано - покупатель платит полную стоимость
     
-    # Создаем покупку для покупателя
+    # Создаем покупку только для покупателя
     purchase_buyer = models.Purchase(
         user_id=invitation.buyer_id,
         item_id=invitation.item_id
     )
     db.add(purchase_buyer)
     
-    # Создаем покупку для принявшего приглашение
-    purchase_invited = models.Purchase(
-        user_id=invitation.invited_user_id,
-        item_id=invitation.item_id
-    )
-    db.add(purchase_invited)
+    # Приглашенный пользователь не получает покупку, так как не платит
     
     # Обновляем статус приглашения
     invitation.status = 'accepted'
@@ -1889,11 +1883,10 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
     try:
         admin_message = (
             f"🎁 *Совместная покупка в магазине!*\n\n"
-            f"👥 *Покупатели:*\n"
-            f"• {buyer.first_name} {buyer.last_name} (@{buyer.username or buyer.telegram_id})\n"
-            f"• {invitation.invited_user.first_name} {invitation.invited_user.last_name} (@{invitation.invited_user.username or invitation.invited_user.telegram_id})\n\n"
+            f"👤 *Покупатель:* {buyer.first_name} {buyer.last_name} (@{buyer.username or buyer.telegram_id})\n"
+            f"👥 *Приглашенный:* {invitation.invited_user.first_name} {invitation.invited_user.last_name} (@{invitation.invited_user.username or invitation.invited_user.telegram_id})\n\n"
             f"🎁 *Товар:* {item.name}\n"
-            f"💰 *Стоимость:* {item.price} спасибок (разделено 50/50)\n\n"
+            f"💰 *Стоимость:* {item.price} спасибок (оплачено покупателем)\n\n"
             f"📉 *Баланс покупателя:* {buyer.balance} спасибок"
         )
         
