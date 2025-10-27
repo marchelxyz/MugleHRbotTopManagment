@@ -35,6 +35,12 @@ async def purchase_item(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except Exception as e:
+        print(f"Error during purchase: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during purchase"
+        )
 
 # --- ЭНДПОИНТЫ ДЛЯ STATIX BONUS ---
 @router.get("/market/statix-bonus", response_model=schemas.StatixBonusItemResponse)

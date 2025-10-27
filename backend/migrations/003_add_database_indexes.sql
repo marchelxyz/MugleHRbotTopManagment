@@ -19,12 +19,11 @@ CREATE INDEX IF NOT EXISTS idx_transactions_sender_receiver ON transactions(send
 CREATE INDEX IF NOT EXISTS idx_purchases_timestamp ON purchases(timestamp);
 CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_item_id ON purchases(item_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_amount ON purchases(amount);
 
 -- Индексы для таблицы market_items
-CREATE INDEX IF NOT EXISTS idx_market_items_is_active ON market_items(is_active);
-CREATE INDEX IF NOT EXISTS idx_market_items_price_spasibki ON market_items(price_spasibki);
-CREATE INDEX IF NOT EXISTS idx_market_items_created_at ON market_items(created_at);
+CREATE INDEX IF NOT EXISTS idx_market_items_is_archived ON market_items(is_archived);
+CREATE INDEX IF NOT EXISTS idx_market_items_price ON market_items(price);
+CREATE INDEX IF NOT EXISTS idx_market_items_price_rub ON market_items(price_rub);
 
 -- Индексы для таблицы banners
 CREATE INDEX IF NOT EXISTS idx_banners_is_active ON banners(is_active);
@@ -36,20 +35,21 @@ CREATE INDEX IF NOT EXISTS idx_roulette_wins_user_id ON roulette_wins(user_id);
 
 -- Индексы для таблицы user_sessions
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_start_time ON user_sessions(start_time);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_end_time ON user_sessions(end_time);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_session_start ON user_sessions(session_start);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_last_seen ON user_sessions(last_seen);
 
 -- Индексы для таблицы item_codes
-CREATE INDEX IF NOT EXISTS idx_item_codes_code ON item_codes(code);
-CREATE INDEX IF NOT EXISTS idx_item_codes_item_id ON item_codes(item_id);
-CREATE INDEX IF NOT EXISTS idx_item_codes_is_used ON item_codes(is_used);
+CREATE INDEX IF NOT EXISTS idx_item_codes_code_value ON item_codes(code_value);
+CREATE INDEX IF NOT EXISTS idx_item_codes_market_item_id ON item_codes(market_item_id);
+CREATE INDEX IF NOT EXISTS idx_item_codes_is_issued ON item_codes(is_issued);
 
 -- Индексы для таблицы statix_bonus_items
 CREATE INDEX IF NOT EXISTS idx_statix_bonus_items_is_active ON statix_bonus_items(is_active);
 
 -- Индексы для таблицы shared_gift_invitations
-CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_code ON shared_gift_invitations(invitation_code);
-CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_creator_id ON shared_gift_invitations(creator_id);
+CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_buyer_id ON shared_gift_invitations(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_invited_user_id ON shared_gift_invitations(invited_user_id);
+CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_item_id ON shared_gift_invitations(item_id);
 CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_status ON shared_gift_invitations(status);
 CREATE INDEX IF NOT EXISTS idx_shared_gift_invitations_expires_at ON shared_gift_invitations(expires_at);
 

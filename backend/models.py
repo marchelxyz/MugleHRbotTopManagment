@@ -1,8 +1,7 @@
 # backend/models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date, func
-from sqlalchemy.orm import declarative_base, relationship # <-- ДОБАВЬ ИЗМЕНЕНИЕ
+from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.orm import relationship, Mapped, mapped_column
 # Стало
 from database import Base
 from datetime import date, datetime
@@ -27,8 +26,8 @@ class User(Base):
     last_login_date: Mapped[datetime] = mapped_column(DateTime, nullable=True, onupdate=func.now())
     ticket_parts = Column(Integer, default=0)
     tickets = Column(Integer, default=0)
-    last_ticket_part_reset = Column(Date, default=datetime.utcnow)
-    last_ticket_reset = Column(Date, default=datetime.utcnow)
+    last_ticket_part_reset: Mapped[Optional[date]] = mapped_column(Date, default=date.today)
+    last_ticket_reset: Mapped[Optional[date]] = mapped_column(Date, default=date.today)
     card_barcode = Column(String, nullable=True) # Поле для хранения данных штрих-кода
     card_balance = Column(String, nullable=True) # Поле для хранения баланса карты
     registration_date = Column(DateTime, default=func.now())
@@ -75,7 +74,7 @@ class Transaction(Base):
     receiver_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
     message = Column(String, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     sender = relationship("User", back_populates="sent_transactions", foreign_keys=[sender_id], lazy='selectin')
     receiver = relationship("User", back_populates="received_transactions", foreign_keys=[receiver_id], lazy='selectin')
 
@@ -101,7 +100,7 @@ class Purchase(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     user = relationship("User", back_populates="purchases")
     item = relationship("MarketItem", back_populates="purchases")
 
@@ -136,7 +135,7 @@ class RouletteWin(Base):
     __tablename__ = "roulette_wins"
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Integer, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     user = relationship("User", lazy='selectin')
 
