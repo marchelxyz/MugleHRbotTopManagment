@@ -112,6 +112,11 @@ class TransferRequest(BaseModel):
     receiver_id: int
     message: Optional[str] = None
 
+class TransactionCreate(BaseModel):
+    amount: int
+    receiver_telegram_id: int
+    message: Optional[str] = None
+
 class PurchaseRequest(BaseModel):
     user_id: int
     item_id: int
