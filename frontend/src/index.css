@@ -1,8 +1,0 @@
-/* frontend/src/index.css */
-body {
-  margin: 0;
-  font-family: 'Inter', sans-serif; /* Устанавливаем Inter как основной шрифт */
-  background-color: #F4F4F8; /* Новый основной фон */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
