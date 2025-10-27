@@ -1,0 +1,172 @@
+/* frontend/src/pages/admin/UserManager.module.css */
+
+.userList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.userItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px 15px;
+  gap: 15px;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0; /* Для правильного переноса текста, если нужно */
+}
+.userInfo strong {
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.userInfo span {
+  font-size: 13px;
+  color: #666;
+}
+
+.userStats {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.userActions {
+  flex-shrink: 0;
+}
+
+/* --- НОВЫЙ СТИЛЬ ДЛЯ КНОПКИ-ИКОНКИ --- */
+.iconButton {
+  padding: 8px 10px; /* Делаем ее чуть крупнее */
+  font-size: 14px;
+}
+
+
+/* --- ИЗМЕНЕНИЯ В СТИЛЯХ МОДАЛЬНОГО ОКНА --- */
+
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Выравниваем по верху */
+  padding-top: 120px; /* Опускаем содержимое на 120px */
+  overflow-y: auto; /* Добавляем скролл, если окно не помещается */
+  box-sizing: border-box;
+}
+
+.modalContent {
+  background-color: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  position: relative; /* Для позиционирования кнопки закрытия */
+}
+
+/* Кнопка-крестик для закрытия */
+.closeButton {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #888;
+    cursor: pointer;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+/* Располагаем кнопки друг под другом */
+.modalActions {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column; /* ГЛАВНОЕ ИЗМЕНЕНИЕ */
+  gap: 10px;
+}
+
+/* Общий стиль для всех кнопок в модалке */
+.modalButton {
+  width: 100%;
+  padding: 12px 25px;
+  font-size: 16px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  font-weight: bold;
+}
+.modalButton:hover {
+    opacity: 0.9;
+}
+
+/* Цвета для кнопок (наследуют общий стиль .modalButton) */
+.buttonRed {
+  background-color: #e74c3c;
+  color: white;
+}
+.buttonYellow {
+  background-color: #f1c40f;
+  color: #333;
+}
+
+
+/* Адаптация для мобильных */
+@media (max-width: 600px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.exportButton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background-color: #e9eef2;
+    color: #333;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.exportButton:hover {
+    background-color: #dbe2e8;
+}
+
+.exportButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

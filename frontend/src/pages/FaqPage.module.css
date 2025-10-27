@@ -1,0 +1,30 @@
+/* frontend/src/pages/FaqPage.module.css */
+
+.faqContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Расстояние между карточками */
+}
+
+.faqItem {
+  background-color: var(--secondary-bg-color); /* Используем цвет фона из темы */
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05); /* Легкая рамка для темной темы */
+}
+
+.faqItem h4 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--text-color); /* Используем цвет текста из темы */
+  font-size: 1.1rem;
+}
+
+.faqItem p {
+  margin: 0;
+  color: var(--hint-color); /* Используем цвет подсказок для текста */
+  line-height: 1.6;
+}
+
+/* Кнопка "Назад" */
+.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }

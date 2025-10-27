@@ -1,0 +1,386 @@
+/* frontend/src/pages/HomePage.module.css */
+
+.pageContainer {
+  background-color: #F4F4F8;
+  position: relative;
+  padding-bottom: 80px;
+  overflow-x: hidden;
+}
+
+.header {
+  height: 250px;
+  background-image: url('https://i.postimg.cc/rw5Vy6Vk/1.webp');
+  background-size: cover;
+  background-position: center;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+.contentArea {
+  background-color: #F4F4F8;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  position: relative;
+  z-index: 2;
+  margin-top: -20px;
+  padding-top: 30px;
+}
+
+.userBlock {
+  display: flex;
+  align-items: center;
+  padding: 0 26px;
+  margin-bottom: 30px;
+}
+
+.userAvatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.userName {
+  font-family: 'Arial', sans-serif;
+  font-size: 18px;
+  color: #6E7A85;
+  margin-left: 16px;
+  flex-grow: 1;
+   /* 1. Запрещаем имени переноситься на новую строку */
+  white-space: nowrap;
+  /* 2. Обрезаем (скрываем) все, что не помещается в блок */
+  overflow: hidden; 
+
+  /* 3. Ваша маска-градиент: 
+     Мы говорим браузеру: "Покажи 85% контента (black), 
+     а затем плавно скрой оставшиеся 15% (transparent)" 
+  */
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  
+  /* 4. То же самое для поддержки Safari (webkit) */
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+
+  /* Примечание: так как .userName является flex-item, 
+    этих свойств достаточно, чтобы он не "выталкивал" 
+    соседние элементы.
+  */
+  /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
+}
+
+.thankYouButton {
+  max-height: 50px;
+  width: auto;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.banner {
+  padding: 0 26px;
+  margin-bottom: 30px;
+}
+
+.sliderContainer {
+  margin: 0 26px 30px 26px;
+  overflow: hidden; /* Прячем все слайды, кроме одного */
+  position: relative;
+  border-radius: 20px;
+}
+
+.sliderTrack {
+  display: flex;
+  transition: margin-left 0.5s ease-in-out; /* Плавная анимация */
+}
+
+.slide {
+  flex: 0 0 100%; /* Каждый слайд занимает 100% ширины контейнера */
+  width: 100%;
+}
+
+.bannerImage {
+  width: 100%;
+  border-radius: 20px;
+  display: block; /* Убирает лишний отступ у картинки */
+}
+
+.sliderDots {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.dotActive {
+  background-color: white;
+}
+
+/* --- ИЗМЕНЕНИЕ: Стили для бесконечной прокрутки ВПРАВО --- */
+.photoFeed {
+  position: relative; /* Необходимо для позиционирования псевдо-элементов */
+  display: flex;
+  overflow: hidden;
+  padding: 0;
+  margin-bottom: 30px;
+}
+
+/* Создаем левое затухание */
+.photoFeed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50px; /* Ширина области затухания */
+  background: linear-gradient(to right, #F4F4F8, transparent);
+  z-index: 2; /* Размещаем поверх ленты */
+}
+
+/* Создаем правое затухание */
+.photoFeed::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 50px; /* Ширина области затухания */
+  background: linear-gradient(to left, #F4F4F8, transparent);
+  z-index: 2; /* Размещаем поверх ленты */
+}
+
+.photoFeedTrack {
+  display: flex;
+  gap: 10px;
+  /* Используем новую анимацию marqueeRight */
+  animation: marqueeRight 30s linear infinite;
+}
+
+/* Ключевые кадры для движения ВПРАВО */
+@keyframes marqueeRight {
+  from {
+    /* Начинаем со сдвигом влево на половину длины ленты */
+    transform: translateX(-50%);
+  }
+  to {
+    /* Заканчиваем в начальной позиции */
+    transform: translateX(0%);
+  }
+}
+
+.photoPlaceholder {
+  flex: 0 0 160px;
+  height: 120px;
+  background-color: #5CA14A;
+  border-radius: 20px;
+  /* box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);  <-- ЭТА СТРОКА УДАЛЕНА */
+  cursor: pointer;
+}
+
+.photoFeedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 20px;
+}
+
+.feedSection {
+  background-color: #FFFFFF;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
+  padding: 35px 21px 21px 21px;
+}
+  
+.feedTitle {
+  color: #408200;
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+  font-size: 19px;
+  margin: 0 0 24px 5px;
+}
+
+.feedGrid {
+  display: grid; /* Используем grid layout */
+  grid-template-columns: 1fr; /* По умолчанию одна колонка для мобильных */
+  gap: 15px;
+}
+
+.dateHeader {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 5px;
+}
+
+.dateHeader span {
+  background-color: #e9eef2;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6E7A85;
+}
+
+.feedItem {
+  width: 100%;
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  position: relative;
+  padding-bottom: 25px; 
+}
+
+.feedItemLogo {
+  width: 60px;
+  height: 60px;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.feedItemContent {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  overflow: hidden;
+}
+
+.feedTransaction {
+  font-size: 14px;
+  color: #408200;
+  margin: 0;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.arrow {
+  color: #6E7A85;
+}
+
+.feedMessage {
+  font-size: 12px;
+  color: #6E7A85;
+  margin-top: 6px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.feedTimestamp {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.8rem;
+  color: #6E7A85;
+}
+
+/* --- НОВЫЕ СТИЛИ ТОЛЬКО ДЛЯ ПК --- */
+@media (min-width: 768px) {
+  .feedGrid {
+    /* Делаем две колонки */
+    grid-template-columns: 1fr 1fr; 
+  }
+
+  .dateHeader {
+    /* Заголовок даты должен занимать обе колонки */
+    grid-column: 1 / -1; 
+  }
+
+  /* Увеличиваем отступы в контентной зоне на ПК */
+  .contentArea {
+    padding: 30px;
+  }
+}
+/* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
+.headerDesktop {
+  height: 250px;
+  background-image: url('https://i.postimg.cc/9MvKPMj0/image.webp'); /* <-- Новая картинка */
+  background-size: cover;
+  background-position: center;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ ДАТЫ И ВРЕМЕНИ --- */
+/* --- Стили для группировки по дате --- */
+.dateHeader {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 5px;
+}
+
+.dateHeader span {
+    background-color: #e9eef2;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6E7A85;
+}
+
+/* --- ИЗМЕНЕНИЕ: Позиционируем время в углу --- */
+.feedItem {
+    position: relative; /* Это нужно, чтобы позиционировать время */
+    padding-bottom: 25px; /* Добавляем место для времени */
+}
+
+.feedTimestamp {
+    position: absolute; /* Абсолютное позиционирование */
+    bottom: 8px;        /* внизу */
+    right: 12px;        /* справа */
+    font-size: 0.8rem;
+    color: #6E7A85;
+}
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ АДАПТИВНОГО СЛАЙДЕРА НА ПК --- */
+@media (min-width: 768px) {
+  
+  .sliderContainer {
+    /* Контейнер должен обрезать всё лишнее */
+    overflow: hidden; 
+    margin: 0 auto 50px auto; 
+    max-width: 1000px;
+  }
+
+  .sliderTrack {
+    /* Выравниваем слайды по центру, если они не занимают всю высоту */
+    align-items: center;
+  }
+
+  .slide {
+    /* Каждый слайд занимает 80% ширины контейнера */
+    flex: 0 0 80%;
+    /* Добавляем отступы по 2% с каждой стороны */
+    margin: 0 2%;
+    box-sizing: border-box;
+
+    /* Эффект глубины для неактивных слайдов */
+    transform: scale(0.9);
+    opacity: 0.7;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+  }
+
+  .slide.active { 
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  .sliderDots {
+    bottom: 3px; 
+  }
+}
