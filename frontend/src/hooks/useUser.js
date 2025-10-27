@@ -1,7 +1,7 @@
 // hooks/useUser.js
 
 import { useState, useEffect, useCallback } from 'react';
-import { checkUserStatus, registerUser, mark_onboarding_as_seen } from '../api';
+import { checkUserStatus, registerUser, completeOnboarding as markOnboardingAsSeen } from '../api';
 
 export const useUser = () => {
   const [user, setUser] = useState(null);
@@ -42,7 +42,7 @@ export const useUser = () => {
 
   const completeOnboarding = useCallback(async (telegramId) => {
     try {
-      await mark_onboarding_as_seen(telegramId);
+      await markOnboardingAsSeen();
       setUser(prev => prev ? { ...prev, has_seen_onboarding: true } : null);
     } catch (err) {
       console.error('Error completing onboarding:', err);
