@@ -4,10 +4,11 @@ sqlalchemy
 asyncpg
 python-dotenv
 gunicorn
-python-dateutil
+python-dateutil>=2.8.2
 httpx
 pydantic-settings
 pyzipper
 openpyxl
 pandas
 pytz
+alembic

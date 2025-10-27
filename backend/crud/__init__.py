@@ -1,9 +1,7 @@
-# backend/crud.py
-# Этот файл теперь является оберткой для обратной совместимости
-# Все функции перенесены в модули в папке crud/
+# backend/crud/__init__.py
 
 # Импорты для обратной совместимости
-from .crud.users import (
+from .users import (
     get_user,
     get_user_by_telegram,
     create_user,
@@ -16,7 +14,7 @@ from .crud.users import (
     mark_onboarding_as_seen
 )
 
-from .crud.transactions import (
+from .transactions import (
     create_transaction,
     get_feed,
     get_user_transactions,
@@ -25,7 +23,7 @@ from .crud.transactions import (
     get_leaderboards_status
 )
 
-from .crud.market import (
+from .market import (
     get_market_items,
     get_active_items,
     create_market_item,
@@ -40,7 +38,7 @@ from .crud.market import (
     calculate_accumulation_forecast
 )
 
-from .crud.admin import (
+from .admin import (
     add_points_to_all_users,
     add_tickets_to_all_users,
     reset_balances,
@@ -55,7 +53,7 @@ from .crud.admin import (
     request_profile_update
 )
 
-from .crud.statistics import (
+from .statistics import (
     get_general_statistics,
     get_hourly_activity_stats,
     get_login_activity_stats,
@@ -67,12 +65,12 @@ from .crud.statistics import (
     get_average_session_duration
 )
 
-from .crud.sessions import (
+from .sessions import (
     start_user_session,
     ping_user_session
 )
 
-from .crud.roulette import (
+from .roulette import (
     assemble_tickets,
     spin_roulette,
     get_roulette_history,
@@ -80,19 +78,19 @@ from .crud.roulette import (
     reset_tickets
 )
 
-from .crud.cards import (
+from .cards import (
     process_pkpass_file,
     delete_user_card
 )
 
-from .crud.statix_bonus import (
+from .statix_bonus import (
     get_statix_bonus_item,
     create_statix_bonus_item,
     update_statix_bonus_item,
     create_statix_bonus_purchase
 )
 
-from .crud.shared_gifts import (
+from .shared_gifts import (
     create_shared_gift_invitation,
     get_shared_gift_invitation,
     accept_shared_gift_invitation,
@@ -102,12 +100,11 @@ from .crud.shared_gifts import (
     cleanup_expired_shared_gift_invitations
 )
 
-from .crud.banners import (
+from .banners import (
     generate_monthly_leaderboard_banners,
     generate_current_month_test_banners
 )
 
-# Экспорт всех функций для обратной совместимости
 __all__ = [
     # Users
     'get_user', 'get_user_by_telegram', 'create_user', 'get_users',

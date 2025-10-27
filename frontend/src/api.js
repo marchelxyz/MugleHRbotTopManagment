@@ -1,5 +1,6 @@
 // frontend/src/api.js
 import axios from 'axios';
+import { handleApiError } from './utils/errorHandler';
 
 // API_BASE_URL используется только для apiClient, экспортировать его не нужно
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -11,16 +12,28 @@ const apiClient = axios.create({
 
 // --- Существующие функции (без изменений) ---
 
-export const checkUserStatus = (telegramId) => {
-  return apiClient.get('/users/me', {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+export const checkUserStatus = async (telegramId) => {
+  try {
+    const response = await apiClient.get('/users/me', {
+      headers: { 'X-Telegram-Id': telegramId },
+    });
+    return response.data;
+  } catch (error) {
+    const errorInfo = handleApiError(error, 'checkUserStatus');
+    throw new Error(errorInfo.message);
+  }
 };
 
-export const registerUser = (telegramId, userData) => {
-  return apiClient.post('/users/auth/register', userData, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+export const registerUser = async (telegramId, userData) => {
+  try {
+    const response = await apiClient.post('/users/auth/register', userData, {
+      headers: { 'X-Telegram-Id': telegramId },
+    });
+    return response.data;
+  } catch (error) {
+    const errorInfo = handleApiError(error, 'registerUser');
+    throw new Error(errorInfo.message);
+  }
 };
 
 export const getAllUsers = (telegramId) => {
