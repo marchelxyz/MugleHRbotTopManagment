@@ -20,6 +20,8 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
     try:
         new_user = await crud.create_user(db, request)
         return schemas.UserResponse.model_validate(new_user)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         print(f"An error occurred during user creation process: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete registration process.")
@@ -32,10 +34,16 @@ async def list_users(db: AsyncSession = Depends(get_db)):
 # --- ИСПРАВЛЕНО: было "/users/me", стало "/me" ---
 @router.get("/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
-    user = await crud.get_user_by_telegram(db, int(telegram_id))
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+    try:
+        user = await crud.get_user_by_telegram(db, int(telegram_id))
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return user
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid telegram ID format")
+    except Exception as e:
+        print(f"Error getting user: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 # --- ИСПРАВЛЕНО: было "/users/me", стало "/me" ---
 @router.put("/me", response_model=schemas.UserResponse)

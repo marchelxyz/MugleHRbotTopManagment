@@ -40,8 +40,6 @@ const getStoredValue = (key) => {
  * Загружает данные из локального хранилища в память для быстрого доступа.
  */
 export const initializeCache = async () => {
-  console.log('Initializing local storage cache...');
-  
   const [feed, market, leaderboard] = await Promise.all([
     getStoredValue('feed'),
     getStoredValue('market'),
@@ -51,8 +49,6 @@ export const initializeCache = async () => {
   memoryCache.feed = feed;
   memoryCache.market = market;
   memoryCache.leaderboard = leaderboard;
-
-  console.log('Cache initialized from local storage:', memoryCache);
   
   // После инициализации, асинхронно обновляем данные с сервера
   refreshAllData();
@@ -71,7 +67,6 @@ export const getCachedData = (key) => {
  * и сохраняя как в локальное хранилище, так и в память.
  */
 export const refreshAllData = async () => {
-  console.log('Refreshing all data from API...');
   try {
     // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Заменяем вызов функции ---
     const [feedRes, marketRes, leaderboardRes] = await Promise.all([
@@ -97,7 +92,6 @@ export const refreshAllData = async () => {
         memoryCache.leaderboard = leaderboardRes.data;
         storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
     }
-    console.log('All data refreshed and saved to storage.');
 
   } catch (error) {
     console.error('Failed to refresh data:', error);
@@ -113,7 +107,6 @@ export const clearCache = (key) => {
   try {
     const cacheKey = `cache_${key}`;
     localStorage.removeItem(cacheKey); // Используем removeItem для надежности
-    console.log(`Cache for "${key}" has been cleared.`); // Добавляем лог для проверки
   } catch (error) {
     console.error(`Failed to clear cache for key "${key}":`, error);
   }

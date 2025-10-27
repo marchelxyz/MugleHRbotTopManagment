@@ -4,7 +4,6 @@ import { handleApiError } from './utils/errorHandler';
 
 // API_BASE_URL используется только для apiClient, экспортировать его не нужно
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-console.log('Using API URL:', API_BASE_URL);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
