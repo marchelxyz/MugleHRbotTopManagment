@@ -1711,8 +1711,8 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
     # Рассчитываем стоимость в спасибках
     thanks_cost = (bonus_amount / 100) * statix_item.thanks_to_statix_rate
     
-    # Получаем пользователя
-    user = await get_user(db, user_id)
+    # Получаем пользователя по Telegram ID (user_id здесь - это telegram_id)
+    user = await get_user_by_telegram(db, user_id)
     if not user:
         raise ValueError("Пользователь не найден")
     
