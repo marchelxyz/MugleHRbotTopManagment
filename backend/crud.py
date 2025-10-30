@@ -3,6 +3,10 @@ import io
 import zipfile
 import json
 import math 
+import re
+import logging
+
+import httpx
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
@@ -22,6 +26,8 @@ from datetime import datetime, timedelta, date
 from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -1611,6 +1617,90 @@ async def update_statix_bonus_item(db: AsyncSession, item_id: int, item_data: di
     await db.refresh(db_item)
     return db_item
 
+def _normalize_statix_phone(phone_number: Optional[str]) -> str:
+    digits = re.sub(r"\D", "", phone_number or "")
+    if not digits:
+        raise ValueError("У пользователя не указан номер телефона для начисления Statix бонусов")
+
+    if len(digits) == 10:
+        digits = f"7{digits}"
+    elif len(digits) == 11:
+        if digits.startswith("8"):
+            digits = f"7{digits[1:]}"
+        elif not digits.startswith("7"):
+            raise ValueError("Некорректный формат номера телефона для начисления Statix бонусов")
+    else:
+        raise ValueError("Некорректный формат номера телефона для начисления Statix бонусов")
+
+    return digits
+
+
+def _extract_statix_error_message(response: Optional[httpx.Response]) -> str:
+    if response is None:
+        return "неизвестная ошибка"
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict):
+        for key in ("message", "error", "detail", "description"):
+            value = payload.get(key)
+            if value:
+                return str(value)
+    return response.text or "неизвестная ошибка"
+
+
+async def _send_statix_bonus_request(phone: str, bonus_amount: int) -> Optional[dict]:
+    payload = {
+        "action": settings.STATIX_BONUS_ACTION,
+        "phone": phone,
+        "bonus_points": bonus_amount,
+        "credentials": {
+            "login": settings.STATIX_BONUS_LOGIN,
+            "password": settings.STATIX_BONUS_PASSWORD,
+        },
+        "restaurant": {
+            "name": settings.STATIX_BONUS_RESTAURANT_NAME,
+        },
+    }
+
+    timeout_seconds = settings.STATIX_BONUS_TIMEOUT_SECONDS or 10
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
+        try:
+            response = await client.post(
+                settings.STATIX_BONUS_API_URL,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            message = _extract_statix_error_message(exc.response)
+            logger.error(
+                "Statix Bonus API HTTP error (status=%s): %s", exc.response.status_code if exc.response else "?", message
+            )
+            raise ValueError(f"Statix Bonus API вернул ошибку: {message}") from exc
+        except httpx.RequestError as exc:
+            logger.error("Statix Bonus API недоступен: %s", exc, exc_info=True)
+            raise ValueError("Statix Bonus API недоступен, попробуйте позже.") from exc
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = None
+
+    if isinstance(data, dict):
+        status_value = str(data.get("status", "")).lower()
+        if status_value and status_value not in {"ok", "success", "done"}:
+            message = data.get("message") or data.get("error") or str(data)
+            logger.error("Statix Bonus API вернул ошибочный статус: %s", message)
+            raise ValueError(f"Statix Bonus API вернул ошибку: {message}")
+
+    return data if isinstance(data, dict) else None
+
+
 async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amount: int):
     """Создать покупку бонусов Statix"""
     # Получаем настройки товара
@@ -1630,13 +1720,40 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
     if user.balance < thanks_cost:
         raise ValueError("Недостаточно спасибок для покупки")
     
-    # Списываем спасибки
-    user.balance -= thanks_cost
-    
-    # TODO: Здесь будет интеграция с API Statix Bonus для начисления бонусов
-    # Пока что просто сохраняем информацию о покупке
-    
-    await db.commit()
+    # Подготавливаем данные для начисления бонусов
+    formatted_phone = _normalize_statix_phone(user.phone_number)
+
+    original_balance = user.balance
+
+    try:
+        # Списываем спасибки
+        user.balance -= thanks_cost
+
+        # Начисляем бонусы через Statix API
+        await _send_statix_bonus_request(formatted_phone, bonus_amount)
+
+        await db.commit()
+        await db.refresh(user)
+    except ValueError:
+        await db.rollback()
+        user.balance = original_balance
+        raise
+    except Exception as exc:
+        await db.rollback()
+        user.balance = original_balance
+        logger.exception(
+            "Неожиданная ошибка при начислении Statix бонусов (user_id=%s, phone=%s)",
+            user_id,
+            formatted_phone,
+        )
+        raise ValueError("Не удалось начислить бонусы Statix. Пожалуйста, попробуйте позже.") from exc
+    else:
+        logger.info(
+            "Statix бонусы начислены: user_id=%s, phone=%s, bonus_points=%s",
+            user_id,
+            formatted_phone,
+            bonus_amount,
+        )
     
     return {
         "new_balance": user.balance,
