@@ -9,6 +9,7 @@ import styles from './OnboardingStories.module.css';
 import sticker1 from '../assets/AnimatedSticker1.json';
 import sticker2 from '../assets/AnimatedSticker3.json';
 import sticker3 from '../assets/AnimatedSticker2.json';
+import sticker4 from '../assets/TgDuckX_AgADaFEAAtd-MEs.json';
 
 
 const stories = [
@@ -21,6 +22,11 @@ const stories = [
     animation: sticker2,
     title: 'Копите и тратьте',
     text: 'Накопленные "спасибки" можно обменять на мерч, сертификаты и другие приятные бонусы в нашем Кафетерии.',
+  },
+  {
+    animation: sticker4,
+    title: 'Отправляйте и вращайте',
+    text: 'Получайте частички билетиков за отправленные "спасибки", собирайте их в билеты и вращайте рулетку!',
   },
   {
     animation: sticker3,
