@@ -86,6 +86,7 @@ function StatixBonusCard({ user, onPurchaseSuccess }) {
 
   const thanksCost = calculateThanksCost();
   const canAfford = user?.balance >= thanksCost;
+  const hasCard = user?.card_barcode; // Проверяем наличие карты статикс
 
   return (
     <div className={styles.card}>
@@ -101,6 +102,12 @@ function StatixBonusCard({ user, onPurchaseSuccess }) {
             alt={statixItem.name} 
             className={styles.image}
           />
+        </div>
+      )}
+
+      {!hasCard && (
+        <div className={styles.noCardWarning}>
+          ⚠️ Для покупки бонусов необходимо добавить карту статикс в профиль
         </div>
       )}
 
@@ -140,8 +147,8 @@ function StatixBonusCard({ user, onPurchaseSuccess }) {
 
       <button
         onClick={handlePurchase}
-        disabled={!canAfford || isPurchasing}
-        className={`${styles.purchaseButton} ${!canAfford ? styles.disabled : ''}`}
+        disabled={!canAfford || !hasCard || isPurchasing}
+        className={`${styles.purchaseButton} ${(!canAfford || !hasCard) ? styles.disabled : ''}`}
       >
         {isPurchasing ? 'Покупка...' : 'Купить бонусы'}
       </button>

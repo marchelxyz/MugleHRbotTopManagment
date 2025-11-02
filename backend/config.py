@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     TELEGRAM_UPDATE_TOPIC_ID: int
     TELEGRAM_ADMIN_LOG_TOPIC_ID: int
 
+    # Настройки интеграции со Statix Bonus
+    STATIX_BONUS_API_URL: str = "https://cabinet.statix-pro.ru/webhooks/custom/muggle_rest.php"
+    STATIX_BONUS_ACTION: str = "add_bonus_points"
+    STATIX_BONUS_LOGIN: str = "customer331"
+    STATIX_BONUS_PASSWORD: str = "qd905xA_DI"
+    STATIX_BONUS_RESTAURANT_NAME: str = "TG BOT"
+    STATIX_BONUS_TIMEOUT_SECONDS: int = 10
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

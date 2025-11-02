@@ -92,6 +92,7 @@ class MarketItem(Base):
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
     is_auto_issuance: Mapped[bool] = mapped_column(default=False) # Флаг автовыдачи
+    is_shared_gift: Mapped[bool] = mapped_column(default=False) # Флаг совместного подарка
     purchases = relationship("Purchase", back_populates="item")
     codes = relationship("ItemCode", back_populates="market_item", cascade="all, delete-orphan")
 
@@ -166,3 +167,20 @@ class StatixBonusItem(Base):
     bonus_step = Column(Integer, default=100, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+class SharedGiftInvitation(Base):
+    __tablename__ = "shared_gift_invitations"
+    id = Column(Integer, primary_key=True, index=True)
+    buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    invited_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
+    status = Column(String, default='pending', nullable=False)  # pending, accepted, rejected, expired
+    created_at = Column(DateTime, default=func.now())
+    expires_at = Column(DateTime, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)
+    rejected_at = Column(DateTime, nullable=True)
+    
+    # Связи
+    buyer = relationship("User", foreign_keys=[buyer_id], lazy='selectin')
+    invited_user = relationship("User", foreign_keys=[invited_user_id], lazy='selectin')
+    item = relationship("MarketItem", lazy='selectin')

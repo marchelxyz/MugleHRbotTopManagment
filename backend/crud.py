@@ -3,9 +3,14 @@ import io
 import zipfile
 import json
 import math 
+import re
+import logging
+
+import httpx
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
 import random
 import bot
 import config
@@ -21,6 +26,8 @@ from datetime import datetime, timedelta, date
 from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -311,7 +318,10 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
 async def get_market_items(db: AsyncSession):
     # Теперь можно просто вернуть объекты SQLAlchemy,
     # Pydantic сам преобразует их согласно response_model в роутере.
-    result = await db.execute(select(models.MarketItem))
+    result = await db.execute(
+        select(models.MarketItem)
+        .options(selectinload(models.MarketItem.codes))
+    )
     return result.scalars().all()
 
 async def get_active_items(db: AsyncSession):
@@ -349,8 +359,15 @@ async def create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
 
 async def admin_restore_market_item(db: AsyncSession, item_id: int):
     """Восстанавливает товар из архива."""
-    # Находим товар по его ID
-    db_item = await db.get(models.MarketItem, item_id)
+    # Находим товар по его ID с загрузкой связанных кодов
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(models.MarketItem)
+        .options(selectinload(models.MarketItem.codes))
+        .where(models.MarketItem.id == item_id)
+    )
+    db_item = result.scalar_one_or_none()
+    
     if not db_item:
         # Если товар не найден, выходим
         return None
@@ -379,6 +396,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         raise ValueError("Товар или пользователь не найдены")
     if user.balance < item.price:
         raise ValueError("Недостаточно средств")
+    
+    # Проверяем, что товар не является совместным подарком
+    if item.is_shared_gift:
+        raise ValueError("Для совместных подарков используйте специальный API")
 
     if item.is_auto_issuance:
         stmt = (
@@ -584,7 +605,8 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
         stock=stock,
         image_url=item.image_url,
         original_price=item.original_price,
-        is_auto_issuance=item.is_auto_issuance
+        is_auto_issuance=item.is_auto_issuance,
+        is_shared_gift=item.is_shared_gift
     )
     
     # Сначала добавляем основной товар в сессию, чтобы он получил ID
@@ -719,7 +741,11 @@ async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = Fa
 
 async def get_archived_items(db: AsyncSession):
     """Получает список архивированных товаров."""
-    result = await db.execute(select(models.MarketItem).where(models.MarketItem.is_archived == True))
+    result = await db.execute(
+        select(models.MarketItem)
+        .options(selectinload(models.MarketItem.codes))
+        .where(models.MarketItem.is_archived == True)
+    )
     return result.scalars().all()
 
 # --- Функция полного удаления товара ---
@@ -1591,6 +1617,91 @@ async def update_statix_bonus_item(db: AsyncSession, item_id: int, item_data: di
     await db.refresh(db_item)
     return db_item
 
+def _normalize_statix_phone(phone_number: Optional[str]) -> str:
+    digits = re.sub(r"\D", "", phone_number or "")
+    if not digits:
+        raise ValueError("У пользователя не указан номер телефона для начисления Statix бонусов")
+
+    if len(digits) == 10:
+        digits = f"7{digits}"
+    elif len(digits) == 11:
+        if digits.startswith("8"):
+            digits = f"7{digits[1:]}"
+        elif not digits.startswith("7"):
+            raise ValueError("Некорректный формат номера телефона для начисления Statix бонусов")
+    else:
+        raise ValueError("Некорректный формат номера телефона для начисления Statix бонусов")
+
+    return digits
+
+
+def _extract_statix_error_message(response: Optional[httpx.Response]) -> str:
+    if response is None:
+        return "неизвестная ошибка"
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict):
+        for key in ("message", "error", "detail", "description"):
+            value = payload.get(key)
+            if value:
+                return str(value)
+    return response.text or "неизвестная ошибка"
+
+
+async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number: str) -> Optional[dict]:
+    payload = {
+        "action": settings.STATIX_BONUS_ACTION,
+        "phone": phone,
+        "bonus_points": bonus_amount,
+        "card_number": card_number,
+        "credentials": {
+            "login": settings.STATIX_BONUS_LOGIN,
+            "password": settings.STATIX_BONUS_PASSWORD,
+        },
+        "restaurant": {
+            "name": settings.STATIX_BONUS_RESTAURANT_NAME,
+        },
+    }
+
+    timeout_seconds = settings.STATIX_BONUS_TIMEOUT_SECONDS or 10
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
+        try:
+            response = await client.post(
+                settings.STATIX_BONUS_API_URL,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            message = _extract_statix_error_message(exc.response)
+            logger.error(
+                "Statix Bonus API HTTP error (status=%s): %s", exc.response.status_code if exc.response else "?", message
+            )
+            raise ValueError(f"Statix Bonus API вернул ошибку: {message}") from exc
+        except httpx.RequestError as exc:
+            logger.error("Statix Bonus API недоступен: %s", exc, exc_info=True)
+            raise ValueError("Statix Bonus API недоступен, попробуйте позже.") from exc
+
+    try:
+        data = response.json()
+    except ValueError:
+        data = None
+
+    if isinstance(data, dict):
+        status_value = str(data.get("status", "")).lower()
+        if status_value and status_value not in {"ok", "success", "done"}:
+            message = data.get("message") or data.get("error") or str(data)
+            logger.error("Statix Bonus API вернул ошибочный статус: %s", message)
+            raise ValueError(f"Statix Bonus API вернул ошибку: {message}")
+
+    return data if isinstance(data, dict) else None
+
+
 async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amount: int):
     """Создать покупку бонусов Statix"""
     # Получаем настройки товара
@@ -1601,22 +1712,53 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
     # Рассчитываем стоимость в спасибках
     thanks_cost = (bonus_amount / 100) * statix_item.thanks_to_statix_rate
     
-    # Получаем пользователя
-    user = await get_user(db, user_id)
+    # Получаем пользователя по Telegram ID (user_id здесь - это telegram_id)
+    user = await get_user_by_telegram(db, user_id)
     if not user:
         raise ValueError("Пользователь не найден")
+    
+    # Проверяем, что у пользователя добавлена карта статикс
+    if not user.card_barcode:
+        raise ValueError("Для покупки бонусов Statix необходимо добавить карту статикс в профиль")
     
     # Проверяем баланс
     if user.balance < thanks_cost:
         raise ValueError("Недостаточно спасибок для покупки")
     
-    # Списываем спасибки
-    user.balance -= thanks_cost
-    
-    # TODO: Здесь будет интеграция с API Statix Bonus для начисления бонусов
-    # Пока что просто сохраняем информацию о покупке
-    
-    await db.commit()
+    # Подготавливаем данные для начисления бонусов
+    formatted_phone = _normalize_statix_phone(user.phone_number)
+
+    original_balance = user.balance
+
+    try:
+        # Списываем спасибки
+        user.balance -= thanks_cost
+
+        # Начисляем бонусы через Statix API
+        await _send_statix_bonus_request(formatted_phone, bonus_amount, user.card_barcode)
+
+        await db.commit()
+        await db.refresh(user)
+    except ValueError:
+        await db.rollback()
+        user.balance = original_balance
+        raise
+    except Exception as exc:
+        await db.rollback()
+        user.balance = original_balance
+        logger.exception(
+            "Неожиданная ошибка при начислении Statix бонусов (user_id=%s, phone=%s)",
+            user_id,
+            formatted_phone,
+        )
+        raise ValueError("Не удалось начислить бонусы Statix. Пожалуйста, попробуйте позже.") from exc
+    else:
+        logger.info(
+            "Statix бонусы начислены: user_id=%s, phone=%s, bonus_points=%s",
+            user_id,
+            formatted_phone,
+            bonus_amount,
+        )
     
     return {
         "new_balance": user.balance,
@@ -1713,3 +1855,315 @@ async def generate_current_month_test_banners(db: AsyncSession):
 
     await db.commit()
     print("TEST leaderboard banners generation finished.")
+
+# --- ФУНКЦИИ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
+
+async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.CreateSharedGiftInvitationRequest):
+    """Создать приглашение на совместный подарок"""
+    # Проверяем, что товар существует и является совместным подарком
+    item_result = await db.execute(
+        select(models.MarketItem).where(models.MarketItem.id == invitation.item_id)
+    )
+    item = item_result.scalar_one_or_none()
+    
+    if not item:
+        raise ValueError("Товар не найден")
+    
+    if not item.is_shared_gift:
+        raise ValueError("Товар не является совместным подарком")
+    
+    # Проверяем, что приглашаемый пользователь существует
+    invited_user_result = await db.execute(
+        select(models.User).where(models.User.id == invitation.invited_user_id)
+    )
+    invited_user = invited_user_result.scalar_one_or_none()
+    
+    if not invited_user:
+        raise ValueError("Приглашаемый пользователь не найден")
+    
+    # Проверяем, что покупатель существует
+    buyer_result = await db.execute(
+        select(models.User).where(models.User.id == invitation.buyer_id)
+    )
+    buyer = buyer_result.scalar_one_or_none()
+    
+    if not buyer:
+        raise ValueError("Покупатель не найден")
+    
+    # Проверяем, что у покупателя достаточно средств
+    if buyer.balance < item.price:
+        raise ValueError("Недостаточно средств для покупки")
+    
+    # Списываем полную стоимость товара с покупателя
+    buyer.balance -= item.price
+    
+    # Создаем приглашение с истечением через 24 часа
+    expires_at = datetime.utcnow() + timedelta(hours=24)
+    
+    db_invitation = models.SharedGiftInvitation(
+        buyer_id=invitation.buyer_id,
+        invited_user_id=invitation.invited_user_id,
+        item_id=invitation.item_id,
+        expires_at=expires_at
+    )
+    
+    db.add(db_invitation)
+    await db.commit()
+    await db.refresh(db_invitation)
+    
+    # Отправляем уведомление приглашенному пользователю
+    try:
+        await send_telegram_message(
+            invited_user.telegram_id,
+            f"🎁 *Приглашение на совместный подарок!*\n\n"
+            f"👤 *{buyer.first_name} {buyer.last_name}* приглашает вас разделить товар *{item.name}*\n\n"
+            f"💰 Стоимость будет разделена 50/50\n"
+            f"⏰ Приглашение действует 24 часа",
+            {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "✅ Принять",
+                            "callback_data": f"accept_shared_gift_{db_invitation.id}"
+                        },
+                        {
+                            "text": "❌ Отказаться", 
+                            "callback_data": f"reject_shared_gift_{db_invitation.id}"
+                        }
+                    ]
+                ]
+            }
+        )
+    except Exception as e:
+        print(f"Failed to send shared gift invitation notification: {e}")
+    
+    return db_invitation
+
+async def get_shared_gift_invitation(db: AsyncSession, invitation_id: int):
+    """Получить приглашение на совместный подарок"""
+    result = await db.execute(
+        select(models.SharedGiftInvitation)
+        .where(models.SharedGiftInvitation.id == invitation_id)
+        .options(
+            selectinload(models.SharedGiftInvitation.buyer),
+            selectinload(models.SharedGiftInvitation.invited_user),
+            selectinload(models.SharedGiftInvitation.item)
+        )
+    )
+    return result.scalar_one_or_none()
+
+async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, user_id: int):
+    """Принять приглашение на совместный подарок"""
+    invitation = await get_shared_gift_invitation(db, invitation_id)
+    
+    if not invitation:
+        raise ValueError("Приглашение не найдено")
+    
+    if invitation.invited_user_id != user_id:
+        raise ValueError("Вы не можете принять это приглашение")
+    
+    if invitation.status != 'pending':
+        raise ValueError("Приглашение уже обработано")
+    
+    if datetime.utcnow() > invitation.expires_at:
+        # Приглашение истекло, возвращаем деньги покупателю
+        await refund_shared_gift_purchase(db, invitation)
+        raise ValueError("Приглашение истекло, средства возвращены")
+    
+    # Получаем данные покупателя и товара
+    buyer_result = await db.execute(
+        select(models.User).where(models.User.id == invitation.buyer_id)
+    )
+    buyer = buyer_result.scalar_one_or_none()
+    
+    item_result = await db.execute(
+        select(models.MarketItem).where(models.MarketItem.id == invitation.item_id)
+    )
+    item = item_result.scalar_one_or_none()
+    
+    if not buyer or not item:
+        raise ValueError("Ошибка получения данных")
+    
+    # Покупатель уже заплатил полную стоимость, ничего не возвращаем
+    # Деление стоимости убрано - покупатель платит полную стоимость
+    
+    # Создаем покупку только для покупателя
+    purchase_buyer = models.Purchase(
+        user_id=invitation.buyer_id,
+        item_id=invitation.item_id
+    )
+    db.add(purchase_buyer)
+    
+    # Приглашенный пользователь не получает покупку, так как не платит
+    
+    # Обновляем статус приглашения
+    invitation.status = 'accepted'
+    invitation.accepted_at = datetime.utcnow()
+    
+    # Уменьшаем остаток товара
+    item.stock -= 1
+    
+    await db.commit()
+    
+    # Отправляем уведомление покупателю
+    try:
+        await send_telegram_message(
+            buyer.telegram_id,
+            f"✅ *Приглашение принято!*\n\n"
+            f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* согласился разделить товар *{item.name}*\n\n"
+            f"💰 Вам возвращена половина стоимости товара"
+        )
+    except Exception as e:
+        print(f"Failed to send shared gift accepted notification: {e}")
+    
+    # Отправляем уведомление в админ-чат о совместной покупке
+    try:
+        admin_message = (
+            f"🎁 *Совместная покупка в магазине!*\n\n"
+            f"👤 *Покупатель:* {buyer.first_name} {buyer.last_name} (@{buyer.username or buyer.telegram_id})\n"
+            f"👥 *Приглашенный:* {invitation.invited_user.first_name} {invitation.invited_user.last_name} (@{invitation.invited_user.username or invitation.invited_user.telegram_id})\n\n"
+            f"🎁 *Товар:* {item.name}\n"
+            f"💰 *Стоимость:* {item.price} спасибок (оплачено покупателем)\n\n"
+            f"📉 *Баланс покупателя:* {buyer.balance} спасибок"
+        )
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=admin_message,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+    except Exception as e:
+        print(f"Failed to send shared gift admin notification: {e}")
+    
+    return {
+        "message": "Приглашение принято успешно",
+        "new_balance": buyer.balance
+    }
+
+async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, user_id: int):
+    """Отклонить приглашение на совместный подарок"""
+    invitation = await get_shared_gift_invitation(db, invitation_id)
+    
+    if not invitation:
+        raise ValueError("Приглашение не найдено")
+    
+    if invitation.invited_user_id != user_id:
+        raise ValueError("Вы не можете отклонить это приглашение")
+    
+    if invitation.status != 'pending':
+        raise ValueError("Приглашение уже обработано")
+    
+    # Обновляем статус приглашения
+    invitation.status = 'rejected'
+    invitation.rejected_at = datetime.utcnow()
+    
+    # Возвращаем деньги покупателю
+    await refund_shared_gift_purchase(db, invitation)
+    
+    await db.commit()
+    
+    # Отправляем уведомление покупателю
+    try:
+        buyer_result = await db.execute(
+            select(models.User).where(models.User.id == invitation.buyer_id)
+        )
+        buyer = buyer_result.scalar_one_or_none()
+        
+        item_result = await db.execute(
+            select(models.MarketItem).where(models.MarketItem.id == invitation.item_id)
+        )
+        item = item_result.scalar_one_or_none()
+        
+        if buyer and item:
+            await send_telegram_message(
+                buyer.telegram_id,
+                f"❌ *Приглашение отклонено*\n\n"
+                f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* отклонил приглашение на товар *{item.name}*\n\n"
+                f"💰 Вам возвращена полная стоимость товара"
+            )
+    except Exception as e:
+        print(f"Failed to send shared gift rejected notification: {e}")
+    
+    return {
+        "message": "Приглашение отклонено, средства возвращены"
+    }
+
+async def refund_shared_gift_purchase(db: AsyncSession, invitation: models.SharedGiftInvitation):
+    """Возврат средств за совместный подарок"""
+    buyer_result = await db.execute(
+        select(models.User).where(models.User.id == invitation.buyer_id)
+    )
+    buyer = buyer_result.scalar_one_or_none()
+    
+    item_result = await db.execute(
+        select(models.MarketItem).where(models.MarketItem.id == invitation.item_id)
+    )
+    item = item_result.scalar_one_or_none()
+    
+    if buyer and item:
+        # Возвращаем полную стоимость товара (покупатель уже заплатил полную стоимость)
+        buyer.balance += item.price
+
+async def get_user_shared_gift_invitations(db: AsyncSession, user_id: int, status: str = None):
+    """Получить приглашения пользователя на совместные подарки"""
+    query = select(models.SharedGiftInvitation).where(
+        or_(
+            models.SharedGiftInvitation.buyer_id == user_id,
+            models.SharedGiftInvitation.invited_user_id == user_id
+        )
+    )
+    
+    if status:
+        query = query.where(models.SharedGiftInvitation.status == status)
+    
+    result = await db.execute(
+        query.options(
+            selectinload(models.SharedGiftInvitation.buyer),
+            selectinload(models.SharedGiftInvitation.invited_user),
+            selectinload(models.SharedGiftInvitation.item)
+        )
+    )
+    return result.scalars().all()
+
+async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
+    """Очистка истекших приглашений на совместные подарки"""
+    now = datetime.utcnow()
+    
+    # Находим истекшие приглашения
+    expired_invitations_result = await db.execute(
+        select(models.SharedGiftInvitation).where(
+            models.SharedGiftInvitation.status == 'pending',
+            models.SharedGiftInvitation.expires_at < now
+        )
+    )
+    expired_invitations = expired_invitations_result.scalars().all()
+    
+    # Возвращаем деньги за каждое истекшее приглашение
+    for invitation in expired_invitations:
+        await refund_shared_gift_purchase(db, invitation)
+        invitation.status = 'expired'
+        
+        # Отправляем уведомление покупателю
+        try:
+            buyer_result = await db.execute(
+                select(models.User).where(models.User.id == invitation.buyer_id)
+            )
+            buyer = buyer_result.scalar_one_or_none()
+            
+            item_result = await db.execute(
+                select(models.MarketItem).where(models.MarketItem.id == invitation.item_id)
+            )
+            item = item_result.scalar_one_or_none()
+            
+            if buyer and item:
+                await send_telegram_message(
+                    buyer.telegram_id,
+                    f"⏰ *Приглашение истекло*\n\n"
+                    f"Время на принятие приглашения на товар *{item.name}* истекло\n\n"
+                    f"💰 Вам возвращена полная стоимость товара"
+                )
+        except Exception as e:
+            print(f"Failed to send shared gift expired notification: {e}")
+    
+    await db.commit()
+    return len(expired_invitations)

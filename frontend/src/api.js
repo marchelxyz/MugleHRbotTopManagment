@@ -377,3 +377,34 @@ export const adminGenerateTestLeaderboardBanners = () => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- API ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
+export const createSharedGiftInvitation = (invitationData) => {
+    return apiClient.post('/shared-gifts/invite', invitationData);
+};
+
+export const getUserSharedGiftInvitations = (userId, status = null) => {
+    const params = status ? `?status=${status}` : '';
+    return apiClient.get(`/shared-gifts/invitations/${userId}${params}`);
+};
+
+export const acceptSharedGiftInvitation = (invitationId, userId) => {
+    return apiClient.post('/shared-gifts/accept', {
+        invitation_id: invitationId,
+        user_id: userId
+    });
+};
+
+export const rejectSharedGiftInvitation = (invitationId, userId) => {
+    return apiClient.post('/shared-gifts/reject', {
+        invitation_id: invitationId,
+        user_id: userId
+    });
+};
+
+export const cleanupExpiredSharedGiftInvitations = () => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/shared-gifts/cleanup', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
