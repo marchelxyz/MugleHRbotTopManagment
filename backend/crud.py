@@ -1652,11 +1652,12 @@ def _extract_statix_error_message(response: Optional[httpx.Response]) -> str:
     return response.text or "неизвестная ошибка"
 
 
-async def _send_statix_bonus_request(phone: str, bonus_amount: int) -> Optional[dict]:
+async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number: str) -> Optional[dict]:
     payload = {
         "action": settings.STATIX_BONUS_ACTION,
         "phone": phone,
         "bonus_points": bonus_amount,
+        "card_number": card_number,
         "credentials": {
             "login": settings.STATIX_BONUS_LOGIN,
             "password": settings.STATIX_BONUS_PASSWORD,
@@ -1716,6 +1717,10 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
     if not user:
         raise ValueError("Пользователь не найден")
     
+    # Проверяем, что у пользователя добавлена карта статикс
+    if not user.card_barcode:
+        raise ValueError("Для покупки бонусов Statix необходимо добавить карту статикс в профиль")
+    
     # Проверяем баланс
     if user.balance < thanks_cost:
         raise ValueError("Недостаточно спасибок для покупки")
@@ -1730,7 +1735,7 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
         user.balance -= thanks_cost
 
         # Начисляем бонусы через Statix API
-        await _send_statix_bonus_request(formatted_phone, bonus_amount)
+        await _send_statix_bonus_request(formatted_phone, bonus_amount, user.card_barcode)
 
         await db.commit()
         await db.refresh(user)
