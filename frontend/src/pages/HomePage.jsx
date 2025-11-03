@@ -10,14 +10,22 @@ import LeaderboardBanner from '../components/LeaderboardBanner';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [feed, setFeed] = useState(() => getCachedData('feed'));
-    const [banners, setBanners] = useState([]);
+    const [banners, setBanners] = useState(() => getCachedData('banners') || []);
     const [isLoading, setIsLoading] = useState(!feed);
     const [currentSlide, setCurrentSlide] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
-            const bannersResponse = await getBanners();
-            setBanners(bannersResponse.data);
+            // Загружаем banners только если их нет в кэше
+            if (!banners || banners.length === 0) {
+                try {
+                    const bannersResponse = await getBanners();
+                    setBanners(bannersResponse.data);
+                } catch (error) {
+                    console.error("Failed to fetch banners", error);
+                }
+            }
+            // Загружаем feed только если его нет в кэше
             if (!feed) {
                 try {
                     const feedResponse = await getFeed();
@@ -29,7 +37,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             setIsLoading(false);
         };
         fetchData();
-    }, [feed]);
+    }, [feed, banners]);
 
     const mainBanners = banners.filter(b => b.position === 'main');
 
