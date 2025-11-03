@@ -183,14 +183,25 @@ async def get_active_user_ratio_route(db: AsyncSession = Depends(get_db)):
 @router.get("/statistics/user_engagement", response_model=schemas.UserEngagementStats)
 async def get_user_engagement(db: AsyncSession = Depends(get_db)):
     engagement_data = await crud.get_user_engagement_stats(db)
-    top_senders_schema = [{"user": user, "count": count} for user, count in engagement_data["top_senders"]]
-    top_receivers_schema = [{"user": user, "count": count} for user, count in engagement_data["top_receivers"]]
+    # Исправлено: правильно обращаемся к атрибутам Row объектов
+    top_senders_schema = [
+        {"user": row[0], "count": row.sent_count} 
+        for row in engagement_data["top_senders"]
+    ]
+    top_receivers_schema = [
+        {"user": row[0], "count": row.received_count} 
+        for row in engagement_data["top_receivers"]
+    ]
     return {"top_senders": top_senders_schema, "top_receivers": top_receivers_schema}
 
 @router.get("/statistics/popular_items", response_model=schemas.PopularItemsStats)
 async def get_popular_items(db: AsyncSession = Depends(get_db)):
     items_data = await crud.get_popular_items_stats(db)
-    popular_items_schema = [{"item": item, "purchase_count": count} for item, count in items_data]
+    # Исправлено: правильно обращаемся к атрибутам Row объектов
+    popular_items_schema = [
+        {"item": row[0], "purchase_count": row.purchase_count} 
+        for row in items_data
+    ]
     return {"items": popular_items_schema}
 
 @router.get("/statistics/inactive_users", response_model=schemas.InactiveUsersStats)
@@ -227,14 +238,14 @@ async def export_user_engagement(db: AsyncSession = Depends(get_db)):
     ws_senders = workbook.active
     ws_senders.title = "Топ Донаторы"
     ws_senders.append(["#", "Имя", "Фамилия", "Должность", "Отдел", "Отправлено"])
-    for i, sender in enumerate(top_senders, 1):
-        user, count = sender
+    for i, sender_row in enumerate(top_senders, 1):
+        user, count = sender_row[0], sender_row.sent_count  # Исправлено: правильно обращаемся к атрибутам
         ws_senders.append([i, user.first_name, user.last_name, user.position, user.department, count])
 
     ws_receivers = workbook.create_sheet("Топ Инфлюенсеры")
     ws_receivers.append(["#", "Имя", "Фамилия", "Должность", "Отдел", "Получено"])
-    for i, receiver in enumerate(top_receivers, 1):
-        user, count = receiver
+    for i, receiver_row in enumerate(top_receivers, 1):
+        user, count = receiver_row[0], receiver_row.received_count  # Исправлено: правильно обращаемся к атрибутам
         ws_receivers.append([i, user.first_name, user.last_name, user.position, user.department, count])
 
     file_stream = io.BytesIO()
@@ -301,24 +312,24 @@ async def export_consolidated_report(
         # --- Остальные листы остаются без изменений ---
         # --- Лист 2: Топ Донаторы ---
         senders_list = [
-            {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Отправлено": count}
-            for i, (user, count) in enumerate(engagement_data["top_senders"], 1)
+            {"#": i, "Имя": row[0].first_name, "Фамилия": row[0].last_name, "Должность": row[0].position, "Отправлено": row.sent_count}
+            for i, row in enumerate(engagement_data["top_senders"], 1)
         ]
         df_senders = pd.DataFrame(senders_list)
         df_senders.to_excel(writer, sheet_name='Топ Донаторы', index=False)
 
         # --- Лист 3: Топ Инфлюенсеры ---
         receivers_list = [
-            {"#": i, "Имя": user.first_name, "Фамилия": user.last_name, "Должность": user.position, "Получено": count}
-            for i, (user, count) in enumerate(engagement_data["top_receivers"], 1)
+            {"#": i, "Имя": row[0].first_name, "Фамилия": row[0].last_name, "Должность": row[0].position, "Получено": row.received_count}
+            for i, row in enumerate(engagement_data["top_receivers"], 1)
         ]
         df_receivers = pd.DataFrame(receivers_list)
         df_receivers.to_excel(writer, sheet_name='Топ Инфлюенсеры', index=False)
 
         # --- Лист 4: Популярные товары ---
         items_list = [
-            {"#": i, "Название товара": item.name, "Цена": item.price, "Кол-во покупок": purchase_count}
-            for i, (item, purchase_count) in enumerate(popular_items_data, 1)
+            {"#": i, "Название товара": row[0].name, "Цена": row[0].price, "Кол-во покупок": row.purchase_count}
+            for i, row in enumerate(popular_items_data, 1)
         ]
         df_items = pd.DataFrame(items_list)
         df_items.to_excel(writer, sheet_name='Популярные товары', index=False)
