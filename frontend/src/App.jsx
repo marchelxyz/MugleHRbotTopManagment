@@ -1,8 +1,8 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect } from 'react';
-import { checkUserStatus } from './api';
-import { initializeCache, clearCache } from './storage';
+import { checkUserStatus, getFeed, getBanners } from './api';
+import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
@@ -26,6 +26,7 @@ import TransferPage from './pages/TransferPage'; // Страница отпра�
 import { startSession, pingSession } from './api';
 import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
 import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
+import InteractionRequiredPage from './pages/InteractionRequiredPage'; // Страница требования взаимодействия с ботом
 
 // Стили
 import './App.css';
@@ -42,8 +43,21 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
-  const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform);
+  // Определяем, является ли устройство десктопом
+  // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
+  const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024;
+  
+  // Отслеживаем изменение размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     tg.ready();
@@ -65,8 +79,28 @@ function App() {
 
     const fetchUser = async () => {
       try {
-        const response = await checkUserStatus(telegramUser.id);
-        setUser(response.data);
+        // Предзагружаем данные для главной страницы параллельно с проверкой пользователя
+        const [userResponse, feedResponse, bannersResponse] = await Promise.all([
+          checkUserStatus(telegramUser.id),
+          getFeed().catch(err => {
+            console.warn('Не удалось предзагрузить feed:', err);
+            return null;
+          }),
+          getBanners().catch(err => {
+            console.warn('Не удалось предзагрузить banners:', err);
+            return null;
+          })
+        ]);
+        
+        setUser(userResponse.data);
+        
+        // Сохраняем предзагруженные данные в кэш для HomePage
+        if (feedResponse?.data) {
+          setCachedData('feed', feedResponse.data);
+        }
+        if (bannersResponse?.data) {
+          setCachedData('banners', bannersResponse.data);
+        }
       } catch (err) {
         if (err.response && err.response.status === 404) {
           console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
@@ -142,6 +176,11 @@ const handleTransferSuccess = (updatedSenderData) => {
       return <RejectedPage />;
     }
 
+    // Проверяем, взаимодействовал ли пользователь с ботом
+    if (user.status === 'approved' && !user.has_interacted_with_bot) {
+      return <InteractionRequiredPage />;
+    }
+
     // 2. Только если пользователь одобрен, проверяем, видел ли он обучение.
     if (user.status === 'approved' && (!user.has_seen_onboarding || showOnboarding)) {
         return <OnboardingStories onComplete={handleOnboardingComplete} />;
@@ -179,8 +218,9 @@ const handleTransferSuccess = (updatedSenderData) => {
 
   // 1. Создаем четкие флаги для отображения навигации
   const isUserApproved = user && user.status === 'approved';
-  const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
-  const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
+  const hasInteracted = user && user.has_interacted_with_bot;
+  const showSideNav = isDesktop && isUserApproved && hasInteracted && !isOnboardingVisible;
+  const showBottomNav = !isDesktop && isUserApproved && hasInteracted && !isOnboardingVisible;
   
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
@@ -227,9 +267,36 @@ const handleTransferSuccess = (updatedSenderData) => {
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
 
+  // Периодическая проверка статуса взаимодействия с ботом
+  useEffect(() => {
+    if (!user || user.has_interacted_with_bot) {
+      return; // Не проверяем, если пользователь уже взаимодействовал
+    }
+
+    const checkInteractionStatus = async () => {
+      try {
+        const telegramUser = tg.initDataUnsafe?.user;
+        if (!telegramUser) return;
+
+        const response = await checkUserStatus(telegramUser.id);
+        if (response.data && response.data.has_interacted_with_bot) {
+          // Обновляем состояние пользователя
+          setUser(prevUser => ({ ...prevUser, has_interacted_with_bot: true }));
+        }
+      } catch (err) {
+        console.error('Ошибка проверки статуса взаимодействия:', err);
+      }
+    };
+
+    // Проверяем каждые 5 секунд, если пользователь не взаимодействовал
+    const intervalId = setInterval(checkInteractionStatus, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, [user]);
+
   // Создаем переменные, которые четко определяют, когда показывать меню
-  const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
-  const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
+  const shouldShowSideNav = user && user.status === 'approved' && user.has_interacted_with_bot && isDesktop && !isOnboardingVisible;
+  const shouldShowBottomNav = user && user.status === 'approved' && user.has_interacted_with_bot && !isDesktop && !isOnboardingVisible;
   
   return (
     <div className="app-container">

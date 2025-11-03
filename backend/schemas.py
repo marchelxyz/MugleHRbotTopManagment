@@ -51,6 +51,7 @@ class UserResponse(UserBase):
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
     has_seen_onboarding: bool
+    has_interacted_with_bot: bool
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
 
     @field_serializer('date_of_birth')
