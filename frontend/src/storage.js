@@ -12,6 +12,7 @@ const memoryCache = {
   market: null,
   leaderboard: null,
   history: null,
+  banners: null,
 };
 
 /**
@@ -42,15 +43,17 @@ const getStoredValue = (key) => {
 export const initializeCache = async () => {
   console.log('Initializing local storage cache...');
   
-  const [feed, market, leaderboard] = await Promise.all([
+  const [feed, market, leaderboard, banners] = await Promise.all([
     getStoredValue('feed'),
     getStoredValue('market'),
-    getStoredValue('leaderboard')
+    getStoredValue('leaderboard'),
+    getStoredValue('banners')
   ]);
   
   memoryCache.feed = feed;
   memoryCache.market = market;
   memoryCache.leaderboard = leaderboard;
+  memoryCache.banners = banners;
 
   console.log('Cache initialized from local storage:', memoryCache);
   
@@ -60,10 +63,22 @@ export const initializeCache = async () => {
 
 /**
  * Получает данные из кэша в памяти (синхронно).
- * @param {'feed' | 'market' | 'leaderboard' | 'history'} key Ключ данных.
+ * @param {'feed' | 'market' | 'leaderboard' | 'history' | 'banners'} key Ключ данных.
  */
 export const getCachedData = (key) => {
   return memoryCache[key];
+};
+
+/**
+ * Устанавливает данные в кэш памяти и CloudStorage.
+ * @param {'feed' | 'market' | 'leaderboard' | 'history' | 'banners'} key Ключ данных.
+ * @param {any} data Данные для сохранения.
+ */
+export const setCachedData = (key, data) => {
+  memoryCache[key] = data;
+  if (data !== null) {
+    storage.setItem(key, JSON.stringify(data));
+  }
 };
 
 /**

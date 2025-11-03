@@ -1,8 +1,8 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect } from 'react';
-import { checkUserStatus } from './api';
-import { initializeCache, clearCache } from './storage';
+import { checkUserStatus, getFeed, getBanners } from './api';
+import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
@@ -65,8 +65,28 @@ function App() {
 
     const fetchUser = async () => {
       try {
-        const response = await checkUserStatus(telegramUser.id);
-        setUser(response.data);
+        // Предзагружаем данные для главной страницы параллельно с проверкой пользователя
+        const [userResponse, feedResponse, bannersResponse] = await Promise.all([
+          checkUserStatus(telegramUser.id),
+          getFeed().catch(err => {
+            console.warn('Не удалось предзагрузить feed:', err);
+            return null;
+          }),
+          getBanners().catch(err => {
+            console.warn('Не удалось предзагрузить banners:', err);
+            return null;
+          })
+        ]);
+        
+        setUser(userResponse.data);
+        
+        // Сохраняем предзагруженные данные в кэш для HomePage
+        if (feedResponse?.data) {
+          setCachedData('feed', feedResponse.data);
+        }
+        if (bannersResponse?.data) {
+          setCachedData('banners', bannersResponse.data);
+        }
       } catch (err) {
         if (err.response && err.response.status === 404) {
           console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
