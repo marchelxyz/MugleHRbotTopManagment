@@ -211,8 +211,22 @@
     color: #6E7A85;
 }
 
+/* --- СТИЛИ ДЛЯ ПЛАНШЕТОВ И ПК (2 КОЛОНКИ) --- */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .historyGrid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .historySection {
+        padding: 35px;
+        margin-left: 0;
+        margin-right: 0;
+        margin-bottom: 0;
+    }
+}
+
 /* --- СТИЛИ ТОЛЬКО ДЛЯ ПК (2 КОЛОНКИ) --- */
-@media (min-width: 768px) {
+@media (min-width: 1025px) {
     .historyGrid {
         grid-template-columns: 1fr 1fr;
     }

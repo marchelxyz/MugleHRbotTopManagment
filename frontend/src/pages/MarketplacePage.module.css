@@ -7,6 +7,22 @@
   margin-top: 25px;
 }
 
+/* Адаптация для планшетов */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .itemsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+  }
+}
+
+/* Адаптация для ПК */
+@media (min-width: 1025px) {
+  .itemsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+  }
+}
+
 .itemCard {
   background-color: #fff;
   border-radius: 12px;

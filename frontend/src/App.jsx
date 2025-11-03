@@ -43,8 +43,21 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
-  const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform);
+  // Определяем, является ли устройство десктопом
+  // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
+  const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024;
+  
+  // Отслеживаем изменение размера окна
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     tg.ready();
