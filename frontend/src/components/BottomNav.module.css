@@ -23,6 +23,15 @@
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+/* Адаптация для планшетов */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .nav {
+    max-width: 600px; /* Увеличиваем ширину для планшетов */
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
 .navButton {
   display: flex;
   flex-direction: column;

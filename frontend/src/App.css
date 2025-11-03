@@ -58,7 +58,28 @@
   background-color: #F4F4F8;
 }
 
+/* Планшетный вид (средняя ширина, по центру) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .app-container {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .mobile-wrapper {
+    max-width: 600px; /* Увеличиваем ширину для планшетов */
+    width: 100%;
+  }
+  
+  .desktop-wrapper {
+    margin-left: 0; /* Убираем отступ для планшетов */
+    max-width: 600px;
+    width: 100%;
+  }
+}
+
 /* Десктопный вид (широкий, с отступом слева) */
-.desktop-wrapper {
-  margin-left: 240px; /* Отступ, равный ширине бокового меню */
+@media (min-width: 1025px) {
+  .desktop-wrapper {
+    margin-left: 240px; /* Отступ, равный ширине бокового меню */
+  }
 }
