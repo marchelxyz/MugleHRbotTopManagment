@@ -34,6 +34,7 @@ class User(Base):
     registration_date = Column(DateTime, default=func.now())
 
     has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
+    has_interacted_with_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
     sent_transactions = relationship(
         "Transaction",
         back_populates="sender",

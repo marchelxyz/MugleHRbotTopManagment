@@ -1477,6 +1477,15 @@ async def mark_onboarding_as_seen(db: AsyncSession, user_id: int):
         await db.refresh(user)
     return user
 
+async def mark_user_interacted_with_bot(db: AsyncSession, user_id: int):
+    """Отмечает, что пользователь взаимодействовал с ботом."""
+    user = await db.get(models.User, user_id)
+    if user:
+        user.has_interacted_with_bot = True
+        await db.commit()
+        await db.refresh(user)
+    return user
+
 # --- НАЧАЛО БЛОКА: Возвращаем функции для работы с сессиями ---
 
 async def start_user_session(db: AsyncSession, user_id: int) -> models.UserSession:

@@ -19,6 +19,25 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     try:
         data = await request.json()
 
+        # Обработка команды /start или любого текстового сообщения
+        if "message" in data and "text" in data["message"]:
+            message = data["message"]
+            user_tg_id = message["from"]["id"]
+            text = message.get("text", "").strip()
+            
+            # Проверяем, является ли это командой /start или любым другим сообщением
+            if text:  # Если есть любой текст в сообщении
+                user = await crud.get_user_by_telegram(db, user_tg_id)
+                if user and not user.has_interacted_with_bot:
+                    # Отмечаем, что пользователь взаимодействовал с ботом
+                    await crud.mark_user_interacted_with_bot(db, user.id)
+                    # Отправляем приветственное сообщение
+                    if text.startswith("/start"):
+                        await send_telegram_message(
+                            user_tg_id,
+                            "👋 Добро пожаловать! Теперь вы можете использовать приложение."
+                        )
+
         # Обработка отправленного файла .pkpass
         if "message" in data and "document" in data["message"]:
             document = data["message"]["document"]
@@ -27,6 +46,9 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             if document.get("mime_type") == "application/vnd.apple.pkpass" or document.get("file_name", "").endswith(".pkpass"):
                 user = await crud.get_user_by_telegram(db, user_tg_id)
                 if user:
+                    # Отмечаем взаимодействие с ботом при отправке файла
+                    if not user.has_interacted_with_bot:
+                        await crud.mark_user_interacted_with_bot(db, user.id)
                     file_id = document["file_id"]
                     async with httpx.AsyncClient() as client:
                         file_path_res = await client.get(f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}")
@@ -44,6 +66,12 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         elif "callback_query" in data:
             callback_query = data["callback_query"]
             await answer_callback_query(callback_query["id"]) # Сразу убираем "часики"
+            
+            # Отмечаем взаимодействие с ботом при нажатии на кнопку
+            user_tg_id = callback_query["from"]["id"]
+            user = await crud.get_user_by_telegram(db, user_tg_id)
+            if user and not user.has_interacted_with_bot:
+                await crud.mark_user_interacted_with_bot(db, user.id)
             
             callback_data = callback_query["data"] # например "approve_10" ИЛИ "approve_update_5"
             admin_username = callback_query["from"].get("username", "Администратор")
