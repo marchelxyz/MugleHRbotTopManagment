@@ -16,7 +16,7 @@ import bot
 import config
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
-from sqlalchemy import select, func, update, delete, extract
+from sqlalchemy import select, func, update, delete, extract, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
@@ -533,7 +533,7 @@ async def delete_banner(db: AsyncSession, banner_id: int):
 
 # --- НОВЫЕ ФУНКЦИИ ДЛЯ АВТОМАТИЗАЦИИ ---
 async def process_birthday_bonuses(db: AsyncSession):
-    """Начисляет 15 баллов всем, у кого сегодня день рождения."""
+    """Начисляет 15 баллов всем, у кого сегодня день рождения и отправляет поздравительное сообщение."""
     today = date.today()
     users_with_birthday = await db.execute(
         select(models.User).where(
@@ -545,7 +545,19 @@ async def process_birthday_bonuses(db: AsyncSession):
     
     for user in users:
         user.balance += 15
-        # Можно добавить отправку поздравительного сообщения в ТГ
+        
+        # Отправляем поздравительное сообщение в Telegram
+        if user.telegram_id and user.status == "approved":
+            birthday_message = (
+                f"🎉 *С Днем Рождения!* 🎂\n\n"
+                f"Дорогой/ая *{user.first_name or 'коллега'}*, поздравляем вас с днем рождения!\n\n"
+                f"🎁 В честь этого праздника вам начислено *15 спасибок* в качестве подарка!\n\n"
+                f"Желаем вам здоровья, счастья и успехов во всех начинаниях! 🎈"
+            )
+            try:
+                await send_telegram_message(user.telegram_id, birthday_message)
+            except Exception as e:
+                logger.error(f"Не удалось отправить поздравление пользователю {user.id}: {e}")
     
     # --- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ ---
     await reset_ticket_parts(db)
@@ -1263,8 +1275,12 @@ def _prepare_dates(start_date: Optional[date], end_date: Optional[date]):
 async def get_general_statistics(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
     start_date, end_date_inclusive = _prepare_dates(start_date, end_date)
         
-    query_total_users = select(func.count(models.User.id)).where(models.User.status != 'deleted')
-    total_users = (await db.execute(query_total_users)).scalar_one()
+    # Исправлено: считаем новых пользователей в периоде, а не всех пользователей
+    query_new_users = select(func.count(models.User.id)).where(
+        models.User.status != 'deleted',
+        models.User.registration_date.between(start_date, end_date_inclusive)
+    )
+    new_users_count = (await db.execute(query_new_users)).scalar_one()
 
     active_senders_q = select(models.Transaction.sender_id).join(
         models.User, models.User.id == models.Transaction.sender_id
@@ -1301,7 +1317,7 @@ async def get_general_statistics(db: AsyncSession, start_date: Optional[date] = 
     total_store_spent = (await db.execute(query_spent)).scalar_one_or_none() or 0
 
     return {
-        "new_users_count": total_users,
+        "new_users_count": new_users_count,
         "active_users_count": active_users_count,
         "transactions_count": transactions_count,
         "store_purchases_count": shop_purchases,
@@ -1344,6 +1360,7 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
             func.count(models.User.id).label('login_count')
         )
         .filter(
+            models.User.last_login_date.isnot(None),  # Исключаем пользователей без логина
             models.User.last_login_date.between(start_date, end_date_inclusive),
             models.User.status != 'deleted'
         )
@@ -1393,14 +1410,21 @@ async def get_popular_items_stats(db: AsyncSession, start_date: Optional[date] =
     if start_date is None: start_date = end_date - timedelta(days=365*5)
     end_date_inclusive = end_date + timedelta(days=1)
 
-    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
-    # Добавляем options(selectinload(...)) чтобы сразу загрузить коды
+    # --- ИСПРАВЛЕНИЕ: Используем INNER JOIN вместо LEFT JOIN, чтобы показывать только товары с покупками в периоде
+    # Фильтр по дате применяем в условии JOIN для корректной работы
     query = (
         select(models.MarketItem, func.count(models.Purchase.id).label('purchase_count'))
-        .join(models.Purchase, models.MarketItem.id == models.Purchase.item_id, isouter=True)
-        .filter(models.Purchase.timestamp.between(start_date, end_date_inclusive))
-        .options(selectinload(models.MarketItem.codes)) # <-- ВОТ ИЗМЕНЕНИЕ
-        .group_by(models.MarketItem.id).order_by(func.count(models.Purchase.id).desc()).limit(limit)
+        .join(
+            models.Purchase, 
+            and_(
+                models.MarketItem.id == models.Purchase.item_id,
+                models.Purchase.timestamp.between(start_date, end_date_inclusive)
+            )
+        )
+        .options(selectinload(models.MarketItem.codes))
+        .group_by(models.MarketItem.id)
+        .order_by(func.count(models.Purchase.id).desc())
+        .limit(limit)
     )
     # Возвращаем результат как есть, FastAPI/Pydantic сами преобразуют его
     return (await db.execute(query)).all()
@@ -1415,6 +1439,13 @@ async def get_inactive_users(db: AsyncSession, start_date: Optional[date] = None
     active_recipients = (await db.execute(active_recipients_q)).scalars().all()
     
     active_user_ids = set(active_senders).union(set(active_recipients))
+    
+    # Исправлено: обрабатываем случай пустого списка активных пользователей
+    if not active_user_ids:
+        # Если нет активных пользователей, возвращаем всех неактивных
+        return (await db.execute(select(models.User).filter(
+            models.User.status != 'deleted'
+        ))).scalars().all()
     
     return (await db.execute(select(models.User).filter(
         models.User.id.notin_(active_user_ids),
