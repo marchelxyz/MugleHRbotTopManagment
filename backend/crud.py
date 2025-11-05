@@ -23,6 +23,7 @@ from config import settings
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy import select
@@ -32,11 +33,29 @@ logger = logging.getLogger(__name__)
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
-    return result.scalars().first()
+    user = result.scalars().first()
+    if user:
+        # Сбрасываем счетчик, если наступил новый день
+        today = date.today()
+        if user.last_login_date is None or user.last_login_date.date() < today:
+            user.daily_transfer_count = 0
+            user.last_login_date = datetime.utcnow()
+            await db.commit()
+            await db.refresh(user)
+    return user
 
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
-    return result.scalars().first()
+    user = result.scalars().first()
+    if user:
+        # Сбрасываем счетчик, если наступил новый день
+        today = date.today()
+        if user.last_login_date is None or user.last_login_date.date() < today:
+            user.daily_transfer_count = 0
+            user.last_login_date = datetime.utcnow()
+            await db.commit()
+            await db.refresh(user)
+    return user
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
@@ -864,6 +883,13 @@ async def reset_tickets(db: AsyncSession):
         update(models.User)
         .where(models.User.last_ticket_reset <= four_months_ago)
         .values(tickets=0, last_ticket_reset=date.today())
+    )
+    await db.commit()
+
+async def reset_daily_transfer_limits(db: AsyncSession):
+    """Сбрасывает счетчик ежедневных переводов для всех пользователей."""
+    await db.execute(
+        update(models.User).values(daily_transfer_count=0)
     )
     await db.commit()
 

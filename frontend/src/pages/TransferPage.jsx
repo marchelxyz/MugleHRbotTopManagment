@@ -131,7 +131,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
       <div className={styles.balanceInfo}>
-          <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
+          <p>Переводов сегодня: <strong>{3 - user.daily_transfer_count} / 3</strong></p>
       </div>
 
       <form onSubmit={handleSubmit}>
