@@ -56,7 +56,7 @@ function UserSearch({ currentUser, onUserSelect }) {
         type="text"
         value={query}
         onChange={handleInputChange}
-        placeholder="Введите имя, фамилию или @username..."
+        placeholder="Введите имя, фамилию, тег или номер телефона..."
         className={styles.input}
       />
       {isLoading && <div className={styles.loader}>Поиск...</div>}

@@ -1092,22 +1092,25 @@ async def process_profile_update(db: AsyncSession, update_id: int, action: str):
 # --- НОВАЯ ФУНКЦИЯ ДЛЯ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ---
 async def search_users_by_name(db: AsyncSession, query: str):
     """
-    Ищет пользователей по частичному совпадению в имени, фамилии или юзернейме.
+    Ищет пользователей по частичному совпадению в имени, фамилии, username или номере телефона.
     Поиск регистронезависимый.
     """
     if not query:
         return []
     
+    # Убираем символ @ из начала запроса, если он есть (для поиска по username)
+    clean_query = query.lstrip('@')
+    
     # Создаем шаблон для поиска "внутри" строки (например, "ан" найдет "Иван")
-    search_query = f"%{query}%"
+    search_query = f"%{clean_query}%"
     
     result = await db.execute(
         select(models.User).filter(
             or_(
                 models.User.first_name.ilike(search_query),
-                # Если у тебя есть поле last_name, раскомментируй строку ниже
-                # models.User.last_name.ilike(search_query),
-                models.User.username.ilike(search_query)
+                models.User.last_name.ilike(search_query),
+                models.User.username.ilike(search_query),
+                models.User.phone_number.ilike(search_query)
             )
         ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
     )
