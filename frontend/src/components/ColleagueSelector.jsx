@@ -23,12 +23,15 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
       // Не показываем пользователей, если нет поискового запроса
       setFilteredUsers([]);
     } else {
+      const searchLower = searchTerm.toLowerCase();
       const filtered = users.filter(user => 
         user.id !== currentUserId && (
-          user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+          user.first_name?.toLowerCase().includes(searchLower) ||
+          user.last_name?.toLowerCase().includes(searchLower) ||
+          user.username?.toLowerCase().includes(searchLower) ||
+          user.phone_number?.toLowerCase().includes(searchLower) ||
+          `${user.first_name} ${user.last_name}`.toLowerCase().includes(searchLower) ||
+          (user.username && `@${user.username}`.toLowerCase().includes(searchLower))
         )
       );
       setFilteredUsers(filtered);
@@ -65,7 +68,7 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
         <div className={styles.searchContainer}>
           <input
             type="text"
-            placeholder="Введите имя, фамилию или тег..."
+            placeholder="Введите имя, фамилию, тег или номер телефона..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={styles.searchInput}
@@ -77,7 +80,7 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
             <div className={styles.loading}>Загрузка...</div>
           ) : filteredUsers.length === 0 ? (
             <div className={styles.noResults}>
-              {searchTerm ? 'Пользователи не найдены' : 'Введите имя, фамилию или тег для поиска'}
+              {searchTerm ? 'Пользователи не найдены' : 'Введите имя, фамилию, тег или номер телефона для поиска'}
             </div>
           ) : (
             filteredUsers.map(user => (

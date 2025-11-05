@@ -56,7 +56,7 @@ function UserSearch({ currentUser, onUserSelect }) {
         type="text"
         value={query}
         onChange={handleInputChange}
-        placeholder="Введите имя, фамилию или @username..."
+        placeholder="Введите имя, фамилию, тег или номер телефона..."
         className={styles.input}
       />
       {isLoading && <div className={styles.loader}>Поиск...</div>}
@@ -131,7 +131,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       <button onClick={onBack} className={styles.backButton}>&larr; Назад</button>
       
       <div className={styles.balanceInfo}>
-          <p>Переводов сегодня: <strong>{user.daily_transfer_count} / 3</strong></p>
+          <p>Переводов сегодня: <strong>{3 - user.daily_transfer_count} / 3</strong></p>
       </div>
 
       <form onSubmit={handleSubmit}>
