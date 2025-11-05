@@ -23,6 +23,7 @@ from config import settings
 from bot import send_telegram_message
 from database import settings
 from datetime import datetime, timedelta, date
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy import select
@@ -32,11 +33,29 @@ logger = logging.getLogger(__name__)
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
-    return result.scalars().first()
+    user = result.scalars().first()
+    if user:
+        # Сбрасываем счетчик, если наступил новый день
+        today = date.today()
+        if user.last_login_date is None or user.last_login_date.date() < today:
+            user.daily_transfer_count = 0
+            user.last_login_date = datetime.utcnow()
+            await db.commit()
+            await db.refresh(user)
+    return user
 
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
-    return result.scalars().first()
+    user = result.scalars().first()
+    if user:
+        # Сбрасываем счетчик, если наступил новый день
+        today = date.today()
+        if user.last_login_date is None or user.last_login_date.date() < today:
+            user.daily_transfer_count = 0
+            user.last_login_date = datetime.utcnow()
+            await db.commit()
+            await db.refresh(user)
+    return user
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
@@ -867,6 +886,13 @@ async def reset_tickets(db: AsyncSession):
     )
     await db.commit()
 
+async def reset_daily_transfer_limits(db: AsyncSession):
+    """Сбрасывает счетчик ежедневных переводов для всех пользователей."""
+    await db.execute(
+        update(models.User).values(daily_transfer_count=0)
+    )
+    await db.commit()
+
 # --- ДОБАВЬТЕ ЭТИ НОВЫЕ ФУНКЦИИ В КОНЕЦ ФАЙЛА ---
 
 async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: bytes):
@@ -1066,22 +1092,25 @@ async def process_profile_update(db: AsyncSession, update_id: int, action: str):
 # --- НОВАЯ ФУНКЦИЯ ДЛЯ ПОИСКА ПОЛЬЗОВАТЕЛЕЙ ---
 async def search_users_by_name(db: AsyncSession, query: str):
     """
-    Ищет пользователей по частичному совпадению в имени, фамилии или юзернейме.
+    Ищет пользователей по частичному совпадению в имени, фамилии, username или номере телефона.
     Поиск регистронезависимый.
     """
     if not query:
         return []
     
+    # Убираем символ @ из начала запроса, если он есть (для поиска по username)
+    clean_query = query.lstrip('@')
+    
     # Создаем шаблон для поиска "внутри" строки (например, "ан" найдет "Иван")
-    search_query = f"%{query}%"
+    search_query = f"%{clean_query}%"
     
     result = await db.execute(
         select(models.User).filter(
             or_(
                 models.User.first_name.ilike(search_query),
-                # Если у тебя есть поле last_name, раскомментируй строку ниже
-                # models.User.last_name.ilike(search_query),
-                models.User.username.ilike(search_query)
+                models.User.last_name.ilike(search_query),
+                models.User.username.ilike(search_query),
+                models.User.phone_number.ilike(search_query)
             )
         ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
     )
