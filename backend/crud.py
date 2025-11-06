@@ -1744,6 +1744,8 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
     if bonus_amount <= 0:
         raise ValueError("Количество бонусов должно быть положительным числом")
     
+    # Формируем payload согласно документации Statix API
+    # Структура соответствует примеру: action, phone, bonus_points, card_number, credentials, restaurant
     payload = {
         "action": settings.STATIX_BONUS_ACTION,
         "phone": phone,
@@ -1762,12 +1764,14 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
         try:
-            logger.debug(
-                "Отправка запроса в Statix Bonus API: phone=%s, bonus_amount=%s, card_number=%s",
+            logger.info(
+                "Отправка запроса в Statix Bonus API: URL=%s, phone=%s, bonus_points=%s, card_number=%s",
+                settings.STATIX_BONUS_API_URL,
                 phone,
                 bonus_amount,
                 card_number,
             )
+            logger.debug("Payload для Statix API: %s", json.dumps(payload, ensure_ascii=False))
             response = await client.post(
                 settings.STATIX_BONUS_API_URL,
                 json=payload,
