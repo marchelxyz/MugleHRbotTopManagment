@@ -1724,7 +1724,6 @@ def _extract_statix_error_message(response: Optional[httpx.Response]) -> str:
 async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number: str) -> Optional[dict]:
     payload = {
         "action": settings.STATIX_BONUS_ACTION,
-        "phone": phone,
         "bonus_points": bonus_amount,
         "card_number": card_number,
         "credentials": {
