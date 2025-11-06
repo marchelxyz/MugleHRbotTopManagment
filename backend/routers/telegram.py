@@ -59,7 +59,9 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     file_id = document["file_id"]
                     print(f"Processing pkpass file for user {user.id}, file_id: {file_id}")
                     
-                    async with httpx.AsyncClient() as client:
+                    # Увеличиваем таймаут для работы с файлами (30 секунд на чтение, 60 секунд общий таймаут)
+                    timeout = httpx.Timeout(60.0, read=30.0)
+                    async with httpx.AsyncClient(timeout=timeout) as client:
                         # Получаем путь к файлу
                         file_path_res = await client.get(f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}")
                         file_path_res.raise_for_status()
@@ -95,6 +97,10 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                             print(f"Failed to process pkpass file for user {user.id}")
                             await send_telegram_message(user.telegram_id, "❌ Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.")
                             
+                except httpx.ReadTimeout as e:
+                    print(f"Read timeout while processing pkpass file: {e}")
+                    print(traceback.format_exc())
+                    await send_telegram_message(user_tg_id, "❌ Превышено время ожидания при загрузке файла. Файл может быть слишком большим или соединение медленное. Попробуйте отправить файл еще раз.")
                 except httpx.HTTPStatusError as e:
                     print(f"HTTP error while processing pkpass file: {e}")
                     print(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
