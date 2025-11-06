@@ -46,7 +46,13 @@ async def get_user(db: AsyncSession, user_id: int):
     return user
 
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
-    result = await db.execute(select(models.User).where(models.User.telegram_id == telegram_id))
+    # Игнорируем анонимизированных пользователей (telegram_id = -1)
+    result = await db.execute(
+        select(models.User).where(
+            models.User.telegram_id == telegram_id,
+            models.User.telegram_id != -1
+        )
+    )
     user = result.scalars().first()
     if user:
         # Сбрасываем счетчик, если наступил новый день
@@ -60,6 +66,10 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
+    
+    # Проверяем, что telegram_id не равен -1 (зарезервировано для анонимизированных пользователей)
+    if user_telegram_id == -1:
+        raise ValueError("telegram_id не может быть равен -1 (зарезервировано для анонимизированных пользователей)")
     
     admin_ids_str = settings.TELEGRAM_ADMIN_IDS
     admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
@@ -185,7 +195,9 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         message_text = (f"🎉 Вам начислена *1* спасибка!\n"
                         f"От: *{sender.first_name} {sender.last_name}*\n"
                         f"Сообщение: _{tr.message}_")
-        await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
+        # Игнорируем анонимизированных пользователей (telegram_id = -1)
+        if receiver.telegram_id and receiver.telegram_id != -1:
+            await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
@@ -567,7 +579,8 @@ async def process_birthday_bonuses(db: AsyncSession):
         user.balance += 15
         
         # Отправляем поздравительное сообщение в Telegram
-        if user.telegram_id and user.status == "approved":
+        # Игнорируем анонимизированных пользователей (telegram_id = -1)
+        if user.telegram_id and user.telegram_id != -1 and user.status == "approved":
             birthday_message = (
                 f"🎉 *С Днем Рождения!* 🎂\n\n"
                 f"Дорогой/ая *{user.first_name or 'коллега'}*, поздравляем вас с днем рождения!\n\n"
@@ -1269,7 +1282,7 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
     # 2. Затираем личные данные пользователя
     user_to_anonymize.first_name = "Удаленный"
     user_to_anonymize.last_name = "Пользователь"
-    user_to_anonymize.telegram_id = None  # Обнуляем telegram_id для возможности повторной регистрации
+    user_to_anonymize.telegram_id = -1  # Устанавливаем -1 для анонимизированных пользователей
     user_to_anonymize.username = None       # <-- Требует изменений в базе данных, которые мы обсуждали
     user_to_anonymize.phone_number = None
     user_to_anonymize.telegram_photo_url = None
@@ -2027,27 +2040,29 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
     
     # Отправляем уведомление приглашенному пользователю
     try:
-        await send_telegram_message(
-            invited_user.telegram_id,
-            f"🎁 *Приглашение на совместный подарок!*\n\n"
-            f"👤 *{buyer.first_name} {buyer.last_name}* приглашает вас разделить товар *{item.name}*\n\n"
-            f"💰 Стоимость будет разделена 50/50\n"
-            f"⏰ Приглашение действует 24 часа",
-            {
-                "inline_keyboard": [
-                    [
-                        {
-                            "text": "✅ Принять",
-                            "callback_data": f"accept_shared_gift_{db_invitation.id}"
-                        },
-                        {
-                            "text": "❌ Отказаться", 
-                            "callback_data": f"reject_shared_gift_{db_invitation.id}"
-                        }
+        # Игнорируем анонимизированных пользователей (telegram_id = -1)
+        if invited_user.telegram_id and invited_user.telegram_id != -1:
+            await send_telegram_message(
+                invited_user.telegram_id,
+                f"🎁 *Приглашение на совместный подарок!*\n\n"
+                f"👤 *{buyer.first_name} {buyer.last_name}* приглашает вас разделить товар *{item.name}*\n\n"
+                f"💰 Стоимость будет разделена 50/50\n"
+                f"⏰ Приглашение действует 24 часа",
+                {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text": "✅ Принять",
+                                "callback_data": f"accept_shared_gift_{db_invitation.id}"
+                            },
+                            {
+                                "text": "❌ Отказаться", 
+                                "callback_data": f"reject_shared_gift_{db_invitation.id}"
+                            }
+                        ]
                     ]
-                ]
-            }
-        )
+                }
+            )
     except Exception as e:
         print(f"Failed to send shared gift invitation notification: {e}")
     
@@ -2121,12 +2136,14 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
     
     # Отправляем уведомление покупателю
     try:
-        await send_telegram_message(
-            buyer.telegram_id,
-            f"✅ *Приглашение принято!*\n\n"
-            f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* согласился разделить товар *{item.name}*\n\n"
-            f"💰 Вам возвращена половина стоимости товара"
-        )
+        # Игнорируем анонимизированных пользователей (telegram_id = -1)
+        if buyer.telegram_id and buyer.telegram_id != -1:
+            await send_telegram_message(
+                buyer.telegram_id,
+                f"✅ *Приглашение принято!*\n\n"
+                f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* согласился разделить товар *{item.name}*\n\n"
+                f"💰 Вам возвращена половина стоимости товара"
+            )
     except Exception as e:
         print(f"Failed to send shared gift accepted notification: {e}")
     
@@ -2189,12 +2206,14 @@ async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         item = item_result.scalar_one_or_none()
         
         if buyer and item:
-            await send_telegram_message(
-                buyer.telegram_id,
-                f"❌ *Приглашение отклонено*\n\n"
-                f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* отклонил приглашение на товар *{item.name}*\n\n"
-                f"💰 Вам возвращена полная стоимость товара"
-            )
+            # Игнорируем анонимизированных пользователей (telegram_id = -1)
+            if buyer.telegram_id and buyer.telegram_id != -1:
+                await send_telegram_message(
+                    buyer.telegram_id,
+                    f"❌ *Приглашение отклонено*\n\n"
+                    f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* отклонил приглашение на товар *{item.name}*\n\n"
+                    f"💰 Вам возвращена полная стоимость товара"
+                )
     except Exception as e:
         print(f"Failed to send shared gift rejected notification: {e}")
     
@@ -2270,12 +2289,14 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
             item = item_result.scalar_one_or_none()
             
             if buyer and item:
-                await send_telegram_message(
-                    buyer.telegram_id,
-                    f"⏰ *Приглашение истекло*\n\n"
-                    f"Время на принятие приглашения на товар *{item.name}* истекло\n\n"
-                    f"💰 Вам возвращена полная стоимость товара"
-                )
+                # Игнорируем анонимизированных пользователей (telegram_id = -1)
+                if buyer.telegram_id and buyer.telegram_id != -1:
+                    await send_telegram_message(
+                        buyer.telegram_id,
+                        f"⏰ *Приглашение истекло*\n\n"
+                        f"Время на принятие приглашения на товар *{item.name}* истекло\n\n"
+                        f"💰 Вам возвращена полная стоимость товара"
+                    )
         except Exception as e:
             print(f"Failed to send shared gift expired notification: {e}")
     
