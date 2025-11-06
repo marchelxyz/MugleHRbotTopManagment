@@ -151,15 +151,15 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                 (user, status) = await crud.process_profile_update(db, update_id, action_type)
                 
                 if user and status == "approved":
-                    # Игнорируем анонимизированных пользователей (telegram_id = -1)
-                    if user.telegram_id and user.telegram_id != -1:
+                    # Игнорируем анонимизированных пользователей (telegram_id IS NULL)
+                    if user.telegram_id:
                         await safe_send_message(user.telegram_id, "✅ Администратор одобрил ваши изменения в профиле!")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{user.username or user.first_name} одобрены адм. @{admin_username}.", 
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
                     
                 elif user and status == "rejected":
-                    # Игнорируем анонимизированных пользователей (telegram_id = -1)
-                    if user.telegram_id and user.telegram_id != -1:
+                    # Игнорируем анонимизированных пользователей (telegram_id IS NULL)
+                    if user.telegram_id:
                         await safe_send_message(user.telegram_id, "❌ Администратор отклонил ваши изменения в профиле.")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{user.username or user.first_name} отклонены адм. @{admin_username}.", 
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
@@ -200,15 +200,15 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             
                 if action == "approve":
                     await crud.update_user_status(db, user_id, "approved")
-                    # Игнорируем анонимизированных пользователей (telegram_id = -1)
-                    if user.telegram_id and user.telegram_id != -1:
+                    # Игнорируем анонимизированных пользователей (telegram_id IS NULL)
+                    if user.telegram_id:
                         await safe_send_message(user.telegram_id, "✅ Ваша заявка на регистрацию одобрена!")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Авторизация @{user.username or user.first_name} одобрена администратором @{admin_username}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
 
                 elif action == "reject":
                     await crud.update_user_status(db, user_id, "rejected")
-                    # Игнорируем анонимизированных пользователей (telegram_id = -1)
-                    if user.telegram_id and user.telegram_id != -1:
+                    # Игнорируем анонимизированных пользователей (telegram_id IS NULL)
+                    if user.telegram_id:
                         await safe_send_message(user.telegram_id, "❌ В регистрации отказано.")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Авторизация @{user.username or user.first_name} отклонена администратором @{admin_username}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
             
