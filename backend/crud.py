@@ -1269,7 +1269,7 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
     # 2. Затираем личные данные пользователя
     user_to_anonymize.first_name = "Удаленный"
     user_to_anonymize.last_name = "Пользователь"
-    user_to_anonymize.telegram_id = None  # <-- Требует изменений в базе данных, которые мы обсуждали
+    user_to_anonymize.telegram_id = None  # Обнуляем telegram_id для возможности повторной регистрации
     user_to_anonymize.username = None       # <-- Требует изменений в базе данных, которые мы обсуждали
     user_to_anonymize.phone_number = None
     user_to_anonymize.telegram_photo_url = None

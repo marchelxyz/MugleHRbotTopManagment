@@ -11,7 +11,7 @@ from typing import Optional
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, unique=True, index=True, nullable=False)
+    telegram_id = Column(BigInteger, nullable=True)  # unique обеспечивается частичным индексом через миграцию
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=False)
     status = Column(String, default='pending', nullable=False)
