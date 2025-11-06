@@ -1,6 +1,7 @@
 # backend/routers/telegram.py
 from fastapi import APIRouter, Depends, Request
 import httpx
+import traceback
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, models, schemas
 from database import get_db, settings
@@ -44,22 +45,69 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             user_tg_id = data["message"]["from"]["id"]
             
             if document.get("mime_type") == "application/vnd.apple.pkpass" or document.get("file_name", "").endswith(".pkpass"):
-                user = await crud.get_user_by_telegram(db, user_tg_id)
-                if user:
+                try:
+                    user = await crud.get_user_by_telegram(db, user_tg_id)
+                    if not user:
+                        print(f"User not found for telegram_id: {user_tg_id}")
+                        await send_telegram_message(user_tg_id, "❌ Пользователь не найден. Пожалуйста, зарегистрируйтесь в приложении.")
+                        return {"ok": True}
+                    
                     # Отмечаем взаимодействие с ботом при отправке файла
                     if not user.has_interacted_with_bot:
                         await crud.mark_user_interacted_with_bot(db, user.id)
+                    
                     file_id = document["file_id"]
+                    print(f"Processing pkpass file for user {user.id}, file_id: {file_id}")
+                    
                     async with httpx.AsyncClient() as client:
+                        # Получаем путь к файлу
                         file_path_res = await client.get(f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}")
-                        file_path = file_path_res.json()["result"]["file_path"]
+                        file_path_res.raise_for_status()
+                        file_path_data = file_path_res.json()
                         
+                        if not file_path_data.get("ok") or "result" not in file_path_data:
+                            print(f"Failed to get file path: {file_path_data}")
+                            await send_telegram_message(user.telegram_id, "❌ Ошибка при получении файла. Попробуйте отправить файл еще раз.")
+                            return {"ok": True}
+                        
+                        file_path = file_path_data["result"]["file_path"]
+                        print(f"File path retrieved: {file_path}")
+                        
+                        # Скачиваем файл
                         file_url = f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/{file_path}"
                         file_res = await client.get(file_url)
+                        file_res.raise_for_status()
                         file_content = file_res.content
                         
-                        await crud.process_pkpass_file(db, user.id, file_content)
-                        await send_telegram_message(user.telegram_id, "✅ Ваша бонусная карта успешно добавлена в профиль!")
+                        if not file_content or len(file_content) == 0:
+                            print(f"Empty file content received")
+                            await send_telegram_message(user.telegram_id, "❌ Файл пустой. Попробуйте отправить файл еще раз.")
+                            return {"ok": True}
+                        
+                        print(f"File downloaded, size: {len(file_content)} bytes")
+                        
+                        # Обрабатываем файл
+                        result = await crud.process_pkpass_file(db, user.id, file_content)
+                        if result:
+                            print(f"Pkpass file processed successfully for user {user.id}")
+                            await send_telegram_message(user.telegram_id, "✅ Ваша бонусная карта успешно добавлена в профиль!")
+                        else:
+                            print(f"Failed to process pkpass file for user {user.id}")
+                            await send_telegram_message(user.telegram_id, "❌ Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.")
+                            
+                except httpx.HTTPStatusError as e:
+                    print(f"HTTP error while processing pkpass file: {e}")
+                    print(f"Response: {e.response.text if hasattr(e, 'response') else 'N/A'}")
+                    await send_telegram_message(user_tg_id, "❌ Ошибка при загрузке файла из Telegram. Попробуйте отправить файл еще раз.")
+                except ValueError as e:
+                    # Ошибки валидации из process_pkpass_file
+                    error_message = str(e)
+                    print(f"Validation error while processing pkpass file: {error_message}")
+                    await send_telegram_message(user_tg_id, f"❌ {error_message}")
+                except Exception as e:
+                    print(f"Error processing pkpass file: {e}")
+                    print(traceback.format_exc())
+                    await send_telegram_message(user_tg_id, "❌ Произошла ошибка при обработке файла. Попробуйте позже или обратитесь в поддержку.")
 
         # Обработка нажатия на inline-кнопку
         # Обработка нажатия на inline-кнопку
@@ -144,8 +192,9 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
     except Exception as e:
-        # ... (логирование ошибок)
+        # Общая обработка ошибок для всех остальных случаев
         print(f"Error in telegram webhook: {e}")
+        print(traceback.format_exc())
 
     # В любом случае возвращаем Telegram "ok"
     return {"ok": True}
