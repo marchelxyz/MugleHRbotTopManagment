@@ -6,3 +6,27 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Глобальные стили для кнопок - убираем синее подсвечивание и делаем прозрачными при нажатии */
+button,
+button:focus,
+button:focus-visible,
+button:active,
+button:hover:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+  box-shadow: none !important;
+}
+
+/* Убираем синее подсвечивание при фокусе */
+button:focus,
+button:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Делаем кнопки прозрачными при активном состоянии (нажатии) */
+button:active {
+  opacity: 0.7;
+}
