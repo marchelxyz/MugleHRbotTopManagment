@@ -1722,6 +1722,28 @@ def _extract_statix_error_message(response: Optional[httpx.Response]) -> str:
 
 
 async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number: str) -> Optional[dict]:
+    """
+    Отправить запрос на начисление бонусов в Statix API
+    
+    Args:
+        phone: Номер телефона в формате 7XXXXXXXXXX
+        bonus_amount: Количество бонусов для начисления
+        card_number: Номер карты Statix
+        
+    Returns:
+        dict: Ответ от API или None
+        
+    Raises:
+        ValueError: При ошибке API или недоступности сервиса
+    """
+    # Валидация входных данных
+    if not phone or not phone.strip():
+        raise ValueError("Номер телефона не может быть пустым")
+    if not card_number or not card_number.strip():
+        raise ValueError("Номер карты не может быть пустым")
+    if bonus_amount <= 0:
+        raise ValueError("Количество бонусов должно быть положительным числом")
+    
     payload = {
         "action": settings.STATIX_BONUS_ACTION,
         "phone": phone,
@@ -1740,6 +1762,12 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
         try:
+            logger.debug(
+                "Отправка запроса в Statix Bonus API: phone=%s, bonus_amount=%s, card_number=%s",
+                phone,
+                bonus_amount,
+                card_number,
+            )
             response = await client.post(
                 settings.STATIX_BONUS_API_URL,
                 json=payload,
@@ -1758,8 +1786,9 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
 
     try:
         data = response.json()
-    except ValueError:
-        data = None
+    except ValueError as exc:
+        logger.error("Statix Bonus API вернул некорректный JSON: %s", response.text[:200])
+        raise ValueError("Statix Bonus API вернул некорректный ответ.") from exc
 
     if isinstance(data, dict):
         status_value = str(data.get("status", "")).lower()
@@ -1767,6 +1796,8 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
             message = data.get("message") or data.get("error") or str(data)
             logger.error("Statix Bonus API вернул ошибочный статус: %s", message)
             raise ValueError(f"Statix Bonus API вернул ошибку: {message}")
+        
+        logger.debug("Statix Bonus API успешно обработал запрос: %s", data)
 
     return data if isinstance(data, dict) else None
 
@@ -1778,8 +1809,18 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
     if not statix_item:
         raise ValueError("Statix Bonus товар не настроен")
     
-    # Рассчитываем стоимость в спасибках
-    thanks_cost = (bonus_amount / 100) * statix_item.thanks_to_statix_rate
+    # Валидация количества бонусов
+    if bonus_amount < statix_item.min_bonus_per_step:
+        raise ValueError(f"Минимальное количество бонусов: {statix_item.min_bonus_per_step}")
+    if bonus_amount > statix_item.max_bonus_per_step:
+        raise ValueError(f"Максимальное количество бонусов: {statix_item.max_bonus_per_step}")
+    if bonus_amount % statix_item.bonus_step != 0:
+        raise ValueError(f"Количество бонусов должно быть кратно {statix_item.bonus_step}")
+    
+    # Рассчитываем стоимость в спасибках (округляем до целого)
+    thanks_cost = int((bonus_amount / 100) * statix_item.thanks_to_statix_rate)
+    if thanks_cost <= 0:
+        raise ValueError("Некорректная стоимость покупки")
     
     # Получаем пользователя по Telegram ID (user_id здесь - это telegram_id)
     user = await get_user_by_telegram(db, user_id)
@@ -1816,17 +1857,22 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
         await db.rollback()
         user.balance = original_balance
         logger.exception(
-            "Неожиданная ошибка при начислении Statix бонусов (user_id=%s, phone=%s)",
+            "Неожиданная ошибка при начислении Statix бонусов (user_id=%s, phone=%s, bonus_amount=%s, thanks_cost=%s, card_number=%s)",
             user_id,
             formatted_phone,
+            bonus_amount,
+            thanks_cost,
+            user.card_barcode,
         )
         raise ValueError("Не удалось начислить бонусы Statix. Пожалуйста, попробуйте позже.") from exc
     else:
         logger.info(
-            "Statix бонусы начислены: user_id=%s, phone=%s, bonus_points=%s",
+            "Statix бонусы начислены: user_id=%s, phone=%s, bonus_points=%s, thanks_spent=%s, card_number=%s",
             user_id,
             formatted_phone,
             bonus_amount,
+            thanks_cost,
+            user.card_barcode,
         )
     
     return {
