@@ -71,3 +71,13 @@
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* Убираем синюю разметку при фокусе и нажатии */
+button,
+button:focus,
+button:focus-visible,
+button:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+}

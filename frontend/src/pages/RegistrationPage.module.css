@@ -51,3 +51,13 @@
 
 /* Кнопка "Назад" */
 .backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }
+
+/* Убираем синюю разметку при фокусе и нажатии */
+button,
+button:focus,
+button:focus-visible,
+button:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+}

@@ -170,3 +170,13 @@
     opacity: 0.6;
     cursor: not-allowed;
 }
+
+/* Убираем синюю разметку при фокусе и нажатии */
+button,
+button:focus,
+button:focus-visible,
+button:active {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+}
