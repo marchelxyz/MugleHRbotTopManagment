@@ -5,6 +5,7 @@ import json
 import math 
 import re
 import logging
+import traceback
 
 import httpx
 from typing import Optional
@@ -902,35 +903,71 @@ async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: byte
     """
     user = await db.get(models.User, user_id)
     if not user:
+        print(f"User not found for user_id: {user_id}")
         return None
 
     try:
-        with zipfile.ZipFile(io.BytesIO(file_content), 'r') as pass_zip:
+        print(f"Starting pkpass file processing for user {user_id}, file size: {len(file_content)} bytes")
+        
+        # Проверяем, что файл не пустой
+        if not file_content or len(file_content) == 0:
+            raise ValueError("File content is empty")
+        
+        # Пытаемся открыть как ZIP архив
+        try:
+            pass_zip = zipfile.ZipFile(io.BytesIO(file_content), 'r')
+        except zipfile.BadZipFile as e:
+            print(f"Invalid ZIP file format: {e}")
+            raise ValueError(f"Файл не является корректным .pkpass файлом (неверный формат ZIP): {e}")
+        
+        with pass_zip:
+            # Проверяем наличие pass.json
+            if 'pass.json' not in pass_zip.namelist():
+                available_files = ', '.join(pass_zip.namelist())
+                print(f"pass.json not found in archive. Available files: {available_files}")
+                raise ValueError(f"Файл pass.json не найден в архиве. Найдены файлы: {available_files}")
+            
             pass_json_bytes = pass_zip.read('pass.json')
-            pass_data = json.loads(pass_json_bytes)
+            print(f"pass.json read successfully, size: {len(pass_json_bytes)} bytes")
+            
+            try:
+                pass_data = json.loads(pass_json_bytes)
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in pass.json: {e}")
+                raise ValueError(f"Ошибка парсинга JSON в pass.json: {e}")
+            
+            print(f"pass.json parsed successfully. Keys: {list(pass_data.keys())}")
             
             # --- 1. Извлекаем все нужные данные ---
             
             # Штрих-код (как и раньше)
             barcode_data = pass_data.get('barcode', {}).get('message')
             if not barcode_data:
-                raise ValueError("Barcode data not found in pass.json")
+                print("Barcode data not found in pass.json")
+                print(f"Barcode structure: {pass_data.get('barcode')}")
+                raise ValueError("Данные штрих-кода не найдены в pass.json")
+
+            print(f"Barcode extracted: {barcode_data}")
 
             # Баланс (как и раньше)
             card_balance = "0"
             header_fields = pass_data.get('storeCard', {}).get('headerFields', [])
+            print(f"Header fields: {header_fields}")
             for field in header_fields:
                 if field.get('key') == 'field0': # Судя по файлу, ключ баланса 'field0'
                     card_balance = str(field.get('value'))
+                    print(f"Balance found: {card_balance}")
                     break
             
             # --- 2. НАЧАЛО НОВОЙ ЛОГИКИ: Извлекаем Имя и Фамилию ---
             full_name_from_card = None
             auxiliary_fields = pass_data.get('storeCard', {}).get('auxiliaryFields', [])
+            print(f"Auxiliary fields: {auxiliary_fields}")
             for field in auxiliary_fields:
                 # Ищем поле, где label "Владелец карты"
                 if field.get('label') == 'Владелец карты':
                     full_name_from_card = field.get('value')
+                    print(f"Card owner found: {full_name_from_card}")
                     break
 
             # --- 3. Обновляем профиль пользователя, если имя найдено ---
@@ -942,8 +979,10 @@ async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: byte
 
                 # Сравниваем и обновляем, если есть расхождения
                 if user.first_name != first_name_from_card and first_name_from_card:
+                    print(f"Updating first_name: {user.first_name} -> {first_name_from_card}")
                     user.first_name = first_name_from_card
                 if user.last_name != last_name_from_card and last_name_from_card:
+                    print(f"Updating last_name: {user.last_name} -> {last_name_from_card}")
                     user.last_name = last_name_from_card
             
             # --- 4. Сохраняем данные карты в профиль ---
@@ -952,11 +991,18 @@ async def process_pkpass_file(db: AsyncSession, user_id: int, file_content: byte
             
             await db.commit()
             await db.refresh(user)
+            print(f"Pkpass file processed successfully for user {user_id}")
             return user
             
+    except ValueError as e:
+        # ValueError - это ожидаемые ошибки валидации, логируем и пробрасываем дальше
+        print(f"Validation error processing pkpass file for user {user_id}: {e}")
+        raise
     except Exception as e:
-        print(f"Error processing pkpass file: {e}")
-        return None
+        # Неожиданные ошибки
+        print(f"Unexpected error processing pkpass file for user {user_id}: {e}")
+        print(traceback.format_exc())
+        raise ValueError(f"Ошибка при обработке файла: {str(e)}")
 
 async def delete_user_card(db: AsyncSession, user_id: int):
     user = await db.get(models.User, user_id)

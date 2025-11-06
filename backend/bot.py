@@ -30,11 +30,25 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
         try:
             response = await client.post(SEND_MESSAGE_URL, json=payload)
             response.raise_for_status()
-            print(f"Successfully sent message to chat_id: {chat_id}")
+            result = response.json()
+            if result.get('ok'):
+                print(f"Successfully sent message to chat_id: {chat_id}")
+                return result
+            else:
+                error_msg = result.get('description', 'Unknown error')
+                print(f"Telegram API error sending message to {chat_id}: {error_msg}")
+                raise Exception(f"Telegram API error: {error_msg}")
         except httpx.HTTPStatusError as e:
-            print(f"Error sending message to {chat_id}: {e.response.json()}")
+            try:
+                error_data = e.response.json()
+                error_msg = error_data.get('description', str(e))
+            except:
+                error_msg = str(e)
+            print(f"HTTP error sending message to {chat_id}: {error_msg}")
+            raise Exception(f"HTTP error: {error_msg}")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            print(f"An unexpected error occurred while sending message to {chat_id}: {e}")
+            raise
 
 # --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем новую функцию ---
 async def answer_callback_query(callback_query_id: str):

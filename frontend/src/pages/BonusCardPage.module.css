@@ -2,8 +2,9 @@
 .backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }
 .cardContainer { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .infoText { font-size: 18px; color: #333; margin-top: 0; margin-bottom: 10px; }
-.subText { font-size: 14px; color: #6E7A85; }
+.subText { font-size: 14px; color: #6E7A85; margin-bottom: 20px; }
 .deleteButton { background: #e74c3c; color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 25px; }
+.requestButton { background: #5CA14A; color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
 
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
