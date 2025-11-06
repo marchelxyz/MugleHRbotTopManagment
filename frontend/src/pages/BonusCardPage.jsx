@@ -1,6 +1,7 @@
 // frontend/src/pages/BonusCardPage.jsx
 
 import React from 'react';
+import Barcode from 'react-barcode';
 import PageLayout from '../components/PageLayout';
 import { deleteUserCard } from '../api';
 import styles from './BonusCardPage.module.css';
