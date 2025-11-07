@@ -270,6 +270,7 @@ async def get_leaderboard_data(db: AsyncSession, period: str, leaderboard_type: 
             func.sum(models.Transaction.amount).label("total_amount"),
         )
         .join(models.Transaction, models.User.id == getattr(models.Transaction, group_by_field))
+        .where(models.User.status != 'deleted')  # Исключаем анонимизированных пользователей
         .group_by(models.User.id)
         .order_by(func.sum(models.Transaction.amount).desc())
         .limit(100) # Ограничим вывод до 100 лидеров
@@ -308,7 +309,7 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
         # Форматируем даты для SQL-запроса
         start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
         end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
-        time_filter = f"WHERE transactions.timestamp BETWEEN '{start_str}' AND '{end_str}'"
+        time_filter = f"AND t.timestamp BETWEEN '{start_str}' AND '{end_str}'"
 
     # --- НАЧАЛО ИСПРАВЛЕНИЙ ---
     raw_sql = text(f"""
@@ -319,11 +320,16 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
                 RANK() OVER (ORDER BY SUM(t.amount) DESC) as rank
             FROM users u
             JOIN transactions t ON u.id = t.{group_by_field}
-            {time_filter.replace('transactions.', 't.')}
+            WHERE u.status != 'deleted'
+            {time_filter}
             GROUP BY u.id
         ),
         total_participants AS (
-            SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}
+            SELECT COUNT(DISTINCT t.{group_by_field}) as count 
+            FROM transactions t
+            JOIN users u ON u.id = t.{group_by_field}
+            WHERE u.status != 'deleted'
+            {time_filter}
         )
         SELECT ru.rank, ru.total_amount, tp.count
         FROM ranked_users ru, total_participants tp
@@ -335,7 +341,19 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
     user_rank_data = result.first()
 
     if not user_rank_data:
-        total_participants_sql = text(f"SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}")
+        time_filter_for_count = ""
+        if start_date and end_date:
+            start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+            end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+            time_filter_for_count = f"AND t.timestamp BETWEEN '{start_str}' AND '{end_str}'"
+        
+        total_participants_sql = text(f"""
+            SELECT COUNT(DISTINCT t.{group_by_field}) as count 
+            FROM transactions t
+            JOIN users u ON u.id = t.{group_by_field}
+            WHERE u.status != 'deleted'
+            {time_filter_for_count}
+        """)
         total_result = await db.execute(total_participants_sql)
         total_participants = total_result.scalar_one_or_none() or 0
         return {"rank": None, "total_received": 0, "total_participants": total_participants}
@@ -1165,11 +1183,14 @@ async def search_users_by_name(db: AsyncSession, query: str):
     
     result = await db.execute(
         select(models.User).filter(
-            or_(
-                models.User.first_name.ilike(search_query),
-                models.User.last_name.ilike(search_query),
-                models.User.username.ilike(search_query),
-                models.User.phone_number.ilike(search_query)
+            and_(
+                or_(
+                    models.User.first_name.ilike(search_query),
+                    models.User.last_name.ilike(search_query),
+                    models.User.username.ilike(search_query),
+                    models.User.phone_number.ilike(search_query)
+                ),
+                models.User.status != 'deleted'  # Исключаем анонимизированных пользователей
             )
         ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
     )
@@ -1179,7 +1200,11 @@ async def search_users_by_name(db: AsyncSession, query: str):
 
 async def get_all_users_for_admin(db: AsyncSession):
     """Получает всех пользователей для админ-панели."""
-    result = await db.execute(select(models.User).order_by(models.User.last_name))
+    result = await db.execute(
+        select(models.User)
+        .where(models.User.status != 'deleted')
+        .order_by(models.User.last_name)
+    )
     return result.scalars().all()
 
 async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
@@ -1284,7 +1309,10 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
     user_to_anonymize.last_name = "Пользователь"
     user_to_anonymize.telegram_id = -1  # Устанавливаем -1 для анонимизированных пользователей
     user_to_anonymize.username = None       # <-- Требует изменений в базе данных, которые мы обсуждали
-    user_to_anonymize.phone_number = None
+    user_to_anonymize.phone_number = ""  # Пустая строка вместо None (поле nullable=False)
+    user_to_anonymize.position = "Удален"  # Анонимизируем должность (поле nullable=False)
+    user_to_anonymize.department = "Удален"  # Анонимизируем отдел (поле nullable=False)
+    user_to_anonymize.date_of_birth = date(1900, 1, 1)  # Дефолтная дата (поле nullable=False)
     user_to_anonymize.telegram_photo_url = None
     user_to_anonymize.is_admin = False
     user_to_anonymize.status = "deleted" # Меняем статус, чтобы скрыть его из списков
