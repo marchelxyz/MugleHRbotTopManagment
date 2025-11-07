@@ -176,6 +176,13 @@ export const addTicketsToAll = (data) => {
   });
 };
 
+export const resetDailyTransferLimits = () => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.post('/admin/reset-daily-transfer-limits', {}, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
 export const deleteUserCard = () => {
   const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
   return apiClient.delete('/users/me/card', {
