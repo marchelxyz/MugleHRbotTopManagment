@@ -6,6 +6,7 @@ on:
   schedule:
     # Запускать 1-го числа каждого месяца в 00:05 по времени UTC
     - cron: '5 0 1 * *'
+  workflow_dispatch:  # Позволяет запускать вручную через интерфейс GitHub
 
 # Задачи, которые нужно выполнить
 jobs:
@@ -23,6 +24,6 @@ jobs:
           fi
           # Убираем завершающий слэш, если он есть
           BACKEND_URL="${BACKEND_URL%/}"
-          curl -X POST "${BACKEND_URL}/scheduler/run-monthly-tasks" \
+          curl -X POST "${BACKEND_URL}/run-monthly-tasks" \
             -H "X-Cron-Secret: ${{ secrets.ADMIN_API_KEY }}" \
             -f -v
