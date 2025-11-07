@@ -17,5 +17,13 @@ jobs:
       # Шаг 1: Отправляем запрос на наш сервер
       - name: Call daily tasks endpoint
         run: |
-          curl -X POST "${{ secrets.BACKEND_URL }}/scheduler/run-daily-tasks" \
-          -H "X-Cron-Secret: ${{ secrets.ADMIN_API_KEY }}"
+          BACKEND_URL="${{ secrets.BACKEND_URL }}"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "Error: BACKEND_URL secret is not set"
+            exit 1
+          fi
+          # Убираем завершающий слэш, если он есть
+          BACKEND_URL="${BACKEND_URL%/}"
+          curl -X POST "${BACKEND_URL}/scheduler/run-daily-tasks" \
+            -H "X-Cron-Secret: ${{ secrets.ADMIN_API_KEY }}" \
+            -f -v
