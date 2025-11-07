@@ -901,30 +901,59 @@ async def reset_tickets(db: AsyncSession):
     await db.commit()
 
 async def reset_daily_transfer_limits(db: AsyncSession):
-    """Сбрасывает счетчик ежедневных переводов для всех пользователей."""
+    """Сбрасывает счетчик ежедневных переводов для всех пользователей, кроме заблокированных и анонимизированных."""
     try:
-        # Получаем количество пользователей до обновления для логирования
-        result = await db.execute(select(func.count(models.User.id)))
-        total_users = result.scalar()
+        # Получаем количество активных пользователей (не заблокированных и не анонимизированных)
+        result = await db.execute(
+            select(func.count(models.User.id)).where(
+                and_(
+                    models.User.status != 'deleted',
+                    models.User.status != 'blocked',
+                    or_(
+                        models.User.telegram_id.is_(None),
+                        models.User.telegram_id != -1
+                    )
+                )
+            )
+        )
+        total_active_users = result.scalar()
         
-        # Обновляем счетчик ежедневных переводов для всех пользователей
-        # Используем явный SQL запрос для гарантированного обновления всех записей
-        await db.execute(text("UPDATE users SET daily_transfer_count = 0"))
+        # Обновляем счетчик ежедневных переводов только для активных пользователей
+        # Исключаем заблокированных (status = 'blocked') и анонимизированных (status = 'deleted' или telegram_id = -1)
+        await db.execute(
+            text("""
+                UPDATE users 
+                SET daily_transfer_count = 0 
+                WHERE status != 'deleted' 
+                  AND status != 'blocked' 
+                  AND (telegram_id IS NULL OR telegram_id != -1)
+            """)
+        )
         await db.commit()
         
-        # Проверяем, что обновление действительно произошло
+        # Проверяем, что обновление действительно произошло для активных пользователей
         check_result = await db.execute(
-            select(func.count(models.User.id)).where(models.User.daily_transfer_count != 0)
+            select(func.count(models.User.id)).where(
+                and_(
+                    models.User.status != 'deleted',
+                    models.User.status != 'blocked',
+                    or_(
+                        models.User.telegram_id.is_(None),
+                        models.User.telegram_id != -1
+                    ),
+                    models.User.daily_transfer_count != 0
+                )
+            )
         )
         users_with_nonzero = check_result.scalar()
-        print(f"Reset daily transfer limits: {total_users - users_with_nonzero} users updated out of {total_users} total")
-        print(f"Users with non-zero daily_transfer_count after reset: {users_with_nonzero}")
+        print(f"Reset daily transfer limits: {total_active_users - users_with_nonzero} active users updated out of {total_active_users} total")
+        print(f"Active users with non-zero daily_transfer_count after reset: {users_with_nonzero}")
         
-        updated_count = total_users - users_with_nonzero
+        updated_count = total_active_users - users_with_nonzero
         
         return {
             "updated_count": updated_count,
-            "total_users": total_users,
+            "total_active_users": total_active_users,
             "users_with_nonzero_after_reset": users_with_nonzero
         }
     except Exception as e:
