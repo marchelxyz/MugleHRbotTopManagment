@@ -140,6 +140,12 @@ async def reset_balances_route(db: AsyncSession = Depends(get_db)):
     await crud.reset_balances(db)
     return {"detail": "Balances reset successfully"}
 
+@router.post("/reset-daily-transfer-limits")
+async def reset_daily_transfer_limits_route(db: AsyncSession = Depends(get_db)):
+    """Сбрасывает лимиты на отправку спасибок за день у всех пользователей (восстанавливает 3/3)"""
+    await crud.reset_daily_transfer_limits(db)
+    return {"detail": "Лимиты на отправку спасибок успешно сброшены у всех пользователей"}
+
 @router.get("/users", response_model=List[schemas.UserResponse])
 async def get_all_users_for_admin_route(db: AsyncSession = Depends(get_db)):
     return await crud.get_all_users_for_admin(db)

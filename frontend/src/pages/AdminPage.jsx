@@ -9,7 +9,7 @@ import BannerManager from './admin/BannerManager';
 import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import StatisticsDashboard from './admin/StatisticsDashboard';
-import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners } from '../api';
+import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners, resetDailyTransferLimits } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 
@@ -131,6 +131,25 @@ function AdminPage() {
         setLoading(false); // Выключаем лоадер
     }
   };
+
+  const handleResetDailyTransferLimits = async () => {
+    const isConfirmed = await confirm(
+        'Подтверждение',
+        'Вы уверены, что хотите сбросить лимиты на отправку спасибок за день у всех пользователей? У всех будет восстановлено 3/3.'
+    );
+    if (!isConfirmed) return;
+
+    setLoading('reset-limits');
+    try {
+        const response = await resetDailyTransferLimits();
+        showAlert(response.data.detail || 'Лимиты успешно сброшены!', 'success');
+    } catch (error) {
+        const errorMsg = error.response?.data?.detail || 'Не удалось выполнить операцию';
+        showAlert(errorMsg, 'error');
+    } finally {
+        setLoading(false);
+    }
+  };
   
   const renderContent = () => {
     // Если секция не выбрана, показываем меню
@@ -157,6 +176,14 @@ function AdminPage() {
             className={styles.gridButton}
           >
             {loading === 'test' ? 'Генерация...' : 'Создать Баннеры (Текущий мес. / Тест)'}
+          </button>
+          {/* Кнопка сброса лимитов на спасибки */}
+          <button 
+            onClick={handleResetDailyTransferLimits} 
+            disabled={loading} 
+            className={styles.gridButton}
+          >
+            {loading === 'reset-limits' ? 'Сброс...' : 'Сбросить лимиты спасибок (3/3)'}
           </button>
           {/*<button onClick={() => setActiveSection('mass-actions')} className={styles.gridButton}>Массовые начисления</button>*/}
         </div>
