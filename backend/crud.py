@@ -908,17 +908,24 @@ async def reset_daily_transfer_limits(db: AsyncSession):
         total_users = result.scalar()
         
         # Обновляем счетчик ежедневных переводов для всех пользователей
-        result = await db.execute(
-            update(models.User).values(daily_transfer_count=0)
-        )
+        # Используем явный SQL запрос для гарантированного обновления всех записей
+        await db.execute(text("UPDATE users SET daily_transfer_count = 0"))
         await db.commit()
         
-        updated_count = result.rowcount
-        print(f"Reset daily transfer limits: updated {updated_count} users out of {total_users} total")
+        # Проверяем, что обновление действительно произошло
+        check_result = await db.execute(
+            select(func.count(models.User.id)).where(models.User.daily_transfer_count != 0)
+        )
+        users_with_nonzero = check_result.scalar()
+        print(f"Reset daily transfer limits: {total_users - users_with_nonzero} users updated out of {total_users} total")
+        print(f"Users with non-zero daily_transfer_count after reset: {users_with_nonzero}")
+        
+        updated_count = total_users - users_with_nonzero
         
         return {
             "updated_count": updated_count,
-            "total_users": total_users
+            "total_users": total_users,
+            "users_with_nonzero_after_reset": users_with_nonzero
         }
     except Exception as e:
         await db.rollback()
