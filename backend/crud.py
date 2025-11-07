@@ -902,10 +902,30 @@ async def reset_tickets(db: AsyncSession):
 
 async def reset_daily_transfer_limits(db: AsyncSession):
     """Сбрасывает счетчик ежедневных переводов для всех пользователей."""
-    await db.execute(
-        update(models.User).values(daily_transfer_count=0)
-    )
-    await db.commit()
+    try:
+        # Получаем количество пользователей до обновления для логирования
+        result = await db.execute(select(func.count(models.User.id)))
+        total_users = result.scalar()
+        
+        # Обновляем счетчик ежедневных переводов для всех пользователей
+        result = await db.execute(
+            update(models.User).values(daily_transfer_count=0)
+        )
+        await db.commit()
+        
+        updated_count = result.rowcount
+        print(f"Reset daily transfer limits: updated {updated_count} users out of {total_users} total")
+        
+        return {
+            "updated_count": updated_count,
+            "total_users": total_users
+        }
+    except Exception as e:
+        await db.rollback()
+        print(f"Error resetting daily transfer limits: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 # --- ДОБАВЬТЕ ЭТИ НОВЫЕ ФУНКЦИИ В КОНЕЦ ФАЙЛА ---
 
