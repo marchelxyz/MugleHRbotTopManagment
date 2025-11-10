@@ -68,22 +68,22 @@ function BottomNav({ user, activePage, onNavigate }) {
   }, []);
 
   const navItems = [
-    { id: 'home', label: 'Лента', icon: <FaHome size={22} /> },
-    { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={22} /> },
-    { id: 'roulette', label: 'Рулетка', icon: <FaDice size={22} /> },
-    { id: 'marketplace', label: 'Магазин', icon: <FaStore size={22} /> },
-    { id: 'profile', label: 'Профиль', icon: <FaUser size={22} /> },
+    { id: 'home', label: 'Лента', icon: <FaHome size={24} /> },
+    { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={24} /> },
+    { id: 'roulette', label: 'Рулетка', icon: <FaDice size={24} /> },
+    { id: 'marketplace', label: 'Магазин', icon: <FaStore size={24} /> },
+    { id: 'profile', label: 'Профиль', icon: <FaUser size={24} /> },
   ];
 
     if (user && user.is_admin) {
-    navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={22} /> });
+    navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={24} /> });
   }
   
  return (
     <div 
       className={styles.nav}
       style={{
-        paddingBottom: hasNavigationBar ? 'calc(5px + env(safe-area-inset-bottom))' : '5px'
+        paddingBottom: hasNavigationBar ? 'calc(15px + env(safe-area-inset-bottom))' : '15px'
       }}
     >
       {navItems.map(item => (
