@@ -118,7 +118,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             ]
         }
         
-        await safe_send_telegram_message(
+        await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=user_info,
             reply_markup=keyboard,
@@ -197,9 +197,9 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
                         f"Сообщение: _{tr.message}_")
         # Игнорируем анонимизированных пользователей (telegram_id < 0)
         if receiver.telegram_id and receiver.telegram_id >= 0:
-            await safe_send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
+            await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
-        logger.error(f"Could not send notification to user {receiver.telegram_id}: {e}", exc_info=True)
+        print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
     
     # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Возвращаем обновленного отправителя ---
     return sender
@@ -495,7 +495,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
             )
         admin_message += f"\n\n📉 *Новый баланс пользователя:* {user.balance} спасибок"
         
-        await safe_send_telegram_message(
+        await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
             message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
@@ -507,12 +507,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
             # Для товаров с кодом добавляем сам код
             user_message += f"\n\nВаш уникальный код/ссылка:\n`{issued_code_value}`"
         
-        # Игнорируем анонимизированных пользователей (telegram_id < 0)
-        if user.telegram_id and user.telegram_id >= 0:
-            await safe_send_telegram_message(chat_id=user.telegram_id, text=user_message)
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
 
     except Exception as e:
-        logger.error(f"Error processing purchase: {e}", exc_info=True)
+        print(f"Could not send notification. Error: {e}")
 
     await db.commit()
     
@@ -608,9 +606,9 @@ async def process_birthday_bonuses(db: AsyncSession):
                 f"Желаем вам здоровья, счастья и успехов во всех начинаниях! 🎈"
             )
             try:
-                await safe_send_telegram_message(user.telegram_id, birthday_message)
+                await send_telegram_message(user.telegram_id, birthday_message)
             except Exception as e:
-                logger.error(f"Не удалось отправить поздравление пользователю {user.id}: {e}", exc_info=True)
+                logger.error(f"Не удалось отправить поздравление пользователю {user.id}: {e}")
     
     # --- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ ---
     await reset_ticket_parts(db)
@@ -1113,7 +1111,7 @@ async def request_profile_update(db: AsyncSession, user: models.User, update_dat
         ]
     }
 
-    await safe_send_telegram_message(
+    await send_telegram_message(
         chat_id=settings.TELEGRAM_CHAT_ID,
         text=admin_message_text,
         reply_markup=keyboard,
@@ -1279,7 +1277,7 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             f"*Изменения:*\n" + "\n".join(changes_log)
         )
         
-        await safe_send_telegram_message(
+        await bot.send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=log_message,
             message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
@@ -1343,10 +1341,10 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
         f"Личные данные пользователя стерты, история транзакций сохранена."
     )
     
-    await safe_send_telegram_message(
-        chat_id=settings.TELEGRAM_CHAT_ID,
+    await bot.send_telegram_message(
+        chat_id=config.settings.TELEGRAM_CHAT_ID,
         text=log_message,
-        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        message_thread_id=config.settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
     )
 
     # 6. Возвращаем измененный (теперь анонимный) объект пользователя
@@ -2084,7 +2082,7 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
     try:
         # Игнорируем анонимизированных пользователей (telegram_id < 0)
         if invited_user.telegram_id and invited_user.telegram_id >= 0:
-            await safe_send_telegram_message(
+            await send_telegram_message(
                 invited_user.telegram_id,
                 f"🎁 *Приглашение на совместный подарок!*\n\n"
                 f"👤 *{buyer.first_name} {buyer.last_name}* приглашает вас разделить товар *{item.name}*\n\n"
@@ -2106,7 +2104,7 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
                 }
             )
     except Exception as e:
-        logger.error(f"Failed to send shared gift invitation notification: {e}", exc_info=True)
+        print(f"Failed to send shared gift invitation notification: {e}")
     
     return db_invitation
 
@@ -2180,14 +2178,14 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
     try:
         # Игнорируем анонимизированных пользователей (telegram_id < 0)
         if buyer.telegram_id and buyer.telegram_id >= 0:
-            await safe_send_telegram_message(
+            await send_telegram_message(
                 buyer.telegram_id,
                 f"✅ *Приглашение принято!*\n\n"
                 f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* согласился разделить товар *{item.name}*\n\n"
                 f"💰 Вам возвращена половина стоимости товара"
             )
     except Exception as e:
-        logger.error(f"Failed to send shared gift accepted notification: {e}", exc_info=True)
+        print(f"Failed to send shared gift accepted notification: {e}")
     
     # Отправляем уведомление в админ-чат о совместной покупке
     try:
@@ -2200,13 +2198,13 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
             f"📉 *Баланс покупателя:* {buyer.balance} спасибок"
         )
         
-        await safe_send_telegram_message(
+        await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
             message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
         )
     except Exception as e:
-        logger.error(f"Failed to send shared gift admin notification: {e}", exc_info=True)
+        print(f"Failed to send shared gift admin notification: {e}")
     
     return {
         "message": "Приглашение принято успешно",
@@ -2250,14 +2248,14 @@ async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         if buyer and item:
             # Игнорируем анонимизированных пользователей (telegram_id < 0)
             if buyer.telegram_id and buyer.telegram_id >= 0:
-                await safe_send_telegram_message(
+                await send_telegram_message(
                     buyer.telegram_id,
                     f"❌ *Приглашение отклонено*\n\n"
                     f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* отклонил приглашение на товар *{item.name}*\n\n"
                     f"💰 Вам возвращена полная стоимость товара"
                 )
     except Exception as e:
-        logger.error(f"Failed to send shared gift rejected notification: {e}", exc_info=True)
+        print(f"Failed to send shared gift rejected notification: {e}")
     
     return {
         "message": "Приглашение отклонено, средства возвращены"
@@ -2333,14 +2331,14 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
             if buyer and item:
                 # Игнорируем анонимизированных пользователей (telegram_id = -1)
                 if buyer.telegram_id and buyer.telegram_id != -1:
-                    await safe_send_telegram_message(
+                    await send_telegram_message(
                         buyer.telegram_id,
                         f"⏰ *Приглашение истекло*\n\n"
                         f"Время на принятие приглашения на товар *{item.name}* истекло\n\n"
                         f"💰 Вам возвращена полная стоимость товара"
                     )
         except Exception as e:
-            logger.error(f"Failed to send shared gift expired notification: {e}", exc_info=True)
+            print(f"Failed to send shared gift expired notification: {e}")
     
     await db.commit()
     return len(expired_invitations)
