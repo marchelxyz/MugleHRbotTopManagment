@@ -17,8 +17,6 @@
   height: 60px;
   padding: 5px 0;
   /* padding-bottom теперь управляется динамически через inline стили в зависимости от видимости системных кнопок */
-  /* Fallback: всегда учитываем safe-area-inset-bottom на случай, если JS не определил наличие кнопок */
-  padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px));
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   
