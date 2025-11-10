@@ -3,7 +3,7 @@
 .pageContainer {
   background-color: #F4F4F8;
   position: relative;
-  padding-bottom: 80px;
+  padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
   overflow-x: hidden;
 }
 
