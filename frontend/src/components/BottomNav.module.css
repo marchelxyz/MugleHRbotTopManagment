@@ -14,8 +14,8 @@
   justify-content: space-around;
   background-color: #408200;
   
-  height: 75px; /* Увеличена высота блока навигации */
-  padding: 8px 0; /* Увеличен вертикальный padding */
+  height: 65px; /* Уменьшена высота блока навигации */
+  padding-top: 4px; /* Уменьшен верхний padding */
   /* padding-bottom теперь управляется динамически через inline стили в зависимости от видимости системных кнопок */
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
