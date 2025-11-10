@@ -55,7 +55,7 @@ const StatisticsDashboard = () => {
         { id: 'general', label: 'Общая', icon: <FaChartBar />, dateDependent: true },
         { id: 'duration', label: 'Время сессии', icon: <FaClock />, dateDependent: true },
         { id: 'hourly', label: 'Спасибо', icon: <FaHourglassHalf />, dateDependent: true },
-        { id: 'logins', label: 'Заходы', icon: <FaSignInAlt />, dateDependent: true },
+        // { id: 'logins', label: 'Заходы', icon: <FaSignInAlt />, dateDependent: true },
         { id: 'ratio', label: 'Акт/Неакт', icon: <FaChartPie />, dateDependent: false },
         { id: 'engagement', label: 'Лидеры', icon: <FaStar />, dateDependent: false },
         { id: 'popular', label: 'Товары', icon: <FaChartLine />, dateDependent: false },
@@ -72,7 +72,7 @@ const StatisticsDashboard = () => {
             case 'general': return <GeneralStats {...dateProps} />;
             case 'duration': return <AverageSessionDurationPage {...dateProps} />; // <-- Новый
             case 'hourly': return <HourlyActivityPage {...dateProps} />;
-            case 'logins': return <LoginActivityPage {...dateProps} />;
+            // case 'logins': return <LoginActivityPage {...dateProps} />;
             case 'ratio': return <ActiveUserRatioPage />;
             case 'engagement': return <UserEngagementPage />;
             case 'popular': return <PopularItemsPage />;
