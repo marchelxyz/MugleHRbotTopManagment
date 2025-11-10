@@ -68,15 +68,15 @@ function BottomNav({ user, activePage, onNavigate }) {
   }, []);
 
   const navItems = [
-    { id: 'home', label: 'Лента', icon: <FaHome size={24} /> },
-    { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={24} /> },
-    { id: 'roulette', label: 'Рулетка', icon: <FaDice size={24} /> },
-    { id: 'marketplace', label: 'Магазин', icon: <FaStore size={24} /> },
-    { id: 'profile', label: 'Профиль', icon: <FaUser size={24} /> },
+    { id: 'home', label: 'Лента', icon: <FaHome size={22} /> },
+    { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={22} /> },
+    { id: 'roulette', label: 'Рулетка', icon: <FaDice size={22} /> },
+    { id: 'marketplace', label: 'Магазин', icon: <FaStore size={22} /> },
+    { id: 'profile', label: 'Профиль', icon: <FaUser size={22} /> },
   ];
 
     if (user && user.is_admin) {
-    navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={24} /> });
+    navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={22} /> });
   }
   
  return (
