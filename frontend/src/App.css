@@ -25,7 +25,7 @@
 
 .content-scrollable {
   /* Отступ снизу, равный высоте меню навигации, чтобы оно не перекрывало контент */
-  padding-bottom: 80px; 
+  padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
 }
 
 /* --- ДОБАВЬТЕ ЭТОТ СТИЛЬ В КОНЕЦ ФАЙЛА --- */

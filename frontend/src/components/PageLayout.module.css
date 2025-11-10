@@ -72,7 +72,7 @@
   margin-top: -20px;
   padding: 20px;
   min-height: calc(100vh - 150px);
-  padding-bottom: 100px; 
+  padding-bottom: calc(100px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
 }
 
 /* Адаптация для планшетов */
