@@ -83,7 +83,7 @@ function BottomNav({ user, activePage, onNavigate }) {
     <div 
       className={styles.nav}
       style={{
-        paddingBottom: hasNavigationBar ? 'calc(5px + env(safe-area-inset-bottom))' : '5px'
+        paddingBottom: hasNavigationBar ? 'calc(15px + env(safe-area-inset-bottom))' : '15px'
       }}
     >
       {navItems.map(item => (
