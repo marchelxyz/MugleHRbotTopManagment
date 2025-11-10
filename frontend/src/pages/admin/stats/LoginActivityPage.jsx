@@ -17,22 +17,12 @@ const LoginActivityPage = ({ startDate, endDate }) => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                setError(null);
                 // Передаем даты в API вызов
                 const response = await getLoginActivityStats(startDate, endDate);
                 const stats = response.data.hourly_stats;
                 
-                console.log('LoginActivityPage: получены данные:', { startDate, endDate, stats });
-                
                 const labels = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
-                // stats - это объект вида {0: 5, 1: 3, ...}, а не массив
-                // Проверяем оба варианта: числовой ключ и строковый ключ
-                const dataPoints = labels.map((label, index) => {
-                    const value = stats[index] ?? stats[String(index)] ?? stats[index.toString()] ?? 0;
-                    return value;
-                });
-                
-                console.log('LoginActivityPage: dataPoints:', dataPoints);
+                const dataPoints = labels.map((label, index) => stats[index] || 0);
 
                 setChartData({
                     labels,
@@ -70,13 +60,12 @@ const LoginActivityPage = ({ startDate, endDate }) => {
 
     if (loading) return <p>Загрузка графика...</p>;
     if (error) return <p style={{ color: 'red' }}>{error}</p>;
-    if (!chartData) return <p>Нет данных для отображения</p>;
 
     return (
         <div>
             <h2>Активность по заходам</h2>
             <div style={{ height: '300px', marginTop: '20px' }}>
-                <Bar options={options} data={chartData} />
+                {chartData && <Bar options={options} data={chartData} />}
             </div>
         </div>
     );

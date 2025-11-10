@@ -1468,12 +1468,6 @@ async def get_hourly_activity_stats(db: AsyncSession, start_date: Optional[date]
 async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None):
     start_date, end_date_inclusive = _prepare_dates(start_date, end_date)
     
-    # Преобразуем date в datetime для правильного сравнения с DateTime полем
-    # start_date становится началом дня (00:00:00)
-    start_datetime = datetime(start_date.year, start_date.month, start_date.day)
-    # end_date_inclusive становится началом следующего дня, чтобы включить весь последний день
-    end_datetime = datetime(end_date_inclusive.year, end_date_inclusive.month, end_date_inclusive.day)
-    
     moscow_time = models.User.last_login_date.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
 
     query = (
@@ -1483,8 +1477,7 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
         )
         .filter(
             models.User.last_login_date.isnot(None),  # Исключаем пользователей без логина
-            models.User.last_login_date >= start_datetime,
-            models.User.last_login_date < end_datetime,  # Используем < вместо <=, так как end_datetime - это начало следующего дня
+            models.User.last_login_date.between(start_date, end_date_inclusive),
             models.User.status != 'deleted'
         )
         .group_by(extract('hour', moscow_time))
@@ -1493,7 +1486,7 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     activity = result.all()
     hourly_stats = {hour: 0 for hour in range(24)}
     for row in activity:
-        if row.hour is not None: hourly_stats[int(row.hour)] = row.login_count
+        if row.hour is not None: hourly_stats[row.hour] = row.login_count
     return hourly_stats
     
 async def get_user_engagement_stats(db: AsyncSession, start_date: Optional[date] = None, end_date: Optional[date] = None, limit: int = 5):
