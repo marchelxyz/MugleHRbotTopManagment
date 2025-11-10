@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { checkUserStatus, getFeed, getBanners } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
@@ -26,12 +26,12 @@ import TransferPage from './pages/TransferPage'; // Страница отпра�
 import { startSession, pingSession } from './api';
 import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
 import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
-import InteractionRequiredPage from './pages/InteractionRequiredPage'; // Страница требования взаимодействия с ботом
 
 // Стили
 import './App.css';
 
 const PING_INTERVAL = 60000; // Пингуем каждую минуту (60 000 миллисекунд)
+const STATUS_CHECK_INTERVAL = 5000; // Проверяем статус каждые 5 секунд (5000 миллисекунд)
 
 const tg = window.Telegram.WebApp;
 
@@ -176,11 +176,6 @@ const handleTransferSuccess = (updatedSenderData) => {
       return <RejectedPage />;
     }
 
-    // Проверяем, взаимодействовал ли пользователь с ботом
-    if (user.status === 'approved' && !user.has_interacted_with_bot) {
-      return <InteractionRequiredPage />;
-    }
-
     // 2. Только если пользователь одобрен, проверяем, видел ли он обучение.
     if (user.status === 'approved' && (!user.has_seen_onboarding || showOnboarding)) {
         return <OnboardingStories onComplete={handleOnboardingComplete} />;
@@ -218,9 +213,8 @@ const handleTransferSuccess = (updatedSenderData) => {
 
   // 1. Создаем четкие флаги для отображения навигации
   const isUserApproved = user && user.status === 'approved';
-  const hasInteracted = user && user.has_interacted_with_bot;
-  const showSideNav = isDesktop && isUserApproved && hasInteracted && !isOnboardingVisible;
-  const showBottomNav = !isDesktop && isUserApproved && hasInteracted && !isOnboardingVisible;
+  const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
+  const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
   
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
@@ -267,36 +261,72 @@ const handleTransferSuccess = (updatedSenderData) => {
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
 
-  // Периодическая проверка статуса взаимодействия с ботом
+  // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
+  const statusCheckIntervalRef = useRef(null);
+
   useEffect(() => {
-    if (!user || user.has_interacted_with_bot) {
-      return; // Не проверяем, если пользователь уже взаимодействовал
+    // Проверяем статус только если пользователь существует и его статус 'pending'
+    if (!user || user.status !== 'pending') {
+      // Очищаем интервал, если статус изменился на не-pending
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
+      }
+      return;
     }
 
-    const checkInteractionStatus = async () => {
-      try {
-        const telegramUser = tg.initDataUnsafe?.user;
-        if (!telegramUser) return;
+    const telegramUser = tg.initDataUnsafe?.user;
+    if (!telegramUser) {
+      return;
+    }
 
-        const response = await checkUserStatus(telegramUser.id);
-        if (response.data && response.data.has_interacted_with_bot) {
-          // Обновляем состояние пользователя
-          setUser(prevUser => ({ ...prevUser, has_interacted_with_bot: true }));
+    const checkStatus = async () => {
+      try {
+        const userResponse = await checkUserStatus(telegramUser.id);
+        const newUserData = userResponse.data;
+        
+        // Если статус изменился, обновляем состояние пользователя
+        if (newUserData.status !== user.status) {
+          console.log(`Статус пользователя изменился с ${user.status} на ${newUserData.status}`);
+          setUser(newUserData);
+          
+          // Если статус изменился на 'approved', останавливаем проверку
+          if (newUserData.status === 'approved') {
+            if (statusCheckIntervalRef.current) {
+              clearInterval(statusCheckIntervalRef.current);
+              statusCheckIntervalRef.current = null;
+              console.log('Автоматическая проверка статуса остановлена: пользователь одобрен');
+            }
+          }
         }
       } catch (err) {
-        console.error('Ошибка проверки статуса взаимодействия:', err);
+        // При ошибке просто логируем, но продолжаем проверку
+        console.warn('Ошибка при проверке статуса пользователя:', err);
       }
     };
 
-    // Проверяем каждые 5 секунд, если пользователь не взаимодействовал
-    const intervalId = setInterval(checkInteractionStatus, 5000);
-    
-    return () => clearInterval(intervalId);
-  }, [user]);
+    // Очищаем предыдущий интервал, если он существует
+    if (statusCheckIntervalRef.current) {
+      clearInterval(statusCheckIntervalRef.current);
+    }
+
+    // Запускаем первую проверку сразу, затем каждые STATUS_CHECK_INTERVAL миллисекунд
+    checkStatus();
+    statusCheckIntervalRef.current = setInterval(checkStatus, STATUS_CHECK_INTERVAL);
+
+    // Очистка интервала при размонтировании или изменении зависимостей
+    return () => {
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
+        console.log('Автоматическая проверка статуса остановлена');
+      }
+    };
+  }, [user]); // Зависимость от user, чтобы перезапускать при изменении пользователя
 
   // Создаем переменные, которые четко определяют, когда показывать меню
-  const shouldShowSideNav = user && user.status === 'approved' && user.has_interacted_with_bot && isDesktop && !isOnboardingVisible;
-  const shouldShowBottomNav = user && user.status === 'approved' && user.has_interacted_with_bot && !isDesktop && !isOnboardingVisible;
+  const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
+  const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
   
   return (
     <div className="app-container">

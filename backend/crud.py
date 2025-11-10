@@ -46,11 +46,11 @@ async def get_user(db: AsyncSession, user_id: int):
     return user
 
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
-    # Игнорируем анонимизированных пользователей (telegram_id = -1)
+    # Игнорируем анонимизированных пользователей (telegram_id < 0)
     result = await db.execute(
         select(models.User).where(
             models.User.telegram_id == telegram_id,
-            models.User.telegram_id != -1
+            models.User.telegram_id >= 0
         )
     )
     user = result.scalars().first()
@@ -67,9 +67,9 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     user_telegram_id = int(user.telegram_id)
     
-    # Проверяем, что telegram_id не равен -1 (зарезервировано для анонимизированных пользователей)
-    if user_telegram_id == -1:
-        raise ValueError("telegram_id не может быть равен -1 (зарезервировано для анонимизированных пользователей)")
+    # Проверяем, что telegram_id не отрицательный (зарезервировано для анонимизированных пользователей)
+    if user_telegram_id < 0:
+        raise ValueError("telegram_id не может быть отрицательным (зарезервировано для анонимизированных пользователей)")
     
     admin_ids_str = settings.TELEGRAM_ADMIN_IDS
     admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
@@ -195,8 +195,8 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         message_text = (f"🎉 Вам начислена *1* спасибка!\n"
                         f"От: *{sender.first_name} {sender.last_name}*\n"
                         f"Сообщение: _{tr.message}_")
-        # Игнорируем анонимизированных пользователей (telegram_id = -1)
-        if receiver.telegram_id and receiver.telegram_id != -1:
+        # Игнорируем анонимизированных пользователей (telegram_id < 0)
+        if receiver.telegram_id and receiver.telegram_id >= 0:
             await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
@@ -270,6 +270,7 @@ async def get_leaderboard_data(db: AsyncSession, period: str, leaderboard_type: 
             func.sum(models.Transaction.amount).label("total_amount"),
         )
         .join(models.Transaction, models.User.id == getattr(models.Transaction, group_by_field))
+        .where(models.User.status != 'deleted')  # Исключаем анонимизированных пользователей
         .group_by(models.User.id)
         .order_by(func.sum(models.Transaction.amount).desc())
         .limit(100) # Ограничим вывод до 100 лидеров
@@ -308,7 +309,7 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
         # Форматируем даты для SQL-запроса
         start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
         end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
-        time_filter = f"WHERE transactions.timestamp BETWEEN '{start_str}' AND '{end_str}'"
+        time_filter = f"AND t.timestamp BETWEEN '{start_str}' AND '{end_str}'"
 
     # --- НАЧАЛО ИСПРАВЛЕНИЙ ---
     raw_sql = text(f"""
@@ -319,11 +320,16 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
                 RANK() OVER (ORDER BY SUM(t.amount) DESC) as rank
             FROM users u
             JOIN transactions t ON u.id = t.{group_by_field}
-            {time_filter.replace('transactions.', 't.')}
+            WHERE u.status != 'deleted'
+            {time_filter}
             GROUP BY u.id
         ),
         total_participants AS (
-            SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}
+            SELECT COUNT(DISTINCT t.{group_by_field}) as count 
+            FROM transactions t
+            JOIN users u ON u.id = t.{group_by_field}
+            WHERE u.status != 'deleted'
+            {time_filter}
         )
         SELECT ru.rank, ru.total_amount, tp.count
         FROM ranked_users ru, total_participants tp
@@ -335,7 +341,19 @@ async def get_user_rank(db: AsyncSession, user_id: int, period: str, leaderboard
     user_rank_data = result.first()
 
     if not user_rank_data:
-        total_participants_sql = text(f"SELECT COUNT(DISTINCT {group_by_field}) as count FROM transactions {time_filter}")
+        time_filter_for_count = ""
+        if start_date and end_date:
+            start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+            end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+            time_filter_for_count = f"AND t.timestamp BETWEEN '{start_str}' AND '{end_str}'"
+        
+        total_participants_sql = text(f"""
+            SELECT COUNT(DISTINCT t.{group_by_field}) as count 
+            FROM transactions t
+            JOIN users u ON u.id = t.{group_by_field}
+            WHERE u.status != 'deleted'
+            {time_filter_for_count}
+        """)
         total_result = await db.execute(total_participants_sql)
         total_participants = total_result.scalar_one_or_none() or 0
         return {"rank": None, "total_received": 0, "total_participants": total_participants}
@@ -579,8 +597,8 @@ async def process_birthday_bonuses(db: AsyncSession):
         user.balance += 15
         
         # Отправляем поздравительное сообщение в Telegram
-        # Игнорируем анонимизированных пользователей (telegram_id = -1)
-        if user.telegram_id and user.telegram_id != -1 and user.status == "approved":
+        # Игнорируем анонимизированных пользователей (telegram_id < 0)
+        if user.telegram_id and user.telegram_id >= 0 and user.status == "approved":
             birthday_message = (
                 f"🎉 *С Днем Рождения!* 🎂\n\n"
                 f"Дорогой/ая *{user.first_name or 'коллега'}*, поздравляем вас с днем рождения!\n\n"
@@ -1165,11 +1183,14 @@ async def search_users_by_name(db: AsyncSession, query: str):
     
     result = await db.execute(
         select(models.User).filter(
-            or_(
-                models.User.first_name.ilike(search_query),
-                models.User.last_name.ilike(search_query),
-                models.User.username.ilike(search_query),
-                models.User.phone_number.ilike(search_query)
+            and_(
+                or_(
+                    models.User.first_name.ilike(search_query),
+                    models.User.last_name.ilike(search_query),
+                    models.User.username.ilike(search_query),
+                    models.User.phone_number.ilike(search_query)
+                ),
+                models.User.status != 'deleted'  # Исключаем анонимизированных пользователей
             )
         ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
     )
@@ -1179,7 +1200,11 @@ async def search_users_by_name(db: AsyncSession, query: str):
 
 async def get_all_users_for_admin(db: AsyncSession):
     """Получает всех пользователей для админ-панели."""
-    result = await db.execute(select(models.User).order_by(models.User.last_name))
+    result = await db.execute(
+        select(models.User)
+        .where(models.User.status != 'deleted')
+        .order_by(models.User.last_name)
+    )
     return result.scalars().all()
 
 async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
@@ -1279,21 +1304,36 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
     admin_name = f"{admin_user.first_name} {admin_user.last_name or ''}".strip()
     target_user_name = f"{user_to_anonymize.first_name} {user_to_anonymize.last_name or ''}".strip()
 
-    # 2. Затираем личные данные пользователя
+    # 2. Находим минимальный отрицательный telegram_id для последовательной нумерации
+    # Это позволяет избежать конфликтов уникальности в БД
+    result = await db.execute(
+        select(func.min(models.User.telegram_id))
+        .where(models.User.telegram_id < 0)
+    )
+    min_negative_id = result.scalar()
+    
+    # Если есть уже анонимизированные пользователи, берем следующий номер
+    # Если нет, начинаем с -1
+    new_telegram_id = (min_negative_id - 1) if min_negative_id else -1
+
+    # 3. Затираем личные данные пользователя
     user_to_anonymize.first_name = "Удаленный"
     user_to_anonymize.last_name = "Пользователь"
-    user_to_anonymize.telegram_id = -1  # Устанавливаем -1 для анонимизированных пользователей
+    user_to_anonymize.telegram_id = new_telegram_id  # Устанавливаем последовательный отрицательный ID
     user_to_anonymize.username = None       # <-- Требует изменений в базе данных, которые мы обсуждали
-    user_to_anonymize.phone_number = None
+    user_to_anonymize.phone_number = ""  # Пустая строка вместо None (поле nullable=False)
+    user_to_anonymize.position = "Удален"  # Анонимизируем должность (поле nullable=False)
+    user_to_anonymize.department = "Удален"  # Анонимизируем отдел (поле nullable=False)
+    user_to_anonymize.date_of_birth = date(1900, 1, 1)  # Дефолтная дата (поле nullable=False)
     user_to_anonymize.telegram_photo_url = None
     user_to_anonymize.is_admin = False
     user_to_anonymize.status = "deleted" # Меняем статус, чтобы скрыть его из списков
 
-    # 3. Сохраняем изменения в базе
+    # 4. Сохраняем изменения в базе
     db.add(user_to_anonymize)
     await db.commit()
 
-    # 4. Отправляем уведомление об анонимизации
+    # 5. Отправляем уведомление об анонимизации
     log_message = (
         f"🗑️ *Админ анонимизировал пользователя*\n\n"
         f"👤 *Администратор:* {admin_name} (`{admin_user.id}`)\n"
@@ -1307,7 +1347,7 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
         message_thread_id=config.settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
     )
 
-    # 5. Возвращаем измененный (теперь анонимный) объект пользователя
+    # 6. Возвращаем измененный (теперь анонимный) объект пользователя
     return user_to_anonymize
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
@@ -2040,8 +2080,8 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
     
     # Отправляем уведомление приглашенному пользователю
     try:
-        # Игнорируем анонимизированных пользователей (telegram_id = -1)
-        if invited_user.telegram_id and invited_user.telegram_id != -1:
+        # Игнорируем анонимизированных пользователей (telegram_id < 0)
+        if invited_user.telegram_id and invited_user.telegram_id >= 0:
             await send_telegram_message(
                 invited_user.telegram_id,
                 f"🎁 *Приглашение на совместный подарок!*\n\n"
@@ -2136,8 +2176,8 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
     
     # Отправляем уведомление покупателю
     try:
-        # Игнорируем анонимизированных пользователей (telegram_id = -1)
-        if buyer.telegram_id and buyer.telegram_id != -1:
+        # Игнорируем анонимизированных пользователей (telegram_id < 0)
+        if buyer.telegram_id and buyer.telegram_id >= 0:
             await send_telegram_message(
                 buyer.telegram_id,
                 f"✅ *Приглашение принято!*\n\n"
@@ -2206,8 +2246,8 @@ async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         item = item_result.scalar_one_or_none()
         
         if buyer and item:
-            # Игнорируем анонимизированных пользователей (telegram_id = -1)
-            if buyer.telegram_id and buyer.telegram_id != -1:
+            # Игнорируем анонимизированных пользователей (telegram_id < 0)
+            if buyer.telegram_id and buyer.telegram_id >= 0:
                 await send_telegram_message(
                     buyer.telegram_id,
                     f"❌ *Приглашение отклонено*\n\n"
