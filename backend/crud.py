@@ -1469,12 +1469,15 @@ async def get_login_activity_stats(db: AsyncSession, start_date: Optional[date] 
     start_date, end_date_inclusive = _prepare_dates(start_date, end_date)
     
     # Преобразуем date в datetime для правильного сравнения с DateTime полем
-    # start_date становится началом дня (00:00:00)
+    # start_date становится началом дня (00:00:00) в UTC
     start_datetime = datetime(start_date.year, start_date.month, start_date.day)
     # end_date_inclusive становится началом следующего дня, чтобы включить весь последний день
     end_datetime = datetime(end_date_inclusive.year, end_date_inclusive.month, end_date_inclusive.day)
     
-    moscow_time = models.User.last_login_date.op("AT TIME ZONE")('UTC').op("AT TIME ZONE")('Europe/Moscow')
+    # Используем фиксированный UTC+3 (МСК) вместо Europe/Moscow для избежания проблем с DST
+    # Конвертируем UTC время в МСК (UTC+3) - добавляем 3 часа к UTC времени
+    # Используем timezone функцию PostgreSQL для правильной конвертации
+    moscow_time = func.timezone('+03:00', models.User.last_login_date.op("AT TIME ZONE")('UTC'))
 
     query = (
         select(
