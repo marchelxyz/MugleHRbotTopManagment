@@ -1,6 +1,6 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { checkUserStatus, getFeed, getBanners } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
@@ -31,6 +31,7 @@ import LoadingScreen from './components/LoadingScreen'; // Страница за
 import './App.css';
 
 const PING_INTERVAL = 60000; // Пингуем каждую минуту (60 000 миллисекунд)
+const STATUS_CHECK_INTERVAL = 5000; // Проверяем статус каждые 5 секунд (5000 миллисекунд)
 
 const tg = window.Telegram.WebApp;
 
@@ -259,6 +260,69 @@ const handleTransferSuccess = (updatedSenderData) => {
       }
     };
   }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+
+  // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
+  const statusCheckIntervalRef = useRef(null);
+
+  useEffect(() => {
+    // Проверяем статус только если пользователь существует и его статус 'pending'
+    if (!user || user.status !== 'pending') {
+      // Очищаем интервал, если статус изменился на не-pending
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const telegramUser = tg.initDataUnsafe?.user;
+    if (!telegramUser) {
+      return;
+    }
+
+    const checkStatus = async () => {
+      try {
+        const userResponse = await checkUserStatus(telegramUser.id);
+        const newUserData = userResponse.data;
+        
+        // Если статус изменился, обновляем состояние пользователя
+        if (newUserData.status !== user.status) {
+          console.log(`Статус пользователя изменился с ${user.status} на ${newUserData.status}`);
+          setUser(newUserData);
+          
+          // Если статус изменился на 'approved', останавливаем проверку
+          if (newUserData.status === 'approved') {
+            if (statusCheckIntervalRef.current) {
+              clearInterval(statusCheckIntervalRef.current);
+              statusCheckIntervalRef.current = null;
+              console.log('Автоматическая проверка статуса остановлена: пользователь одобрен');
+            }
+          }
+        }
+      } catch (err) {
+        // При ошибке просто логируем, но продолжаем проверку
+        console.warn('Ошибка при проверке статуса пользователя:', err);
+      }
+    };
+
+    // Очищаем предыдущий интервал, если он существует
+    if (statusCheckIntervalRef.current) {
+      clearInterval(statusCheckIntervalRef.current);
+    }
+
+    // Запускаем первую проверку сразу, затем каждые STATUS_CHECK_INTERVAL миллисекунд
+    checkStatus();
+    statusCheckIntervalRef.current = setInterval(checkStatus, STATUS_CHECK_INTERVAL);
+
+    // Очистка интервала при размонтировании или изменении зависимостей
+    return () => {
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
+        console.log('Автоматическая проверка статуса остановлена');
+      }
+    };
+  }, [user]); // Зависимость от user, чтобы перезапускать при изменении пользователя
 
   // Создаем переменные, которые четко определяют, когда показывать меню
   const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
