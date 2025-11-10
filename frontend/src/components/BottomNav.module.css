@@ -15,7 +15,7 @@
   background-color: #408200;
   
   height: 75px; /* Увеличена высота блока навигации */
-  padding: 8px 0; /* Увеличен вертикальный padding */
+  padding-top: 6px; /* Уменьшен верхний padding на 2px для приближения верхней границы к иконкам */
   /* padding-bottom теперь управляется динамически через inline стили в зависимости от видимости системных кнопок */
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
