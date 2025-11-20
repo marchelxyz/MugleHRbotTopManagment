@@ -33,14 +33,22 @@
 ### ⚠️ ОБЯЗАТЕЛЬНО:
 
 1. **Применить миграцию индексов** (улучшит скорость запросов в 10-100 раз):
-   ```bash
-   # Вариант 1: Через Railway Dashboard → PostgreSQL → Query
-   # Скопируйте содержимое файла backend/migrations/006_add_performance_indexes.sql
    
-   # Вариант 2: Через Railway CLI
-   railway connect postgres
-   psql < backend/migrations/006_add_performance_indexes.sql
+   **✅ САМЫЙ ПРОСТОЙ СПОСОБ - через API:**
+   ```bash
+   curl -X POST https://your-api.railway.app/admin/apply-performance-indexes \
+     -H "X-Admin-Key: YOUR_ADMIN_API_KEY"
    ```
+   
+   Или через Postman/браузер:
+   - URL: `POST /admin/apply-performance-indexes`
+   - Header: `X-Admin-Key: ваш_админ_ключ`
+   
+   **Альтернативные способы:**
+   - Через Railway CLI: `railway run python3 backend/run_migrations_performance.py`
+   - Через внешний PostgreSQL клиент (DBeaver, pgAdmin) - см. `RAILWAY_DB_MIGRATION_GUIDE.md`
+   
+   ⚠️ **Railway не имеет веб-интерфейса для SQL запросов**, поэтому используйте один из способов выше.
 
 2. **Добавить переменные окружения в Railway**:
    - Откройте Railway Dashboard → Ваш проект → Variables

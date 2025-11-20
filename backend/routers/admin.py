@@ -1,10 +1,11 @@
 # backend/routers/admin.py
 
-from fastapi import APIRouter, Depends, HTTPException, Response, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, status, Header
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError # <-- ДОБАВЬ ЭТУ СТРОКУ
 from typing import List, Optional
+from config import settings
 from datetime import date, datetime, timedelta  # <--- ИСПРАВЛЕНИЕ ЗДЕСЬ
 import crud
 import schemas
@@ -526,3 +527,107 @@ async def trigger_leaderboard_test_banner_generation(
     except Exception as e:
         print(f"Ошибка при ручной генерации ТЕСТОВЫХ баннеров: {e}")
         raise HTTPException(status_code=500, detail="Не удалось сгенерировать тестовые баннеры")
+
+# --- ЭНДПОИНТ ДЛЯ ПРИМЕНЕНИЯ МИГРАЦИИ ИНДЕКСОВ ПРОИЗВОДИТЕЛЬНОСТИ ---
+# Используем dependencies=[] чтобы переопределить зависимость роутера
+@router.post("/apply-performance-indexes", dependencies=[])
+async def apply_performance_indexes(
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
+    x_telegram_id: Optional[str] = Header(None, alias="X-Telegram-Id"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Применяет миграцию для добавления индексов производительности.
+    Безопасно для повторного запуска (использует CREATE INDEX IF NOT EXISTS).
+    
+    Аутентификация: через X-Admin-Key (ADMIN_API_KEY) или через Telegram (X-Telegram-Id + is_admin)
+    """
+    import os
+    from pathlib import Path
+    from sqlalchemy import text
+    
+    # Проверка аутентификации: либо через API ключ, либо через Telegram админа
+    authenticated = False
+    
+    # Вариант 1: Проверка через API ключ
+    if x_admin_key:
+        if x_admin_key == settings.ADMIN_API_KEY:
+            authenticated = True
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Неверный API ключ"
+            )
+    
+    # Вариант 2: Проверка через Telegram админа
+    if not authenticated and x_telegram_id:
+        try:
+            admin_user = await crud.get_user_by_telegram(db, telegram_id=int(x_telegram_id))
+            if admin_user and admin_user.is_admin:
+                authenticated = True
+        except:
+            pass
+    
+    if not authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Требуется аутентификация: X-Admin-Key или X-Telegram-Id с правами админа"
+        )
+    
+    try:
+        # Путь к файлу миграции
+        migrations_dir = Path(__file__).parent.parent / "migrations"
+        migration_file = migrations_dir / "006_add_performance_indexes.sql"
+        
+        if not migration_file.exists():
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Файл миграции не найден: {migration_file}"
+            )
+        
+        # Читаем SQL из файла
+        with open(migration_file, "r", encoding="utf-8") as f:
+            sql_content = f.read()
+        
+        # Разделяем SQL на отдельные команды
+        commands = [
+            cmd.strip() 
+            for cmd in sql_content.split(";") 
+            if cmd.strip() and not cmd.strip().startswith("--")
+        ]
+        
+        applied_count = 0
+        errors = []
+        
+        async with db.begin() as conn:
+            for i, command in enumerate(commands, 1):
+                if command:
+                    try:
+                        await conn.execute(text(command))
+                        applied_count += 1
+                    except Exception as e:
+                        # Некоторые команды могут уже существовать - это нормально
+                        error_msg = str(e)
+                        # Игнорируем ошибки "already exists" для индексов
+                        if "already exists" not in error_msg.lower():
+                            errors.append(f"Команда {i}: {error_msg}")
+        
+        result = {
+            "detail": f"Миграция применена успешно. Выполнено команд: {applied_count}/{len(commands)}",
+            "applied_commands": applied_count,
+            "total_commands": len(commands)
+        }
+        
+        if errors:
+            result["warnings"] = errors
+        
+        return result
+        
+    except Exception as e:
+        print(f"Ошибка при применении миграции индексов: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Не удалось применить миграцию: {str(e)}"
+        )
