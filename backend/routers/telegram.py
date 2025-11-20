@@ -5,7 +5,7 @@ import traceback
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, models, schemas
 from database import get_db, settings
-from bot import send_telegram_message, answer_callback_query
+from bot import send_telegram_message, answer_callback_query, escape_html
 
 router = APIRouter()
 
@@ -154,14 +154,14 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     # Игнорируем анонимизированных пользователей (telegram_id < 0)
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "✅ Администратор одобрил ваши изменения в профиле!")
-                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{user.username or user.first_name} одобрены адм. @{admin_username}.", 
+                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{escape_html(user.username or user.first_name or '')} одобрены адм. @{escape_html(admin_username)}.", 
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
                     
                 elif user and status == "rejected":
                     # Игнорируем анонимизированных пользователей (telegram_id < 0)
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "❌ Администратор отклонил ваши изменения в профиле.")
-                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{user.username or user.first_name} отклонены адм. @{admin_username}.", 
+                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{escape_html(user.username or user.first_name or '')} отклонены адм. @{escape_html(admin_username)}.", 
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
                 # Если status == None, значит запрос уже был обработан, ничего не делаем.
 
@@ -203,14 +203,14 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     # Игнорируем анонимизированных пользователей (telegram_id < 0)
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "✅ Ваша заявка на регистрацию одобрена!")
-                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Авторизация @{user.username or user.first_name} одобрена администратором @{admin_username}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
+                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Авторизация @{escape_html(user.username or user.first_name or '')} одобрена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
 
                 elif action == "reject":
                     await crud.update_user_status(db, user_id, "rejected")
                     # Игнорируем анонимизированных пользователей (telegram_id < 0)
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "❌ В регистрации отказано.")
-                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Авторизация @{user.username or user.first_name} отклонена администратором @{admin_username}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
+                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Авторизация @{escape_html(user.username or user.first_name or '')} отклонена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
             
             # --- КОНЕЦ ИЗМЕНЕНИЙ ---
 

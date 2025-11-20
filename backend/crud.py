@@ -21,7 +21,7 @@ from sqlalchemy import select, func, update, delete, extract, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
-from bot import send_telegram_message
+from bot import send_telegram_message, escape_html
 from database import settings
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
@@ -100,12 +100,12 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     try:
         user_info = (
             f"Новая заявка на регистрацию:\n\n"
-            f"👤 **Имя:** {db_user.first_name} {db_user.last_name}\n"
-            f"🏢 **Подразделение:** {db_user.department}\n"
-            f"💼 **Должность:** {db_user.position}\n"
-            f"📞 **Телефон:** {db_user.phone_number or 'не указан'}\n"
-            f"🎂 **Дата рождения:** {db_user.date_of_birth or 'не указана'}\n"
-            f"🆔 **Telegram ID:** {db_user.telegram_id}"
+            f"👤 Имя: {db_user.first_name or ''} {db_user.last_name or ''}\n"
+            f"🏢 Подразделение: {db_user.department or ''}\n"
+            f"💼 Должность: {db_user.position or ''}\n"
+            f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
+            f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
+            f"🆔 Telegram ID: {db_user.telegram_id}"
         )
 
         # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
@@ -122,7 +122,8 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=user_info,
             reply_markup=keyboard,
-            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
+            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
+            parse_mode=None
         )
     except Exception as e:
         print(f"FAILED to send admin notification. Error: {e}")
@@ -192,9 +193,9 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     await db.refresh(sender) # Обновляем данные отправителя из БД
     
     try:
-        message_text = (f"🎉 Вам начислена *1* спасибка!\n"
-                        f"От: *{sender.first_name} {sender.last_name}*\n"
-                        f"Сообщение: _{tr.message}_")
+        message_text = (f"🎉 Вам начислена <b>1</b> спасибка!\n"
+                        f"От: <b>{escape_html(sender.first_name or '')} {escape_html(sender.last_name or '')}</b>\n"
+                        f"Сообщение: <i>{escape_html(tr.message or '')}</i>")
         # Игнорируем анонимизированных пользователей (telegram_id < 0)
         if receiver.telegram_id and receiver.telegram_id >= 0:
             await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
@@ -482,18 +483,18 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     try:
         # Уведомление для администратора (без изменений)
         admin_message = (
-            f"🛍️ *Новая покупка в магазине!*\n\n"
-            f"👤 *Пользователь:* {user.first_name} (@{user.username or user.telegram_id})\n"
-            f"💼 *Должность:* {user.position}\n\n"
-            f"🎁 *Товар:* {item.name}\n"
-            f"💰 *Стоимость:* {item.price} спасибок"
+            f"🛍️ <b>Новая покупка в магазине!</b>\n\n"
+            f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} (@{escape_html(user.username or str(user.telegram_id))})\n"
+            f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Стоимость:</b> {item.price} спасибок"
         )
         if issued_code_value:
             admin_message += (
-                f"\n\n✨ *Товар с автовыдачей*\n"
-                f"🔑 *Выданный код:* `{issued_code_value}`"
+                f"\n\n✨ <b>Товар с автовыдачей</b>\n"
+                f"🔑 <b>Выданный код:</b> <code>{escape_html(issued_code_value)}</code>"
             )
-        admin_message += f"\n\n📉 *Новый баланс пользователя:* {user.balance} спасибок"
+        admin_message += f"\n\n📉 <b>Новый баланс пользователя:</b> {user.balance} спасибок"
         
         await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
@@ -502,10 +503,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         )
 
         # Уведомление для пользователя (теперь для всех покупок)
-        user_message = f"🎉 Поздравляем с покупкой \"{item.name}\"!"
+        user_message = f"🎉 Поздравляем с покупкой \"{escape_html(item.name)}\"!"
         if issued_code_value:
             # Для товаров с кодом добавляем сам код
-            user_message += f"\n\nВаш уникальный код/ссылка:\n`{issued_code_value}`"
+            user_message += f"\n\nВаш уникальный код/ссылка:\n<code>{escape_html(issued_code_value)}</code>"
         
         await send_telegram_message(chat_id=user.telegram_id, text=user_message)
 
@@ -600,9 +601,9 @@ async def process_birthday_bonuses(db: AsyncSession):
         # Игнорируем анонимизированных пользователей (telegram_id < 0)
         if user.telegram_id and user.telegram_id >= 0 and user.status == "approved":
             birthday_message = (
-                f"🎉 *С Днем Рождения!* 🎂\n\n"
-                f"Дорогой/ая *{user.first_name or 'коллега'}*, поздравляем вас с днем рождения!\n\n"
-                f"🎁 В честь этого праздника вам начислено *15 спасибок* в качестве подарка!\n\n"
+                f"🎉 <b>С Днем Рождения!</b> 🎂\n\n"
+                f"Дорогой/ая <b>{escape_html(user.first_name or 'коллега')}</b>, поздравляем вас с днем рождения!\n\n"
+                f"🎁 В честь этого праздника вам начислено <b>15 спасибок</b> в качестве подарка!\n\n"
                 f"Желаем вам здоровья, счастья и успехов во всех начинаниях! 🎈"
             )
             try:
@@ -1091,13 +1092,15 @@ async def request_profile_update(db: AsyncSession, user: models.User, update_dat
 
     # 5. Формируем красивое сообщение для админа (сравнение)
     message_lines = [
-        f"👤 *Запрос на смену данных от:* @{user.username or user.first_name} ({user.last_name})\n"
+        f"👤 <b>Запрос на смену данных от:</b> @{escape_html(user.username or user.first_name or '')} ({escape_html(user.last_name or '')})\n"
     ]
     
     for key, new_val in actual_new_data.items():
         old_val = old_data.get(key)
         field_name = key.replace('_', ' ').capitalize()
-        message_lines.append(f"*{field_name}*:\n  ↳ Старое: `{old_val or 'не указано'}`\n  ↳ Новое: `{new_val or 'не указано'}`\n")
+        old_val_str = escape_html(str(old_val)) if old_val else 'не указано'
+        new_val_str = escape_html(str(new_val)) if new_val else 'не указано'
+        message_lines.append(f"<b>{escape_html(field_name)}</b>:\n  ↳ Старое: <code>{old_val_str}</code>\n  ↳ Новое: <code>{new_val_str}</code>\n")
 
     # 6. Отправляем сообщение админу
     admin_message_text = "\n".join(message_lines)
@@ -1271,10 +1274,10 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
         target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
         
         log_message = (
-            f"✏️ *Админ изменил профиль*\n\n"
-            f"👤 *Администратор:* {admin_name}\n"
-            f"🎯 *Пользователь:* {target_user_name}\n\n"
-            f"*Изменения:*\n" + "\n".join(changes_log)
+            f"✏️ <b>Админ изменил профиль</b>\n\n"
+            f"👤 <b>Администратор:</b> {escape_html(admin_name)}\n"
+            f"🎯 <b>Пользователь:</b> {escape_html(target_user_name)}\n\n"
+            f"<b>Изменения:</b>\n" + "\n".join([escape_html(change) for change in changes_log])
         )
         
         await bot.send_telegram_message(
@@ -1335,9 +1338,9 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
 
     # 5. Отправляем уведомление об анонимизации
     log_message = (
-        f"🗑️ *Админ анонимизировал пользователя*\n\n"
-        f"👤 *Администратор:* {admin_name} (`{admin_user.id}`)\n"
-        f"🎯 *Бывший пользователь:* {target_user_name} (`{user_id}`)\n\n"
+        f"🗑️ <b>Админ анонимизировал пользователя</b>\n\n"
+        f"👤 <b>Администратор:</b> {escape_html(admin_name)} (<code>{admin_user.id}</code>)\n"
+        f"🎯 <b>Бывший пользователь:</b> {escape_html(target_user_name)} (<code>{user_id}</code>)\n\n"
         f"Личные данные пользователя стерты, история транзакций сохранена."
     )
     
@@ -2084,8 +2087,8 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
         if invited_user.telegram_id and invited_user.telegram_id >= 0:
             await send_telegram_message(
                 invited_user.telegram_id,
-                f"🎁 *Приглашение на совместный подарок!*\n\n"
-                f"👤 *{buyer.first_name} {buyer.last_name}* приглашает вас разделить товар *{item.name}*\n\n"
+                f"🎁 <b>Приглашение на совместный подарок!</b>\n\n"
+                f"👤 <b>{escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')}</b> приглашает вас разделить товар <b>{escape_html(item.name)}</b>\n\n"
                 f"💰 Стоимость будет разделена 50/50\n"
                 f"⏰ Приглашение действует 24 часа",
                 {
@@ -2180,8 +2183,8 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         if buyer.telegram_id and buyer.telegram_id >= 0:
             await send_telegram_message(
                 buyer.telegram_id,
-                f"✅ *Приглашение принято!*\n\n"
-                f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* согласился разделить товар *{item.name}*\n\n"
+                f"✅ <b>Приглашение принято!</b>\n\n"
+                f"👤 <b>{escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')}</b> согласился разделить товар <b>{escape_html(item.name)}</b>\n\n"
                 f"💰 Вам возвращена половина стоимости товара"
             )
     except Exception as e:
@@ -2190,12 +2193,12 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
     # Отправляем уведомление в админ-чат о совместной покупке
     try:
         admin_message = (
-            f"🎁 *Совместная покупка в магазине!*\n\n"
-            f"👤 *Покупатель:* {buyer.first_name} {buyer.last_name} (@{buyer.username or buyer.telegram_id})\n"
-            f"👥 *Приглашенный:* {invitation.invited_user.first_name} {invitation.invited_user.last_name} (@{invitation.invited_user.username or invitation.invited_user.telegram_id})\n\n"
-            f"🎁 *Товар:* {item.name}\n"
-            f"💰 *Стоимость:* {item.price} спасибок (оплачено покупателем)\n\n"
-            f"📉 *Баланс покупателя:* {buyer.balance} спасибок"
+            f"🎁 <b>Совместная покупка в магазине!</b>\n\n"
+            f"👤 <b>Покупатель:</b> {escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')} (@{escape_html(buyer.username or str(buyer.telegram_id))})\n"
+            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Стоимость:</b> {item.price} спасибок (оплачено покупателем)\n\n"
+            f"📉 <b>Баланс покупателя:</b> {buyer.balance} спасибок"
         )
         
         await send_telegram_message(
@@ -2250,8 +2253,8 @@ async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
             if buyer.telegram_id and buyer.telegram_id >= 0:
                 await send_telegram_message(
                     buyer.telegram_id,
-                    f"❌ *Приглашение отклонено*\n\n"
-                    f"👤 *{invitation.invited_user.first_name} {invitation.invited_user.last_name}* отклонил приглашение на товар *{item.name}*\n\n"
+                    f"❌ <b>Приглашение отклонено</b>\n\n"
+                    f"👤 <b>{escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')}</b> отклонил приглашение на товар <b>{escape_html(item.name)}</b>\n\n"
                     f"💰 Вам возвращена полная стоимость товара"
                 )
     except Exception as e:
@@ -2333,8 +2336,8 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
                 if buyer.telegram_id and buyer.telegram_id != -1:
                     await send_telegram_message(
                         buyer.telegram_id,
-                        f"⏰ *Приглашение истекло*\n\n"
-                        f"Время на принятие приглашения на товар *{item.name}* истекло\n\n"
+                        f"⏰ <b>Приглашение истекло</b>\n\n"
+                        f"Время на принятие приглашения на товар <b>{escape_html(item.name)}</b> истекло\n\n"
                         f"💰 Вам возвращена полная стоимость товара"
                     )
         except Exception as e:

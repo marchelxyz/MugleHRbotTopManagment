@@ -2,6 +2,7 @@
 import httpx
 from database import settings
 import json # Добавляем импорт json
+import re
 
 # URL для отправки сообщений через API Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
@@ -9,17 +10,56 @@ TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
 
+def escape_markdown(text) -> str:
+    """
+    Экранирует специальные символы Markdown для безопасного использования в сообщениях Telegram.
+    Экранирует: _, *, `, [, ], (, ), ~, >, #, +, -, =, |, {, }, ., !
+    Принимает строку, None или другие типы (преобразует в строку).
+    """
+    if text is None:
+        return ''
+    if not isinstance(text, str):
+        text = str(text)
+    if not text:
+        return text
+    # Экранируем специальные символы Markdown
+    special_chars = ['_', '*', '`', '[', ']', '(', ')', '~', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    for char in special_chars:
+        text = text.replace(char, f'\\{char}')
+    return text
+
+def escape_html(text) -> str:
+    """
+    Экранирует специальные символы HTML для безопасного использования в сообщениях Telegram.
+    Экранирует только: <, >, &
+    Принимает строку, None или другие типы (преобразует в строку).
+    """
+    if text is None:
+        return ''
+    if not isinstance(text, str):
+        text = str(text)
+    if not text:
+        return text
+    # Экранируем только HTML-специальные символы
+    text = text.replace('&', '&amp;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
+    return text
+
 # --- ИЗМЕНЕНИЕ: Функция теперь может принимать кнопки и ID темы ---
-async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None):
+async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None, parse_mode: str = 'HTML'):
     """
     Асинхронно отправляет сообщение в указанный чат Telegram.
     Может включать inline-кнопки и отправлять в тему.
+    parse_mode: 'Markdown', 'HTML' или None для отправки без форматирования.
+    По умолчанию используется HTML для избежания проблем с символами в именах пользователей.
     """
     payload = {
         'chat_id': chat_id,
-        'text': text,
-        'parse_mode': 'Markdown'
+        'text': text
     }
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
     if reply_markup:
         payload['reply_markup'] = json.dumps(reply_markup)
     
@@ -65,8 +105,8 @@ async def answer_callback_query(callback_query_id: str):
 async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name: str, item_name: str, invitation_id: int):
     """Отправить уведомление о приглашении на совместный подарок"""
     text = (
-        f"🎁 *Приглашение на совместный подарок!*\n\n"
-        f"👤 *{buyer_name}* приглашает вас разделить товар *{item_name}*\n\n"
+        f"🎁 <b>Приглашение на совместный подарок!</b>\n\n"
+        f"👤 <b>{escape_html(buyer_name)}</b> приглашает вас разделить товар <b>{escape_html(item_name)}</b>\n\n"
         f"💰 Покупатель оплачивает полную стоимость\n"
         f"⏰ Приглашение действует 24 часа"
     )
@@ -91,8 +131,8 @@ async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name:
 async def send_shared_gift_accepted_notification(buyer_telegram_id: int, invited_user_name: str, item_name: str):
     """Уведомить покупателя о принятии приглашения"""
     text = (
-        f"✅ *Приглашение принято!*\n\n"
-        f"👤 *{invited_user_name}* согласился разделить товар *{item_name}*\n\n"
+        f"✅ <b>Приглашение принято!</b>\n\n"
+        f"👤 <b>{escape_html(invited_user_name)}</b> согласился разделить товар <b>{escape_html(item_name)}</b>\n\n"
         f"🎁 Товар будет выдан администратором в чате"
     )
     
@@ -101,8 +141,8 @@ async def send_shared_gift_accepted_notification(buyer_telegram_id: int, invited
 async def send_shared_gift_rejected_notification(buyer_telegram_id: int, invited_user_name: str, item_name: str):
     """Уведомить покупателя об отклонении приглашения"""
     text = (
-        f"❌ *Приглашение отклонено*\n\n"
-        f"👤 *{invited_user_name}* отклонил приглашение на товар *{item_name}*\n\n"
+        f"❌ <b>Приглашение отклонено</b>\n\n"
+        f"👤 <b>{escape_html(invited_user_name)}</b> отклонил приглашение на товар <b>{escape_html(item_name)}</b>\n\n"
         f"💰 Вам возвращена полная стоимость товара"
     )
     
@@ -111,8 +151,8 @@ async def send_shared_gift_rejected_notification(buyer_telegram_id: int, invited
 async def send_shared_gift_expired_notification(buyer_telegram_id: int, item_name: str):
     """Уведомить покупателя об истечении приглашения"""
     text = (
-        f"⏰ *Приглашение истекло*\n\n"
-        f"Время на принятие приглашения на товар *{item_name}* истекло\n\n"
+        f"⏰ <b>Приглашение истекло</b>\n\n"
+        f"Время на принятие приглашения на товар <b>{escape_html(item_name)}</b> истекло\n\n"
         f"💰 Вам возвращена полная стоимость товара"
     )
     
