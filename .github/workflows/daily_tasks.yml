@@ -7,6 +7,7 @@ on:
     # Запускать каждый день в 00:01 по времени UTC
     # (Минута, Час, День, Месяц, День недели)
     - cron: '1 0 * * *'
+  workflow_dispatch:  # Позволяет запускать вручную через интерфейс GitHub
 
 # Задачи, которые нужно выполнить
 jobs:
@@ -17,5 +18,13 @@ jobs:
       # Шаг 1: Отправляем запрос на наш сервер
       - name: Call daily tasks endpoint
         run: |
-          curl -X POST "${{ secrets.BACKEND_URL }}/scheduler/run-daily-tasks" \
-          -H "X-Cron-Secret: ${{ secrets.ADMIN_API_KEY }}"
+          BACKEND_URL="${{ secrets.BACKEND_URL }}"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "Error: BACKEND_URL secret is not set"
+            exit 1
+          fi
+          # Убираем завершающий слэш, если он есть
+          BACKEND_URL="${BACKEND_URL%/}"
+          curl -X POST "${BACKEND_URL}/scheduler/run-daily-tasks" \
+            -H "X-Cron-Secret: ${{ secrets.ADMIN_API_KEY }}" \
+            -f -v
