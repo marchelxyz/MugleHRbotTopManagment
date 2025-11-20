@@ -29,16 +29,18 @@ def escape_markdown(text) -> str:
     return text
 
 # --- ИЗМЕНЕНИЕ: Функция теперь может принимать кнопки и ID темы ---
-async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None):
+async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None, parse_mode: str = 'Markdown'):
     """
     Асинхронно отправляет сообщение в указанный чат Telegram.
     Может включать inline-кнопки и отправлять в тему.
+    parse_mode: 'Markdown', 'HTML' или None для отправки без форматирования.
     """
     payload = {
         'chat_id': chat_id,
-        'text': text,
-        'parse_mode': 'Markdown'
+        'text': text
     }
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
     if reply_markup:
         payload['reply_markup'] = json.dumps(reply_markup)
     

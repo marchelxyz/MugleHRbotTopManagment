@@ -100,12 +100,12 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     try:
         user_info = (
             f"Новая заявка на регистрацию:\n\n"
-            f"👤 **Имя:** {escape_markdown(db_user.first_name or '')} {escape_markdown(db_user.last_name or '')}\n"
-            f"🏢 **Подразделение:** {escape_markdown(db_user.department or '')}\n"
-            f"💼 **Должность:** {escape_markdown(db_user.position or '')}\n"
-            f"📞 **Телефон:** {escape_markdown(db_user.phone_number or 'не указан')}\n"
-            f"🎂 **Дата рождения:** {escape_markdown(str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана')}\n"
-            f"🆔 **Telegram ID:** {db_user.telegram_id}"
+            f"👤 Имя: {db_user.first_name or ''} {db_user.last_name or ''}\n"
+            f"🏢 Подразделение: {db_user.department or ''}\n"
+            f"💼 Должность: {db_user.position or ''}\n"
+            f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
+            f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
+            f"🆔 Telegram ID: {db_user.telegram_id}"
         )
 
         # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
@@ -122,7 +122,8 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=user_info,
             reply_markup=keyboard,
-            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
+            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
+            parse_mode=None
         )
     except Exception as e:
         print(f"FAILED to send admin notification. Error: {e}")
