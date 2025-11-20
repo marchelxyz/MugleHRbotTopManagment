@@ -2,12 +2,31 @@
 import httpx
 from database import settings
 import json # Добавляем импорт json
+import re
 
 # URL для отправки сообщений через API Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
+
+def escape_markdown(text) -> str:
+    """
+    Экранирует специальные символы Markdown для безопасного использования в сообщениях Telegram.
+    Экранирует: _, *, `, [, ], (, ), ~, >, #, +, -, =, |, {, }, ., !
+    Принимает строку, None или другие типы (преобразует в строку).
+    """
+    if text is None:
+        return ''
+    if not isinstance(text, str):
+        text = str(text)
+    if not text:
+        return text
+    # Экранируем специальные символы Markdown
+    special_chars = ['_', '*', '`', '[', ']', '(', ')', '~', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    for char in special_chars:
+        text = text.replace(char, f'\\{char}')
+    return text
 
 # --- ИЗМЕНЕНИЕ: Функция теперь может принимать кнопки и ID темы ---
 async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None):
@@ -66,7 +85,7 @@ async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name:
     """Отправить уведомление о приглашении на совместный подарок"""
     text = (
         f"🎁 *Приглашение на совместный подарок!*\n\n"
-        f"👤 *{buyer_name}* приглашает вас разделить товар *{item_name}*\n\n"
+        f"👤 *{escape_markdown(buyer_name)}* приглашает вас разделить товар *{escape_markdown(item_name)}*\n\n"
         f"💰 Покупатель оплачивает полную стоимость\n"
         f"⏰ Приглашение действует 24 часа"
     )
@@ -92,7 +111,7 @@ async def send_shared_gift_accepted_notification(buyer_telegram_id: int, invited
     """Уведомить покупателя о принятии приглашения"""
     text = (
         f"✅ *Приглашение принято!*\n\n"
-        f"👤 *{invited_user_name}* согласился разделить товар *{item_name}*\n\n"
+        f"👤 *{escape_markdown(invited_user_name)}* согласился разделить товар *{escape_markdown(item_name)}*\n\n"
         f"🎁 Товар будет выдан администратором в чате"
     )
     
@@ -102,7 +121,7 @@ async def send_shared_gift_rejected_notification(buyer_telegram_id: int, invited
     """Уведомить покупателя об отклонении приглашения"""
     text = (
         f"❌ *Приглашение отклонено*\n\n"
-        f"👤 *{invited_user_name}* отклонил приглашение на товар *{item_name}*\n\n"
+        f"👤 *{escape_markdown(invited_user_name)}* отклонил приглашение на товар *{escape_markdown(item_name)}*\n\n"
         f"💰 Вам возвращена полная стоимость товара"
     )
     
@@ -112,7 +131,7 @@ async def send_shared_gift_expired_notification(buyer_telegram_id: int, item_nam
     """Уведомить покупателя об истечении приглашения"""
     text = (
         f"⏰ *Приглашение истекло*\n\n"
-        f"Время на принятие приглашения на товар *{item_name}* истекло\n\n"
+        f"Время на принятие приглашения на товар *{escape_markdown(item_name)}* истекло\n\n"
         f"💰 Вам возвращена полная стоимость товара"
     )
     
