@@ -1,0 +1,4 @@
+# Procfile для Railway/Heroku
+# Использует Gunicorn с Uvicorn workers для production
+
+web: gunicorn app:app -c gunicorn_config.py

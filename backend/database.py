@@ -14,12 +14,20 @@ if database_url and database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 # НАСТРОЙКИ ДЛЯ СТАБИЛЬНОЙ РАБОТЫ В ОБЛАКЕ
+# Оптимизация пула соединений для production
+import os
+pool_size = int(os.getenv("DATABASE_POOL_SIZE", "10"))  # По умолчанию 10 соединений
+max_overflow = int(os.getenv("DATABASE_MAX_OVERFLOW", "20"))  # Максимум дополнительных соединений
+
 engine = create_async_engine(
     database_url,
-    echo=True,
+    echo=False,  # Отключаем echo в production для производительности
     future=True,
     pool_pre_ping=True,  # Проверять "живое" ли соединение перед использованием
     pool_recycle=1800,   # Принудительно обновлять соединение каждые 30 минут
+    pool_size=pool_size,  # Размер пула соединений
+    max_overflow=max_overflow,  # Максимум дополнительных соединений
+    pool_timeout=30,  # Таймаут ожидания свободного соединения
 )
 
 AsyncSessionLocal = sessionmaker(

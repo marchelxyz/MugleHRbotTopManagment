@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 
 # Абсолютные импорты (без точек)
@@ -16,6 +17,9 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+# Middleware для сжатия ответов (gzip) - уменьшает размер ответов на 70-90%
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # Сжимать ответы больше 1KB
 
 # Настройка CORS
 origins = [
