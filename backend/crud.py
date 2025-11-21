@@ -131,7 +131,9 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     return db_user
 
 async def get_users(db: AsyncSession):
-    result = await db.execute(select(models.User))
+    result = await db.execute(
+        select(models.User).where(models.User.status != 'deleted')
+    )
     return result.scalars().all()
 
 async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.UserUpdate):
