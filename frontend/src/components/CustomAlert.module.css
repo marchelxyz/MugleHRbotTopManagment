@@ -26,7 +26,7 @@
 }
 
 .success {
-  border-top-color: #5CA14A; /* <-- Зеленый цвет приложения */
+  border-top-color: #2196F3; /* Зимний голубой */
 }
 .error {
   border-top-color: #e74c3c; /* Красный для ошибок */
@@ -38,7 +38,7 @@
   margin-bottom: 10px;
 }
 .success .title {
-  color: #5CA14A;
+  color: #1976D2; /* Зимний синий */
 }
 .error .title {
   color: #e74c3c;
@@ -62,7 +62,7 @@
   transition: opacity 0.2s ease;
 }
 .success .button {
-  background-color: #5CA14A;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
 }
 .error .button {
   background-color: #e74c3c;

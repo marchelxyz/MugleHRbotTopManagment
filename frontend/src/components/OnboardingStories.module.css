@@ -75,7 +75,7 @@
 }
 
 .activeDot {
-  background-color: #5CA14A;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
 }
 
 .nextButton {
@@ -83,7 +83,7 @@
   padding: 15px;
   border: none;
   border-radius: 12px;
-  background-color: #5CA14A;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
   color: white;
   font-size: 16px;
   font-weight: bold;

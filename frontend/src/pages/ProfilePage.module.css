@@ -63,7 +63,7 @@
   font-size: 16px;
   border: none;
   border-radius: 20px;
-  background-color: #5CA14A;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
   color: white;
   cursor: pointer;
   font-family: 'Arial', sans-serif;
@@ -95,7 +95,7 @@
   color: #888;
 }
 .settingsButton:hover {
-  color: #5CA14A;
+  color: #1976D2; /* Зимний синий */
 }
 
 .profileNameContainer {
@@ -123,7 +123,7 @@
 }
 
 .editButton:hover {
-  color: #5CA14A; /* Наш фирменный зеленый при наведении */
+  color: #1976D2; /* Зимний синий */ /* Наш фирменный зеленый при наведении */
 }
 
 /* Убираем синюю разметку при фокусе и нажатии */
