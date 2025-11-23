@@ -183,7 +183,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                         </div>
                                         {groupedFeed[dateKey].map(item => (
                                             <div key={item.id} className={styles.feedItem}>
-                                                <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
+                                                <img src="https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp" alt="feed logo" className={styles.feedItemLogo} />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
                                                         @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
