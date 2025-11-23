@@ -1,31 +1,36 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { checkUserStatus, getFeed, getBanners } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
-// Компоненты и страницы
+// Компоненты навигации (используются всегда, загружаем сразу)
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
-import RegistrationPage from './pages/RegistrationPage';
-import HomePage from './pages/HomePage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import MarketplacePage from './pages/MarketplacePage';
-import ProfilePage from './pages/ProfilePage';
-import HistoryPage from './pages/HistoryPage';
-import AdminPage from './pages/AdminPage';
-import SettingsPage from './pages/SettingsPage';
-import FaqPage from './pages/FaqPage';
-import PendingPage from './pages/PendingPage';
-import RejectedPage from './pages/RejectedPage';
-import RoulettePage from './pages/RoulettePage';
-import BonusCardPage from './pages/BonusCardPage';
-import EditProfilePage from './pages/EditProfilePage';
-import BlockedPage from './pages/BlockedPage';
-import TransferPage from './pages/TransferPage'; // Страница отправки спасибок
-import { startSession, pingSession } from './api';
-import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
 import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
+import { startSession, pingSession } from './api';
+
+// Страницы с lazy loading для оптимизации размера бандла
+// Главная страница и регистрация загружаются сразу (критичные)
+import HomePage from './pages/HomePage';
+import RegistrationPage from './pages/RegistrationPage';
+
+// Остальные страницы загружаются по требованию
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
+const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const FaqPage = lazy(() => import('./pages/FaqPage'));
+const PendingPage = lazy(() => import('./pages/PendingPage'));
+const RejectedPage = lazy(() => import('./pages/RejectedPage'));
+const RoulettePage = lazy(() => import('./pages/RoulettePage'));
+const BonusCardPage = lazy(() => import('./pages/BonusCardPage'));
+const EditProfilePage = lazy(() => import('./pages/EditProfilePage'));
+const BlockedPage = lazy(() => import('./pages/BlockedPage'));
+const TransferPage = lazy(() => import('./pages/TransferPage'));
+const OnboardingStories = lazy(() => import('./components/OnboardingStories'));
 
 // Стили
 import './App.css';
@@ -155,6 +160,18 @@ const handleTransferSuccess = (updatedSenderData) => {
   // Эта переменная будет true, если нужно показать обучение, и false в противном случае.
   const isOnboardingVisible = (user && !user.has_seen_onboarding) || showOnboarding;
   
+  // Компонент для отображения во время загрузки ленивых компонентов
+  const PageLoadingFallback = () => (
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '50vh' 
+    }}>
+      <LoadingScreen />
+    </div>
+  );
+
   const renderPage = () => {
     if (loading) {
       return <LoadingScreen />;
@@ -167,41 +184,108 @@ const handleTransferSuccess = (updatedSenderData) => {
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
     // Условие: (флаг в базе false ИЛИ мы включили принудительный показ)
     if (user.status === 'pending') {
-      return <PendingPage />;
+      return (
+        <Suspense fallback={<PageLoadingFallback />}>
+          <PendingPage />
+        </Suspense>
+      );
     }
     if (user.status === 'blocked') {
-      return <BlockedPage />;
+      return (
+        <Suspense fallback={<PageLoadingFallback />}>
+          <BlockedPage />
+        </Suspense>
+      );
     }
     if (user.status === 'rejected') {
-      return <RejectedPage />;
+      return (
+        <Suspense fallback={<PageLoadingFallback />}>
+          <RejectedPage />
+        </Suspense>
+      );
     }
 
     // 2. Только если пользователь одобрен, проверяем, видел ли он обучение.
     if (user.status === 'approved' && (!user.has_seen_onboarding || showOnboarding)) {
-        return <OnboardingStories onComplete={handleOnboardingComplete} />;
+        return (
+          <Suspense fallback={<PageLoadingFallback />}>
+            <OnboardingStories onComplete={handleOnboardingComplete} />
+          </Suspense>
+        );
     }
     
     if (user.status === 'approved') {
       switch (page) {
-        case 'leaderboard': return <LeaderboardPage user={user} />;
-        case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
-        case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
-        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
-        case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
-        case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
-  case 'settings': 
-    return (
-      <SettingsPage 
-        onBack={() => navigate('profile')} 
-        onNavigate={navigate} 
-        onRepeatOnboarding={() => setShowOnboarding(true)}
-      />
-    );
-        case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
-        case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
-        // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
-        case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
-        case 'admin': return <AdminPage />;
+        case 'leaderboard': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <LeaderboardPage user={user} />
+            </Suspense>
+          );
+        case 'roulette': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <RoulettePage user={user} onUpdateUser={updateUser} />
+            </Suspense>
+          );
+        case 'marketplace': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />
+            </Suspense>
+          );
+        case 'profile': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />
+            </Suspense>
+          );
+        case 'bonus_card': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />
+            </Suspense>
+          );
+        case 'edit_profile': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />
+            </Suspense>
+          );
+        case 'settings': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <SettingsPage 
+                onBack={() => navigate('profile')} 
+                onNavigate={navigate} 
+                onRepeatOnboarding={() => setShowOnboarding(true)}
+              />
+            </Suspense>
+          );
+        case 'faq': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <FaqPage onBack={() => navigate('settings')} />
+            </Suspense>
+          );
+        case 'history': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <HistoryPage user={user} onBack={() => navigate('profile')} />
+            </Suspense>
+          );
+        case 'transfer': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />
+            </Suspense>
+          );
+        case 'admin': 
+          return (
+            <Suspense fallback={<PageLoadingFallback />}>
+              <AdminPage />
+            </Suspense>
+          );
         case 'home':
         default:
           return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} />;
