@@ -104,7 +104,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                     <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
                     <span className={styles.userName}>{user.first_name}</span>
                     <img
-                        src="https://i.postimg.cc/ncfzjKGc/image.webp"
+                        src="https://i.postimg.cc/kgrZQyKK/knopka-otpr-sp-sinaa.webp"
                         alt="Отправить спасибки"
                         className={styles.thankYouButton}
                         onClick={() => onNavigate('transfer')}
