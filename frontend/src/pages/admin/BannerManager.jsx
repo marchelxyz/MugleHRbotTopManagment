@@ -121,7 +121,7 @@ function BannerManager() {
         <div className={styles.list}>
           {banners.map(banner => (
             <div key={banner.id} className={styles.listItem}>
-              <img src={banner.image_url} alt="banner" className={styles.listItemImage} />
+              <img src={banner.image_url} alt="banner" className={styles.listItemImage} loading="lazy" />
               <div className={styles.listItemContent}>
                 <p><b>Позиция:</b> {banner.position === 'main' ? 'Главный' : 'В ленте'}</p>
                 <p><b>Статус:</b> {banner.is_active ? '✅ Активен' : '❌ Скрыт'}</p>
