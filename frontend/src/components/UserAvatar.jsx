@@ -21,7 +21,7 @@ function UserAvatar({ user }) {
   // --- НАЧАЛО ИЗМЕНЕНИЙ ---
   // Если есть URL фото, показываем его
   if (user.telegram_photo_url) {
-    return <img src={user.telegram_photo_url} alt={`${user.first_name}`} className={styles.avatarImage} />;
+    return <img src={user.telegram_photo_url} alt={`${user.first_name}`} className={styles.avatarImage} loading="lazy" />;
   }
   // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 

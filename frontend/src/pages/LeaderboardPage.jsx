@@ -108,7 +108,7 @@ function LeaderboardPage({ user }) {
               {top3[1] && (
                 <div className={`${styles.podiumItem} ${styles.place2}`}>
                   <FaCrown className={styles.podiumIcon} color="#C0C0C0" />
-                  <img src={top3[1].user.telegram_photo_url || 'placeholder.png'} alt={top3[1].user.first_name} className={styles.podiumAvatar} />
+                  <img src={top3[1].user.telegram_photo_url || 'placeholder.png'} alt={top3[1].user.first_name} className={styles.podiumAvatar} loading="lazy" />
                   <div className={styles.podiumName}>{top3[1].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[1].total_received}</div>
                 </div>
@@ -116,7 +116,7 @@ function LeaderboardPage({ user }) {
               {top3[0] && (
                 <div className={`${styles.podiumItem} ${styles.place1}`}>
                   <FaCrown className={styles.podiumIcon} color="#FFD700" />
-                  <img src={top3[0].user.telegram_photo_url || 'placeholder.png'} alt={top3[0].user.first_name} className={styles.podiumAvatar} />
+                  <img src={top3[0].user.telegram_photo_url || 'placeholder.png'} alt={top3[0].user.first_name} className={styles.podiumAvatar} loading="lazy" />
                   <div className={styles.podiumName}>{top3[0].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[0].total_received}</div>
                 </div>
@@ -124,7 +124,7 @@ function LeaderboardPage({ user }) {
               {top3[2] && (
                 <div className={`${styles.podiumItem} ${styles.place3}`}>
                   <FaCrown className={styles.podiumIcon} color="#CD7F32" />
-                  <img src={top3[2].user.telegram_photo_url || 'placeholder.png'} alt={top3[2].user.first_name} className={styles.podiumAvatar} />
+                  <img src={top3[2].user.telegram_photo_url || 'placeholder.png'} alt={top3[2].user.first_name} className={styles.podiumAvatar} loading="lazy" />
                   <div className={styles.podiumName}>{top3[2].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[2].total_received}</div>
                 </div>
@@ -137,13 +137,13 @@ function LeaderboardPage({ user }) {
               {others.map((item, index) => (
                 <li key={item.user.id} className={styles.listItem}>
                   <span className={styles.rank}>{index + 4}</span>
-                  <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} />
+                  <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} loading="lazy" />
                   <div className={styles.userInfo}>
                     <span className={styles.userName}>{item.user.first_name}</span>
                   </div>
                   <div className={styles.pointsContainer}>
                     <span className={styles.points}>{item.total_received}</span>
-                    <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="спасибо" className={styles.pointsLogo} />
+                    <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="спасибо" className={styles.pointsLogo} loading="lazy" />
                   </div>
                 </li>
               ))}

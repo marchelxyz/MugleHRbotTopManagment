@@ -39,7 +39,7 @@ function PurchaseSuccessModal({ item, onClose }) {
 
         <div className={styles.itemCard}>
           {image_url ? (
-            <img src={image_url} alt={name} className={styles.itemImage} />
+            <img src={image_url} alt={name} className={styles.itemImage} loading="lazy" />
           ) : (
             <div className={styles.imagePlaceholder}></div>
           )}
