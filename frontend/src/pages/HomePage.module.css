@@ -157,6 +157,7 @@
   align-items: center;
   padding: 0 26px;
   margin-bottom: 30px;
+  position: relative;
 }
 
 .userAvatar {
