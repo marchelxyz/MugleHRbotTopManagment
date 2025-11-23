@@ -1,11 +1,11 @@
 // frontend/src/components/Garland.jsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './Garland.module.css';
 
 function Garland() {
-    // Создаем массив лампочек с разными цветами
-    const bulbs = [
+    // Базовый паттерн лампочек с разными цветами
+    const baseBulbs = [
         { color: '#FF6B6B', delay: 0 },      // Красный
         { color: '#4ECDC4', delay: 0.2 },    // Бирюзовый
         { color: '#FFE66D', delay: 0.4 },    // Желтый
@@ -24,24 +24,81 @@ function Garland() {
         { color: '#FD9853', delay: 3.0 },    // Коралловый
     ];
 
+    // Базовая ширина одного сегмента гирлянды (в пикселях)
+    const SEGMENT_WIDTH = 1000;
+    const BULBS_PER_SEGMENT = baseBulbs.length;
+
+    const [bulbs, setBulbs] = useState([]);
+    const [segmentsCount, setSegmentsCount] = useState(1);
+
+    useEffect(() => {
+        const updateBulbs = () => {
+            const screenWidth = window.innerWidth;
+            // Вычисляем количество сегментов для заполнения экрана
+            const count = Math.ceil(screenWidth / SEGMENT_WIDTH);
+            setSegmentsCount(count);
+
+            // Генерируем лампочки для всех сегментов
+            const allBulbs = [];
+            for (let segment = 0; segment < count; segment++) {
+                baseBulbs.forEach((bulb, index) => {
+                    const globalIndex = segment * BULBS_PER_SEGMENT + index;
+                    // Позиция внутри сегмента (от 0 до 1)
+                    const positionInSegment = index / (BULBS_PER_SEGMENT - 1);
+                    // Абсолютная позиция на всем экране (от 0 до 1)
+                    const absolutePosition = (segment + positionInSegment) / count;
+                    
+                    allBulbs.push({
+                        ...bulb,
+                        key: globalIndex,
+                        position: absolutePosition * 100,
+                        // Добавляем смещение для анимации, чтобы каждый сегмент имел свою задержку
+                        delay: bulb.delay + (segment * 3.2),
+                    });
+                });
+            }
+            setBulbs(allBulbs);
+        };
+
+        updateBulbs();
+        window.addEventListener('resize', updateBulbs);
+        return () => window.removeEventListener('resize', updateBulbs);
+    }, []);
+
+    // Создаем массив сегментов провода
+    const wireSegments = Array.from({ length: segmentsCount }, (_, i) => i);
+
     return (
         <div className={styles.garland}>
-            <svg className={styles.wire} viewBox="0 0 1000 50" preserveAspectRatio="none">
-                <path
-                    d="M 0,25 Q 250,5 500,25 T 1000,25"
-                    fill="none"
-                    stroke="#FFD700"
-                    strokeWidth="2"
-                    className={styles.wirePath}
-                />
-            </svg>
+            <div className={styles.wireContainer}>
+                {wireSegments.map((segment) => (
+                    <svg 
+                        key={segment}
+                        className={styles.wire}
+                        viewBox="0 0 1000 50"
+                        preserveAspectRatio="none"
+                        style={{
+                            width: `${100 / segmentsCount}%`,
+                            left: `${(segment * 100) / segmentsCount}%`,
+                        }}
+                    >
+                        <path
+                            d="M 0,25 Q 250,5 500,25 T 1000,25"
+                            fill="none"
+                            stroke="#FFD700"
+                            strokeWidth="2"
+                            className={styles.wirePath}
+                        />
+                    </svg>
+                ))}
+            </div>
             <div className={styles.bulbsContainer}>
-                {bulbs.map((bulb, index) => (
+                {bulbs.map((bulb) => (
                     <div
-                        key={index}
+                        key={bulb.key}
                         className={styles.bulbWrapper}
                         style={{
-                            left: `${(index / (bulbs.length - 1)) * 100}%`,
+                            left: `${bulb.position}%`,
                         }}
                     >
                         <div
