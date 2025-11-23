@@ -355,7 +355,7 @@ const ItemCreation = () => {
         <div className={styles.list}>
           {(view === 'active' ? items : archivedItems).map(item => (
             <div key={item.id} className={styles.listItem}>
-              {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} />}
+              {item.image_url && <img src={item.image_url} alt={item.name} className={styles.listItemImage} loading="lazy" />}
               <div className={styles.listItemContent}>
                 <p><strong>{item.name}</strong></p>
                 {item.is_auto_issuance && <p style={{color: '#007bff', fontSize: '12px', fontWeight: 'bold'}}>Автовыдача</p>}

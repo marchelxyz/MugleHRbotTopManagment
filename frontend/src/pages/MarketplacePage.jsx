@@ -130,7 +130,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
                 )}
 
                 {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className={styles.itemImage} />
+                  <img src={item.image_url} alt={item.name} className={styles.itemImage} loading="lazy" />
                 ) : (
                   <div className={styles.imagePlaceholder}></div>
                 )}

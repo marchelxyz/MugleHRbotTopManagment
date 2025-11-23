@@ -16,7 +16,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #5CA14A, #4a8c3a, #5CA14A);
+  background: linear-gradient(90deg, #2196F3, #1976D2, #2196F3); /* Зимний голубой */
 }
 
 .loading {
@@ -34,7 +34,7 @@
 .title {
   font-size: 24px;
   font-weight: 700;
-  color: #5CA14A;
+  color: #1976D2; /* Зимний синий */
   margin: 0 0 8px 0;
 }
 
@@ -76,7 +76,7 @@
 .bonusAmount {
   font-size: 32px;
   font-weight: 700;
-  color: #5CA14A;
+  color: #1976D2; /* Зимний синий */
   display: block;
   line-height: 1;
 }
@@ -108,7 +108,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5CA14A, #4a8c3a);
+  background: linear-gradient(135deg, #2196F3, #1976D2); /* Зимний голубой */
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(92, 161, 74, 0.3);
   border: 2px solid white;
@@ -118,7 +118,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5CA14A, #4a8c3a);
+  background: linear-gradient(135deg, #2196F3, #1976D2); /* Зимний голубой */
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(92, 161, 74, 0.3);
   border: 2px solid white;
@@ -164,7 +164,7 @@
 .price {
   font-size: 20px;
   font-weight: 700;
-  color: #5CA14A;
+  color: #1976D2; /* Зимний синий */
 }
 
 .rateInfo {
@@ -179,7 +179,7 @@
   font-size: 16px;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #5CA14A, #4a8c3a);
+  background: linear-gradient(135deg, #2196F3, #1976D2); /* Зимний голубой */
   border: none;
   border-radius: 12px;
   cursor: pointer;
