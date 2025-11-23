@@ -7,7 +7,7 @@
   overflow-x: hidden;
 }
 
-/* Зимние снежинки на странице */
+/* Зимние снежинки на странице - зацикленные */
 .pageContainer::before {
   content: '❄';
   position: fixed;
@@ -17,6 +17,7 @@
   color: rgba(255, 255, 255, 0.8);
   animation: snowfall 15s linear infinite;
   z-index: 1;
+  pointer-events: none;
 }
 
 .pageContainer::after {
@@ -29,6 +30,7 @@
   animation: snowfall 18s linear infinite;
   animation-delay: -5s;
   z-index: 1;
+  pointer-events: none;
 }
 
 @keyframes snowfall {
@@ -37,21 +39,17 @@
     opacity: 1;
   }
   100% {
-    transform: translateY(100vh) rotate(360deg);
+    transform: translateY(calc(100vh + 50px)) rotate(360deg);
     opacity: 0;
   }
 }
 
 .header {
   height: 250px;
-  background: linear-gradient(135deg, #B3E5FC 0%, #81D4FA 50%, #4FC3F7 100%); /* Зимний голубой градиент */
-  background-image: 
-    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.3) 2px, transparent 2px),
-    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.2) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
-  background-size: 100px 100px, 80px 80px, 120px 120px;
-  background-position: 0 0, 30px 30px, 60px 60px;
-  background-blend-mode: overlay;
+  background-image: url('https://i.postimg.cc/7PFGNvRb/Gemini-Generated-Image-8bd3bh8bd3bh8bd3.webp');
+  background-size: cover;
+  background-position: center;
+  background-color: #418300;
   position: sticky;
   top: 0;
   left: 0;
@@ -242,6 +240,56 @@
   border-top-right-radius: 20px;
   box-shadow: 0px -6px 27px rgba(0, 0, 0, 0.2);
   padding: 35px 21px 21px 21px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Зимние снежинки на фоне под карточками уведомлений */
+.feedSection::before {
+  content: '❄ ❅ ❆ ❄ ❅ ❆ ❄ ❅ ❆ ❄ ❅ ❆';
+  position: absolute;
+  top: -50px;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 100px);
+  font-size: 18px;
+  color: rgba(33, 150, 243, 0.15);
+  animation: feedSnowfall 20s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  white-space: nowrap;
+  letter-spacing: 40px;
+}
+
+.feedSection::after {
+  content: '❄ ❅ ❆ ❄ ❅ ❆ ❄ ❅';
+  position: absolute;
+  top: -50px;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 100px);
+  font-size: 14px;
+  color: rgba(33, 150, 243, 0.1);
+  animation: feedSnowfall 25s linear infinite;
+  animation-delay: -8s;
+  pointer-events: none;
+  z-index: 0;
+  white-space: nowrap;
+  letter-spacing: 60px;
+}
+
+@keyframes feedSnowfall {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(calc(100% + 50px)) translateX(30px);
+    opacity: 0.1;
+  }
 }
   
 .feedTitle {
@@ -256,6 +304,8 @@
   display: grid; /* Используем grid layout */
   grid-template-columns: 1fr; /* По умолчанию одна колонка для мобильных */
   gap: 15px;
+  position: relative;
+  z-index: 1; /* Карточки поверх снега */
 }
 
 .dateHeader {
@@ -284,7 +334,8 @@
   align-items: center;
   box-sizing: border-box;
   position: relative;
-  padding-bottom: 25px; 
+  padding-bottom: 25px;
+  z-index: 1; /* Карточки поверх снега */
 }
 
 .feedItemLogo {
@@ -366,14 +417,10 @@
 /* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
 .headerDesktop {
   height: 250px;
-  background: linear-gradient(135deg, #B3E5FC 0%, #81D4FA 50%, #4FC3F7 100%); /* Зимний голубой градиент */
-  background-image: 
-    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.3) 2px, transparent 2px),
-    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.2) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
-  background-size: 100px 100px, 80px 80px, 120px 120px;
-  background-position: 0 0, 30px 30px, 60px 60px;
-  background-blend-mode: overlay;
+  background-image: url('https://i.postimg.cc/28jH8PnZ/image.webp');
+  background-size: cover;
+  background-position: center;
+  background-color: #418300;
   position: sticky;
   top: 0;
   left: 0;
