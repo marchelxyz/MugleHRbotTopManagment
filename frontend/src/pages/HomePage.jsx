@@ -7,6 +7,7 @@ import { getCachedData } from '../storage';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 // --- 1. ДОБАВЛЕН ИМПОРТ ---
 import LeaderboardBanner from '../components/LeaderboardBanner';
+import Garland from '../components/Garland';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [feed, setFeed] = useState(() => getCachedData('feed'));
@@ -102,7 +103,11 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             <div className={styles.extraSnow1}></div>
             <div className={styles.extraSnow2}></div>
             <div className={styles.extraSnow3}></div>
-            <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+            <div className={styles.headerWrapper}>
+                {/* Гирлянда */}
+                <Garland />
+                <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+            </div>
             <div className={styles.contentArea}>
                 <div className={styles.userBlock}>
                     <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
