@@ -101,6 +101,7 @@ function StatixBonusCard({ user, onPurchaseSuccess }) {
             src={statixItem.image_url} 
             alt={statixItem.name} 
             className={styles.image}
+            loading="lazy"
           />
         </div>
       )}

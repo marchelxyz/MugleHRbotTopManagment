@@ -167,7 +167,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                         <div className={styles.photoFeedTrack}>
                             {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
                                 <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
-                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
+                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage} loading="lazy"/>
                                 </div>
                             ))}
                         </div>
@@ -187,7 +187,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                         </div>
                                         {groupedFeed[dateKey].map(item => (
                                             <div key={item.id} className={styles.feedItem}>
-                                                <img src="https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp" alt="feed logo" className={styles.feedItemLogo} />
+                                                <img src="https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp" alt="feed logo" className={styles.feedItemLogo} loading="lazy" />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
                                                         @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}

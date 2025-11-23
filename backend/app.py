@@ -1,8 +1,9 @@
 # backend/app.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Абсолютные импорты (без точек)
 from database import engine, Base
@@ -16,6 +17,36 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+# Middleware для кеширования API ответов
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Определяем пути, которые нужно кешировать
+        path = request.url.path
+        
+        # Кешируем статические данные на 5 минут
+        if path.startswith('/banners') or path.startswith('/market/items') or path.startswith('/market/statix-bonus'):
+            response.headers["Cache-Control"] = "public, max-age=300"
+        # Кешируем данные лидерборда на 1 минуту
+        elif path.startswith('/leaderboard'):
+            response.headers["Cache-Control"] = "public, max-age=60"
+        # Кешируем фид транзакций на 30 секунд
+        elif path.startswith('/transactions/feed'):
+            response.headers["Cache-Control"] = "public, max-age=30"
+        # Для остальных GET запросов - короткое кеширование
+        elif request.method == "GET" and not path.startswith('/users/me') and not path.startswith('/admin'):
+            response.headers["Cache-Control"] = "public, max-age=60"
+        # Для POST/PUT/DELETE - не кешируем
+        else:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        
+        return response
+
+app.add_middleware(CacheControlMiddleware)
 
 # Настройка CORS
 origins = [
