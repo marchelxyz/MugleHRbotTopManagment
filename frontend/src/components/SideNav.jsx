@@ -20,7 +20,7 @@ function SideNav({ user, activePage, onNavigate }) {
   return (
     <div className={styles.nav}>
       <div className={styles.header}>
-        <img src="https://i.postimg.cc/YqcmJB37/лого_хр_6.webp" alt="Лого" />
+        <img src="https://i.postimg.cc/RVsHnPHk/LOGO-SP-SIN.webp" alt="Лого" />
         <span>Спасибо</span>
       </div>
       <div className={styles.menu}>
