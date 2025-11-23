@@ -62,8 +62,8 @@ function App() {
   useEffect(() => {
     tg.ready();
     tg.expand();
-    tg.setBackgroundColor('#F4F4F8');
-    tg.setHeaderColor('#408200');
+    tg.setBackgroundColor('#E8F4F8'); // Зимний фон
+    tg.setHeaderColor('#2196F3'); // Зимний голубой
     
     initializeCache();  
       

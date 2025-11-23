@@ -1,14 +1,15 @@
 /* frontend/src/components/SideNav.module.css (НОВЫЙ ФАЙЛ) */
 .nav {
   width: 240px;
-  background-color: #ffffff;
-  border-right: 1px solid #e0e0e0;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F0F8FC 100%); /* Зимний бело-голубой градиент */
+  border-right: 1px solid #BBDEFB; /* Зимняя голубая рамка */
   display: flex;
   flex-direction: column;
   height: 100vh;
   position: fixed;
   top: 0;
   left: 0;
+  box-shadow: 2px 0 10px rgba(33, 150, 243, 0.1);
 }
 
 /* Скрываем SideNav на планшетах в портретной ориентации */
@@ -21,7 +22,8 @@
   padding: 20px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #BBDEFB; /* Зимняя голубая рамка */
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); /* Зимний градиент */
 }
 .header img {
   height: 32px;
@@ -45,18 +47,19 @@
   border: none;
   background: none;
   cursor: pointer;
-  color: #333;
+  color: #1565C0; /* Зимний темно-синий */
   border-radius: 8px;
   font-size: 16px;
   text-align: left;
   transition: background-color 0.2s, color 0.2s;
 }
 .navButton.active {
-  background-color: #5CA14A;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой градиент */
   color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
 }
 .navButton:not(.active):hover {
-  background-color: #f0f0f0;
+  background-color: #E3F2FD; /* Зимний светло-голубой */
 }
 .navLabel {
   font-weight: 500;

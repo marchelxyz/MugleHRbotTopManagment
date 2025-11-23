@@ -30,7 +30,7 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 .react-datepicker__header {
-    background-color: #5CA14A;
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
     border-bottom: none;
     border-radius: 8px 8px 0 0;
 }
@@ -43,7 +43,7 @@
 .react-datepicker__day--selected,
 .react-datepicker__day--in-selecting-range,
 .react-datepicker__day--in-range {
-    background-color: #5CA14A;
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
     color: white;
     border-radius: 50%;
 }

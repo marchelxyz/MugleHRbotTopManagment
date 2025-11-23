@@ -1,26 +1,67 @@
 /* frontend/src/pages/HomePage.module.css */
 
 .pageContainer {
-  background-color: #F4F4F8;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний градиент */
   position: relative;
   padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
   overflow-x: hidden;
 }
 
+/* Зимние снежинки на странице */
+.pageContainer::before {
+  content: '❄';
+  position: fixed;
+  top: -50px;
+  left: 10%;
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.8);
+  animation: snowfall 15s linear infinite;
+  z-index: 1;
+}
+
+.pageContainer::after {
+  content: '❄';
+  position: fixed;
+  top: -50px;
+  left: 50%;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  animation: snowfall 18s linear infinite;
+  animation-delay: -5s;
+  z-index: 1;
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
 .header {
   height: 250px;
-  background-image: url('https://i.postimg.cc/rw5Vy6Vk/1.webp');
-  background-size: cover;
-  background-position: center;
+  background: linear-gradient(135deg, #B3E5FC 0%, #81D4FA 50%, #4FC3F7 100%); /* Зимний голубой градиент */
+  background-image: 
+    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.3) 2px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.2) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 100px 100px, 80px 80px, 120px 120px;
+  background-position: 0 0, 30px 30px, 60px 60px;
+  background-blend-mode: overlay;
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1;
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
 }
 
 .contentArea {
-  background-color: #F4F4F8;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   position: relative;
@@ -46,7 +87,7 @@
 .userName {
   font-family: 'Arial', sans-serif;
   font-size: 18px;
-  color: #6E7A85;
+  color: #1565C0; /* Зимний темно-синий */
   margin-left: 16px;
   flex-grow: 1;
    /* 1. Запрещаем имени переноситься на новую строку */
@@ -144,7 +185,7 @@
   bottom: 0;
   left: 0;
   width: 50px; /* Ширина области затухания */
-  background: linear-gradient(to right, #F4F4F8, transparent);
+  background: linear-gradient(to right, #E8F4F8, transparent);
   z-index: 2; /* Размещаем поверх ленты */
 }
 
@@ -156,7 +197,7 @@
   bottom: 0;
   right: 0;
   width: 50px; /* Ширина области затухания */
-  background: linear-gradient(to left, #F4F4F8, transparent);
+  background: linear-gradient(to left, #E8F4F8, transparent);
   z-index: 2; /* Размещаем поверх ленты */
 }
 
@@ -182,7 +223,7 @@
 .photoPlaceholder {
   flex: 0 0 160px;
   height: 120px;
-  background-color: #5CA14A;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
   border-radius: 20px;
   /* box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);  <-- ЭТА СТРОКА УДАЛЕНА */
   cursor: pointer;
@@ -204,7 +245,7 @@
 }
   
 .feedTitle {
-  color: #408200;
+  color: #1976D2; /* Зимний синий */
   font-family: 'Arial', sans-serif;
   font-weight: bold;
   font-size: 19px;
@@ -224,12 +265,13 @@
 }
 
 .dateHeader span {
-  background-color: #e9eef2;
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); /* Зимний голубой */
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #6E7A85;
+  color: #1565C0; /* Темно-синий текст */
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
 }
 
 .feedItem {
@@ -260,7 +302,7 @@
 
 .feedTransaction {
   font-size: 14px;
-  color: #408200;
+  color: #1976D2; /* Зимний синий */
   margin: 0;
   white-space: normal;
   word-break: break-word;
@@ -324,14 +366,20 @@
 /* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
 .headerDesktop {
   height: 250px;
-  background-image: url('https://i.postimg.cc/9MvKPMj0/image.webp'); /* <-- Новая картинка */
-  background-size: cover;
-  background-position: center;
+  background: linear-gradient(135deg, #B3E5FC 0%, #81D4FA 50%, #4FC3F7 100%); /* Зимний голубой градиент */
+  background-image: 
+    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.3) 2px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.2) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 100px 100px, 80px 80px, 120px 120px;
+  background-position: 0 0, 30px 30px, 60px 60px;
+  background-blend-mode: overlay;
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1;
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
 }
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ ДАТЫ И ВРЕМЕНИ --- */
