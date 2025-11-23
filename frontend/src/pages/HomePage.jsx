@@ -104,12 +104,12 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             <div className={styles.extraSnow2}></div>
             <div className={styles.extraSnow3}></div>
             <div className={styles.headerWrapper}>
-                {/* Гирлянда */}
-                <Garland />
                 <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
             </div>
             <div className={styles.contentArea}>
                 <div className={styles.userBlock}>
+                    {/* Гирлянда */}
+                    <Garland />
                     <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
                     <span className={styles.userName}>{user.first_name}</span>
                     <img
