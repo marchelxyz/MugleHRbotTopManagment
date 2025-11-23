@@ -20,7 +20,7 @@
   /* --- Визуальное оформление (необязательно, но красиво) --- */
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Тень для объема */
   position: relative; /* Нужно для корректной работы дочерних position: fixed */
-  background-color: #F4F4F8; /* Фоновый цвет, если основной фон body другой */
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
 }
 
 .content-scrollable {
@@ -30,9 +30,9 @@
 
 /* --- ДОБАВЬТЕ ЭТОТ СТИЛЬ В КОНЕЦ ФАЙЛА --- */
 .pending-update-banner {
-  background-color: #fffbe6; /* Светло-желтый */
-  border: 1px solid #ffe58f; /* Желтая рамка */
-  color: #594300; /* Темный текст */
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); /* Зимний голубой градиент */
+  border: 1px solid #90CAF9; /* Голубая рамка */
+  color: #1565C0; /* Темно-синий текст */
   padding: 15px;
   text-align: center;
   font-weight: 500;
@@ -41,6 +41,7 @@
   position: sticky; 
   top: 0;
   z-index: 999; /* Поверх всего */
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2); /* Легкая тень */
 }
 
 /* Общий контейнер, который теперь может быть мобильным или десктопным */
@@ -55,7 +56,7 @@
   min-height: 100vh;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
-  background-color: #F4F4F8;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
 }
 
 /* Планшетный вид (средняя ширина, по центру) */

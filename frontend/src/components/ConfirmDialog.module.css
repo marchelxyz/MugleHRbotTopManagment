@@ -59,7 +59,7 @@
 }
 
 .confirmButton {
-  background-color: #5CA14A; /* Фирменный зеленый */
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
   color: white;
 }
 

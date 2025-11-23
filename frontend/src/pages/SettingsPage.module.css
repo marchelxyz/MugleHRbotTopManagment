@@ -1,6 +1,6 @@
 /* frontend/src/pages/SettingsPage.module.css */
 
-.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }
+.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #1976D2; padding: 0; font-weight: bold; }
 
 /* Контейнер для списка опций */
 .settingsList {
@@ -49,7 +49,7 @@
 /* Стили для иконок */
 .icon {
   margin-right: 15px;
-  color: #5CA14A;
+  color: #1976D2; /* Зимний синий */
   font-size: 20px;
 }
 

@@ -29,7 +29,7 @@
   border: none;
   border-radius: 20px; /* Сделаем скругление как у других кнопок */
   /* --- ИСПРАВЛЕНИЕ: Меняем цвет --- */
-  background-color: #5CA14A; 
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */ 
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -50,7 +50,7 @@
 }
 
 /* Кнопка "Назад" */
-.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #5CA14A; padding: 0; font-weight: bold; }
+.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #1976D2; padding: 0; font-weight: bold; }
 
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
