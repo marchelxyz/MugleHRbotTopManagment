@@ -43,9 +43,9 @@ function UserSearch({ currentUser, onUserSelect }) {
     try {
       const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
       const response = await getAllUsers(telegramId);
-      // Фильтруем текущего пользователя и сортируем по имени в алфавитном порядке
+      // Фильтруем текущего пользователя и пользователей со статусом rejected, сортируем по имени в алфавитном порядке
       const users = response.data
-        .filter(u => u.id !== currentUser.id)
+        .filter(u => u.id !== currentUser.id && u.status !== 'rejected')
         .sort((a, b) => {
           const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim().toLowerCase();
           const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim().toLowerCase();

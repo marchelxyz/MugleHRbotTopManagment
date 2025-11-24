@@ -42,7 +42,9 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
     setLoading(true);
     try {
       const response = await getAllUsers();
-      setUsers(response.data);
+      // Фильтруем пользователей со статусом rejected
+      const filteredUsers = response.data.filter(user => user.status !== 'rejected');
+      setUsers(filteredUsers);
     } catch (error) {
       showAlert('Не удалось загрузить список пользователей', 'error');
     } finally {
