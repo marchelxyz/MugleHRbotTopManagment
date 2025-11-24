@@ -158,7 +158,7 @@ function RoulettePage({ user, onUpdateUser }) {
                                             <UserAvatar user={win.user} size="small" />
                                             <div className={styles.historyInfo}>
                                                 <p className={styles.winnerTransaction}>
-                                                    <strong>{win.user.first_name} {win.user.last_name}</strong>
+                                                    <strong>{win.user.first_name}</strong>
                                                 </p>
                                                 <p className={styles.winMessage}>
                                                     выиграл(а) <strong>{win.amount} спасибок</strong>

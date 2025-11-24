@@ -80,7 +80,10 @@ function UserSearch({ currentUser, onUserSelect }) {
   };
 
   const handleUserClick = (user) => {
-    setQuery(`${user.first_name} ${user.last_name}`);
+    const displayName = user.position 
+      ? `${user.first_name} • ${user.position}`
+      : user.first_name;
+    setQuery(displayName);
     setIsListVisible(false);
     setIsFocused(false);
     onUserSelect(user);
@@ -123,7 +126,7 @@ function UserSearch({ currentUser, onUserSelect }) {
               onMouseDown={(e) => e.preventDefault()} // Предотвращаем blur при клике
             >
               <div className={styles.userName}>
-                {user.first_name} {user.last_name}
+                {user.first_name}
               </div>
               {user.position && (
                 <div className={styles.userPosition}>{user.position}</div>
