@@ -7,6 +7,7 @@ import { getCachedData } from '../storage';
 import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 // --- 1. ДОБАВЛЕН ИМПОРТ ---
 import LeaderboardBanner from '../components/LeaderboardBanner';
+import Garland from '../components/Garland';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [feed, setFeed] = useState(() => getCachedData('feed'));
@@ -98,13 +99,21 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     return (
         <div className={styles.pageContainer}>
-            <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+            {/* Дополнительные слои снега */}
+            <div className={styles.extraSnow1}></div>
+            <div className={styles.extraSnow2}></div>
+            <div className={styles.extraSnow3}></div>
+            <div className={styles.headerWrapper}>
+                <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+            </div>
             <div className={styles.contentArea}>
                 <div className={styles.userBlock}>
+                    {/* Гирлянда */}
+                    <Garland />
                     <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
                     <span className={styles.userName}>{user.first_name}</span>
                     <img
-                        src="https://i.postimg.cc/ncfzjKGc/image.webp"
+                        src="https://i.postimg.cc/kgrZQyKK/knopka-otpr-sp-sinaa.webp"
                         alt="Отправить спасибки"
                         className={styles.thankYouButton}
                         onClick={() => onNavigate('transfer')}
@@ -163,7 +172,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                         <div className={styles.photoFeedTrack}>
                             {[...photoFeedBanners, ...photoFeedBanners].map((banner, index) => (
                                 <div key={`${banner.id}-${index}`} className={styles.photoPlaceholder} onClick={() => handleBannerClick(banner.link_url)}>
-                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage}/>
+                                    <img src={banner.image_url} alt="Photo feed banner" className={styles.photoFeedImage} loading="lazy"/>
                                 </div>
                             ))}
                         </div>
@@ -183,7 +192,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                         </div>
                                         {groupedFeed[dateKey].map(item => (
                                             <div key={item.id} className={styles.feedItem}>
-                                                <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="feed logo" className={styles.feedItemLogo} />
+                                                <img src="https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp" alt="feed logo" className={styles.feedItemLogo} loading="lazy" />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
                                                         @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}

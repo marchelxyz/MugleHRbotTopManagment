@@ -44,7 +44,8 @@ const PopularItemsPage = () => {
                             <img 
                                 src={item.image_url || 'https://via.placeholder.com/60/E9EEF2/6E7A85?text=...'} 
                                 alt={item.name} 
-                                className={styles.itemImage} 
+                                className={styles.itemImage}
+                                loading="lazy"
                             />
                             <div className={styles.itemInfo}>
                                 <div className={styles.itemName}>{item.name}</div>

@@ -38,7 +38,8 @@ function LeaderboardBanner({ banner, onNavigate }) {
             <img 
               src={user.telegram_photo_url || 'placeholder.png'} 
               alt={user.first_name} 
-              className={styles.podiumAvatar} 
+              className={styles.podiumAvatar}
+              loading="lazy"
             />
             <div className={styles.podiumName}>{user.first_name}</div>
             <div className={styles.podiumPoints}>{user.total_received}</div>
