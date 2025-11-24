@@ -93,18 +93,18 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
                   {user.telegram_photo_url ? (
                     <img 
                       src={user.telegram_photo_url} 
-                      alt={`${user.first_name} ${user.last_name}`}
+                      alt={user.first_name}
                       className={styles.avatarImage}
                     />
                   ) : (
                     <div className={styles.avatarPlaceholder}>
-                      {user.first_name?.[0]}{user.last_name?.[0]}
+                      {user.first_name?.[0]}
                     </div>
                   )}
                 </div>
                 <div className={styles.userInfo}>
                   <div className={styles.userName}>
-                    {user.first_name} {user.last_name}
+                    {user.first_name}
                   </div>
                   <div className={styles.userDetails}>
                     {user.position} • {user.department}
