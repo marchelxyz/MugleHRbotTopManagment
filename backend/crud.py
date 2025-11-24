@@ -132,7 +132,12 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
 
 async def get_users(db: AsyncSession):
     result = await db.execute(
-        select(models.User).where(models.User.status != 'deleted')
+        select(models.User).where(
+            and_(
+                models.User.status != 'deleted',
+                models.User.status != 'rejected'
+            )
+        )
     )
     return result.scalars().all()
 
@@ -1195,7 +1200,8 @@ async def search_users_by_name(db: AsyncSession, query: str):
                     models.User.username.ilike(search_query),
                     models.User.phone_number.ilike(search_query)
                 ),
-                models.User.status != 'deleted'  # Исключаем анонимизированных пользователей
+                models.User.status != 'deleted',  # Исключаем анонимизированных пользователей
+                models.User.status != 'rejected'  # Исключаем отклоненных пользователей
             )
         ).limit(20) # Ограничиваем вывод, чтобы не возвращать тысячи пользователей
     )
