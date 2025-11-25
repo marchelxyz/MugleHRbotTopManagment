@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllUsers, transferPoints } from '../api';
+import { formatUserName } from '../utils/nameFormatter';
 import styles from './TransferPage.module.css';
 import PageLayout from '../components/PageLayout';
 
@@ -126,7 +127,7 @@ function UserSearch({ currentUser, onUserSelect }) {
               onMouseDown={(e) => e.preventDefault()} // Предотвращаем blur при клике
             >
               <div className={styles.userName}>
-                {user.first_name}
+                {formatUserName(user.first_name, user.last_name)}
               </div>
               {user.position && (
                 <div className={styles.userPosition}>{user.position}</div>
