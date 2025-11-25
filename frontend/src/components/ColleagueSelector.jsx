@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllUsers } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
+import { formatUserName } from '../utils/nameFormatter';
 import styles from './ColleagueSelector.module.css';
 
 const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
@@ -106,7 +107,7 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
                 </div>
                 <div className={styles.userInfo}>
                   <div className={styles.userName}>
-                    {user.first_name}
+                    {formatUserName(user.first_name, user.last_name)}
                   </div>
                   <div className={styles.userDetails}>
                     {user.position} • {user.department}
