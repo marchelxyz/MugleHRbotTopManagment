@@ -195,7 +195,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                                 <img src="https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp" alt="feed logo" className={styles.feedItemLogo} loading="lazy" />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
-                                                        @{item.sender?.username || item.sender?.last_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.last_name || 'Неизвестно'}
+                                                        @{item.sender?.username || item.sender?.first_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.first_name || 'Неизвестно'}
                                                     {/* --- !!! ВОТ ИСПРАВЛЕНИЕ ОПЕЧАТКИ !!! --- */}
                                                     </p>
                                                     <p className={styles.feedMessage}>{item.amount} спасибо - {item.message}</p>
