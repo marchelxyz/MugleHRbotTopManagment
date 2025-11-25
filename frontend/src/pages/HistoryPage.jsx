@@ -39,13 +39,13 @@ function HistoryPage({ user, onBack }) {
                                     <p>
                                         <span className={styles.outgoing}>Вы отправили</span>
                                         <strong> {tx.amount} баллов</strong>
-                                        <span> {tx.receiver.first_name} {tx.receiver.last_name}</span>
+                                        <span> {tx.receiver.username ? `${tx.receiver.first_name} ${tx.receiver.last_name}` : tx.receiver.first_name}</span>
                                     </p>
                                 ) : (
                                     <p>
                                         <span className={styles.incoming}>Вы получили</span>
                                         <strong> {tx.amount} баллов</strong>
-                                        <span> от {tx.sender.first_name} {tx.sender.last_name}</span>
+                                        <span> от {tx.sender.username ? `${tx.sender.first_name} ${tx.sender.last_name}` : tx.sender.first_name}</span>
                                     </p>
                                 )}
                                 {tx.message && <p className={styles.message}>"{tx.message}"</p>}

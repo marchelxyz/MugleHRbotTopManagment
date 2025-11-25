@@ -35,7 +35,7 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
 
   const handleRequestCard = () => {
     // Формируем сообщение с данными пользователя
-    const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Не указано';
+    const userName = user.username ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : (user.first_name || 'Не указано');
     const phoneNumber = user.phone_number || 'Не указан';
     
     const message = `Здравствуйте! Мне нужна карта Statix. Мои данные для выдачи:\n1. Имя Фамилия - ${userName}\n2. Номер телефона - ${phoneNumber}`;

@@ -237,7 +237,7 @@ function UserManager() {
                     {filteredUsers.map(user => (
                         <div key={user.id} className={userManagerStyles.userItem}>
                             <div className={userManagerStyles.userInfo}>
-                                <strong>{user.first_name} {user.last_name}</strong>
+                                <strong>{user.username ? `${user.first_name} ${user.last_name}` : user.first_name}</strong>
                                 <span>@{user.username || '...'} | {user.position}</span>
                             </div>
                             <div className={userManagerStyles.userStats}>

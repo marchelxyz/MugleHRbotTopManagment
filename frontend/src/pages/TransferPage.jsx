@@ -127,7 +127,7 @@ function UserSearch({ currentUser, onUserSelect }) {
               onMouseDown={(e) => e.preventDefault()} // Предотвращаем blur при клике
             >
               <div className={styles.userName}>
-                {formatUserName(user.first_name, user.last_name)}
+                {formatUserName(user.first_name, user.last_name, user.username)}
               </div>
               {user.position && (
                 <div className={styles.userPosition}>{user.position}</div>

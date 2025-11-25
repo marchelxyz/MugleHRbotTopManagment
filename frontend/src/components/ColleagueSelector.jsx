@@ -107,7 +107,7 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
                 </div>
                 <div className={styles.userInfo}>
                   <div className={styles.userName}>
-                    {formatUserName(user.first_name, user.last_name)}
+                    {formatUserName(user.first_name, user.last_name, user.username)}
                   </div>
                   <div className={styles.userDetails}>
                     {user.position} • {user.department}
