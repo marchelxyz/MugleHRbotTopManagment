@@ -29,7 +29,7 @@ function BonusCard({ user }) {
       <div className={styles.content}>
         <div className={styles.owner}>
           <span>ВЛАДЕЛЕЦ КАРТЫ</span>
-          <strong>{user.first_name} {user.last_name}</strong>
+          <strong>{user.username ? `${user.first_name} ${user.last_name}` : user.first_name}</strong>
         </div>
         <div className={styles.barcodeWrapper}>
           {user.card_barcode && (

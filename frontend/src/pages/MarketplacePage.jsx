@@ -69,8 +69,9 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   const handleColleagueSelect = async (colleague) => {
     if (!selectedItem) return;
 
+    const colleagueName = colleague.username ? `${colleague.first_name} ${colleague.last_name}` : colleague.first_name;
     const isConfirmed = await confirm(
-      `Вы уверены, что хотите пригласить ${colleague.first_name} ${colleague.last_name} разделить "${selectedItem.name}" за ${selectedItem.price} спасибок?`
+      `Вы уверены, что хотите пригласить ${colleagueName} разделить "${selectedItem.name}" за ${selectedItem.price} спасибок?`
     );
 
     if (isConfirmed) {
@@ -81,8 +82,9 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
           item_id: selectedItem.id
         });
 
+        const colleagueName = colleague.username ? `${colleague.first_name} ${colleague.last_name}` : colleague.first_name;
         showAlert(
-          `Приглашение отправлено ${colleague.first_name} ${colleague.last_name}!`,
+          `Приглашение отправлено ${colleagueName}!`,
           'success'
         );
 

@@ -49,7 +49,7 @@ const InactiveUsersPage = () => {
                                 <UserAvatar user={user} size="medium" />
                             </div>
                             <div className={styles.userInfo}>
-                                <div className={styles.userName}>{`${user.first_name} ${user.last_name}`}</div>
+                                <div className={styles.userName}>{user.username ? `${user.first_name} ${user.last_name}` : user.first_name}</div>
                                 <div className={styles.userPosition}>{user.position}</div>
                             </div>
                         </li>
