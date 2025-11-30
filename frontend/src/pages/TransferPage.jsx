@@ -227,10 +227,21 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             rows="3"
             className={styles.textarea}
           ></textarea>
-          {message.length > 0 && message.length < MIN_MESSAGE_LENGTH && (
-            <div className={styles.messageHint}>
+          {message.length > 0 && (
+            <div className={`${styles.messageHint} ${message.length >= MIN_MESSAGE_LENGTH ? styles.messageHintSuccess : ''}`}>
               <span className={styles.messageHintText}>
-                Расскажите подробнее, за что вы благодарны коллеге
+                {message.length < MIN_MESSAGE_LENGTH ? (
+                  <>
+                    Расскажите подробнее, за что вы благодарны коллеге
+                    <span className={styles.charCounter}>
+                      {' '}({message.length} / {MIN_MESSAGE_LENGTH} символов)
+                    </span>
+                  </>
+                ) : (
+                  <span className={styles.charCounter}>
+                    {message.length} символов
+                  </span>
+                )}
               </span>
             </div>
           )}

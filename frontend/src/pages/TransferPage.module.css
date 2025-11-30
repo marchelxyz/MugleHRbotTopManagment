@@ -55,11 +55,25 @@
     animation: fadeIn 0.3s ease-in;
 }
 
+.messageHintSuccess {
+    background-color: #d4edda;
+    border-left-color: #28a745;
+}
+
+.messageHintSuccess .messageHintText {
+    color: #155724;
+}
+
 .messageHintText {
     color: #856404;
     font-size: 14px;
     line-height: 1.4;
     display: block;
+}
+
+.charCounter {
+    font-weight: 600;
+    margin-left: 4px;
 }
 
 @keyframes fadeIn {
