@@ -7,6 +7,29 @@ import styles from './BottomNav.module.css';
 
 function BottomNav({ user, activePage, onNavigate }) { 
   const [hasNavigationBar, setHasNavigationBar] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  // Отслеживаем открытие/закрытие клавиатуры
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleViewportChange = () => {
+      const viewportHeight = window.visualViewport.height;
+      const windowHeight = window.innerHeight;
+      // Если viewport значительно меньше окна, значит клавиатура открыта
+      const keyboardThreshold = 150; // Порог для определения открытия клавиатуры
+      const keyboardIsOpen = (windowHeight - viewportHeight) > keyboardThreshold;
+      setIsKeyboardOpen(keyboardIsOpen);
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+
+    return () => {
+      window.visualViewport.removeEventListener('resize', handleViewportChange);
+      window.visualViewport.removeEventListener('scroll', handleViewportChange);
+    };
+  }, []);
 
   // Отслеживаем видимость системных кнопок навигации
   useEffect(() => {
@@ -79,6 +102,11 @@ function BottomNav({ user, activePage, onNavigate }) {
     navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={22} /> });
   }
   
+ // Скрываем меню, когда открыта клавиатура
+  if (isKeyboardOpen) {
+    return null;
+  }
+
  return (
     <div 
       className={styles.nav}
