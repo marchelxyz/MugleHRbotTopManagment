@@ -1,33 +1,10 @@
 // frontend/src/components/SideNav.jsx (НОВЫЙ ФАЙЛ)
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { FaHome, FaTrophy, FaStore, FaUser, FaCog, FaDice } from 'react-icons/fa';
 import styles from './SideNav.module.css';
 
-function SideNav({ user, activePage, onNavigate }) {
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-
-  // Отслеживаем открытие/закрытие клавиатуры (для мобильных устройств)
-  useEffect(() => {
-    if (!window.visualViewport) return;
-
-    const handleViewportChange = () => {
-      const viewportHeight = window.visualViewport.height;
-      const windowHeight = window.innerHeight;
-      // Если viewport значительно меньше окна, значит клавиатура открыта
-      const keyboardThreshold = 150; // Порог для определения открытия клавиатуры
-      const keyboardIsOpen = (windowHeight - viewportHeight) > keyboardThreshold;
-      setIsKeyboardOpen(keyboardIsOpen);
-    };
-
-    window.visualViewport.addEventListener('resize', handleViewportChange);
-    window.visualViewport.addEventListener('scroll', handleViewportChange);
-
-    return () => {
-      window.visualViewport.removeEventListener('resize', handleViewportChange);
-      window.visualViewport.removeEventListener('scroll', handleViewportChange);
-    };
-  }, []); 
+function SideNav({ user, activePage, onNavigate }) { 
   const navItems = [
     { id: 'home', label: 'Лента', icon: <FaHome size={20} /> },
     { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={20} /> },
@@ -38,11 +15,6 @@ function SideNav({ user, activePage, onNavigate }) {
 
   if (user && user.is_admin) {
     navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={20} /> });
-  }
-  
-  // Скрываем меню, когда открыта клавиатура (на мобильных устройствах)
-  if (isKeyboardOpen && window.innerWidth <= 1024) {
-    return null;
   }
   
   return (
