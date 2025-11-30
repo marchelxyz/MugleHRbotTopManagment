@@ -9,6 +9,7 @@
   position: fixed;
   top: 0;
   left: 0;
+  z-index: 1; /* Низкий z-index, чтобы клавиатура была поверх меню */
   box-shadow: 2px 0 10px rgba(33, 150, 243, 0.1);
 }
 
