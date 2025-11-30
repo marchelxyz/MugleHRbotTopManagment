@@ -34,6 +34,33 @@
     resize: vertical;
 }
 
+.messageHint {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.messageHintText {
+    color: #856404;
+    font-size: 14px;
+    line-height: 1.4;
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .submitButton {
   width: 100%;
   padding: 15px;
