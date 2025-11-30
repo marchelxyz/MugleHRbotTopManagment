@@ -34,6 +34,22 @@
     resize: vertical;
 }
 
+.charCounter {
+    margin-top: 8px;
+    font-size: 14px;
+    text-align: right;
+}
+
+.charCounterWarning {
+    color: #d93025;
+    font-weight: 500;
+}
+
+.charCounterSuccess {
+    color: #1e8e3e;
+    font-weight: 500;
+}
+
 .submitButton {
   width: 100%;
   padding: 15px;

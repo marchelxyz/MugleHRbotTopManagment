@@ -152,6 +152,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const MIN_MESSAGE_LENGTH = 20;
 
   // --- ИСПРАВЛЕНИЕ №1: Проверка на наличие user для предотвращения падения ---
   if (!user) {
@@ -165,6 +166,11 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
     
     if (!receiver || !message) {
       setError('Пожалуйста, выберите получателя и напишите сообщение.');
+      return;
+    }
+    
+    if (message.trim().length < MIN_MESSAGE_LENGTH) {
+      setError(`Сообщение должно содержать минимум ${MIN_MESSAGE_LENGTH} символов (включая пробелы и знаки препинания). Сейчас: ${message.length} символов.`);
       return;
     }
     
@@ -221,8 +227,23 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             rows="3"
             className={styles.textarea}
           ></textarea>
+          <div className={styles.charCounter}>
+            {message.length < MIN_MESSAGE_LENGTH ? (
+              <span className={styles.charCounterWarning}>
+                Минимум {MIN_MESSAGE_LENGTH} символов. Сейчас: {message.length}
+              </span>
+            ) : (
+              <span className={styles.charCounterSuccess}>
+                {message.length} символов
+              </span>
+            )}
+          </div>
         </div>
-        <button type="submit" disabled={isLoading || !receiver} className={styles.submitButton}>
+        <button 
+          type="submit" 
+          disabled={isLoading || !receiver || message.trim().length < MIN_MESSAGE_LENGTH} 
+          className={styles.submitButton}
+        >
           {isLoading ? 'Отправка...' : 'Отправить спасибку'}
         </button>
         {error && <p className={styles.error}>{error}</p>}
