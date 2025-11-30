@@ -227,17 +227,13 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             rows="3"
             className={styles.textarea}
           ></textarea>
-          <div className={styles.charCounter}>
-            {message.length < MIN_MESSAGE_LENGTH ? (
-              <span className={styles.charCounterWarning}>
-                Минимум {MIN_MESSAGE_LENGTH} символов. Сейчас: {message.length}
+          {message.length > 0 && message.length < MIN_MESSAGE_LENGTH && (
+            <div className={styles.messageHint}>
+              <span className={styles.messageHintText}>
+                Расскажите подробнее, за что вы благодарны коллеге
               </span>
-            ) : (
-              <span className={styles.charCounterSuccess}>
-                {message.length} символов
-              </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <button 
           type="submit" 
