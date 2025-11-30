@@ -80,3 +80,17 @@ button:focus-visible {
 button:active {
   opacity: 0.7;
 }
+
+/* Исправление проблемы с курсором на iOS устройствах для всех textarea */
+textarea {
+  caret-color: #1976D2; /* Явно задаем цвет курсора */
+  -webkit-user-select: text; /* Разрешаем выделение текста на iOS */
+  user-select: text;
+  -webkit-appearance: none; /* Убираем стандартные стили iOS */
+  appearance: none;
+}
+
+textarea:focus {
+  outline: 2px solid #1976D2; /* Видимая рамка при фокусе для лучшей видимости */
+  outline-offset: 2px;
+}
