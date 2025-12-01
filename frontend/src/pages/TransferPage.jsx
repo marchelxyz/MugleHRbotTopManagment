@@ -220,28 +220,24 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
 
         <div className={styles.formGroup}>
           <label className={styles.label}>За что (обязательно):</label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Например, за помощь с отчетом"
-            rows="3"
-            className={styles.textarea}
-          ></textarea>
-          {message.length > 0 && (
-            <div className={`${styles.messageHint} ${message.length >= MIN_MESSAGE_LENGTH ? styles.messageHintSuccess : ''}`}>
+          <div className={styles.textareaContainer}>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Например, за помощь с отчетом"
+              rows="3"
+              className={styles.textarea}
+            ></textarea>
+            {message.length > 0 && (
+              <div className={styles.charCounter}>
+                {message.length} / {MIN_MESSAGE_LENGTH}
+              </div>
+            )}
+          </div>
+          {message.length > 0 && message.length < MIN_MESSAGE_LENGTH && (
+            <div className={styles.messageHint}>
               <span className={styles.messageHintText}>
-                {message.length < MIN_MESSAGE_LENGTH ? (
-                  <>
-                    Расскажите подробнее, за что вы благодарны коллеге
-                    <span className={styles.charCounter}>
-                      {' '}({message.length} / {MIN_MESSAGE_LENGTH} символов)
-                    </span>
-                  </>
-                ) : (
-                  <span className={styles.charCounter}>
-                    {message.length} символов
-                  </span>
-                )}
+                Расскажите подробнее, за что вы благодарны коллеге
               </span>
             </div>
           )}
