@@ -230,11 +230,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             ></textarea>
             {message.length > 0 && (
               <div className={styles.charCounter}>
-                {message.length < MIN_MESSAGE_LENGTH ? (
-                  `${message.length} / ${MIN_MESSAGE_LENGTH}`
-                ) : (
-                  `${message.length}`
-                )}
+                {message.length} / {MIN_MESSAGE_LENGTH}
               </div>
             )}
           </div>
