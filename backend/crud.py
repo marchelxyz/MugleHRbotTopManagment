@@ -844,14 +844,14 @@ async def admin_delete_item_permanently(db: AsyncSession, item_id: int):
 # --- ФУНКЦИИ ДЛЯ РУЛЕТКИ ---
 
 async def assemble_tickets(db: AsyncSession, user_id: int):
-    """Собирает части билетиков в целые билеты (2 к 1)."""
+    """Собирает части билетиков в целые билеты (4 к 1)."""
     user = await db.get(models.User, user_id)
-    if not user or user.ticket_parts < 3:
+    if not user or user.ticket_parts < 4:
         raise ValueError("Недостаточно частей для сборки билета.")
     
-    new_tickets = user.ticket_parts // 3
+    new_tickets = user.ticket_parts // 4
     user.tickets += new_tickets
-    user.ticket_parts %= 3 # Оставляем остаток (0 или 1)
+    user.ticket_parts %= 4 # Оставляем остаток (0, 1, 2 или 3)
     
     await db.commit()
     await db.refresh(user)
