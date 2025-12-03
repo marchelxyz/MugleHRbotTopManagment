@@ -44,7 +44,7 @@ function RoulettePage({ user, onUpdateUser }) {
     }, [history]);
     
     const handleAssemble = async () => {
-        if (!user || user.ticket_parts < 3) return;
+        if (!user || user.ticket_parts < 4) return;
         try {
             const response = await assembleTickets();
             onUpdateUser(response.data); // API возвращает обновленный объект user
@@ -107,7 +107,7 @@ function RoulettePage({ user, onUpdateUser }) {
                     <div className={styles.infoModal}>
                         <h3>Как работает рулетка?</h3>
                         <p>• Каждая отправка "спасибо" дает вам 1 часть билета.</p>
-                        <p>• Соберите 3 части, чтобы получить 1 билет для рулетки.</p>
+                        <p>• Соберите 4 части, чтобы получить 1 билет для рулетки.</p>
                         <p>• Чем больше выигрыш, тем ниже шанс его выпадения.</p>
                     </div>
                 )}
@@ -115,9 +115,9 @@ function RoulettePage({ user, onUpdateUser }) {
                 <div className={styles.userBalance}>
                     <div className={styles.balanceBox}>
                         <span>Части билетов</span>
-                        <strong>{user?.ticket_parts || 0} / 3</strong>
+                        <strong>{user?.ticket_parts || 0} / 4</strong>
                     </div>
-                    <button onClick={handleAssemble} disabled={!user || user.ticket_parts < 3}>Собрать</button>
+                    <button onClick={handleAssemble} disabled={!user || user.ticket_parts < 4}>Собрать</button>
                     <div className={styles.balanceBox}>
                         <FaTicketAlt />
                         <strong>{user?.tickets || 0}</strong>

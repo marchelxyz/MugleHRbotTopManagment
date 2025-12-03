@@ -7,6 +7,7 @@ import styles from './BottomNav.module.css';
 
 function BottomNav({ user, activePage, onNavigate }) { 
   const [hasNavigationBar, setHasNavigationBar] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Отслеживаем видимость системных кнопок навигации
   useEffect(() => {
@@ -67,6 +68,75 @@ function BottomNav({ user, activePage, onNavigate }) {
     };
   }, []);
 
+  // Отслеживаем появление экранной клавиатуры
+  useEffect(() => {
+    const handleViewportChange = () => {
+      if (window.visualViewport) {
+        const viewportHeight = window.visualViewport.height;
+        const windowHeight = window.innerHeight;
+        // Если высота viewport значительно меньше высоты окна, значит появилась клавиатура
+        // Порог 150px учитывает различные размеры клавиатур
+        const keyboardThreshold = 150;
+        const keyboardVisible = (windowHeight - viewportHeight) > keyboardThreshold;
+        setIsKeyboardVisible(keyboardVisible);
+      }
+    };
+
+    // Отслеживаем изменения visualViewport
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+      window.visualViewport.addEventListener('scroll', handleViewportChange);
+    }
+
+    // Также отслеживаем изменения размера окна
+    window.addEventListener('resize', handleViewportChange);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+        window.visualViewport.removeEventListener('scroll', handleViewportChange);
+      }
+      window.removeEventListener('resize', handleViewportChange);
+    };
+  }, []);
+
+  // Отслеживаем фокус на полях ввода для дополнительной надежности
+  useEffect(() => {
+    const handleFocusIn = (e) => {
+      const target = e.target;
+      // Проверяем, является ли элемент полем ввода
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.contentEditable === 'true'
+      ) {
+        setIsKeyboardVisible(true);
+      }
+    };
+
+    const handleFocusOut = (e) => {
+      // Не скрываем сразу при потере фокуса, так как клавиатура может закрываться с задержкой
+      // visualViewport API обработает это более точно
+      setTimeout(() => {
+        if (window.visualViewport) {
+          const viewportHeight = window.visualViewport.height;
+          const windowHeight = window.innerHeight;
+          const keyboardThreshold = 150;
+          const keyboardVisible = (windowHeight - viewportHeight) > keyboardThreshold;
+          setIsKeyboardVisible(keyboardVisible);
+        }
+      }, 100);
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
+
   const navItems = [
     { id: 'home', label: 'Лента', icon: <FaHome size={22} /> },
     { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={22} /> },
@@ -81,7 +151,7 @@ function BottomNav({ user, activePage, onNavigate }) {
   
  return (
     <div 
-      className={styles.nav}
+      className={`${styles.nav} ${isKeyboardVisible ? styles.hidden : ''}`}
       style={{
         paddingBottom: hasNavigationBar ? 'calc(15px + env(safe-area-inset-bottom))' : '15px'
       }}

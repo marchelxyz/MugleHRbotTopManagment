@@ -29,9 +29,75 @@
   background-color: #fff;
 }
 
+.textareaContainer {
+    position: relative;
+}
+
 .textarea {
     min-height: 100px;
     resize: vertical;
+    /* Исправление проблемы с курсором на iOS устройствах */
+    caret-color: #1976D2; /* Явно задаем цвет курсора */
+    -webkit-user-select: text; /* Разрешаем выделение текста на iOS */
+    user-select: text;
+    -webkit-appearance: none; /* Убираем стандартные стили iOS */
+    appearance: none;
+    padding-bottom: 30px; /* Добавляем отступ снизу для счетчика */
+}
+
+.textarea:focus {
+    outline: 2px solid #1976D2; /* Видимая рамка при фокусе для лучшей видимости */
+    outline-offset: 2px;
+    border-color: #1976D2;
+}
+
+.messageHint {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.messageHintSuccess {
+    background-color: #d4edda;
+    border-left-color: #28a745;
+}
+
+.messageHintSuccess .messageHintText {
+    color: #155724;
+}
+
+.messageHintText {
+    color: #856404;
+    font-size: 14px;
+    line-height: 1.4;
+    display: block;
+}
+
+.charCounter {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #666;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .submitButton {

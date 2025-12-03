@@ -213,6 +213,48 @@
   border-radius: 20px;
 }
 
+/* Стили для кнопок-стрелок переключения баннеров */
+.sliderArrowLeft,
+.sliderArrowRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.5);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  color: #1976D2;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s, transform 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  user-select: none;
+}
+
+.sliderArrowLeft:hover,
+.sliderArrowRight:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.sliderArrowLeft:active,
+.sliderArrowRight:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.sliderArrowLeft {
+  left: 10px;
+}
+
+.sliderArrowRight {
+  right: 10px;
+}
+
 .sliderTrack {
   display: flex;
   transition: margin-left 0.5s ease-in-out; /* Плавная анимация */
@@ -553,6 +595,27 @@
     overflow: hidden; 
     margin: 0 auto 50px auto; 
     max-width: 1000px;
+  }
+
+  .sliderArrowLeft,
+  .sliderArrowRight {
+    width: 35px;
+    height: 35px;
+    font-size: 20px;
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .sliderArrowLeft:hover,
+  .sliderArrowRight:hover {
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+
+  .sliderArrowLeft {
+    left: 15px;
+  }
+
+  .sliderArrowRight {
+    right: 15px;
   }
 
   .sliderTrack {

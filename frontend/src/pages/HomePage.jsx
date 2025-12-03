@@ -1,6 +1,6 @@
 // frontend/src/pages/HomePage.jsx
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getFeed, getBanners } from '../api';
 import styles from './HomePage.module.css';
 import { getCachedData } from '../storage';
@@ -14,6 +14,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [banners, setBanners] = useState(() => getCachedData('banners') || []);
     const [isLoading, setIsLoading] = useState(!feed);
     const [currentSlide, setCurrentSlide] = useState(0);
+    const autoSlideTimerRef = useRef(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -42,12 +43,46 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     const mainBanners = banners.filter(b => b.position === 'main');
 
+    // Функции для ручного переключения баннеров
+    const goToNextSlide = () => {
+        if (mainBanners.length > 1) {
+            // Очищаем таймер при ручном переключении
+            if (autoSlideTimerRef.current) {
+                clearTimeout(autoSlideTimerRef.current);
+            }
+            setCurrentSlide((prevSlide) => (prevSlide + 1) % mainBanners.length);
+        }
+    };
+
+    const goToPrevSlide = () => {
+        if (mainBanners.length > 1) {
+            // Очищаем таймер при ручном переключении
+            if (autoSlideTimerRef.current) {
+                clearTimeout(autoSlideTimerRef.current);
+            }
+            setCurrentSlide((prevSlide) => (prevSlide - 1 + mainBanners.length) % mainBanners.length);
+        }
+    };
+
+    // Автоматическое переключение баннеров
     useEffect(() => {
         if (mainBanners.length > 1) {
+            // Очищаем предыдущий таймер
+            if (autoSlideTimerRef.current) {
+                clearTimeout(autoSlideTimerRef.current);
+            }
+            
             const timer = setTimeout(() => {
                 setCurrentSlide((prevSlide) => (prevSlide + 1) % mainBanners.length);
             }, 5000);
-            return () => clearTimeout(timer);
+            
+            autoSlideTimerRef.current = timer;
+            
+            return () => {
+                if (autoSlideTimerRef.current) {
+                    clearTimeout(autoSlideTimerRef.current);
+                }
+            };
         }
     }, [currentSlide, mainBanners.length]);
 
@@ -122,6 +157,17 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
                 {mainBanners.length > 0 && (
                     <div className={styles.sliderContainer}>
+                        {/* Кнопка "Назад" */}
+                        {mainBanners.length > 1 && (
+                            <button 
+                                className={styles.sliderArrowLeft}
+                                onClick={goToPrevSlide}
+                                aria-label="Предыдущий баннер"
+                            >
+                                &#8249;
+                            </button>
+                        )}
+                        
                         <div 
                             className={styles.sliderTrack}
                             style={{ transform: getSliderTransform() }}
@@ -150,6 +196,17 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                             ))}
                         </div>
                         
+                        {/* Кнопка "Вперед" */}
+                        {mainBanners.length > 1 && (
+                            <button 
+                                className={styles.sliderArrowRight}
+                                onClick={goToNextSlide}
+                                aria-label="Следующий баннер"
+                            >
+                                &#8250;
+                            </button>
+                        )}
+                        
                         {/* (Этот блок у тебя был, он на месте) */}
                         {mainBanners.length > 1 && (
                             <div className={styles.sliderDots}>
@@ -157,7 +214,13 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                                     <div 
                                         key={index} 
                                         className={`${styles.dot} ${currentSlide === index ? styles.dotActive : ''}`}
-                                        onClick={() => setCurrentSlide(index)}
+                                        onClick={() => {
+                                            // Очищаем таймер при ручном переключении через точки
+                                            if (autoSlideTimerRef.current) {
+                                                clearTimeout(autoSlideTimerRef.current);
+                                            }
+                                            setCurrentSlide(index);
+                                        }}
                                     ></div>
                                 ))}
                             </div>

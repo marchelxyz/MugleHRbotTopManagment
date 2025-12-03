@@ -59,7 +59,7 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
           {user.balance} спасибок
         </p>
         <p className={styles.infoItem}><span className={styles.label}>Билеты для рулетки:</span> {user.tickets} шт.</p>
-        <p className={styles.infoItem}><span className={styles.label}>Части билетов:</span> {user.ticket_parts} / 3</p>
+        <p className={styles.infoItem}><span className={styles.label}>Части билетов:</span> {user.ticket_parts} / 4</p>
       </div>
 
       <div className={styles.actionsGrid}>
