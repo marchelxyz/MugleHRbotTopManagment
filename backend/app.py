@@ -40,18 +40,23 @@ async def lifespan(app: FastAPI):
         logger.info(f"✅ Папка migrations найдена: {migrations_dir}")
         
         # Создаем таблицу для отслеживания миграций
-        create_migrations_table_sql = """
+        create_table_sql = """
         CREATE TABLE IF NOT EXISTS schema_migrations (
             id SERIAL PRIMARY KEY,
             migration_name VARCHAR(255) NOT NULL UNIQUE,
             applied_at TIMESTAMP DEFAULT NOW() NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name);
+        )
+        """
+        
+        create_index_sql = """
+        CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name)
         """
         
         try:
             async with engine.begin() as conn:
-                await conn.execute(text(create_migrations_table_sql))
+                # Выполняем команды отдельно, так как asyncpg не поддерживает множественные команды в одном prepared statement
+                await conn.execute(text(create_table_sql))
+                await conn.execute(text(create_index_sql))
                 logger.info("✅ Таблица schema_migrations создана/проверена")
         except Exception as e:
             logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
