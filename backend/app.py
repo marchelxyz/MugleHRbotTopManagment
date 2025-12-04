@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
                     
                     # Разбиваем SQL на отдельные команды (asyncpg не поддерживает множественные команды в одном prepared statement)
                     def split_sql_commands(sql_text):
-                        """Разбивает SQL текст на отдельные команды, удаляя комментарии"""
+                        """Разбивает SQL текст на отдельные команды, удаляя комментарии и учитывая dollar-quoted блоки"""
                         # Удаляем многострочные комментарии /* ... */
                         sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
                         
@@ -111,8 +111,57 @@ async def lifespan(app: FastAPI):
                         # Объединяем строки обратно
                         sql_clean = ' '.join(lines)
                         
-                        # Разбиваем по точке с запятой
-                        commands = [cmd.strip() for cmd in sql_clean.split(';') if cmd.strip()]
+                        # Разбиваем по точке с запятой, учитывая dollar-quoted блоки
+                        commands = []
+                        current_command = []
+                        in_dollar_quote = False
+                        dollar_tag = None
+                        i = 0
+                        
+                        while i < len(sql_clean):
+                            # Проверяем начало dollar-quoted блока
+                            if not in_dollar_quote and sql_clean[i] == '$':
+                                # Ищем закрывающий $ для определения тега
+                                tag_start = i
+                                j = i + 1
+                                while j < len(sql_clean) and sql_clean[j] != '$':
+                                    j += 1
+                                
+                                if j < len(sql_clean):
+                                    dollar_tag = sql_clean[tag_start:j + 1]
+                                    in_dollar_quote = True
+                                    current_command.append(dollar_tag)
+                                    i = j + 1
+                                    continue
+                            
+                            # Проверяем конец dollar-quoted блока
+                            if in_dollar_quote and sql_clean[i] == '$':
+                                # Проверяем, совпадает ли тег
+                                if i + len(dollar_tag) <= len(sql_clean):
+                                    potential_tag = sql_clean[i:i + len(dollar_tag)]
+                                    if potential_tag == dollar_tag:
+                                        current_command.append(dollar_tag)
+                                        i += len(dollar_tag)
+                                        in_dollar_quote = False
+                                        dollar_tag = None
+                                        continue
+                            
+                            current_command.append(sql_clean[i])
+                            
+                            # Разбиваем по точке с запятой только если мы не внутри dollar-quoted блока
+                            if not in_dollar_quote and sql_clean[i] == ';':
+                                cmd = ''.join(current_command).strip()
+                                if cmd:
+                                    commands.append(cmd)
+                                current_command = []
+                            
+                            i += 1
+                        
+                        # Добавляем последнюю команду, если она есть
+                        if current_command:
+                            cmd = ''.join(current_command).strip()
+                            if cmd:
+                                commands.append(cmd)
                         
                         return commands
                     
