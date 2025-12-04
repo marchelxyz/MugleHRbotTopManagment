@@ -563,3 +563,44 @@ async def set_user_credentials_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Не удалось установить учетные данные"
         )
+
+# --- ЭНДПОИНТ ДЛЯ МАССОВОЙ РАССЫЛКИ УЧЕТНЫХ ДАННЫХ ---
+@router.post("/users/bulk-send-credentials", response_model=schemas.BulkSendCredentialsResponse)
+async def bulk_send_credentials_route(
+    request: schemas.BulkSendCredentialsRequest,
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Генерирует логины и пароли для пользователей и отправляет их через Telegram.
+    Можно выбрать активных и/или заблокированных пользователей.
+    """
+    try:
+        result = await crud.bulk_send_credentials(
+            db,
+            custom_message=request.message or "",
+            include_active=request.include_active,
+            include_blocked=request.include_blocked,
+            regenerate_existing=request.regenerate_existing
+        )
+        
+        return schemas.BulkSendCredentialsResponse(
+            message=f"Рассылка завершена. Сгенерировано учетных данных: {result['credentials_generated']}, отправлено сообщений: {result['messages_sent']}",
+            total_users=result['total_users'],
+            credentials_generated=result['credentials_generated'],
+            messages_sent=result['messages_sent'],
+            failed_users=result['failed_users']
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Ошибка при массовой рассылке учетных данных: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось выполнить массовую рассылку"
+        )

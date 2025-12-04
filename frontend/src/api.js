@@ -564,6 +564,16 @@ export const setUserCredentials = (userId, credentials) => {
     });
 };
 
+export const bulkSendCredentials = (requestData) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.post('/admin/users/bulk-send-credentials', requestData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
 // --- ФУНКЦИИ ДЛЯ РЕГИСТРАЦИИ В БРАУЗЕРНОМ РЕЖИМЕ ---
 export const registerBrowserUser = (userData) => {
     return apiClient.post('/auth/register', userData);

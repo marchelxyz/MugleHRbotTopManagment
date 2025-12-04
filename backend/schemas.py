@@ -361,3 +361,16 @@ class SetUserCredentialsResponse(BaseModel):
     message: str
     login: str
     user_id: int
+
+class BulkSendCredentialsRequest(BaseModel):
+    message: Optional[str] = ""  # Текстовое сообщение для рассылки
+    include_active: bool = True  # Включить активных пользователей
+    include_blocked: bool = True  # Включить заблокированных пользователей
+    regenerate_existing: bool = False  # Перегенерировать для тех, у кого уже есть логин
+
+class BulkSendCredentialsResponse(BaseModel):
+    message: str
+    total_users: int
+    credentials_generated: int
+    messages_sent: int
+    failed_users: List[int] = []
