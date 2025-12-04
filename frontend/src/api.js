@@ -342,10 +342,19 @@ export const exportAllUsers = () => {
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С СЕССИЯМИ ---
 
 export const startSession = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   // Отправляем POST-запрос для создания новой сессии
   return apiClient.post('/sessions/start', {}, {
     headers: { 'X-Telegram-Id': telegramId },
+  }).catch((error) => {
+    // Улучшаем сообщение об ошибке
+    if (error.response?.status === 422) {
+      console.warn('Ошибка валидации при создании сессии:', error.response?.data);
+    }
+    throw error;
   });
 };
 

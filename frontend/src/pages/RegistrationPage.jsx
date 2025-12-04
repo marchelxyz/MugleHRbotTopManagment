@@ -69,13 +69,13 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
       const apiDate = formatDateForApi(formData.dateOfBirth);
 
       const userData = {
-        telegram_id: String(telegramUser.id),
+        telegram_id: String(telegramUser?.id || ''),
         first_name: formData.firstName,
         last_name: formData.lastName,
         department: formData.department,
         position: formData.position,
-        username: telegramUser.username,
-        telegram_photo_url: telegramUser.photo_url || null,
+        username: telegramUser?.username || null,
+        telegram_photo_url: telegramUser?.photo_url || null,
         phone_number: formData.phoneNumber,
         date_of_birth: apiDate,
       };
@@ -98,7 +98,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   return (
     <PageLayout title="Регистрация">
       <p className={styles.subtitle}>
-        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
+        Привет, {telegramUser?.first_name || 'друг'}! Для завершения настройки, пожалуйста, укажите вашу информацию.
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />

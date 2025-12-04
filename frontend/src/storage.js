@@ -3,8 +3,9 @@
 // --- 1. ИЗМЕНЯЕМ ИМПОРТЫ: убираем старый, добавляем новый ---
 import { getFeed, getMarketItems, getLeaderboard, getUserTransactions } from './api';
 
-// Получаем доступ к API хранилища
-const storage = window.Telegram.WebApp.CloudStorage;
+// Получаем доступ к API хранилища (с проверкой поддержки)
+const storage = window.Telegram?.WebApp?.CloudStorage;
+const isCloudStorageSupported = !!storage;
 
 // Локальная переменная для мгновенного доступа после первой загрузки
 const memoryCache = {
@@ -22,6 +23,10 @@ const memoryCache = {
  */
 const getStoredValue = (key) => {
   return new Promise((resolve) => {
+    if (!isCloudStorageSupported) {
+      resolve(null);
+      return;
+    }
     storage.getItem(key, (error, value) => {
       if (error || !value) {
         resolve(null);
@@ -76,8 +81,12 @@ export const getCachedData = (key) => {
  */
 export const setCachedData = (key, data) => {
   memoryCache[key] = data;
-  if (data !== null) {
-    storage.setItem(key, JSON.stringify(data));
+  if (data !== null && isCloudStorageSupported) {
+    try {
+      storage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.warn('Не удалось сохранить в CloudStorage:', error);
+    }
   }
 };
 
@@ -100,17 +109,35 @@ export const refreshAllData = async () => {
     // Обновляем ленту
     if (feedRes.data) {
       memoryCache.feed = feedRes.data;
-      storage.setItem('feed', JSON.stringify(feedRes.data));
+      if (isCloudStorageSupported) {
+        try {
+          storage.setItem('feed', JSON.stringify(feedRes.data));
+        } catch (error) {
+          console.warn('Не удалось сохранить feed в CloudStorage:', error);
+        }
+      }
     }
     // Обновляем товары
     if (marketRes.data) {
         memoryCache.market = marketRes.data;
-        storage.setItem('market', JSON.stringify(marketRes.data));
+        if (isCloudStorageSupported) {
+          try {
+            storage.setItem('market', JSON.stringify(marketRes.data));
+          } catch (error) {
+            console.warn('Не удалось сохранить market в CloudStorage:', error);
+          }
+        }
     }
     // Обновляем лидерборд
     if (leaderboardRes.data) {
         memoryCache.leaderboard = leaderboardRes.data;
-        storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
+        if (isCloudStorageSupported) {
+          try {
+            storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
+          } catch (error) {
+            console.warn('Не удалось сохранить leaderboard в CloudStorage:', error);
+          }
+        }
     }
     console.log('All data refreshed and saved to storage.');
 

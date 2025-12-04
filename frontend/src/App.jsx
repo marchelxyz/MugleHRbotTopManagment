@@ -75,8 +75,21 @@ function App() {
     if (telegramMode && tg) {
       tg.ready();
       tg.expand();
-      tg.setBackgroundColor('#E8F4F8'); // Зимний фон
-      tg.setHeaderColor('#2196F3'); // Зимний голубой
+      // Проверяем поддержку методов перед вызовом
+      if (tg.setBackgroundColor && typeof tg.setBackgroundColor === 'function') {
+        try {
+          tg.setBackgroundColor('#E8F4F8'); // Зимний фон
+        } catch (error) {
+          console.warn('setBackgroundColor не поддерживается:', error);
+        }
+      }
+      if (tg.setHeaderColor && typeof tg.setHeaderColor === 'function') {
+        try {
+          tg.setHeaderColor('#2196F3'); // Зимний голубой
+        } catch (error) {
+          console.warn('setHeaderColor не поддерживается:', error);
+        }
+      }
       
       const telegramUser = tg.initDataUnsafe?.user;
       if (!telegramUser) {
@@ -329,8 +342,13 @@ const handleTransferSuccess = (updatedSenderData) => {
         }, PING_INTERVAL);
 
       } catch (startError) {
-        // Ошибки могут возникать, если пользователь не авторизован, это нормально
-        console.error('Не удалось запустить сессию:', startError);
+        // Ошибки могут возникать, если пользователь не авторизован или метод не поддерживается
+        // Логируем только если это не ожидаемая ошибка
+        if (startError.message !== 'Telegram ID не найден' && startError.response?.status !== 422) {
+          console.error('Не удалось запустить сессию:', startError);
+        } else {
+          console.warn('Сессия не запущена (ожидаемое поведение):', startError.message || 'Ошибка валидации');
+        }
       }
     };
 
