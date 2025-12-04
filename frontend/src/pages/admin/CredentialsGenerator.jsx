@@ -110,18 +110,29 @@ function CredentialsGenerator() {
       return;
     }
 
+    // Bcrypt имеет ограничение в 72 байта для паролей
+    // Обрезаем пароль до 72 байт, если он длиннее
+    let finalPassword = password;
+    const encoder = new TextEncoder();
+    const passwordBytes = encoder.encode(password);
+    if (passwordBytes.length > 72) {
+      const decoder = new TextDecoder('utf-8', { fatal: false });
+      const truncatedBytes = passwordBytes.slice(0, 72);
+      finalPassword = decoder.decode(truncatedBytes);
+    }
+
     setLoading(true);
     setGeneratedCredentials(null);
 
     try {
       const response = await setUserCredentials(selectedUser.id, {
         login: login.trim(),
-        password: password
+        password: finalPassword
       });
       
       setGeneratedCredentials({
         login: response.data.login,
-        password: password // Сохраняем пароль, так как он больше не будет показан
+        password: finalPassword // Сохраняем пароль, так как он больше не будет показан
       });
       
       showAlert('Учетные данные успешно установлены!', 'success');
