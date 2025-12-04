@@ -34,7 +34,8 @@ class User(Base):
     registration_date = Column(DateTime, default=func.now())
     
     # Поля для аутентификации через браузер
-    login = Column(String(255), nullable=True, unique=True) # Уникальный логин для входа в браузере
+    # ВРЕМЕННО ЗАКОММЕНТИРОВАНО: поле login отсутствует в БД, нужно применить миграцию 006_add_browser_auth.sql
+    # login = Column(String(255), nullable=True, unique=True) # Уникальный логин для входа в браузере
     password_hash = Column(String(255), nullable=True) # Хеш пароля для входа в браузере
     browser_auth_enabled = Column(Boolean, default=False, nullable=False) # Флаг, что пользователь может входить через браузер
 
