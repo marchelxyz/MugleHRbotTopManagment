@@ -96,7 +96,17 @@ function LoginPage() {
         </form>
 
         <div className={styles.footer}>
-          <p>Нет аккаунта? Обратитесь к администратору для получения доступа.</p>
+          <p>
+            Нет аккаунта?{' '}
+            <a href="/register" style={{ color: '#2196F3', textDecoration: 'none' }}>
+              Зарегистрироваться
+            </a>
+          </p>
+          <p style={{ marginTop: '10px' }}>
+            <a href="/reset-password" style={{ color: '#2196F3', textDecoration: 'none', fontSize: '14px' }}>
+              Забыли пароль?
+            </a>
+          </p>
         </div>
       </div>
     </div>

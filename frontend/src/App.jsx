@@ -11,6 +11,8 @@ import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
 import RegistrationPage from './pages/RegistrationPage';
 import LoginPage from './pages/LoginPage';
+import BrowserRegistrationPage from './pages/BrowserRegistrationPage';
+import PasswordResetPage from './pages/PasswordResetPage';
 import HomePage from './pages/HomePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
@@ -240,6 +242,17 @@ const handleTransferSuccess = (updatedSenderData) => {
   const renderPage = () => {
     if (loading) {
       return <LoadingScreen />;
+    }
+  
+    // Проверяем URL для страниц регистрации и восстановления пароля (только в браузерном режиме)
+    if (!telegramMode) {
+      const path = window.location.pathname;
+      if (path === '/register' || path === '/registration') {
+        return <BrowserRegistrationPage />;
+      }
+      if (path === '/reset-password' || path === '/forgot-password') {
+        return <PasswordResetPage />;
+      }
     }
   
     // Если браузерный режим и нет пользователя - показываем страницу входа

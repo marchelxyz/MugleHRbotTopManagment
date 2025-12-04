@@ -103,3 +103,9 @@
 .footer p {
   margin: 0;
 }
+
+.fieldError {
+  color: #C62828;
+  font-size: 12px;
+  margin-top: 4px;
+}

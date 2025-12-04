@@ -457,6 +457,28 @@ export const rejectSharedGiftInvitation = (invitationId, userId) => {
     });
 };
 
+// --- ФУНКЦИИ ДЛЯ ГЕНЕРАЦИИ УЧЕТНЫХ ДАННЫХ ---
+export const adminGenerateCredentials = (userData) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post('/admin/generate-credentials', userData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// --- ФУНКЦИИ ДЛЯ РЕГИСТРАЦИИ В БРАУЗЕРНОМ РЕЖИМЕ ---
+export const registerBrowserUser = (userData) => {
+    return apiClient.post('/auth/register', userData);
+};
+
+// --- ФУНКЦИИ ДЛЯ ВОССТАНОВЛЕНИЯ ПАРОЛЯ ---
+export const requestPasswordReset = (email) => {
+    return apiClient.post('/auth/forgot-password', { email });
+};
+
+export const resetPassword = (token, newPassword) => {
+    return apiClient.post('/auth/reset-password', { token, new_password: newPassword });
+};
+
 export const cleanupExpiredSharedGiftInvitations = () => {
     const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
     return apiClient.post('/shared-gifts/cleanup', {}, {
