@@ -11,3 +11,5 @@ pyzipper
 openpyxl
 pandas
 pytz
+python-jose[cryptography]
+passlib[bcrypt]
