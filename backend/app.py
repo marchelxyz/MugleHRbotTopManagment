@@ -12,34 +12,97 @@ from routers import users, transactions, market, admin, banners, roulette, sched
 # --- ПРАВИЛЬНЫЙ АСИНХРОННЫЙ СПОСОБ СОЗДАНИЯ ТАБЛИЦ И ПРИМЕНЕНИЯ МИГРАЦИЙ ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from pathlib import Path
+    from sqlalchemy import text, select
+    import logging
+    import sys
+    
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    
+    # Настраиваем вывод логов в консоль
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
+    
     # Создаем таблицы на основе моделей (если их еще нет)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
-    # Применяем миграции из папки migrations
-    from pathlib import Path
-    from sqlalchemy import text
-    import logging
-    
-    logger = logging.getLogger(__name__)
+    # Сначала создаем таблицу для отслеживания миграций (если её еще нет)
     migrations_dir = Path(__file__).parent / "migrations"
-    if migrations_dir.exists():
-        migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
-        if migration_files:
-            logger.info(f"🔍 Найдено {len(migration_files)} файлов миграций")
+    if not migrations_dir.exists():
+        logger.error(f"❌ Папка migrations не найдена: {migrations_dir}")
+        logger.error(f"📂 Текущая директория: {Path(__file__).parent}")
+        logger.error(f"📂 Абсолютный путь: {Path(__file__).parent.absolute()}")
+    else:
+        logger.info(f"✅ Папка migrations найдена: {migrations_dir}")
+        
+        # Создаем таблицу для отслеживания миграций
+        create_migrations_table_sql = """
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            id SERIAL PRIMARY KEY,
+            migration_name VARCHAR(255) NOT NULL UNIQUE,
+            applied_at TIMESTAMP DEFAULT NOW() NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name);
+        """
+        
+        try:
             async with engine.begin() as conn:
-                for migration_file in migration_files:
-                    try:
-                        logger.info(f"📄 Применение миграции: {migration_file.name}")
-                        with open(migration_file, 'r', encoding='utf-8') as f:
-                            migration_sql = f.read()
-                        # Миграции используют проверку существования колонок, поэтому они идемпотентны
+                await conn.execute(text(create_migrations_table_sql))
+                logger.info("✅ Таблица schema_migrations создана/проверена")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
+            raise  # Прерываем запуск, если не можем создать таблицу отслеживания
+        
+        # Получаем список уже примененных миграций
+        async with engine.connect() as conn:
+            result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
+            applied_migrations = {row[0] for row in result.fetchall()}
+            logger.info(f"📋 Уже применено миграций: {len(applied_migrations)}")
+        
+        # Применяем миграции из папки migrations
+        migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
+        
+        if not migration_files:
+            logger.warning("⚠️ Файлы миграций не найдены")
+        else:
+            logger.info(f"🔍 Найдено {len(migration_files)} файлов миграций")
+            
+            for migration_file in migration_files:
+                migration_name = migration_file.name
+                
+                # Пропускаем миграции, которые уже были применены
+                if migration_name in applied_migrations:
+                    logger.info(f"⏭️  Миграция {migration_name} уже применена, пропускаем")
+                    continue
+                
+                logger.info(f"📄 Применение миграции: {migration_name}")
+                
+                try:
+                    with open(migration_file, 'r', encoding='utf-8') as f:
+                        migration_sql = f.read()
+                    
+                    # Применяем миграцию в транзакции
+                    async with engine.begin() as conn:
+                        # Выполняем SQL миграции
                         await conn.execute(text(migration_sql))
-                        logger.info(f"✅ Миграция {migration_file.name} применена успешно")
-                    except Exception as e:
-                        # Логируем ошибку, но продолжаем работу
-                        # (миграция может быть уже применена или иметь другую ошибку)
-                        logger.warning(f"⚠️ Миграция {migration_file.name}: {e}")
+                        
+                        # Записываем факт применения миграции
+                        insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
+                        await conn.execute(insert_migration, {"name": migration_name})
+                    
+                    logger.info(f"✅ Миграция {migration_name} применена успешно")
+                    
+                except Exception as e:
+                    error_msg = f"❌ КРИТИЧЕСКАЯ ОШИБКА при применении миграции {migration_name}: {e}"
+                    logger.error(error_msg)
+                    logger.exception(e)  # Выводим полный traceback
+                    # Прерываем запуск приложения при ошибке миграции
+                    raise RuntimeError(error_msg) from e
+            
             logger.info("🎉 Применение миграций завершено")
     
     yield
