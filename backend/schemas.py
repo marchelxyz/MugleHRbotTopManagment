@@ -179,6 +179,9 @@ class AdminUserUpdate(BaseModel):
     ticket_parts: Optional[int] = None
     status: Optional[str] = None # Позволяем менять статус ('approved', 'blocked')
     is_admin: Optional[bool] = None
+    login: Optional[str] = None  # Логин для входа через браузер
+    password: Optional[str] = None  # Пароль для входа через браузер (будет захеширован)
+    browser_auth_enabled: Optional[bool] = None  # Включить/выключить браузерную аутентификацию
 
 class BannerBase(OrmBase):
 # --- ИЗМЕНЕНИЕ: Сделай image_url опциональным ---

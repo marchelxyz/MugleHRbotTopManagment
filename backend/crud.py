@@ -1221,8 +1221,10 @@ async def get_all_users_for_admin(db: AsyncSession):
 async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
     """
     Обновляет данные пользователя от имени администратора и отправляет лог.
-    (Версия с исправленной логикой сравнения)
+    (Версия с исправленной логикой сравнения и поддержкой логина/пароля)
     """
+    from utils.security import get_password_hash
+    
     user = await get_user(db, user_id)
     if not user:
         return None
@@ -1230,7 +1232,88 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
     update_data = user_data.model_dump(exclude_unset=True)
     changes_log = []
 
-    # Проходим по всем полям, которые пришли с фронтенда
+    # Обрабатываем логин отдельно (проверка уникальности)
+    if 'login' in update_data:
+        new_login = update_data.pop('login')
+        old_login = user.login
+        
+        if new_login is not None and new_login.strip():
+            new_login = new_login.strip()
+            # Валидация логина
+            if len(new_login) < 3:
+                raise ValueError("Логин должен содержать минимум 3 символа")
+            
+            # Проверяем уникальность, если логин изменился
+            if new_login != old_login:
+                result = await db.execute(
+                    select(models.User).where(
+                        models.User.login == new_login,
+                        models.User.id != user_id
+                    )
+                )
+                existing_user = result.scalar_one_or_none()
+                if existing_user:
+                    raise ValueError(f"Логин '{new_login}' уже занят другим пользователем")
+                
+                if old_login != new_login:
+                    changes_log.append(f"  - login: `{old_login or '(нет)'}` -> `{new_login}`")
+                user.login = new_login
+        elif new_login == "" or new_login is None:
+            # Удаляем логин
+            if old_login:
+                changes_log.append(f"  - login: `{old_login}` -> `(удален)`")
+            user.login = None
+            # Если удаляем логин, отключаем браузерную аутентификацию
+            if user.browser_auth_enabled:
+                user.browser_auth_enabled = False
+
+    # Обрабатываем пароль отдельно (хеширование)
+    if 'password' in update_data:
+        new_password = update_data.pop('password')
+        old_password_hash = user.password_hash
+        
+        if new_password is not None and new_password.strip():
+            new_password = new_password.strip()
+            # Валидация пароля
+            if len(new_password) < 6:
+                raise ValueError("Пароль должен содержать минимум 6 символов")
+            
+            # Хешируем пароль
+            new_password_hash = get_password_hash(new_password)
+            
+            # Сравниваем хеши (не показываем старый пароль в логе)
+            if old_password_hash != new_password_hash:
+                changes_log.append(f"  - password: `(изменен)`")
+            user.password_hash = new_password_hash
+        elif new_password == "" or new_password is None:
+            # Удаляем пароль
+            if old_password_hash:
+                changes_log.append(f"  - password: `(удален)`")
+            user.password_hash = None
+
+    # Обрабатываем browser_auth_enabled
+    if 'browser_auth_enabled' in update_data:
+        new_browser_auth = update_data.pop('browser_auth_enabled')
+        old_browser_auth = user.browser_auth_enabled
+        
+        if new_browser_auth != old_browser_auth:
+            changes_log.append(f"  - browser_auth_enabled: `{old_browser_auth}` -> `{new_browser_auth}`")
+            user.browser_auth_enabled = new_browser_auth
+            
+            # Если включаем браузерную аутентификацию, но нет логина или пароля - предупреждаем
+            if new_browser_auth and (not user.login or not user.password_hash):
+                # Не блокируем, но логируем предупреждение
+                logger.warning(f"Включена браузерная аутентификация для пользователя {user_id}, но отсутствует логин или пароль")
+
+    # Автоматически обновляем browser_auth_enabled на основе наличия логина и пароля
+    if user.login and user.password_hash and not user.browser_auth_enabled:
+        # Если есть и логин, и пароль, но браузерная аутентификация выключена - включаем
+        user.browser_auth_enabled = True
+    elif (not user.login or not user.password_hash) and user.browser_auth_enabled:
+        # Если нет логина или пароля, но браузерная аутентификация включена - выключаем
+        user.browser_auth_enabled = False
+
+    # Проходим по всем остальным полям, которые пришли с фронтенда
     for key, new_value in update_data.items():
         old_value = getattr(user, key, None)
         
