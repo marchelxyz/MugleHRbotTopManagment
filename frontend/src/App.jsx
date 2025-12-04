@@ -11,6 +11,8 @@ import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
 import RegistrationPage from './pages/RegistrationPage';
 import LoginPage from './pages/LoginPage';
+import BrowserRegistrationPage from './pages/BrowserRegistrationPage';
+import PasswordResetPage from './pages/PasswordResetPage';
 import HomePage from './pages/HomePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
@@ -75,8 +77,21 @@ function App() {
     if (telegramMode && tg) {
       tg.ready();
       tg.expand();
-      tg.setBackgroundColor('#E8F4F8'); // Зимний фон
-      tg.setHeaderColor('#2196F3'); // Зимний голубой
+      // Проверяем поддержку методов перед вызовом
+      if (tg.setBackgroundColor && typeof tg.setBackgroundColor === 'function') {
+        try {
+          tg.setBackgroundColor('#E8F4F8'); // Зимний фон
+        } catch (error) {
+          console.warn('setBackgroundColor не поддерживается:', error);
+        }
+      }
+      if (tg.setHeaderColor && typeof tg.setHeaderColor === 'function') {
+        try {
+          tg.setHeaderColor('#2196F3'); // Зимний голубой
+        } catch (error) {
+          console.warn('setHeaderColor не поддерживается:', error);
+        }
+      }
       
       const telegramUser = tg.initDataUnsafe?.user;
       if (!telegramUser) {
@@ -229,6 +244,17 @@ const handleTransferSuccess = (updatedSenderData) => {
       return <LoadingScreen />;
     }
   
+    // Проверяем URL для страниц регистрации и восстановления пароля (только в браузерном режиме)
+    if (!telegramMode) {
+      const path = window.location.pathname;
+      if (path === '/register' || path === '/registration') {
+        return <BrowserRegistrationPage />;
+      }
+      if (path === '/reset-password' || path === '/forgot-password') {
+        return <PasswordResetPage />;
+      }
+    }
+  
     // Если браузерный режим и нет пользователя - показываем страницу входа
     if (!telegramMode && !user) {
       return <LoginPage />;
@@ -329,8 +355,13 @@ const handleTransferSuccess = (updatedSenderData) => {
         }, PING_INTERVAL);
 
       } catch (startError) {
-        // Ошибки могут возникать, если пользователь не авторизован, это нормально
-        console.error('Не удалось запустить сессию:', startError);
+        // Ошибки могут возникать, если пользователь не авторизован или метод не поддерживается
+        // Логируем только если это не ожидаемая ошибка
+        if (startError.message !== 'Telegram ID не найден' && startError.response?.status !== 422) {
+          console.error('Не удалось запустить сессию:', startError);
+        } else {
+          console.warn('Сессия не запущена (ожидаемое поведение):', startError.message || 'Ошибка валидации');
+        }
       }
     };
 
