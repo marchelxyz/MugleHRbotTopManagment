@@ -3,10 +3,12 @@
 -- Описание: Добавляет поля для входа через логин/пароль в браузере
 
 -- Добавляем поле login (уникальный логин для входа в браузере)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS login VARCHAR(255) UNIQUE;
+-- Поле может быть NULL, так как не все пользователи используют вход через браузер
+ALTER TABLE users ADD COLUMN IF NOT EXISTS login VARCHAR(255) UNIQUE NULL;
 
 -- Добавляем поле password_hash (хеш пароля для входа в браузере)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+-- Поле может быть NULL, так как не все пользователи используют вход через браузер
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL;
 
 -- Добавляем поле browser_auth_enabled (флаг, что пользователь может входить через браузер)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS browser_auth_enabled BOOLEAN DEFAULT FALSE NOT NULL;
