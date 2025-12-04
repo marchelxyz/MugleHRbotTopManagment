@@ -96,3 +96,47 @@ async def complete_onboarding_route(
 ):
     """Эндпоинт для отметки о завершении просмотра обучения."""
     return await crud.mark_onboarding_as_seen(db, user_id=user.id)
+
+# --- ЭНДПОИНТ ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+@router.put("/me/credentials", response_model=schemas.UpdateMyCredentialsResponse)
+async def update_my_credentials_route(
+    request: schemas.UpdateMyCredentialsRequest,
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Изменяет логин и/или пароль текущего пользователя.
+    Требует подтверждения текущим паролем.
+    Доступно только для пользователей с браузерной аутентификацией.
+    """
+    # Проверяем, что у пользователя есть браузерная аутентификация
+    if not user.browser_auth_enabled or not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Браузерная аутентификация не включена для вашего аккаунта. Обратитесь к администратору."
+        )
+    
+    try:
+        updated_user = await crud.update_my_credentials(
+            db,
+            user=user,
+            current_password=request.current_password,
+            new_login=request.new_login,
+            new_password=request.new_password
+        )
+        
+        return schemas.UpdateMyCredentialsResponse(
+            message="Учетные данные успешно обновлены",
+            login=updated_user.login
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Ошибка при изменении учетных данных: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось изменить учетные данные"
+        )

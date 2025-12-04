@@ -553,13 +553,23 @@ export const rejectSharedGiftInvitation = (invitationId, userId) => {
     });
 };
 
-// --- ФУНКЦИИ ДЛЯ ГЕНЕРАЦИИ УЧЕТНЫХ ДАННЫХ ---
-export const adminGenerateCredentials = (userData) => {
+// --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
+export const setUserCredentials = (userId, credentials) => {
     const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!telegramId) {
       return Promise.reject(new Error('Telegram ID не найден'));
     }
-    return apiClient.post('/admin/generate-credentials', userData, {
+    return apiClient.post(`/admin/users/${userId}/set-credentials`, credentials, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const bulkSendCredentials = (requestData) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.post('/admin/users/bulk-send-credentials', requestData, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
@@ -586,4 +596,9 @@ export const cleanupExpiredSharedGiftInvitations = () => {
     return apiClient.post('/shared-gifts/cleanup', {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
+};
+
+// --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+export const updateMyCredentials = (credentialsData) => {
+    return apiClient.put('/users/me/credentials', credentialsData);
 };

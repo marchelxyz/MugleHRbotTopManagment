@@ -52,6 +52,8 @@ class UserResponse(UserBase):
     date_of_birth: Optional[date] = None
     has_seen_onboarding: bool
     has_interacted_with_bot: bool
+    browser_auth_enabled: bool = False
+    login: Optional[str] = None  # Для админки - показываем, есть ли логин
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
 
     @field_serializer('date_of_birth')
@@ -177,6 +179,9 @@ class AdminUserUpdate(BaseModel):
     ticket_parts: Optional[int] = None
     status: Optional[str] = None # Позволяем менять статус ('approved', 'blocked')
     is_admin: Optional[bool] = None
+    login: Optional[str] = None  # Логин для входа через браузер
+    password: Optional[str] = None  # Пароль для входа через браузер (будет захеширован)
+    browser_auth_enabled: Optional[bool] = None  # Включить/выключить браузерную аутентификацию
 
 class BannerBase(OrmBase):
 # --- ИЗМЕНЕНИЕ: Сделай image_url опциональным ---
@@ -349,3 +354,36 @@ class RejectSharedGiftRequest(BaseModel):
 class SharedGiftInvitationActionResponse(BaseModel):
     message: str
     new_balance: Optional[int] = None
+
+# --- СХЕМЫ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
+class SetUserCredentialsRequest(BaseModel):
+    login: str
+    password: str
+
+class SetUserCredentialsResponse(BaseModel):
+    message: str
+    login: str
+    user_id: int
+
+class BulkSendCredentialsRequest(BaseModel):
+    message: Optional[str] = ""  # Текстовое сообщение для рассылки
+    include_active: bool = True  # Включить активных пользователей
+    include_blocked: bool = True  # Включить заблокированных пользователей
+    regenerate_existing: bool = False  # Перегенерировать для тех, у кого уже есть логин
+
+class BulkSendCredentialsResponse(BaseModel):
+    message: str
+    total_users: int
+    credentials_generated: int
+    messages_sent: int
+    failed_users: List[int] = []
+
+# --- СХЕМА ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+class UpdateMyCredentialsRequest(BaseModel):
+    current_password: str  # Текущий пароль для подтверждения
+    new_login: Optional[str] = None  # Новый логин (опционально)
+    new_password: Optional[str] = None  # Новый пароль (опционально)
+
+class UpdateMyCredentialsResponse(BaseModel):
+    message: str
+    login: Optional[str] = None
