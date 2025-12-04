@@ -377,3 +377,13 @@ class BulkSendCredentialsResponse(BaseModel):
     credentials_generated: int
     messages_sent: int
     failed_users: List[int] = []
+
+# --- СХЕМА ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+class UpdateMyCredentialsRequest(BaseModel):
+    current_password: str  # Текущий пароль для подтверждения
+    new_login: Optional[str] = None  # Новый логин (опционально)
+    new_password: Optional[str] = None  # Новый пароль (опционально)
+
+class UpdateMyCredentialsResponse(BaseModel):
+    message: str
+    login: Optional[str] = None

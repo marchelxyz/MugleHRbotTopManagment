@@ -2392,6 +2392,79 @@ async def get_user_shared_gift_invitations(db: AsyncSession, user_id: int, statu
     )
     return result.scalars().all()
 
+# --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+async def update_my_credentials(
+    db: AsyncSession,
+    user: models.User,
+    current_password: str,
+    new_login: Optional[str] = None,
+    new_password: Optional[str] = None
+):
+    """
+    Изменяет логин и/или пароль пользователя.
+    Требует подтверждения текущим паролем.
+    """
+    from utils.security import verify_password, get_password_hash
+    
+    # Проверяем текущий пароль
+    if not user.password_hash:
+        raise ValueError("У вас не установлен пароль. Обратитесь к администратору.")
+    
+    if not verify_password(current_password, user.password_hash):
+        raise ValueError("Неверный текущий пароль")
+    
+    # Проверяем, что хотя бы что-то меняется
+    if not new_login and not new_password:
+        raise ValueError("Необходимо указать новый логин или пароль")
+    
+    changes = []
+    
+    # Обрабатываем изменение логина
+    if new_login is not None and new_login.strip():
+        new_login = new_login.strip()
+        
+        # Валидация логина
+        if len(new_login) < 3:
+            raise ValueError("Логин должен содержать минимум 3 символа")
+        
+        # Проверяем уникальность, если логин изменился
+        if new_login != user.login:
+            result = await db.execute(
+                select(models.User).where(
+                    models.User.login == new_login,
+                    models.User.id != user.id
+                )
+            )
+            existing_user = result.scalar_one_or_none()
+            if existing_user:
+                raise ValueError(f"Логин '{new_login}' уже занят")
+            
+            user.login = new_login
+            changes.append("логин")
+    
+    # Обрабатываем изменение пароля
+    if new_password is not None and new_password.strip():
+        new_password = new_password.strip()
+        
+        # Валидация пароля
+        if len(new_password) < 6:
+            raise ValueError("Пароль должен содержать минимум 6 символов")
+        
+        # Хешируем новый пароль
+        user.password_hash = get_password_hash(new_password)
+        changes.append("пароль")
+    
+    # Обновляем browser_auth_enabled
+    if user.login and user.password_hash:
+        user.browser_auth_enabled = True
+    else:
+        user.browser_auth_enabled = False
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
 async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
     """Очистка истекших приглашений на совместные подарки"""
     now = datetime.utcnow()

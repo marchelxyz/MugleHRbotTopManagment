@@ -597,3 +597,8 @@ export const cleanupExpiredSharedGiftInvitations = () => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+export const updateMyCredentials = (credentialsData) => {
+    return apiClient.put('/users/me/credentials', credentialsData);
+};
