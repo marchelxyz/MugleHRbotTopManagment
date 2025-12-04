@@ -357,10 +357,16 @@ const handleTransferSuccess = (updatedSenderData) => {
       } catch (startError) {
         // Ошибки могут возникать, если пользователь не авторизован или метод не поддерживается
         // Логируем только если это не ожидаемая ошибка
-        if (startError.message !== 'Telegram ID не найден' && startError.response?.status !== 422) {
+        const isExpectedError = 
+          startError.message === 'Telegram ID не найден' || 
+          startError.response?.status === 422 ||
+          startError.response?.status === 404;
+        
+        if (!isExpectedError) {
           console.error('Не удалось запустить сессию:', startError);
         } else {
-          console.warn('Сессия не запущена (ожидаемое поведение):', startError.message || 'Ошибка валидации');
+          // Тихая обработка ожидаемых ошибок (пользователь не зарегистрирован, сессия уже существует и т.д.)
+          console.debug('Сессия не запущена (ожидаемое поведение):', startError.message || `Статус ${startError.response?.status}`);
         }
       }
     };
