@@ -66,3 +66,18 @@ button:active {
   -webkit-tap-highlight-color: transparent !important;
   box-shadow: none !important;
 }
+
+/* Стиль для кнопки выхода */
+.logoutButton {
+  color: #C62828 !important;
+  border-color: #FFCDD2 !important;
+}
+
+.logoutButton .icon {
+  color: #C62828 !important;
+}
+
+.logoutButton:hover {
+  background-color: #FFEBEE !important;
+  border-color: #EF5350 !important;
+}

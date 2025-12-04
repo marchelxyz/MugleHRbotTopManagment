@@ -3,11 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { checkUserStatus, getFeed, getBanners } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
+import { isTelegramMode, getToken, getUser as getStoredUser, clearAuth } from './utils/auth';
+import axios from 'axios';
 
 // Компоненты и страницы
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
 import RegistrationPage from './pages/RegistrationPage';
+import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
@@ -33,7 +36,8 @@ import './App.css';
 const PING_INTERVAL = 60000; // Пингуем каждую минуту (60 000 миллисекунд)
 const STATUS_CHECK_INTERVAL = 5000; // Проверяем статус каждые 5 секунд (5000 миллисекунд)
 
-const tg = window.Telegram.WebApp;
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+const tg = window.Telegram?.WebApp;
 
 function App() {
   const [user, setUser] = useState(null);
@@ -45,9 +49,14 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
+  // Определяем режим работы (Telegram или браузер)
+  const telegramMode = isTelegramMode();
+  
   // Определяем, является ли устройство десктопом
   // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
-  const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024;
+  const isDesktop = telegramMode 
+    ? ['tdesktop', 'macos', 'web'].includes(tg?.platform) && windowWidth > 1024
+    : windowWidth > 1024;
   
   // Отслеживаем изменение размера окна
   useEffect(() => {
@@ -60,60 +69,120 @@ function App() {
   }, []);
 
   useEffect(() => {
-    tg.ready();
-    tg.expand();
-    tg.setBackgroundColor('#E8F4F8'); // Зимний фон
-    tg.setHeaderColor('#2196F3'); // Зимний голубой
+    initializeCache();
     
-    initializeCache();  
+    // Режим Telegram
+    if (telegramMode && tg) {
+      tg.ready();
+      tg.expand();
+      tg.setBackgroundColor('#E8F4F8'); // Зимний фон
+      tg.setHeaderColor('#2196F3'); // Зимний голубой
       
-    const telegramUser = tg.initDataUnsafe?.user;
-    if (!telegramUser) {
-      setLoading(false);
-      return;
-    }
-
-    if (telegramUser.photo_url) {
-      setTelegramPhotoUrl(telegramUser.photo_url);
-    }
-
-    const fetchUser = async () => {
-      try {
-        // Предзагружаем данные для главной страницы параллельно с проверкой пользователя
-        const [userResponse, feedResponse, bannersResponse] = await Promise.all([
-          checkUserStatus(telegramUser.id),
-          getFeed().catch(err => {
-            console.warn('Не удалось предзагрузить feed:', err);
-            return null;
-          }),
-          getBanners().catch(err => {
-            console.warn('Не удалось предзагрузить banners:', err);
-            return null;
-          })
-        ]);
-        
-        setUser(userResponse.data);
-        
-        // Сохраняем предзагруженные данные в кэш для HomePage
-        if (feedResponse?.data) {
-          setCachedData('feed', feedResponse.data);
-        }
-        if (bannersResponse?.data) {
-          setCachedData('banners', bannersResponse.data);
-        }
-      } catch (err) {
-        if (err.response && err.response.status === 404) {
-          console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
-        } else {
-          console.error(err);
-        }
-      } finally {
+      const telegramUser = tg.initDataUnsafe?.user;
+      if (!telegramUser) {
         setLoading(false);
+        return;
       }
-    };
 
-    fetchUser();
-  }, []);
+      if (telegramUser.photo_url) {
+        setTelegramPhotoUrl(telegramUser.photo_url);
+      }
+
+      const fetchUser = async () => {
+        try {
+          // Предзагружаем данные для главной страницы параллельно с проверкой пользователя
+          const [userResponse, feedResponse, bannersResponse] = await Promise.all([
+            checkUserStatus(telegramUser.id),
+            getFeed().catch(err => {
+              console.warn('Не удалось предзагрузить feed:', err);
+              return null;
+            }),
+            getBanners().catch(err => {
+              console.warn('Не удалось предзагрузить banners:', err);
+              return null;
+            })
+          ]);
+          
+          setUser(userResponse.data);
+          
+          // Сохраняем предзагруженные данные в кэш для HomePage
+          if (feedResponse?.data) {
+            setCachedData('feed', feedResponse.data);
+          }
+          if (bannersResponse?.data) {
+            setCachedData('banners', bannersResponse.data);
+          }
+        } catch (err) {
+          if (err.response && err.response.status === 404) {
+            console.log('Пользователь не зарегистрирован, показываем форму регистрации.');
+          } else {
+            console.error(err);
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchUser();
+    }
+    // Режим браузера
+    else {
+      const token = getToken();
+      
+      // Если нет токена, показываем страницу входа
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // Загружаем пользователя по токену
+      const fetchUserFromToken = async () => {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          
+          const userData = response.data;
+          setUser(userData);
+          
+          // Предзагружаем данные для главной страницы
+          try {
+            const [feedResponse, bannersResponse] = await Promise.all([
+              getFeed().catch(err => {
+                console.warn('Не удалось предзагрузить feed:', err);
+                return null;
+              }),
+              getBanners().catch(err => {
+                console.warn('Не удалось предзагрузить banners:', err);
+                return null;
+              })
+            ]);
+            
+            if (feedResponse?.data) {
+              setCachedData('feed', feedResponse.data);
+            }
+            if (bannersResponse?.data) {
+              setCachedData('banners', bannersResponse.data);
+            }
+          } catch (err) {
+            console.warn('Ошибка при предзагрузке данных:', err);
+          }
+        } catch (err) {
+          console.error('Ошибка при загрузке пользователя:', err);
+          // Если токен недействителен, очищаем его
+          if (err.response && err.response.status === 401) {
+            clearAuth();
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchUserFromToken();
+    }
+  }, [telegramMode]);
   
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
@@ -160,8 +229,18 @@ const handleTransferSuccess = (updatedSenderData) => {
       return <LoadingScreen />;
     }
   
-    if (!user) {
-      return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
+    // Если браузерный режим и нет пользователя - показываем страницу входа
+    if (!telegramMode && !user) {
+      return <LoginPage />;
+    }
+  
+    // Если Telegram режим и нет пользователя - показываем регистрацию
+    if (telegramMode && !user) {
+      const telegramUser = tg?.initDataUnsafe?.user;
+      if (telegramUser) {
+        return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
+      }
+      return <div>Ошибка: данные Telegram не найдены</div>;
     }
 
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
@@ -218,6 +297,11 @@ const handleTransferSuccess = (updatedSenderData) => {
   
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
+    // Отслеживание сессии работает только в Telegram режиме
+    if (!telegramMode || !user) {
+      return;
+    }
+
     let sessionId = null;
     let intervalId = null;
 
@@ -259,14 +343,15 @@ const handleTransferSuccess = (updatedSenderData) => {
         console.log('Отслеживание сессии остановлено.');
       }
     };
-  }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+  }, [telegramMode, user]); // Зависимость от telegramMode и user
 
-  // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
+    // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
   const statusCheckIntervalRef = useRef(null);
 
   useEffect(() => {
     // Проверяем статус только если пользователь существует и его статус 'pending'
-    if (!user || user.status !== 'pending') {
+    // И только в Telegram режиме
+    if (!telegramMode || !user || user.status !== 'pending') {
       // Очищаем интервал, если статус изменился на не-pending
       if (statusCheckIntervalRef.current) {
         clearInterval(statusCheckIntervalRef.current);
@@ -275,7 +360,7 @@ const handleTransferSuccess = (updatedSenderData) => {
       return;
     }
 
-    const telegramUser = tg.initDataUnsafe?.user;
+    const telegramUser = tg?.initDataUnsafe?.user;
     if (!telegramUser) {
       return;
     }
@@ -322,7 +407,7 @@ const handleTransferSuccess = (updatedSenderData) => {
         console.log('Автоматическая проверка статуса остановлена');
       }
     };
-  }, [user]); // Зависимость от user, чтобы перезапускать при изменении пользователя
+  }, [user, telegramMode]); // Зависимость от user и telegramMode
 
   // Создаем переменные, которые четко определяют, когда показывать меню
   const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
