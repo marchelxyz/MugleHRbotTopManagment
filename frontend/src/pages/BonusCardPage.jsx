@@ -47,8 +47,13 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
     const url = `${supportUrl}?text=${encodedMessage}`;
     
     // Используем Telegram Web App API, если доступен, иначе обычный window.open
-    if (window.Telegram?.WebApp?.openLink) {
-      window.Telegram.WebApp.openLink(url);
+    if (window.Telegram?.WebApp?.openLink && typeof window.Telegram.WebApp.openLink === 'function') {
+      try {
+        window.Telegram.WebApp.openLink(url);
+      } catch (error) {
+        console.warn('Ошибка при открытии ссылки через Telegram Web App:', error);
+        window.open(url, '_blank');
+      }
     } else {
       window.open(url, '_blank', 'noopener,noreferrer');
     }

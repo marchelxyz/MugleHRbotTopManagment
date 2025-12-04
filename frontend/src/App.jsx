@@ -75,26 +75,35 @@ function App() {
     
     // Режим Telegram
     if (telegramMode && tg) {
-      tg.ready();
-      tg.expand();
-      // Проверяем поддержку методов перед вызовом
-      if (tg.setBackgroundColor && typeof tg.setBackgroundColor === 'function') {
-        try {
-          tg.setBackgroundColor('#E8F4F8'); // Зимний фон
-        } catch (error) {
-          console.warn('setBackgroundColor не поддерживается:', error);
+      // Безопасно вызываем методы Telegram Web App
+      try {
+        if (typeof tg.ready === 'function') {
+          tg.ready();
         }
-      }
-      if (tg.setHeaderColor && typeof tg.setHeaderColor === 'function') {
-        try {
-          tg.setHeaderColor('#2196F3'); // Зимний голубой
-        } catch (error) {
-          console.warn('setHeaderColor не поддерживается:', error);
+        if (typeof tg.expand === 'function') {
+          tg.expand();
         }
+        // Проверяем поддержку методов перед вызовом
+        if (tg.setBackgroundColor && typeof tg.setBackgroundColor === 'function') {
+          try {
+            tg.setBackgroundColor('#E8F4F8'); // Зимний фон
+          } catch (error) {
+            console.warn('setBackgroundColor не поддерживается:', error);
+          }
+        }
+        if (tg.setHeaderColor && typeof tg.setHeaderColor === 'function') {
+          try {
+            tg.setHeaderColor('#2196F3'); // Зимний голубой
+          } catch (error) {
+            console.warn('setHeaderColor не поддерживается:', error);
+          }
+        }
+      } catch (error) {
+        console.warn('Ошибка при инициализации Telegram Web App:', error);
       }
       
       const telegramUser = tg.initDataUnsafe?.user;
-      if (!telegramUser) {
+      if (!telegramUser || !telegramUser.id) {
         setLoading(false);
         return;
       }
@@ -263,10 +272,17 @@ const handleTransferSuccess = (updatedSenderData) => {
     // Если Telegram режим и нет пользователя - показываем регистрацию
     if (telegramMode && !user) {
       const telegramUser = tg?.initDataUnsafe?.user;
-      if (telegramUser) {
+      // Проверяем, что telegramUser существует и имеет обязательные поля
+      if (telegramUser && telegramUser.id) {
         return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
       }
-      return <div>Ошибка: данные Telegram не найдены</div>;
+      // Если Telegram режим определен, но данные пользователя отсутствуют, показываем ошибку
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h2>Ошибка загрузки</h2>
+          <p>Данные Telegram не найдены. Пожалуйста, откройте приложение через Telegram.</p>
+        </div>
+      );
     }
 
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
