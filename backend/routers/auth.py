@@ -45,53 +45,47 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """Вход по логину и паролю."""
-    # ВРЕМЕННО ОТКЛЮЧЕНО: поле login отсутствует в БД, нужно применить миграцию 006_add_browser_auth.sql
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Аутентификация через браузер временно недоступна. Примените миграцию 006_add_browser_auth.sql"
+    # Ищем пользователя по логину
+    result = await db.execute(
+        select(models.User).where(models.User.login == request.login)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный логин или пароль"
+        )
+    
+    if not user.browser_auth_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Вход через браузер не включен для этого аккаунта"
+        )
+    
+    if not user.password_hash or not verify_password(request.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный логин или пароль"
+        )
+    
+    if user.status != 'approved':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ваш аккаунт не одобрен администратором"
+        )
+    
+    # Создаем токен
+    access_token = create_access_token(
+        data={"sub": str(user.id), "login": user.login},
+        expires_delta=timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
-    # Ищем пользователя по логину
-    # result = await db.execute(
-    #     select(models.User).where(models.User.login == request.login)
-    # )
-    # user = result.scalar_one_or_none()
-    # 
-    # if not user:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Неверный логин или пароль"
-    #     )
-    # 
-    # if not user.browser_auth_enabled:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Вход через браузер не включен для этого аккаунта"
-    #     )
-    # 
-    # if not user.password_hash or not verify_password(request.password, user.password_hash):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Неверный логин или пароль"
-    #     )
-    # 
-    # if user.status != 'approved':
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Ваш аккаунт не одобрен администратором"
-    #     )
-    # 
-    # # Создаем токен
-    # access_token = create_access_token(
-    #     data={"sub": str(user.id), "login": user.login},
-    #     expires_delta=timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    # )
-    # 
-    # return TokenResponse(
-    #     access_token=access_token,
-    #     token_type="bearer",
-    #     user=schemas.UserResponse.model_validate(user)
-    # )
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=schemas.UserResponse.model_validate(user)
+    )
 
 @router.post("/register", response_model=TokenResponse)
 async def register(
@@ -118,18 +112,17 @@ async def register(
             detail="Логин должен содержать минимум 3 символа"
         )
     
-    # ВРЕМЕННО ОТКЛЮЧЕНО: поле login отсутствует в БД
     # Проверяем, не занят ли логин
-    # result = await db.execute(
-    #     select(models.User).where(models.User.login == request.login)
-    # )
-    # existing_user = result.scalar_one_or_none()
-    # 
-    # if existing_user:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Логин уже занят"
-    #     )
+    result = await db.execute(
+        select(models.User).where(models.User.login == request.login)
+    )
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Логин уже занят"
+        )
     
     # ВАЖНО: Для регистрации через браузер нужна дополнительная логика
     # Пока что просто создаем нового пользователя с минимальными данными
@@ -177,12 +170,6 @@ async def generate_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """Генерация логина и пароля для существующего пользователя."""
-    # ВРЕМЕННО ОТКЛЮЧЕНО: поле login отсутствует в БД, нужно применить миграцию 006_add_browser_auth.sql
-    raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Генерация учетных данных временно недоступна. Примените миграцию 006_add_browser_auth.sql"
-    )
-    
     # Валидация пароля
     if len(request.password) < 6:
         raise HTTPException(
@@ -204,28 +191,27 @@ async def generate_credentials(
             detail="Пользователь не найден"
         )
     
-    # ВРЕМЕННО ОТКЛЮЧЕНО: поле login отсутствует в БД
     # Проверяем, не занят ли логин другим пользователем
-    # result = await db.execute(
-    #     select(models.User).where(
-    #         models.User.login == request.login,
-    #         models.User.id != request.user_id
-    #     )
-    # )
-    # existing_user = result.scalar_one_or_none()
-    # 
-    # if existing_user:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Логин уже занят"
-    #     )
-    # 
+    result = await db.execute(
+        select(models.User).where(
+            models.User.login == request.login,
+            models.User.id != request.user_id
+        )
+    )
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Логин уже занят"
+        )
+    
     # Устанавливаем логин и пароль
-    # user.login = request.login
-    # user.password_hash = get_password_hash(request.password)
-    # user.browser_auth_enabled = True
-    # 
-    # await db.commit()
-    # await db.refresh(user)
-    # 
-    # return schemas.UserResponse.model_validate(user)
+    user.login = request.login
+    user.password_hash = get_password_hash(request.password)
+    user.browser_auth_enabled = True
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return schemas.UserResponse.model_validate(user)
