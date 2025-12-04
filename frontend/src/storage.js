@@ -25,11 +25,17 @@ const memoryCache = {
  */
 const getStoredValue = (key) => {
   return new Promise((resolve) => {
-    if (!isCloudStorageSupported) {
+    // Проверяем поддержку CloudStorage перед использованием
+    if (!isCloudStorageSupported || !storage) {
       resolve(null);
       return;
     }
     try {
+      // Проверяем, что метод getItem существует и является функцией
+      if (typeof storage.getItem !== 'function') {
+        resolve(null);
+        return;
+      }
       storage.getItem(key, (error, value) => {
         if (error || !value) {
           resolve(null);
@@ -43,7 +49,7 @@ const getStoredValue = (key) => {
       });
     } catch (error) {
       // Если CloudStorage не поддерживается или произошла ошибка, возвращаем null
-      console.warn(`CloudStorage не поддерживается для ключа ${key}:`, error);
+      // Не логируем ошибку, так как это ожидаемое поведение вне Telegram
       resolve(null);
     }
   });
@@ -56,19 +62,24 @@ const getStoredValue = (key) => {
 export const initializeCache = async () => {
   console.log('Initializing local storage cache...');
   
-  const [feed, market, leaderboard, banners] = await Promise.all([
-    getStoredValue('feed'),
-    getStoredValue('market'),
-    getStoredValue('leaderboard'),
-    getStoredValue('banners')
-  ]);
-  
-  memoryCache.feed = feed;
-  memoryCache.market = market;
-  memoryCache.leaderboard = leaderboard;
-  memoryCache.banners = banners;
+  try {
+    const [feed, market, leaderboard, banners] = await Promise.all([
+      getStoredValue('feed').catch(() => null),
+      getStoredValue('market').catch(() => null),
+      getStoredValue('leaderboard').catch(() => null),
+      getStoredValue('banners').catch(() => null)
+    ]);
+    
+    memoryCache.feed = feed;
+    memoryCache.market = market;
+    memoryCache.leaderboard = leaderboard;
+    memoryCache.banners = banners;
 
-  console.log('Cache initialized from local storage:', memoryCache);
+    console.log('Cache initialized from local storage:', memoryCache);
+  } catch (error) {
+    // Игнорируем ошибки инициализации кэша - это не критично
+    console.debug('Cache initialization completed with warnings (expected outside Telegram)');
+  }
   
   // После инициализации, асинхронно обновляем данные с сервера
   refreshAllData();
