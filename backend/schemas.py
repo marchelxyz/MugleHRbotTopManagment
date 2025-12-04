@@ -52,6 +52,8 @@ class UserResponse(UserBase):
     date_of_birth: Optional[date] = None
     has_seen_onboarding: bool
     has_interacted_with_bot: bool
+    browser_auth_enabled: bool = False
+    login: Optional[str] = None  # Для админки - показываем, есть ли логин
     # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
 
     @field_serializer('date_of_birth')
@@ -349,3 +351,13 @@ class RejectSharedGiftRequest(BaseModel):
 class SharedGiftInvitationActionResponse(BaseModel):
     message: str
     new_balance: Optional[int] = None
+
+# --- СХЕМЫ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
+class SetUserCredentialsRequest(BaseModel):
+    login: str
+    password: str
+
+class SetUserCredentialsResponse(BaseModel):
+    message: str
+    login: str
+    user_id: int

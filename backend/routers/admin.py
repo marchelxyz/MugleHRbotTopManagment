@@ -526,3 +526,40 @@ async def trigger_leaderboard_test_banner_generation(
     except Exception as e:
         print(f"Ошибка при ручной генерации ТЕСТОВЫХ баннеров: {e}")
         raise HTTPException(status_code=500, detail="Не удалось сгенерировать тестовые баннеры")
+
+# --- ЭНДПОИНТ ДЛЯ УСТАНОВКИ ЛОГИНА И ПАРОЛЯ ПОЛЬЗОВАТЕЛЮ ---
+@router.post("/users/{user_id}/set-credentials", response_model=schemas.SetUserCredentialsResponse)
+async def set_user_credentials_route(
+    user_id: int,
+    credentials: schemas.SetUserCredentialsRequest,
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Устанавливает логин и пароль для существующего пользователя.
+    Позволяет администратору создавать учетные данные для входа через браузер.
+    """
+    try:
+        updated_user = await crud.set_user_credentials(
+            db, 
+            user_id, 
+            credentials.login, 
+            credentials.password
+        )
+        
+        return schemas.SetUserCredentialsResponse(
+            message="Учетные данные успешно установлены",
+            login=updated_user.login,
+            user_id=updated_user.id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Ошибка при установке учетных данных: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось установить учетные данные"
+        )

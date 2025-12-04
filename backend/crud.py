@@ -2353,3 +2353,46 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
     
     await db.commit()
     return len(expired_invitations)
+
+# --- ФУНКЦИЯ ДЛЯ УСТАНОВКИ ЛОГИНА И ПАРОЛЯ ПОЛЬЗОВАТЕЛЮ ---
+async def set_user_credentials(db: AsyncSession, user_id: int, login: str, password: str):
+    """
+    Устанавливает логин и пароль для пользователя.
+    Включает browser_auth_enabled для возможности входа через браузер.
+    """
+    from utils.security import get_password_hash
+    
+    # Получаем пользователя
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Валидация логина
+    if len(login) < 3:
+        raise ValueError("Логин должен содержать минимум 3 символа")
+    
+    # Валидация пароля
+    if len(password) < 6:
+        raise ValueError("Пароль должен содержать минимум 6 символов")
+    
+    # Проверяем, не занят ли логин другим пользователем
+    result = await db.execute(
+        select(models.User).where(
+            models.User.login == login,
+            models.User.id != user_id
+        )
+    )
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        raise ValueError("Логин уже занят другим пользователем")
+    
+    # Устанавливаем логин и пароль
+    user.login = login
+    user.password_hash = get_password_hash(password)
+    user.browser_auth_enabled = True
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return user

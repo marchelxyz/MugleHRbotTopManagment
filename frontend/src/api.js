@@ -553,13 +553,13 @@ export const rejectSharedGiftInvitation = (invitationId, userId) => {
     });
 };
 
-// --- ФУНКЦИИ ДЛЯ ГЕНЕРАЦИИ УЧЕТНЫХ ДАННЫХ ---
-export const adminGenerateCredentials = (userData) => {
+// --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
+export const setUserCredentials = (userId, credentials) => {
     const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!telegramId) {
       return Promise.reject(new Error('Telegram ID не найден'));
     }
-    return apiClient.post('/admin/generate-credentials', userData, {
+    return apiClient.post(`/admin/users/${userId}/set-credentials`, credentials, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
