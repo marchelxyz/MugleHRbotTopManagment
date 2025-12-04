@@ -16,13 +16,13 @@ apiClient.interceptors.request.use(
     const token = getToken();
     const isTelegram = isTelegramMode();
     
-    // Если есть JWT токен (браузерный режим), используем его
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    // Если нет токена, но есть Telegram, используем Telegram ID
-    else if (isTelegram && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+    // В Telegram режиме приоритет у Telegram ID
+    if (isTelegram && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
       config.headers['X-Telegram-Id'] = String(window.Telegram.WebApp.initDataUnsafe?.user?.id);
+    }
+    // В браузерном режиме используем JWT токен
+    else if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
@@ -85,29 +85,18 @@ export const requestProfileUpdate = (updateData) => {
 export const getFeed = () => apiClient.get('/transactions/feed');
 
 export const getLeaderboard = ({ period, type }) => {
-  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  const headers = telegramId ? { 'X-Telegram-Id': telegramId } : {};
-  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`, {
-    headers,
-  });
+  // Интерцептор автоматически добавит нужные заголовки (JWT токен или Telegram ID)
+  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`);
 };
 
 export const getMyRank = ({ period, type }) => {
-  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  if (!telegramId) {
-    return Promise.reject(new Error('Telegram ID не найден'));
-  }
-  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+  // Интерцептор автоматически добавит нужные заголовки (JWT токен или Telegram ID)
+  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`);
 };
 
 export const getLeaderboardStatus = () => {
-  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  const headers = telegramId ? { 'X-Telegram-Id': telegramId } : {};
-  return apiClient.get('/leaderboard/status', {
-    headers,
-  });
+  // Интерцептор автоматически добавит нужные заголовки (JWT токен или Telegram ID)
+  return apiClient.get('/leaderboard/status');
 };
 
 export const getMarketItems = () => apiClient.get('/market/items');
