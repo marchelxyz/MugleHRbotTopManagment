@@ -5,7 +5,9 @@ import { getFeed, getMarketItems, getLeaderboard, getUserTransactions } from './
 
 // Получаем доступ к API хранилища (с проверкой поддержки)
 const storage = window.Telegram?.WebApp?.CloudStorage;
-const isCloudStorageSupported = !!storage;
+// Проверяем не только наличие объекта, но и версию API (CloudStorage доступен с версии 6.1+)
+const webAppVersion = window.Telegram?.WebApp?.version;
+const isCloudStorageSupported = !!storage && webAppVersion && parseFloat(webAppVersion) >= 6.1;
 
 // Локальная переменная для мгновенного доступа после первой загрузки
 const memoryCache = {
@@ -27,17 +29,23 @@ const getStoredValue = (key) => {
       resolve(null);
       return;
     }
-    storage.getItem(key, (error, value) => {
-      if (error || !value) {
-        resolve(null);
-      } else {
-        try {
-          resolve(JSON.parse(value));
-        } catch (e) {
+    try {
+      storage.getItem(key, (error, value) => {
+        if (error || !value) {
           resolve(null);
+        } else {
+          try {
+            resolve(JSON.parse(value));
+          } catch (e) {
+            resolve(null);
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      // Если CloudStorage не поддерживается или произошла ошибка, возвращаем null
+      console.warn(`CloudStorage не поддерживается для ключа ${key}:`, error);
+      resolve(null);
+    }
   });
 };
 
@@ -83,7 +91,10 @@ export const setCachedData = (key, data) => {
   memoryCache[key] = data;
   if (data !== null && isCloudStorageSupported) {
     try {
-      storage.setItem(key, JSON.stringify(data));
+      // Проверяем, что метод доступен перед вызовом
+      if (storage && typeof storage.setItem === 'function') {
+        storage.setItem(key, JSON.stringify(data));
+      }
     } catch (error) {
       console.warn('Не удалось сохранить в CloudStorage:', error);
     }
@@ -109,7 +120,7 @@ export const refreshAllData = async () => {
     // Обновляем ленту
     if (feedRes.data) {
       memoryCache.feed = feedRes.data;
-      if (isCloudStorageSupported) {
+      if (isCloudStorageSupported && storage && typeof storage.setItem === 'function') {
         try {
           storage.setItem('feed', JSON.stringify(feedRes.data));
         } catch (error) {
@@ -120,7 +131,7 @@ export const refreshAllData = async () => {
     // Обновляем товары
     if (marketRes.data) {
         memoryCache.market = marketRes.data;
-        if (isCloudStorageSupported) {
+        if (isCloudStorageSupported && storage && typeof storage.setItem === 'function') {
           try {
             storage.setItem('market', JSON.stringify(marketRes.data));
           } catch (error) {
@@ -131,7 +142,7 @@ export const refreshAllData = async () => {
     // Обновляем лидерборд
     if (leaderboardRes.data) {
         memoryCache.leaderboard = leaderboardRes.data;
-        if (isCloudStorageSupported) {
+        if (isCloudStorageSupported && storage && typeof storage.setItem === 'function') {
           try {
             storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
           } catch (error) {

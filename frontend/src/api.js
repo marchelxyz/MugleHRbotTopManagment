@@ -350,9 +350,12 @@ export const startSession = () => {
   return apiClient.post('/sessions/start', {}, {
     headers: { 'X-Telegram-Id': telegramId },
   }).catch((error) => {
-    // Улучшаем сообщение об ошибке
-    if (error.response?.status === 422) {
-      console.warn('Ошибка валидации при создании сессии:', error.response?.data);
+    // Тихая обработка ожидаемых ошибок (422 - ошибка валидации, 404 - пользователь не найден)
+    // Эти ошибки не критичны и не должны прерывать работу приложения
+    if (error.response?.status === 422 || error.response?.status === 404) {
+      console.debug('Сессия не создана (ожидаемое поведение):', error.response?.status);
+    } else {
+      console.warn('Ошибка при создании сессии:', error.response?.data || error.message);
     }
     throw error;
   });
