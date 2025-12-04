@@ -4,16 +4,32 @@
 
 -- Добавляем поле login (уникальный логин для входа в браузере)
 -- Поле может быть NULL, так как не все пользователи используют вход через браузер
-ALTER TABLE users ADD COLUMN IF NOT EXISTS login VARCHAR(255) UNIQUE NULL;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='login') THEN
+        ALTER TABLE users ADD COLUMN login VARCHAR(255) NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_login_unique ON users(login) WHERE login IS NOT NULL;
+    END IF;
+END $$;
 
 -- Добавляем поле password_hash (хеш пароля для входа в браузере)
 -- Поле может быть NULL, так как не все пользователи используют вход через браузер
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password_hash') THEN
+        ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL;
+    END IF;
+END $$;
 
 -- Добавляем поле browser_auth_enabled (флаг, что пользователь может входить через браузер)
-ALTER TABLE users ADD COLUMN IF NOT EXISTS browser_auth_enabled BOOLEAN DEFAULT FALSE NOT NULL;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='browser_auth_enabled') THEN
+        ALTER TABLE users ADD COLUMN browser_auth_enabled BOOLEAN DEFAULT FALSE NOT NULL;
+    END IF;
+END $$;
 
--- Создаем индекс для быстрого поиска по логину
+-- Создаем индекс для быстрого поиска по логину (если еще не создан)
 CREATE INDEX IF NOT EXISTS idx_users_login ON users(login) WHERE login IS NOT NULL;
 
 -- Комментарии к полям
