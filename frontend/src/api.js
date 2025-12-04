@@ -1,5 +1,6 @@
 // frontend/src/api.js
 import axios from 'axios';
+import { getToken, isTelegramMode, clearAuth } from './utils/auth';
 
 // API_BASE_URL используется только для apiClient, экспортировать его не нужно
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -8,6 +9,44 @@ console.log('Using API URL:', API_BASE_URL);
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
+
+// Интерцептор для добавления токена или Telegram ID в заголовки
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    const isTelegram = isTelegramMode();
+    
+    // Если есть JWT токен (браузерный режим), используем его
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Если нет токена, но есть Telegram, используем Telegram ID
+    else if (isTelegram && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+      config.headers['X-Telegram-Id'] = String(window.Telegram.WebApp.initDataUnsafe.user.id);
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Интерцептор для обработки ошибок аутентификации
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Если получили 401 (неавторизован), очищаем токен и перезагружаем страницу
+    if (error.response && error.response.status === 401) {
+      clearAuth();
+      // Перезагружаем страницу только если не в Telegram режиме
+      if (!isTelegramMode()) {
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // --- Существующие функции (без изменений) ---
 
