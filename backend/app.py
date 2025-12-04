@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
     from sqlalchemy import text, select
     import logging
     import sys
+    import re
     
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -90,10 +91,40 @@ async def lifespan(app: FastAPI):
                     with open(migration_file, 'r', encoding='utf-8') as f:
                         migration_sql = f.read()
                     
+                    # Разбиваем SQL на отдельные команды (asyncpg не поддерживает множественные команды в одном prepared statement)
+                    def split_sql_commands(sql_text):
+                        """Разбивает SQL текст на отдельные команды, удаляя комментарии"""
+                        # Удаляем многострочные комментарии /* ... */
+                        sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
+                        
+                        # Разбиваем на строки и обрабатываем
+                        lines = []
+                        for line in sql_text.split('\n'):
+                            # Удаляем однострочные комментарии
+                            if '--' in line:
+                                line = line.split('--')[0]
+                            # Убираем пробелы в начале и конце
+                            line = line.strip()
+                            if line:
+                                lines.append(line)
+                        
+                        # Объединяем строки обратно
+                        sql_clean = ' '.join(lines)
+                        
+                        # Разбиваем по точке с запятой
+                        commands = [cmd.strip() for cmd in sql_clean.split(';') if cmd.strip()]
+                        
+                        return commands
+                    
                     # Применяем миграцию в транзакции
                     async with engine.begin() as conn:
-                        # Выполняем SQL миграции
-                        await conn.execute(text(migration_sql))
+                        # Разбиваем SQL на отдельные команды и выполняем каждую отдельно
+                        sql_commands = split_sql_commands(migration_sql)
+                        
+                        for i, sql_command in enumerate(sql_commands, 1):
+                            if sql_command.strip():
+                                logger.debug(f"  Выполнение команды {i}/{len(sql_commands)}: {sql_command[:50]}...")
+                                await conn.execute(text(sql_command))
                         
                         # Записываем факт применения миграции
                         insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
