@@ -2531,6 +2531,11 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     if len(password) < 6:
         raise ValueError("Пароль должен содержать минимум 6 символов")
     
+    # Bcrypt имеет ограничение в 72 байта для паролей
+    # Обрезаем пароль до 72 байт, если он длиннее (как в get_password_hash)
+    if len(password.encode('utf-8')) > 72:
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    
     # Проверяем, не занят ли логин другим пользователем
     result = await db.execute(
         select(models.User).where(
