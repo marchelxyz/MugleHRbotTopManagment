@@ -9,14 +9,41 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Разделение vendor и app кода для лучшего кеширования
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom'],
-          'axios-vendor': ['axios'],
+        manualChunks(id) {
+          // Разделяем node_modules на отдельные чанки
+          if (id.includes('node_modules')) {
+            // React и React DOM
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            // Lottie (большая библиотека для анимаций)
+            if (id.includes('lottie') || id.includes('react-lottie-player')) {
+              return 'lottie-vendor';
+            }
+            // Chart.js (большая библиотека для графиков)
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'chart-vendor';
+            }
+            // React Icons (может быть большим)
+            if (id.includes('react-icons')) {
+              return 'icons-vendor';
+            }
+            // React DatePicker
+            if (id.includes('react-datepicker')) {
+              return 'datepicker-vendor';
+            }
+            // Axios
+            if (id.includes('axios')) {
+              return 'axios-vendor';
+            }
+            // Остальные vendor библиотеки
+            return 'vendor';
+          }
         },
       },
     },
     // Увеличиваем размер предупреждений для больших чанков
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
   },
   // Оптимизация для продакшена
   server: {
