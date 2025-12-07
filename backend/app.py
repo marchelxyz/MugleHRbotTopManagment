@@ -2,11 +2,8 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
-from pathlib import Path
 
 # Абсолютные импорты (без точек)
 from database import engine, Base
@@ -261,37 +258,6 @@ app.include_router(telegram.router)
 app.include_router(sessions.router)
 app.include_router(shared_gifts.router)
 
-# Раздача статических файлов фронтенда (если они есть)
-static_dir = Path(__file__).parent.parent / "static"
-api_prefixes = ["/users", "/auth", "/admin", "/roulette", "/sessions", "/transactions", 
-                "/market", "/banners", "/telegram", "/shared-gifts", "/docs", "/openapi.json", "/redoc"]
-
-if static_dir.exists():
-    # Раздаем статические файлы (JS, CSS, изображения и т.д.)
-    assets_dir = static_dir / "assets"
-    if assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-    
-    # Catch-all роут для SPA: все не-API запросы возвращают index.html
-    # Этот роут должен быть зарегистрирован последним, чтобы не перехватывать API запросы
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str, request: Request):
-        # Если это API запрос, возвращаем 404 (роутеры уже обработали его выше)
-        if any(full_path.startswith(prefix) for prefix in api_prefixes):
-            return {"detail": "Not found"}
-        
-        # Проверяем, существует ли файл
-        file_path = static_dir / full_path
-        if file_path.exists() and file_path.is_file():
-            return FileResponse(str(file_path))
-        
-        # Для всех остальных путей возвращаем index.html (SPA роутинг)
-        index_path = static_dir / "index.html"
-        if index_path.exists():
-            return FileResponse(str(index_path))
-        
-        return {"detail": "Frontend not found"}
-else:
-    @app.get("/")
-    def read_root():
-        return {"message": "Welcome to the HR Spasibo API"}
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the HR Spasibo API"}
