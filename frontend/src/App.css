@@ -6,42 +6,60 @@
   min-height: 100vh;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
-  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%);
-  user-select: none;
-  -webkit-user-select: none;
+  background-color: #F4F4F8;
+
+  /* --- ДОБАВЛЯЕМ ЭТО СВОЙСТВО --- */
+  user-select: none; /* Запрещаем выделение текста */
+  -webkit-user-select: none; /* Для поддержки Safari */
+}
+  
+  /* --- Ограничение ширины --- */
+  max-width: 450px; /* Максимальная ширина, как у телефона */
+  min-height: 100vh; /* Минимальная высота на весь экран */
+  
+  /* --- Визуальное оформление (необязательно, но красиво) --- */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); /* Тень для объема */
+  position: relative; /* Нужно для корректной работы дочерних position: fixed */
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
 }
 
 .content-scrollable {
-  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  /* Отступ снизу, равный высоте меню навигации, чтобы оно не перекрывало контент */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
 }
 
+/* --- ДОБАВЬТЕ ЭТОТ СТИЛЬ В КОНЕЦ ФАЙЛА --- */
 .pending-update-banner {
-  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
-  border: 1px solid #90CAF9;
-  color: #1565C0;
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); /* Зимний голубой градиент */
+  border: 1px solid #90CAF9; /* Голубая рамка */
+  color: #1565C0; /* Темно-синий текст */
   padding: 15px;
   text-align: center;
   font-weight: 500;
   font-family: 'Inter', sans-serif;
-  position: sticky;
+  /* Делаем его "липким" к верху экрана, чтобы пользователь точно увидел */
+  position: sticky; 
   top: 0;
-  z-index: 999;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+  z-index: 999; /* Поверх всего */
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2); /* Легкая тень */
 }
 
+/* Общий контейнер, который теперь может быть мобильным или десктопным */
 .app-container {
   min-height: 100vh;
 }
 
+/* Мобильный вид (узкий, по центру) */
 .mobile-wrapper {
   margin: 0 auto;
   max-width: 450px;
   min-height: 100vh;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
-  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%);
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
 }
 
+/* Планшетный вид (средняя ширина, по центру) */
 @media (min-width: 768px) and (max-width: 1024px) {
   .app-container {
     display: flex;
@@ -49,22 +67,25 @@
   }
   
   .mobile-wrapper {
-    max-width: 600px;
+    max-width: 600px; /* Увеличиваем ширину для планшетов */
     width: 100%;
   }
   
   .desktop-wrapper {
-    margin-left: 0;
+    margin-left: 0; /* Убираем отступ для планшетов */
     max-width: 600px;
     width: 100%;
   }
 }
 
+/* Десктопный вид (широкий, с отступом слева) */
 @media (min-width: 1025px) {
   .desktop-wrapper {
-    margin-left: 240px;
+    margin-left: 240px; /* Отступ, равный ширине бокового меню */
   }
 }
+
+/* Убираем синюю разметку при фокусе и нажатии */
 button,
 button:focus,
 button:focus-visible,
