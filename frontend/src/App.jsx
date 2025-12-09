@@ -1,7 +1,7 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { checkUserStatus, getFeed, getBanners } from './api';
+import { checkUserStatus, getFeed, getBanners, setGlobalAbortController } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 import { isTelegramMode, getToken, getUser as getStoredUser, clearAuth } from './utils/auth';
 import axios from 'axios';
@@ -51,6 +51,9 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
+  // AbortController для отмены активных запросов при выходе
+  const abortControllerRef = useRef(null);
+  
   // Определяем режим работы (Telegram или браузер)
   const telegramMode = isTelegramMode();
   
@@ -69,6 +72,85 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Инициализация AbortController при монтировании
+  useEffect(() => {
+    abortControllerRef.current = new AbortController();
+    // Устанавливаем глобальный AbortController для API клиента
+    setGlobalAbortController(abortControllerRef.current);
+    
+    return () => {
+      // Отменяем все активные запросы при размонтировании
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+        setGlobalAbortController(new AbortController());
+      }
+    };
+  }, []);
+
+  // Обработчики событий для очистки ресурсов при выходе
+  useEffect(() => {
+    const cleanup = () => {
+      // Отменяем все активные запросы
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      // Очищаем все интервалы
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+        statusCheckIntervalRef.current = null;
+      }
+      if (sessionIntervalRef.current) {
+        clearInterval(sessionIntervalRef.current);
+        sessionIntervalRef.current = null;
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      cleanup();
+    };
+
+    const handleVisibilityChange = () => {
+      // Если приложение скрыто, отменяем активные запросы
+      if (document.hidden) {
+        cleanup();
+        // Создаем новый контроллер для будущих запросов (если приложение вернется)
+        abortControllerRef.current = new AbortController();
+        setGlobalAbortController(abortControllerRef.current);
+      }
+    };
+
+    // Обработчик закрытия через Telegram Web App API
+    const handleTelegramClose = () => {
+      cleanup();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Подписываемся на события Telegram Web App
+    if (telegramMode && tg) {
+      if (typeof tg.onEvent === 'function') {
+        tg.onEvent('viewportChanged', handleTelegramClose);
+      }
+      if (typeof tg.BackButton?.onClick === 'function') {
+        tg.BackButton.onClick(handleTelegramClose);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Отменяем подписки Telegram Web App
+      if (telegramMode && tg) {
+        if (typeof tg.offEvent === 'function') {
+          tg.offEvent('viewportChanged', handleTelegramClose);
+        }
+      }
+      cleanup();
+    };
+  }, [telegramMode]);
 
   useEffect(() => {
     initializeCache();
@@ -118,10 +200,18 @@ function App() {
           const [userResponse, feedResponse, bannersResponse] = await Promise.all([
             checkUserStatus(telegramUser.id),
             getFeed().catch(err => {
+              // Игнорируем ошибки отмены запросов
+              if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.message?.includes('canceled')) {
+                return null;
+              }
               console.warn('Не удалось предзагрузить feed:', err);
               return null;
             }),
             getBanners().catch(err => {
+              // Игнорируем ошибки отмены запросов
+              if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.message?.includes('canceled')) {
+                return null;
+              }
               console.warn('Не удалось предзагрузить banners:', err);
               return null;
             })
@@ -175,10 +265,18 @@ function App() {
           try {
             const [feedResponse, bannersResponse] = await Promise.all([
               getFeed().catch(err => {
+                // Игнорируем ошибки отмены запросов
+                if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.message?.includes('canceled')) {
+                  return null;
+                }
                 console.warn('Не удалось предзагрузить feed:', err);
                 return null;
               }),
               getBanners().catch(err => {
+                // Игнорируем ошибки отмены запросов
+                if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.message?.includes('canceled')) {
+                  return null;
+                }
                 console.warn('Не удалось предзагрузить banners:', err);
                 return null;
               })
@@ -345,7 +443,6 @@ const handleTransferSuccess = (updatedSenderData) => {
     }
 
     let sessionId = null;
-    let intervalId = null;
 
     const sessionManager = async () => {
       try {
@@ -355,17 +452,34 @@ const handleTransferSuccess = (updatedSenderData) => {
         console.log('Сессия успешно запущена, ID:', sessionId);
 
         // 2. Запускаем интервал, который будет "пинговать" сессию
-        intervalId = setInterval(async () => {
-          if (sessionId) {
+        sessionIntervalRef.current = setInterval(async () => {
+          if (sessionId && !abortControllerRef.current?.signal.aborted) {
             try {
               await pingSession(sessionId);
               console.log(`Пинг для сессии ${sessionId} успешен.`);
             } catch (pingError) {
+              // Игнорируем ошибки отмены запросов
+              if (pingError.name === 'AbortError' || pingError.code === 'ERR_CANCELED' || pingError.message?.includes('canceled')) {
+                if (sessionIntervalRef.current) {
+                  clearInterval(sessionIntervalRef.current);
+                  sessionIntervalRef.current = null;
+                }
+                return;
+              }
               console.error('Ошибка пинга сессии:', pingError);
               // Если сессия не найдена на сервере, прекращаем пинговать
               if (pingError.response && pingError.response.status === 404) {
-                clearInterval(intervalId);
+                if (sessionIntervalRef.current) {
+                  clearInterval(sessionIntervalRef.current);
+                  sessionIntervalRef.current = null;
+                }
               }
+            }
+          } else {
+            // Если запросы отменены, останавливаем интервал
+            if (sessionIntervalRef.current) {
+              clearInterval(sessionIntervalRef.current);
+              sessionIntervalRef.current = null;
             }
           }
         }, PING_INTERVAL);
@@ -391,15 +505,21 @@ const handleTransferSuccess = (updatedSenderData) => {
 
     // 3. Функция очистки: сработает, когда пользователь закроет приложение
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (sessionIntervalRef.current) {
+        clearInterval(sessionIntervalRef.current);
+        sessionIntervalRef.current = null;
         console.log('Отслеживание сессии остановлено.');
+      }
+      // Отменяем активные запросы сессии
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, [telegramMode, user]); // Зависимость от telegramMode и user
 
     // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
   const statusCheckIntervalRef = useRef(null);
+  const sessionIntervalRef = useRef(null);
 
   useEffect(() => {
     // Проверяем статус только если пользователь существует и его статус 'pending'
@@ -419,6 +539,15 @@ const handleTransferSuccess = (updatedSenderData) => {
     }
 
     const checkStatus = async () => {
+      // Проверяем, не отменены ли запросы
+      if (abortControllerRef.current?.signal.aborted) {
+        if (statusCheckIntervalRef.current) {
+          clearInterval(statusCheckIntervalRef.current);
+          statusCheckIntervalRef.current = null;
+        }
+        return;
+      }
+      
       try {
         const userResponse = await checkUserStatus(telegramUser.id);
         const newUserData = userResponse.data;
@@ -438,6 +567,14 @@ const handleTransferSuccess = (updatedSenderData) => {
           }
         }
       } catch (err) {
+        // Игнорируем ошибки отмены запросов
+        if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.message?.includes('canceled')) {
+          if (statusCheckIntervalRef.current) {
+            clearInterval(statusCheckIntervalRef.current);
+            statusCheckIntervalRef.current = null;
+          }
+          return;
+        }
         // При ошибке просто логируем, но продолжаем проверку
         console.warn('Ошибка при проверке статуса пользователя:', err);
       }
