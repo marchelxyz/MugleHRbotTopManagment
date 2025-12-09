@@ -3,11 +3,8 @@
 // --- 1. ИЗМЕНЯЕМ ИМПОРТЫ: убираем старый, добавляем новый ---
 import { getFeed, getMarketItems, getLeaderboard, getUserTransactions } from './api';
 
-// Получаем доступ к API хранилища (с проверкой поддержки)
-const storage = window.Telegram?.WebApp?.CloudStorage;
-// Проверяем не только наличие объекта, но и версию API (CloudStorage доступен с версии 6.1+)
-const webAppVersion = window.Telegram?.WebApp?.version;
-const isCloudStorageSupported = !!storage && webAppVersion && parseFloat(webAppVersion) >= 6.1;
+// Получаем доступ к API хранилища
+const storage = window.Telegram.WebApp.CloudStorage;
 
 // Локальная переменная для мгновенного доступа после первой загрузки
 const memoryCache = {
@@ -25,33 +22,17 @@ const memoryCache = {
  */
 const getStoredValue = (key) => {
   return new Promise((resolve) => {
-    // Проверяем поддержку CloudStorage перед использованием
-    if (!isCloudStorageSupported || !storage) {
-      resolve(null);
-      return;
-    }
-    try {
-      // Проверяем, что метод getItem существует и является функцией
-      if (typeof storage.getItem !== 'function') {
+    storage.getItem(key, (error, value) => {
+      if (error || !value) {
         resolve(null);
-        return;
-      }
-      storage.getItem(key, (error, value) => {
-        if (error || !value) {
+      } else {
+        try {
+          resolve(JSON.parse(value));
+        } catch (e) {
           resolve(null);
-        } else {
-          try {
-            resolve(JSON.parse(value));
-          } catch (e) {
-            resolve(null);
-          }
         }
-      });
-    } catch (error) {
-      // Если CloudStorage не поддерживается или произошла ошибка, возвращаем null
-      // Не логируем ошибку, так как это ожидаемое поведение вне Telegram
-      resolve(null);
-    }
+      }
+    });
   });
 };
 
@@ -62,24 +43,19 @@ const getStoredValue = (key) => {
 export const initializeCache = async () => {
   console.log('Initializing local storage cache...');
   
-  try {
-    const [feed, market, leaderboard, banners] = await Promise.all([
-      getStoredValue('feed').catch(() => null),
-      getStoredValue('market').catch(() => null),
-      getStoredValue('leaderboard').catch(() => null),
-      getStoredValue('banners').catch(() => null)
-    ]);
-    
-    memoryCache.feed = feed;
-    memoryCache.market = market;
-    memoryCache.leaderboard = leaderboard;
-    memoryCache.banners = banners;
+  const [feed, market, leaderboard, banners] = await Promise.all([
+    getStoredValue('feed'),
+    getStoredValue('market'),
+    getStoredValue('leaderboard'),
+    getStoredValue('banners')
+  ]);
+  
+  memoryCache.feed = feed;
+  memoryCache.market = market;
+  memoryCache.leaderboard = leaderboard;
+  memoryCache.banners = banners;
 
-    console.log('Cache initialized from local storage:', memoryCache);
-  } catch (error) {
-    // Игнорируем ошибки инициализации кэша - это не критично
-    console.debug('Cache initialization completed with warnings (expected outside Telegram)');
-  }
+  console.log('Cache initialized from local storage:', memoryCache);
   
   // После инициализации, асинхронно обновляем данные с сервера
   refreshAllData();
@@ -100,15 +76,8 @@ export const getCachedData = (key) => {
  */
 export const setCachedData = (key, data) => {
   memoryCache[key] = data;
-  if (data !== null && isCloudStorageSupported) {
-    try {
-      // Проверяем, что метод доступен перед вызовом
-      if (storage && typeof storage.setItem === 'function') {
-        storage.setItem(key, JSON.stringify(data));
-      }
-    } catch (error) {
-      console.warn('Не удалось сохранить в CloudStorage:', error);
-    }
+  if (data !== null) {
+    storage.setItem(key, JSON.stringify(data));
   }
 };
 
@@ -131,44 +100,21 @@ export const refreshAllData = async () => {
     // Обновляем ленту
     if (feedRes.data) {
       memoryCache.feed = feedRes.data;
-      if (isCloudStorageSupported && storage && typeof storage.setItem === 'function') {
-        try {
-          storage.setItem('feed', JSON.stringify(feedRes.data));
-        } catch (error) {
-          console.warn('Не удалось сохранить feed в CloudStorage:', error);
-        }
-      }
+      storage.setItem('feed', JSON.stringify(feedRes.data));
     }
     // Обновляем товары
     if (marketRes.data) {
         memoryCache.market = marketRes.data;
-        if (isCloudStorageSupported && storage && typeof storage.setItem === 'function') {
-          try {
-            storage.setItem('market', JSON.stringify(marketRes.data));
-          } catch (error) {
-            console.warn('Не удалось сохранить market в CloudStorage:', error);
-          }
-        }
+        storage.setItem('market', JSON.stringify(marketRes.data));
     }
     // Обновляем лидерборд
     if (leaderboardRes.data) {
         memoryCache.leaderboard = leaderboardRes.data;
-        if (isCloudStorageSupported && storage && typeof storage.setItem === 'function') {
-          try {
-            storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
-          } catch (error) {
-            console.warn('Не удалось сохранить leaderboard в CloudStorage:', error);
-          }
-        }
+        storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
     }
     console.log('All data refreshed and saved to storage.');
 
   } catch (error) {
-    // Игнорируем ошибки отмены запросов (AbortError)
-    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.message?.includes('canceled')) {
-      console.debug('Обновление данных отменено (ожидаемое поведение при выходе)');
-      return;
-    }
     console.error('Failed to refresh data:', error);
   }
 };

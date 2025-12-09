@@ -5,9 +5,6 @@
   position: relative;
   padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
   overflow-x: hidden;
-  /* Оптимизация производительности при скроллинге */
-  -webkit-overflow-scrolling: touch;
-  transform: translateZ(0);
 }
 
 /* Зимние снежинки на странице - зацикленные */
@@ -24,11 +21,6 @@
   pointer-events: none;
   white-space: nowrap;
   letter-spacing: 60px;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .pageContainer::after {
@@ -45,24 +37,19 @@
   pointer-events: none;
   white-space: nowrap;
   letter-spacing: 80px;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 @keyframes snowfall {
   0% {
-    transform: translate3d(0, 0, 0) rotate(0deg);
+    transform: translateY(0) translateX(0) rotate(0deg);
     opacity: 1;
   }
   50% {
-    transform: translate3d(20px, 50vh, 0) rotate(180deg);
+    transform: translateY(50vh) translateX(20px) rotate(180deg);
     opacity: 0.8;
   }
   100% {
-    transform: translate3d(-30px, calc(100vh + 50px), 0) rotate(360deg);
+    transform: translateY(calc(100vh + 50px)) translateX(-30px) rotate(360deg);
     opacity: 0;
   }
 }
@@ -75,11 +62,6 @@
   width: 100%;
   z-index: 1;
   pointer-events: none;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .extraSnow1::before {
@@ -94,11 +76,6 @@
   animation-delay: -2s;
   white-space: nowrap;
   letter-spacing: 70px;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .extraSnow2 {
@@ -108,11 +85,6 @@
   width: 100%;
   z-index: 1;
   pointer-events: none;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .extraSnow2::before {
@@ -127,11 +99,6 @@
   animation-delay: -7s;
   white-space: nowrap;
   letter-spacing: 55px;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .extraSnow3 {
@@ -141,11 +108,6 @@
   width: 100%;
   z-index: 1;
   pointer-events: none;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .extraSnow3::before {
@@ -160,11 +122,6 @@
   animation-delay: -10s;
   white-space: nowrap;
   letter-spacing: 90px;
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 .headerWrapper {
@@ -173,11 +130,9 @@
 
 .header {
   height: 250px;
-  min-height: 250px;
   background-image: url('https://i.postimg.cc/7PFGNvRb/Gemini-Generated-Image-8bd3bh8bd3bh8bd3.webp');
   background-size: cover;
   background-position: center;
-  background-repeat: no-repeat;
   background-color: #418300;
   position: sticky;
   top: 0;
@@ -185,22 +140,6 @@
   right: 0;
   z-index: 1;
   box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  /* Предотвращение белого квадрата при загрузке */
-  background-attachment: scroll;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  opacity: 0.99;
-  transition: opacity 0.3s ease-in;
-}
-
-.header.headerLoaded {
-  opacity: 1;
-  transition: opacity 0.3s ease-in;
 }
 
 .contentArea {
@@ -211,9 +150,6 @@
   z-index: 2;
   margin-top: -20px;
   padding-top: 30px;
-  /* Оптимизация производительности при скроллинге */
-  will-change: scroll-position;
-  transform: translateZ(0);
 }
 
 .userBlock {
@@ -321,9 +257,7 @@
 
 .sliderTrack {
   display: flex;
-  transition: transform 0.5s ease-in-out; /* Используем transform вместо margin-left для лучшей производительности */
-  will-change: transform;
-  transform: translateZ(0);
+  transition: margin-left 0.5s ease-in-out; /* Плавная анимация */
 }
 
 .slide {
@@ -335,10 +269,6 @@
   width: 100%;
   border-radius: 20px;
   display: block; /* Убирает лишний отступ у картинки */
-  /* Оптимизация производительности */
-  image-rendering: -webkit-optimize-contrast;
-  transform: translateZ(0);
-  will-change: transform;
 }
 
 .sliderDots {
@@ -439,9 +369,6 @@
   padding: 35px 21px 21px 21px;
   position: relative;
   overflow: hidden;
-  /* Оптимизация производительности */
-  transform: translateZ(0);
-  will-change: scroll-position;
 }
 
 /* Зимние снежинки на фоне под карточками уведомлений */
@@ -480,14 +407,14 @@
 
 @keyframes feedSnowfall {
   0% {
-    transform: translate3d(0, 0, 0);
+    transform: translateY(0) translateX(0);
     opacity: 0.15;
   }
   50% {
     opacity: 0.2;
   }
   100% {
-    transform: translate3d(30px, calc(100% + 50px), 0);
+    transform: translateY(calc(100% + 50px)) translateX(30px);
     opacity: 0.1;
   }
 }
@@ -617,11 +544,9 @@
 /* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
 .headerDesktop {
   height: 250px;
-  min-height: 250px;
   background-image: url('https://i.postimg.cc/HxHpsyT4/sapka-dla-pk-3-sin.webp');
   background-size: cover;
   background-position: center;
-  background-repeat: no-repeat;
   background-color: #418300;
   position: sticky;
   top: 0;
@@ -629,22 +554,6 @@
   right: 0;
   z-index: 1;
   box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
-  /* Оптимизация производительности */
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  /* Предотвращение белого квадрата при загрузке */
-  background-attachment: scroll;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  opacity: 0.99;
-  transition: opacity 0.3s ease-in;
-}
-
-.headerDesktop.headerLoaded {
-  opacity: 1;
-  transition: opacity 0.3s ease-in;
 }
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ ДАТЫ И ВРЕМЕНИ --- */
