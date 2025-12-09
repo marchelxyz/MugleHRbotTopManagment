@@ -304,7 +304,6 @@ const handleTransferSuccess = (updatedSenderData) => {
   const isUserApproved = user && user.status === 'approved';
   const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
   const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
-  
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
     // Отслеживание сессии только в Telegram WebApp
