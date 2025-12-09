@@ -63,8 +63,6 @@ function App() {
 
   useEffect(() => {
     // Инициализация Telegram WebApp только если он доступен
-    let handleVisibilityChange = null;
-    
     if (tg) {
       tg.ready();
       tg.expand();
@@ -74,115 +72,55 @@ function App() {
       // Включаем подтверждение закрытия для предотвращения случайного закрытия
       tg.enableClosingConfirmation();
       
-      // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем события activated/deactivated (Bot API 8.0+)
-      // Проверяем версию перед использованием новых событий
-      if (tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
-        // Событие activated - когда Mini App становится активной (открыта из свернутого состояния)
-        tg.onEvent('activated', () => {
-          console.log('Mini App активирована - восстанавливаем соединение');
-          try {
-            tg.expand();
-            tg.ready(); // Переподключаемся к Telegram WebApp
-            // Обновляем цвета при возврате
-            tg.setHeaderColor('#2196F3');
-            tg.setBackgroundColor('#E8F4F8');
-          } catch (error) {
-            console.error('Ошибка при активации Mini App:', error);
-          }
-        });
-        
-        // Событие deactivated - когда Mini App становится неактивной (свернута)
-        tg.onEvent('deactivated', () => {
-          console.log('Mini App деактивирована - приостанавливаем операции');
-          // Можно приостановить тяжелые операции или обновления
-        });
-      } else {
-        // Fallback для старых версий: используем браузерное событие visibilitychange
-        handleVisibilityChange = () => {
-          if (document.visibilityState === 'visible' && tg) {
-            console.log('App became visible (visibilitychange fallback), expanding and reconnecting...');
-            try {
-              tg.expand();
-              tg.ready();
-              if (tg.setHeaderColor) {
-                tg.setHeaderColor('#2196F3');
-              }
-              if (tg.setBackgroundColor) {
-                tg.setBackgroundColor('#E8F4F8');
-              }
-            } catch (error) {
-              console.error('Ошибка при переподключении после возврата из фонового режима:', error);
-            }
-          } else if (document.visibilityState === 'hidden' && tg) {
-            console.log('App became hidden (visibilitychange fallback)');
-          }
-        };
-        
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-      }
-      
-      // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем событие viewportChanged для отслеживания изменений
+      // Обработчик изменения видимости viewport (когда приложение становится видимым/невидимым)
       tg.onEvent('viewportChanged', (event) => {
         console.log('Viewport changed:', event);
-        // Когда viewport стабилизировался и приложение видимо
-        if (event.isStateStable) {
-          console.log('Viewport стабилизировался');
-          // Проверяем, активна ли Mini App (если доступно)
-          if (tg.isActive !== undefined && tg.isActive) {
-            // Можно обновить UI при необходимости
-          }
-        }
-        // Также обрабатываем случай, когда viewport становится видимым (для совместимости)
+        // Когда приложение становится видимым, убеждаемся, что оно развернуто
         if (event.isStateVisible) {
           console.log('Viewport стал видимым, разворачиваем приложение...');
           tg.expand();
-          tg.ready();
+          tg.ready(); // Переподключаемся
         }
       });
       
-      // Обработчик изменения видимости (для мобильных устройств) - дополнительная поддержка
-      if (tg.onEvent) {
-        tg.onEvent('visibilityChanged', (event) => {
-          console.log('Visibility changed:', event);
-          // Когда приложение становится видимым, убеждаемся, что оно развернуто
-          if (event.isVisible) {
-            console.log('Приложение стало видимым, разворачиваем...');
-            tg.expand();
-            tg.ready(); // Переподключаемся
-          } else {
-            console.log('Приложение стало невидимым');
-          }
-        });
-      }
+      // Обработчик изменения видимости (для мобильных устройств)
+      tg.onEvent('visibilityChanged', (event) => {
+        console.log('Visibility changed:', event);
+        // Когда приложение становится видимым, убеждаемся, что оно развернуто
+        if (event.isVisible) {
+          console.log('Приложение стало видимым, разворачиваем...');
+          tg.expand();
+          tg.ready(); // Переподключаемся
+        } else {
+          console.log('Приложение стало невидимым');
+        }
+      });
     }
     
     // Обработчик события visibilitychange для браузера (fallback)
-    // Используется только если не был установлен выше (для старых версий API)
-    if (!handleVisibilityChange) {
-      handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible' && tg) {
-          console.log('App became visible (visibilitychange), expanding and reconnecting...');
-          // Агрессивно переподключаемся при возврате из фонового режима
-          try {
-            tg.expand();
-            tg.ready(); // Переподключаемся к Telegram WebApp
-            // Также пытаемся обновить состояние приложения
-            if (tg.setHeaderColor) {
-              tg.setHeaderColor('#2196F3');
-            }
-            if (tg.setBackgroundColor) {
-              tg.setBackgroundColor('#E8F4F8');
-            }
-          } catch (error) {
-            console.error('Ошибка при переподключении после возврата из фонового режима:', error);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && tg) {
+        console.log('App became visible (visibilitychange), expanding and reconnecting...');
+        // Агрессивно переподключаемся при возврате из фонового режима
+        try {
+          tg.expand();
+          tg.ready(); // Переподключаемся к Telegram WebApp
+          // Также пытаемся обновить состояние приложения
+          if (tg.setHeaderColor) {
+            tg.setHeaderColor('#2196F3');
           }
-        } else if (document.visibilityState === 'hidden' && tg) {
-          console.log('App became hidden (visibilitychange)');
+          if (tg.setBackgroundColor) {
+            tg.setBackgroundColor('#E8F4F8');
+          }
+        } catch (error) {
+          console.error('Ошибка при переподключении после возврата из фонового режима:', error);
         }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-    }
+      } else if (document.visibilityState === 'hidden' && tg) {
+        console.log('App became hidden (visibilitychange)');
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     initializeCache();  
       
@@ -238,12 +176,9 @@ function App() {
 
     fetchUser();
     
-    // Очистка обработчиков при размонтировании
+    // Очистка обработчика при размонтировании
     return () => {
-      // Очистка браузерного события visibilitychange (если было добавлено)
-      if (handleVisibilityChange) {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
   
@@ -400,47 +335,25 @@ function App() {
       }, PING_INTERVAL);
     };
 
-    // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем события activated/deactivated из Telegram WebApp API
-    let sessionVisibilityHandler = null;
-    
-    if (tg && tg.onEvent && tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
-      // Событие activated - когда Mini App становится активной
-      tg.onEvent('activated', () => {
-        console.log('Mini App активирована - возобновляем сессию');
+    // Обработчик возврата из фонового режима
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Приложение вернулось в активное состояние');
         isActive = true;
+        // Переподключаемся, если нужно
+        if (tg) {
+          tg.expand();
+          tg.ready();
+        }
         // Перезапускаем пинг, если он был остановлен
         if (!intervalId && sessionId) {
           startPinging();
         }
-      });
-      
-      // Событие deactivated - когда Mini App становится неактивной
-      tg.onEvent('deactivated', () => {
-        console.log('Mini App деактивирована - приостанавливаем сессию');
+      } else {
+        console.log('Приложение перешло в фоновый режим');
         isActive = false;
-        // Не останавливаем пинг полностью, но не будем пинговать пока неактивна
-      });
-    } else {
-      // Fallback для старых версий: используем браузерное событие visibilitychange
-      sessionVisibilityHandler = () => {
-        if (document.visibilityState === 'visible') {
-          console.log('Приложение вернулось в активное состояние (fallback)');
-          isActive = true;
-          if (tg) {
-            tg.expand();
-            tg.ready();
-          }
-          if (!intervalId && sessionId) {
-            startPinging();
-          }
-        } else {
-          console.log('Приложение перешло в фоновый режим (fallback)');
-          isActive = false;
-        }
-      };
-      
-      document.addEventListener('visibilitychange', sessionVisibilityHandler);
-    }
+      }
+    };
 
     // Обработчик закрытия приложения через Telegram WebApp API
     const handleClose = () => {
@@ -462,6 +375,8 @@ function App() {
       }
     };
 
+    // Добавляем обработчики событий
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     // Обработчик закрытия через Telegram WebApp API
@@ -491,10 +406,7 @@ function App() {
     // Функция очистки: сработает, когда компонент размонтируется
     return () => {
       isActive = false;
-      // Очищаем только те обработчики, которые были добавлены
-      if (sessionVisibilityHandler) {
-        document.removeEventListener('visibilitychange', sessionVisibilityHandler);
-      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (intervalId) {
         clearInterval(intervalId);
