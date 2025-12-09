@@ -1,0 +1,47 @@
+# Игнорируем файлы, которые не нужны на Railway
+
+# Frontend зависимости (устанавливаются через npm install на Railway)
+frontend/node_modules/
+frontend/.npm/
+frontend/.cache/
+
+# Backend кэш Python
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git (не нужен на продакшене)
+.git/
+.gitignore
+
+# Логи и временные файлы
+*.log
+*.tmp
+*.cache
+*.swp
+*.swo
+*~
+
+# IDE файлы
+.vscode/
+.idea/
+*.code-workspace
+
+# Документация (опционально, если не нужна)
+*.md
+!README.md
+
+# Файлы разработки
+.env.local
+.env.development
+.env.test
+
+# Build артефакты (если собираются на Railway)
+frontend/dist/
+frontend/build/
+
+# Другие временные файлы
+.DS_Store
+Thumbs.db
