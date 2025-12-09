@@ -3,8 +3,26 @@
 // --- 1. ИЗМЕНЯЕМ ИМПОРТЫ: убираем старый, добавляем новый ---
 import { getFeed, getMarketItems, getLeaderboard, getUserTransactions } from './api';
 
-// Получаем доступ к API хранилища
-const storage = window.Telegram.WebApp.CloudStorage;
+// Получаем доступ к API хранилища с fallback на localStorage
+const isTelegramWebApp = !!window.Telegram?.WebApp;
+const storage = isTelegramWebApp ? window.Telegram.WebApp.CloudStorage : {
+  getItem: (key, callback) => {
+    try {
+      const value = localStorage.getItem(key);
+      callback(null, value);
+    } catch (error) {
+      callback(error, null);
+    }
+  },
+  setItem: (key, value, callback) => {
+    try {
+      localStorage.setItem(key, value);
+      if (callback) callback(null);
+    } catch (error) {
+      if (callback) callback(error);
+    }
+  }
+};
 
 // Локальная переменная для мгновенного доступа после первой загрузки
 const memoryCache = {
