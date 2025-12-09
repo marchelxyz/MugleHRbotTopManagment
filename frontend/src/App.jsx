@@ -400,7 +400,6 @@ function App() {
       }, PING_INTERVAL);
     };
 
-<<<<<<< HEAD
     // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем события activated/deactivated из Telegram WebApp API
     let sessionVisibilityHandler = null;
     
