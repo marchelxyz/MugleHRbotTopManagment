@@ -15,6 +15,26 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
     const [isLoading, setIsLoading] = useState(!feed);
     const [currentSlide, setCurrentSlide] = useState(0);
     const autoSlideTimerRef = useRef(null);
+    const headerRef = useRef(null);
+    
+    // Предзагрузка изображений шапки для предотвращения белого квадрата
+    useEffect(() => {
+        const headerImageUrl = isDesktop 
+            ? 'https://i.postimg.cc/HxHpsyT4/sapka-dla-pk-3-sin.webp'
+            : 'https://i.postimg.cc/7PFGNvRb/Gemini-Generated-Image-8bd3bh8bd3bh8bd3.webp';
+        
+        const img = new Image();
+        img.src = headerImageUrl;
+        img.onload = () => {
+            // Изображение загружено, добавляем класс для плавного появления
+            if (headerRef.current) {
+                headerRef.current.classList.add(styles.headerLoaded);
+            }
+        };
+        img.onerror = () => {
+            console.warn('Не удалось загрузить изображение шапки:', headerImageUrl);
+        };
+    }, [isDesktop, styles.headerLoaded]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -139,7 +159,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             <div className={styles.extraSnow2}></div>
             <div className={styles.extraSnow3}></div>
             <div className={styles.headerWrapper}>
-                <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
+                <div ref={headerRef} className={isDesktop ? styles.headerDesktop : styles.header}></div>
             </div>
             <div className={styles.contentArea}>
                 <div className={styles.userBlock}>
