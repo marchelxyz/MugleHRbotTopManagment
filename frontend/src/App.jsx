@@ -33,7 +33,9 @@ import './App.css';
 const PING_INTERVAL = 60000; // Пингуем каждую минуту (60 000 миллисекунд)
 const STATUS_CHECK_INTERVAL = 5000; // Проверяем статус каждые 5 секунд (5000 миллисекунд)
 
-const tg = window.Telegram.WebApp;
+// Безопасная инициализация Telegram WebApp
+const tg = window.Telegram?.WebApp || null;
+const isTelegramWebApp = !!window.Telegram?.WebApp;
 
 function App() {
   const [user, setUser] = useState(null);
@@ -47,7 +49,7 @@ function App() {
   
   // Определяем, является ли устройство десктопом
   // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
-  const isDesktop = ['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024;
+  const isDesktop = tg ? (['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024) : (windowWidth > 1024);
   
   // Отслеживаем изменение размера окна
   useEffect(() => {
@@ -60,15 +62,20 @@ function App() {
   }, []);
 
   useEffect(() => {
-    tg.ready();
-    tg.expand();
-    tg.setBackgroundColor('#E8F4F8'); // Зимний фон
-    tg.setHeaderColor('#2196F3'); // Зимний голубой
+    // Инициализация Telegram WebApp только если он доступен
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setBackgroundColor('#E8F4F8'); // Зимний фон
+      tg.setHeaderColor('#2196F3'); // Зимний голубой
+    }
     
     initializeCache();  
       
-    const telegramUser = tg.initDataUnsafe?.user;
-    if (!telegramUser) {
+    const telegramUser = tg?.initDataUnsafe?.user;
+    
+    // Если не в Telegram WebApp, показываем страницу входа/регистрации
+    if (!isTelegramWebApp || !telegramUser) {
       setLoading(false);
       return;
     }
@@ -160,8 +167,17 @@ const handleTransferSuccess = (updatedSenderData) => {
       return <LoadingScreen />;
     }
   
+    // Если не в Telegram WebApp, показываем страницу входа
+    if (!isTelegramWebApp) {
+      return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+    }
+  
     if (!user) {
-      return <RegistrationPage telegramUser={tg.initDataUnsafe.user} onRegistrationSuccess={handleRegistrationSuccess} />;
+      const telegramUser = tg?.initDataUnsafe?.user;
+      if (!telegramUser) {
+        return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+      }
+      return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
 
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
@@ -218,6 +234,11 @@ const handleTransferSuccess = (updatedSenderData) => {
   
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
+    // Отслеживание сессии только в Telegram WebApp
+    if (!isTelegramWebApp) {
+      return;
+    }
+
     let sessionId = null;
     let intervalId = null;
 
@@ -275,8 +296,8 @@ const handleTransferSuccess = (updatedSenderData) => {
       return;
     }
 
-    const telegramUser = tg.initDataUnsafe?.user;
-    if (!telegramUser) {
+    const telegramUser = tg?.initDataUnsafe?.user;
+    if (!telegramUser || !isTelegramWebApp) {
       return;
     }
 

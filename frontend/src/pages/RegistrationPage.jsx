@@ -18,7 +18,7 @@ const formatDateForApi = (date) => {
   return null;
 };
 
-function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
+function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = false }) {
   const { showAlert } = useModalAlert();
   const [formData, setFormData] = useState({
     firstName: telegramUser?.first_name || '',
@@ -27,6 +27,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
     position: '',
     phoneNumber: '',
     dateOfBirth: '',
+    telegramId: '', // Для веб-браузера
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,11 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
     if (!formData.position.trim()) newErrors.position = 'Должность обязательна';
     if (formData.phoneNumber.includes('_')) newErrors.phoneNumber = 'Введите телефон полностью';
     if (formData.dateOfBirth.includes('_')) newErrors.dateOfBirth = 'Введите дату полностью';
+    
+    // Для веб-браузера требуется Telegram ID
+    if (isWebBrowser && !formData.telegramId.trim()) {
+      newErrors.telegramId = 'Telegram ID обязателен';
+    }
     
     // Проверка формата даты
     const formattedDate = formatDateForApi(formData.dateOfBirth);
@@ -67,20 +73,29 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
 
     try {
       const apiDate = formatDateForApi(formData.dateOfBirth);
+      
+      // Определяем telegram_id в зависимости от контекста
+      const telegramId = isWebBrowser ? formData.telegramId : telegramUser?.id;
+      
+      if (!telegramId) {
+        showAlert('Telegram ID не найден.', 'error');
+        setIsLoading(false);
+        return;
+      }
 
       const userData = {
-        telegram_id: String(telegramUser.id),
+        telegram_id: String(telegramId),
         first_name: formData.firstName,
         last_name: formData.lastName,
         department: formData.department,
         position: formData.position,
-        username: telegramUser.username,
-        telegram_photo_url: telegramUser.photo_url || null,
+        username: telegramUser?.username || null,
+        telegram_photo_url: telegramUser?.photo_url || null,
         phone_number: formData.phoneNumber,
         date_of_birth: apiDate,
       };
 
-      await registerUser(telegramUser.id, userData);
+      await registerUser(telegramId, userData);
       showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
       
       setTimeout(() => {
@@ -98,9 +113,25 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   return (
     <PageLayout title="Регистрация">
       <p className={styles.subtitle}>
-        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
+        {isWebBrowser 
+          ? 'Для регистрации в приложении, пожалуйста, укажите вашу информацию.'
+          : `Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`
+        }
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
+        {isWebBrowser && (
+          <>
+            <input 
+              name="telegramId" 
+              type="text" 
+              value={formData.telegramId} 
+              onChange={handleChange} 
+              placeholder="Ваш Telegram ID (число)" 
+              className={styles.input} 
+            />
+            {errors.telegramId && <p className={styles.error}>{errors.telegramId}</p>}
+          </>
+        )}
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
         {errors.firstName && <p className={styles.error}>{errors.firstName}</p>}
 
