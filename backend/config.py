@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     STATIX_BONUS_RESTAURANT_NAME: str = "TG BOT"
     STATIX_BONUS_TIMEOUT_SECONDS: int = 10
 
+    # Настройки Redis
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    REDIS_URL: str = ""  # Если указан, используется вместо отдельных параметров
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

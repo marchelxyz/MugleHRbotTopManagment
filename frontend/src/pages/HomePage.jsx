@@ -134,10 +134,6 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     return (
         <div className={styles.pageContainer}>
-            {/* Дополнительные слои снега */}
-            <div className={styles.extraSnow1}></div>
-            <div className={styles.extraSnow2}></div>
-            <div className={styles.extraSnow3}></div>
             <div className={styles.headerWrapper}>
                 <div className={isDesktop ? styles.headerDesktop : styles.header}></div>
             </div>
