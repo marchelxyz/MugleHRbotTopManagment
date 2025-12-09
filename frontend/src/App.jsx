@@ -68,7 +68,59 @@ function App() {
       tg.expand();
       tg.setBackgroundColor('#E8F4F8'); // Зимний фон
       tg.setHeaderColor('#2196F3'); // Зимний голубой
+      
+      // Включаем подтверждение закрытия для предотвращения случайного закрытия
+      tg.enableClosingConfirmation();
+      
+      // Обработчик изменения видимости viewport (когда приложение становится видимым/невидимым)
+      tg.onEvent('viewportChanged', (event) => {
+        console.log('Viewport changed:', event);
+        // Когда приложение становится видимым, убеждаемся, что оно развернуто
+        if (event.isStateVisible) {
+          console.log('Viewport стал видимым, разворачиваем приложение...');
+          tg.expand();
+          tg.ready(); // Переподключаемся
+        }
+      });
+      
+      // Обработчик изменения видимости (для мобильных устройств)
+      tg.onEvent('visibilityChanged', (event) => {
+        console.log('Visibility changed:', event);
+        // Когда приложение становится видимым, убеждаемся, что оно развернуто
+        if (event.isVisible) {
+          console.log('Приложение стало видимым, разворачиваем...');
+          tg.expand();
+          tg.ready(); // Переподключаемся
+        } else {
+          console.log('Приложение стало невидимым');
+        }
+      });
     }
+    
+    // Обработчик события visibilitychange для браузера (fallback)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && tg) {
+        console.log('App became visible (visibilitychange), expanding and reconnecting...');
+        // Агрессивно переподключаемся при возврате из фонового режима
+        try {
+          tg.expand();
+          tg.ready(); // Переподключаемся к Telegram WebApp
+          // Также пытаемся обновить состояние приложения
+          if (tg.setHeaderColor) {
+            tg.setHeaderColor('#2196F3');
+          }
+          if (tg.setBackgroundColor) {
+            tg.setBackgroundColor('#E8F4F8');
+          }
+        } catch (error) {
+          console.error('Ошибка при переподключении после возврата из фонового режима:', error);
+        }
+      } else if (document.visibilityState === 'hidden' && tg) {
+        console.log('App became hidden (visibilitychange)');
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     initializeCache();  
       
@@ -120,6 +172,13 @@ function App() {
     };
 
     fetchUser();
+    
+    // Очистка обработчика при размонтировании
+    return () => {
+      if (handleVisibilityChange) {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
   }, []);
   
   const handleRegistrationSuccess = () => { window.location.reload(); };
@@ -241,7 +300,90 @@ const handleTransferSuccess = (updatedSenderData) => {
 
     let sessionId = null;
     let intervalId = null;
+    let isActive = true;
 
+    // Функция для запуска пинга сессии
+    const startPinging = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      
+      intervalId = setInterval(async () => {
+        if (sessionId && isActive && document.visibilityState === 'visible') {
+          try {
+            await pingSession(sessionId);
+            console.log(`Пинг для сессии ${sessionId} успешен.`);
+          } catch (pingError) {
+            console.error('Ошибка пинга сессии:', pingError);
+            // Если сессия не найдена на сервере, пересоздаем её
+            if (pingError.response && pingError.response.status === 404) {
+              try {
+                const newResponse = await startSession();
+                sessionId = newResponse.data.id;
+                console.log('Сессия пересоздана, новый ID:', sessionId);
+              } catch (restartError) {
+                console.error('Не удалось пересоздать сессию:', restartError);
+                if (intervalId) {
+                  clearInterval(intervalId);
+                  intervalId = null;
+                }
+              }
+            }
+          }
+        }
+      }, PING_INTERVAL);
+    };
+
+    // Обработчик возврата из фонового режима
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Приложение вернулось в активное состояние');
+        isActive = true;
+        // Переподключаемся, если нужно
+        if (tg) {
+          tg.expand();
+          tg.ready();
+        }
+        // Перезапускаем пинг, если он был остановлен
+        if (!intervalId && sessionId) {
+          startPinging();
+        }
+      } else {
+        console.log('Приложение перешло в фоновый режим');
+        isActive = false;
+      }
+    };
+
+    // Обработчик закрытия приложения через Telegram WebApp API
+    const handleClose = () => {
+      console.log('Приложение закрывается через Telegram WebApp');
+      isActive = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    // Обработчик события beforeunload (когда пользователь закрывает вкладку/приложение)
+    const handleBeforeUnload = () => {
+      console.log('Приложение закрывается (beforeunload)');
+      isActive = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    // Добавляем обработчики событий
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Обработчик закрытия через Telegram WebApp API
+    if (tg && tg.onEvent) {
+      tg.onEvent('close', handleClose);
+    }
+
+    // Инициализация сессии
     const sessionManager = async () => {
       try {
         // 1. При запуске приложения создаем новую сессию
@@ -249,21 +391,8 @@ const handleTransferSuccess = (updatedSenderData) => {
         sessionId = response.data.id;
         console.log('Сессия успешно запущена, ID:', sessionId);
 
-        // 2. Запускаем интервал, который будет "пинговать" сессию
-        intervalId = setInterval(async () => {
-          if (sessionId) {
-            try {
-              await pingSession(sessionId);
-              console.log(`Пинг для сессии ${sessionId} успешен.`);
-            } catch (pingError) {
-              console.error('Ошибка пинга сессии:', pingError);
-              // Если сессия не найдена на сервере, прекращаем пинговать
-              if (pingError.response && pingError.response.status === 404) {
-                clearInterval(intervalId);
-              }
-            }
-          }
-        }, PING_INTERVAL);
+        // 2. Запускаем интервал для пинга сессии
+        startPinging();
 
       } catch (startError) {
         // Ошибки могут возникать, если пользователь не авторизован, это нормально
@@ -273,8 +402,11 @@ const handleTransferSuccess = (updatedSenderData) => {
 
     sessionManager();
 
-    // 3. Функция очистки: сработает, когда пользователь закроет приложение
+    // Функция очистки: сработает, когда компонент размонтируется
     return () => {
+      isActive = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (intervalId) {
         clearInterval(intervalId);
         console.log('Отслеживание сессии остановлено.');
