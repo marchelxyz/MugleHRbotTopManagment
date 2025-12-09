@@ -164,6 +164,11 @@ export const refreshAllData = async () => {
     console.log('All data refreshed and saved to storage.');
 
   } catch (error) {
+    // Игнорируем ошибки отмены запросов (AbortError)
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.message?.includes('canceled')) {
+      console.debug('Обновление данных отменено (ожидаемое поведение при выходе)');
+      return;
+    }
     console.error('Failed to refresh data:', error);
   }
 };

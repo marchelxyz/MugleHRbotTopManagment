@@ -6,6 +6,17 @@ import { getToken, isTelegramMode, clearAuth } from './utils/auth';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 console.log('Using API URL:', API_BASE_URL);
 
+// Глобальный AbortController для отмены всех запросов при выходе
+let globalAbortController = new AbortController();
+
+// Функция для установки нового AbortController (вызывается из App.jsx)
+export const setGlobalAbortController = (controller) => {
+  globalAbortController = controller;
+};
+
+// Функция для получения текущего AbortController
+export const getGlobalAbortController = () => globalAbortController;
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -25,6 +36,12 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // Добавляем signal для возможности отмены запроса
+    // Проверяем, что контроллер существует и не отменен
+    if (globalAbortController && !globalAbortController.signal.aborted && !config.signal) {
+      config.signal = globalAbortController.signal;
+    }
+    
     return config;
   },
   (error) => {
@@ -36,6 +53,11 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Игнорируем ошибки отмены запросов (AbortError)
+    if (axios.isCancel(error) || error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error);
+    }
+    
     // Если получили 401 (неавторизован), очищаем токен и перезагружаем страницу
     if (error.response && error.response.status === 401) {
       clearAuth();
