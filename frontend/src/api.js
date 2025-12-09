@@ -383,7 +383,10 @@ export const purchaseStatixBonus = (telegramId, bonusAmount) => {
  * @param {string} key - Ключ кеша (feed, market, leaderboard, banners, history)
  */
 export const getCache = (key) => {
-    return apiClient.get(`/cache/${key}`);
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    return apiClient.get(`/cache/${key}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
 /**
@@ -393,10 +396,13 @@ export const getCache = (key) => {
  * @param {number} ttl - Время жизни в секундах (опционально)
  */
 export const setCache = (key, value, ttl = null) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     return apiClient.post(`/cache/${key}`, {
         key,
         value,
         ttl
+    }, {
+        headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
@@ -405,14 +411,20 @@ export const setCache = (key, value, ttl = null) => {
  * @param {string} key - Ключ кеша
  */
 export const deleteCache = (key) => {
-    return apiClient.delete(`/cache/${key}`);
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    return apiClient.delete(`/cache/${key}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
 /**
  * Очищает весь кеш пользователя
  */
 export const clearAllCache = () => {
-    return apiClient.delete('/cache/');
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    return apiClient.delete('/cache/', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
 };
 
 // --- АДМИН API ДЛЯ STATIX BONUS ---

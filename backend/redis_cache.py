@@ -126,6 +126,7 @@ class RedisCache:
             logger.debug(f"Кеш установлен: {redis_key} (TTL: {ttl}s)")
         except Exception as e:
             logger.error(f"Ошибка при установке кеша {key} для пользователя {user_id}: {e}")
+            raise  # Пробрасываем исключение дальше, чтобы frontend мог обработать ошибку
     
     async def delete(self, user_id: int, key: str):
         """
