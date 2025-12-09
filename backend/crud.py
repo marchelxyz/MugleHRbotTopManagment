@@ -1221,8 +1221,10 @@ async def get_all_users_for_admin(db: AsyncSession):
 async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User):
     """
     Обновляет данные пользователя от имени администратора и отправляет лог.
-    (Версия с исправленной логикой сравнения)
+    (Версия с исправленной логикой сравнения и поддержкой логина/пароля)
     """
+    from utils.security import get_password_hash
+    
     user = await get_user(db, user_id)
     if not user:
         return None
@@ -1230,7 +1232,88 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
     update_data = user_data.model_dump(exclude_unset=True)
     changes_log = []
 
-    # Проходим по всем полям, которые пришли с фронтенда
+    # Обрабатываем логин отдельно (проверка уникальности)
+    if 'login' in update_data:
+        new_login = update_data.pop('login')
+        old_login = user.login
+        
+        if new_login is not None and new_login.strip():
+            new_login = new_login.strip()
+            # Валидация логина
+            if len(new_login) < 3:
+                raise ValueError("Логин должен содержать минимум 3 символа")
+            
+            # Проверяем уникальность, если логин изменился
+            if new_login != old_login:
+                result = await db.execute(
+                    select(models.User).where(
+                        models.User.login == new_login,
+                        models.User.id != user_id
+                    )
+                )
+                existing_user = result.scalar_one_or_none()
+                if existing_user:
+                    raise ValueError(f"Логин '{new_login}' уже занят другим пользователем")
+                
+                if old_login != new_login:
+                    changes_log.append(f"  - login: `{old_login or '(нет)'}` -> `{new_login}`")
+                user.login = new_login
+        elif new_login == "" or new_login is None:
+            # Удаляем логин
+            if old_login:
+                changes_log.append(f"  - login: `{old_login}` -> `(удален)`")
+            user.login = None
+            # Если удаляем логин, отключаем браузерную аутентификацию
+            if user.browser_auth_enabled:
+                user.browser_auth_enabled = False
+
+    # Обрабатываем пароль отдельно (хеширование)
+    if 'password' in update_data:
+        new_password = update_data.pop('password')
+        old_password_hash = user.password_hash
+        
+        if new_password is not None and new_password.strip():
+            new_password = new_password.strip()
+            # Валидация пароля
+            if len(new_password) < 6:
+                raise ValueError("Пароль должен содержать минимум 6 символов")
+            
+            # Хешируем пароль
+            new_password_hash = get_password_hash(new_password)
+            
+            # Сравниваем хеши (не показываем старый пароль в логе)
+            if old_password_hash != new_password_hash:
+                changes_log.append(f"  - password: `(изменен)`")
+            user.password_hash = new_password_hash
+        elif new_password == "" or new_password is None:
+            # Удаляем пароль
+            if old_password_hash:
+                changes_log.append(f"  - password: `(удален)`")
+            user.password_hash = None
+
+    # Обрабатываем browser_auth_enabled
+    if 'browser_auth_enabled' in update_data:
+        new_browser_auth = update_data.pop('browser_auth_enabled')
+        old_browser_auth = user.browser_auth_enabled
+        
+        if new_browser_auth != old_browser_auth:
+            changes_log.append(f"  - browser_auth_enabled: `{old_browser_auth}` -> `{new_browser_auth}`")
+            user.browser_auth_enabled = new_browser_auth
+            
+            # Если включаем браузерную аутентификацию, но нет логина или пароля - предупреждаем
+            if new_browser_auth and (not user.login or not user.password_hash):
+                # Не блокируем, но логируем предупреждение
+                logger.warning(f"Включена браузерная аутентификация для пользователя {user_id}, но отсутствует логин или пароль")
+
+    # Автоматически обновляем browser_auth_enabled на основе наличия логина и пароля
+    if user.login and user.password_hash and not user.browser_auth_enabled:
+        # Если есть и логин, и пароль, но браузерная аутентификация выключена - включаем
+        user.browser_auth_enabled = True
+    elif (not user.login or not user.password_hash) and user.browser_auth_enabled:
+        # Если нет логина или пароля, но браузерная аутентификация включена - выключаем
+        user.browser_auth_enabled = False
+
+    # Проходим по всем остальным полям, которые пришли с фронтенда
     for key, new_value in update_data.items():
         old_value = getattr(user, key, None)
         
@@ -2309,6 +2392,79 @@ async def get_user_shared_gift_invitations(db: AsyncSession, user_id: int, statu
     )
     return result.scalars().all()
 
+# --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+async def update_my_credentials(
+    db: AsyncSession,
+    user: models.User,
+    current_password: str,
+    new_login: Optional[str] = None,
+    new_password: Optional[str] = None
+):
+    """
+    Изменяет логин и/или пароль пользователя.
+    Требует подтверждения текущим паролем.
+    """
+    from utils.security import verify_password, get_password_hash
+    
+    # Проверяем текущий пароль
+    if not user.password_hash:
+        raise ValueError("У вас не установлен пароль. Обратитесь к администратору.")
+    
+    if not verify_password(current_password, user.password_hash):
+        raise ValueError("Неверный текущий пароль")
+    
+    # Проверяем, что хотя бы что-то меняется
+    if not new_login and not new_password:
+        raise ValueError("Необходимо указать новый логин или пароль")
+    
+    changes = []
+    
+    # Обрабатываем изменение логина
+    if new_login is not None and new_login.strip():
+        new_login = new_login.strip()
+        
+        # Валидация логина
+        if len(new_login) < 3:
+            raise ValueError("Логин должен содержать минимум 3 символа")
+        
+        # Проверяем уникальность, если логин изменился
+        if new_login != user.login:
+            result = await db.execute(
+                select(models.User).where(
+                    models.User.login == new_login,
+                    models.User.id != user.id
+                )
+            )
+            existing_user = result.scalar_one_or_none()
+            if existing_user:
+                raise ValueError(f"Логин '{new_login}' уже занят")
+            
+            user.login = new_login
+            changes.append("логин")
+    
+    # Обрабатываем изменение пароля
+    if new_password is not None and new_password.strip():
+        new_password = new_password.strip()
+        
+        # Валидация пароля
+        if len(new_password) < 6:
+            raise ValueError("Пароль должен содержать минимум 6 символов")
+        
+        # Хешируем новый пароль
+        user.password_hash = get_password_hash(new_password)
+        changes.append("пароль")
+    
+    # Обновляем browser_auth_enabled
+    if user.login and user.password_hash:
+        user.browser_auth_enabled = True
+    else:
+        user.browser_auth_enabled = False
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
 async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
     """Очистка истекших приглашений на совместные подарки"""
     now = datetime.utcnow()
@@ -2353,3 +2509,257 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
     
     await db.commit()
     return len(expired_invitations)
+
+# --- ФУНКЦИЯ ДЛЯ УСТАНОВКИ ЛОГИНА И ПАРОЛЯ ПОЛЬЗОВАТЕЛЮ ---
+async def set_user_credentials(db: AsyncSession, user_id: int, login: str, password: str):
+    """
+    Устанавливает логин и пароль для пользователя.
+    Включает browser_auth_enabled для возможности входа через браузер.
+    """
+    from utils.security import get_password_hash
+    
+    # Получаем пользователя
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Валидация логина
+    if len(login) < 3:
+        raise ValueError("Логин должен содержать минимум 3 символа")
+    
+    # Валидация пароля
+    if len(password) < 6:
+        raise ValueError("Пароль должен содержать минимум 6 символов")
+    
+    # Bcrypt имеет ограничение в 72 байта для паролей
+    # Обрезаем пароль до 72 байт, если он длиннее (как в get_password_hash)
+    if len(password.encode('utf-8')) > 72:
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    
+    # Проверяем, не занят ли логин другим пользователем
+    result = await db.execute(
+        select(models.User).where(
+            models.User.login == login,
+            models.User.id != user_id
+        )
+    )
+    existing_user = result.scalar_one_or_none()
+    
+    if existing_user:
+        raise ValueError("Логин уже занят другим пользователем")
+    
+    # Устанавливаем логин и пароль
+    user.login = login
+    user.password_hash = get_password_hash(password)
+    user.browser_auth_enabled = True
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
+# --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ ЛОГИНА НА ОСНОВЕ ИМЕНИ И ФАМИЛИИ ---
+def generate_login_from_name(first_name: Optional[str], last_name: Optional[str], user_id: int) -> str:
+    """
+    Генерирует логин на основе имени и фамилии пользователя.
+    Если имя/фамилия отсутствуют, использует user_id.
+    """
+    import re
+    
+    if first_name and last_name:
+        # Транслитерация кириллицы в латиницу (базовая)
+        translit_map = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+            'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+            'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+            'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+            'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+        }
+        
+        def transliterate(text: str) -> str:
+            result = ''
+            for char in text.lower():
+                if char in translit_map:
+                    result += translit_map[char]
+                elif char.isalnum():
+                    result += char
+            return result
+        
+        first_translit = transliterate(first_name)
+        last_translit = transliterate(last_name)
+        
+        if first_translit and last_translit:
+            base_login = f"{first_translit}.{last_translit}"
+        elif first_translit:
+            base_login = first_translit
+        elif last_translit:
+            base_login = last_translit
+        else:
+            base_login = f"user{user_id}"
+    else:
+        base_login = f"user{user_id}"
+    
+    # Очищаем от всех недопустимых символов, оставляем только буквы, цифры и точку
+    base_login = re.sub(r'[^a-z0-9.]', '', base_login.lower())
+    
+    # Если логин пустой или слишком короткий, используем user_id
+    if not base_login or len(base_login) < 3:
+        base_login = f"user{user_id}"
+    
+    return base_login
+
+# --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ СЛУЧАЙНОГО ПАРОЛЯ ---
+def generate_random_password(length: int = 12) -> str:
+    """Генерирует случайный пароль заданной длины."""
+    import secrets
+    import string
+    
+    charset = string.ascii_letters + string.digits + '!@#$%^&*'
+    password = ''.join(secrets.choice(charset) for _ in range(length))
+    return password
+
+# --- ФУНКЦИЯ ДЛЯ МАССОВОЙ ГЕНЕРАЦИИ И РАССЫЛКИ УЧЕТНЫХ ДАННЫХ ---
+async def bulk_send_credentials(
+    db: AsyncSession,
+    custom_message: str = "",
+    include_active: bool = True,
+    include_blocked: bool = True,
+    regenerate_existing: bool = False
+):
+    """
+    Генерирует логины и пароли для пользователей и отправляет их через Telegram.
+    
+    Args:
+        db: Сессия базы данных
+        custom_message: Пользовательское текстовое сообщение для добавления к рассылке
+        include_active: Включить активных пользователей
+        include_blocked: Включить заблокированных пользователей
+        regenerate_existing: Перегенерировать логин/пароль для тех, у кого уже есть логин
+    
+    Returns:
+        dict со статистикой: total_users, credentials_generated, messages_sent, failed_users
+    """
+    from utils.security import get_password_hash
+    
+    # Формируем условия для выборки пользователей
+    status_conditions = []
+    if include_active:
+        status_conditions.append(models.User.status == 'approved')
+    if include_blocked:
+        status_conditions.append(models.User.status == 'blocked')
+    
+    if not status_conditions:
+        raise ValueError("Необходимо выбрать хотя бы один тип пользователей (активные или заблокированные)")
+    
+    # Получаем всех пользователей по статусам
+    query = select(models.User).where(
+        or_(*status_conditions),
+        models.User.status != 'deleted',
+        models.User.status != 'rejected',
+        models.User.telegram_id.isnot(None),
+        models.User.telegram_id >= 0  # Исключаем анонимизированных
+    )
+    
+    result = await db.execute(query)
+    all_users = result.scalars().all()
+    
+    total_users = len(all_users)
+    credentials_generated = 0
+    messages_sent = 0
+    failed_users = []
+    
+    # Обрабатываем каждого пользователя
+    for user in all_users:
+        login = None
+        password = None
+        user_credentials_generated = False
+        
+        try:
+            # Проверяем, нужно ли генерировать учетные данные
+            if user.login and not regenerate_existing:
+                # У пользователя уже есть логин и мы не перегенерируем
+                continue
+            
+            # Генерируем логин
+            if not user.login or regenerate_existing:
+                base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+                
+                # Проверяем уникальность логина
+                login = base_login
+                counter = 1
+                while True:
+                    check_result = await db.execute(
+                        select(models.User).where(
+                            models.User.login == login,
+                            models.User.id != user.id
+                        )
+                    )
+                    if check_result.scalar_one_or_none() is None:
+                        break
+                    login = f"{base_login}{counter}"
+                    counter += 1
+                
+                # Генерируем пароль
+                password = generate_random_password(12)
+                
+                # Устанавливаем учетные данные
+                user.login = login
+                user.password_hash = get_password_hash(password)
+                user.browser_auth_enabled = True
+                
+                credentials_generated += 1
+                user_credentials_generated = True
+            else:
+                # Используем существующие учетные данные (но пароль не можем восстановить)
+                # В этом случае не отправляем сообщение, так как пароль неизвестен
+                continue
+            
+            # Отправляем сообщение через Telegram
+            if user.telegram_id and user.telegram_id >= 0:
+                message_text = f"🔐 <b>Ваши учетные данные для входа в систему</b>\n\n"
+                
+                if custom_message:
+                    message_text += f"{escape_html(custom_message)}\n\n"
+                
+                message_text += (
+                    f"👤 <b>Логин:</b> <code>{escape_html(user.login)}</code>\n"
+                    f"🔑 <b>Пароль:</b> <code>{escape_html(password)}</code>\n\n"
+                    f"⚠️ <i>Сохраните эти данные в безопасном месте. Пароль больше не будет показан.</i>"
+                )
+                
+                try:
+                    await send_telegram_message(
+                        chat_id=user.telegram_id,
+                        text=message_text,
+                        parse_mode='HTML'
+                    )
+                    messages_sent += 1
+                except Exception as e:
+                    logger.error(f"Не удалось отправить сообщение пользователю {user.id} ({user.telegram_id}): {e}")
+                    failed_users.append(user.id)
+                    # Откатываем изменения для этого пользователя
+                    if user_credentials_generated:
+                        user.login = None
+                        user.password_hash = None
+                        user.browser_auth_enabled = False
+                        credentials_generated -= 1
+            
+        except Exception as e:
+            logger.error(f"Ошибка при обработке пользователя {user.id}: {e}")
+            failed_users.append(user.id)
+            # Откатываем изменения для этого пользователя, если они были сделаны
+            if user_credentials_generated:
+                user.login = None
+                user.password_hash = None
+                user.browser_auth_enabled = False
+                credentials_generated -= 1
+    
+    # Сохраняем все изменения
+    await db.commit()
+    
+    return {
+        "total_users": total_users,
+        "credentials_generated": credentials_generated,
+        "messages_sent": messages_sent,
+        "failed_users": failed_users
+    }

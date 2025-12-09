@@ -66,3 +66,86 @@ button:active {
   -webkit-tap-highlight-color: transparent !important;
   box-shadow: none !important;
 }
+
+/* Стиль для кнопки выхода */
+.logoutButton {
+  color: #C62828 !important;
+  border-color: #FFCDD2 !important;
+}
+
+.logoutButton .icon {
+  color: #C62828 !important;
+}
+
+.logoutButton:hover {
+  background-color: #FFEBEE !important;
+  border-color: #EF5350 !important;
+}
+
+/* Стили для карточки с учетными данными */
+.card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.card h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #333;
+}
+
+/* Стили для кнопок */
+.buttonSmall {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.buttonSmall:hover {
+  background-color: #e0e0e0;
+}
+
+.buttonGreen {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.buttonGreen:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.buttonGreen:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}

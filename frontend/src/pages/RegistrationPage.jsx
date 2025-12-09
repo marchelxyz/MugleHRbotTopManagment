@@ -20,8 +20,24 @@ const formatDateForApi = (date) => {
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const { showAlert } = useModalAlert();
+  
+  // Защита от undefined telegramUser - используем безопасный доступ
+  const safeTelegramUser = telegramUser || {};
+  const firstName = safeTelegramUser?.first_name || '';
+  
+  // Защита от undefined telegramUser
+  if (!telegramUser || !telegramUser.id) {
+    return (
+      <PageLayout title="Регистрация">
+        <p className={styles.subtitle}>
+          Ошибка: данные Telegram не найдены. Пожалуйста, перезагрузите страницу.
+        </p>
+      </PageLayout>
+    );
+  }
+  
   const [formData, setFormData] = useState({
-    firstName: telegramUser?.first_name || '',
+    firstName: firstName,
     lastName: '',
     department: '',
     position: '',
@@ -69,18 +85,18 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
       const apiDate = formatDateForApi(formData.dateOfBirth);
 
       const userData = {
-        telegram_id: String(telegramUser.id),
+        telegram_id: String(safeTelegramUser.id || ''),
         first_name: formData.firstName,
         last_name: formData.lastName,
         department: formData.department,
         position: formData.position,
-        username: telegramUser.username,
-        telegram_photo_url: telegramUser.photo_url || null,
+        username: safeTelegramUser?.username || null,
+        telegram_photo_url: safeTelegramUser?.photo_url || null,
         phone_number: formData.phoneNumber,
         date_of_birth: apiDate,
       };
 
-      await registerUser(telegramUser.id, userData);
+      await registerUser(safeTelegramUser.id, userData);
       showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
       
       setTimeout(() => {
@@ -98,7 +114,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   return (
     <PageLayout title="Регистрация">
       <p className={styles.subtitle}>
-        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
+        Привет, {firstName || 'друг'}! Для завершения настройки, пожалуйста, укажите вашу информацию.
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />

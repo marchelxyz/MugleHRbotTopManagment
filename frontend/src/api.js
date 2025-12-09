@@ -1,13 +1,74 @@
 // frontend/src/api.js
 import axios from 'axios';
+import { getToken, isTelegramMode, clearAuth } from './utils/auth';
 
 // API_BASE_URL используется только для apiClient, экспортировать его не нужно
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 console.log('Using API URL:', API_BASE_URL);
 
+// Глобальный AbortController для отмены всех запросов при выходе
+let globalAbortController = new AbortController();
+
+// Функция для установки нового AbortController (вызывается из App.jsx)
+export const setGlobalAbortController = (controller) => {
+  globalAbortController = controller;
+};
+
+// Функция для получения текущего AbortController
+export const getGlobalAbortController = () => globalAbortController;
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
+
+// Интерцептор для добавления токена или Telegram ID в заголовки
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    const isTelegram = isTelegramMode();
+    
+    // В Telegram режиме приоритет у Telegram ID
+    if (isTelegram && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+      config.headers['X-Telegram-Id'] = String(window.Telegram.WebApp.initDataUnsafe?.user?.id);
+    }
+    // В браузерном режиме используем JWT токен
+    else if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Добавляем signal для возможности отмены запроса
+    // Проверяем, что контроллер существует и не отменен
+    if (globalAbortController && !globalAbortController.signal.aborted && !config.signal) {
+      config.signal = globalAbortController.signal;
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Интерцептор для обработки ошибок аутентификации
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Игнорируем ошибки отмены запросов (AbortError)
+    if (axios.isCancel(error) || error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+      return Promise.reject(error);
+    }
+    
+    // Если получили 401 (неавторизован), очищаем токен и перезагружаем страницу
+    if (error.response && error.response.status === 401) {
+      clearAuth();
+      // Перезагружаем страницу только если не в Telegram режиме
+      if (!isTelegramMode()) {
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // --- Существующие функции (без изменений) ---
 
@@ -34,7 +95,10 @@ export const transferPoints = (transferData) => {
 };
 
 export const requestProfileUpdate = (updateData) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.post('/users/me/request-update', updateData, {
     headers: { 'X-Telegram-Id': telegramId },
   });
@@ -43,24 +107,18 @@ export const requestProfileUpdate = (updateData) => {
 export const getFeed = () => apiClient.get('/transactions/feed');
 
 export const getLeaderboard = ({ period, type }) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+  // Интерцептор автоматически добавит нужные заголовки (JWT токен или Telegram ID)
+  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`);
 };
 
 export const getMyRank = ({ period, type }) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+  // Интерцептор автоматически добавит нужные заголовки (JWT токен или Telegram ID)
+  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`);
 };
 
 export const getLeaderboardStatus = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get('/leaderboard/status', {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
+  // Интерцептор автоматически добавит нужные заголовки (JWT токен или Telegram ID)
+  return apiClient.get('/leaderboard/status');
 };
 
 export const getMarketItems = () => apiClient.get('/market/items');
@@ -75,14 +133,20 @@ export const getUserTransactions = (userId) => {
 };
 
 export const addPointsToAll = (data) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.post('/admin/add-points', data, {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 export const createMarketItem = (itemData) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.post('/admin/market-items', itemData, {
     headers: { 'X-Telegram-Id': telegramId },
   });
@@ -91,77 +155,110 @@ export const createMarketItem = (itemData) => {
 export const getBanners = () => apiClient.get('/banners');
 
 export const getAllBanners = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.get('/admin/banners', {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const createBanner = (bannerData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post('/admin/banners', bannerData, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const updateBanner = (bannerId, bannerData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.put(`/admin/banners/${bannerId}`, bannerData, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const deleteBanner = (bannerId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.delete(`/admin/banners/${bannerId}`, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const getAllMarketItems = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.get('/admin/market-items', {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const updateMarketItem = (itemId, itemData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;  
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.put(`/admin/market-items/${itemId}`, itemData, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const archiveMarketItem = (itemId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.delete(`/admin/market-items/${itemId}`, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const getArchivedMarketItems = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.get('/admin/market-items/archived', {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const restoreMarketItem = (itemId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post(`/admin/market-items/${itemId}/restore`, {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const assembleTickets = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post('/roulette/assemble', {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const spinRoulette = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post('/roulette/spin', {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
@@ -170,49 +267,68 @@ export const spinRoulette = () => {
 export const getRouletteHistory = () => apiClient.get('/roulette/history');
 
 export const addTicketsToAll = (data) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.post('/admin/add-tickets', data, {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 export const resetDailyTransferLimits = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.post('/admin/reset-daily-transfer-limits', {}, {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 export const deleteUserCard = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.delete('/users/me/card', {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 export const searchUsers = (query) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  const headers = telegramId ? { 'X-Telegram-Id': telegramId } : {};
   return apiClient.get(`/users/search/?query=${query}`, {
-    headers: { 'X-Telegram-Id': telegramId },
+    headers,
   });
 };
 
 export const adminGetAllUsers = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.get('/admin/users', {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const adminUpdateUser = (userId, userData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.put(`/admin/users/${userId}`, userData, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const adminDeleteUser = (userId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.delete(`/admin/users/${userId}`, {
         headers: { 'X-Telegram-Id': telegramId },
     });
@@ -220,9 +336,15 @@ export const adminDeleteUser = (userId) => {
 
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ АДМИН-ПАНЕЛИ ---
 
-const getAdminHeaders = () => ({
-  headers: { 'X-Telegram-Id': window.Telegram.WebApp.initDataUnsafe?.user?.id },
-});
+const getAdminHeaders = () => {
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    throw new Error('Telegram ID не найден');
+  }
+  return {
+    headers: { 'X-Telegram-Id': telegramId },
+  };
+};
 
 // Добавляем startDate и endDate в параметры
 export const getGeneralStats = (startDate, endDate) => {
@@ -303,15 +425,30 @@ export const exportAllUsers = () => {
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С СЕССИЯМИ ---
 
 export const startSession = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   // Отправляем POST-запрос для создания новой сессии
   return apiClient.post('/sessions/start', {}, {
     headers: { 'X-Telegram-Id': telegramId },
+  }).catch((error) => {
+    // Тихая обработка ожидаемых ошибок (422 - ошибка валидации, 404 - пользователь не найден)
+    // Эти ошибки не критичны и не должны прерывать работу приложения
+    if (error.response?.status === 422 || error.response?.status === 404) {
+      console.debug('Сессия не создана (ожидаемое поведение):', error.response?.status);
+    } else {
+      console.warn('Ошибка при создании сессии:', error.response?.data || error.message);
+    }
+    throw error;
   });
 };
 
 export const pingSession = (sessionId) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   // Отправляем PUT-запрос для обновления существующей сессии
   return apiClient.put(`/sessions/ping/${sessionId}`, {}, {
     headers: { 'X-Telegram-Id': telegramId },
@@ -328,14 +465,20 @@ export const getAverageSessionDuration = (startDate, endDate) => {
 
 // --- ОБУЧАЮЩИЕ ИСТОРИИ ---
 export const completeOnboarding = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (!telegramId) {
+    return Promise.reject(new Error('Telegram ID не найден'));
+  }
   return apiClient.post('/users/me/complete-onboarding', {}, {
     headers: { 'X-Telegram-Id': telegramId },
   });
 };
 
 export const deleteMarketItemPermanently = (itemId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.delete(`/admin/market-items/${itemId}/permanent`, {
         headers: { 'X-Telegram-Id': telegramId },
     });
@@ -357,21 +500,30 @@ export const purchaseStatixBonus = (telegramId, bonusAmount) => {
 
 // --- АДМИН API ДЛЯ STATIX BONUS ---
 export const getStatixBonusSettings = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.get('/admin/statix-bonus', {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const updateStatixBonusSettings = (settings) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.put('/admin/statix-bonus', settings, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
 
 export const adminGenerateLeaderboardBanners = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post('/admin/generate-leaderboard-banners', {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
@@ -379,7 +531,10 @@ export const adminGenerateLeaderboardBanners = () => {
 
 // --- НОВАЯ ФУНКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ ---
 export const adminGenerateTestLeaderboardBanners = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post('/admin/generate-test-banners', {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
@@ -409,9 +564,52 @@ export const rejectSharedGiftInvitation = (invitationId, userId) => {
     });
 };
 
+// --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
+export const setUserCredentials = (userId, credentials) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.post(`/admin/users/${userId}/set-credentials`, credentials, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const bulkSendCredentials = (requestData) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.post('/admin/users/bulk-send-credentials', requestData, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// --- ФУНКЦИИ ДЛЯ РЕГИСТРАЦИИ В БРАУЗЕРНОМ РЕЖИМЕ ---
+export const registerBrowserUser = (userData) => {
+    return apiClient.post('/auth/register', userData);
+};
+
+// --- ФУНКЦИИ ДЛЯ ВОССТАНОВЛЕНИЯ ПАРОЛЯ ---
+export const requestPasswordReset = (email) => {
+    return apiClient.post('/auth/forgot-password', { email });
+};
+
+export const resetPassword = (token, newPassword) => {
+    return apiClient.post('/auth/reset-password', { token, new_password: newPassword });
+};
+
 export const cleanupExpiredSharedGiftInvitations = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+      return Promise.reject(new Error('Telegram ID не найден'));
+    }
     return apiClient.post('/shared-gifts/cleanup', {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
+};
+
+// --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ СВОИХ УЧЕТНЫХ ДАННЫХ ---
+export const updateMyCredentials = (credentialsData) => {
+    return apiClient.put('/users/me/credentials', credentialsData);
 };
