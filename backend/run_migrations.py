@@ -11,86 +11,41 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 from database import engine
-from sqlalchemy import text, select
+from sqlalchemy import text
 
 async def run_migrations():
     """Запускает все миграции из папки migrations"""
     migrations_dir = Path(__file__).parent / "migrations"
     
     if not migrations_dir.exists():
-        print(f"❌ Папка migrations не найдена: {migrations_dir}")
-        print(f"📂 Текущая директория: {Path(__file__).parent}")
+        print("❌ Папка migrations не найдена")
         return
-    
-    # Создаем таблицу для отслеживания миграций (если её еще нет)
-    create_table_sql = """
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-        id SERIAL PRIMARY KEY,
-        migration_name VARCHAR(255) NOT NULL UNIQUE,
-        applied_at TIMESTAMP DEFAULT NOW() NOT NULL
-    )
-    """
-    
-    create_index_sql = """
-    CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name)
-    """
-    
-    try:
-        async with engine.begin() as conn:
-            # Выполняем команды отдельно, так как asyncpg не поддерживает множественные команды в одном prepared statement
-            await conn.execute(text(create_table_sql))
-            await conn.execute(text(create_index_sql))
-            print("✅ Таблица schema_migrations создана/проверена")
-    except Exception as e:
-        print(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
-        raise
-    
-    # Получаем список уже примененных миграций
-    async with engine.connect() as conn:
-        result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
-        applied_migrations = {row[0] for row in result.fetchall()}
-        print(f"📋 Уже применено миграций: {len(applied_migrations)}")
     
     # Получаем список файлов миграций и сортируем их
     migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
     
     if not migration_files:
-        print("⚠️ Файлы миграций не найдены")
+        print("❌ Файлы миграций не найдены")
         return
     
     print(f"🔍 Найдено {len(migration_files)} файлов миграций")
     
-    for migration_file in migration_files:
-        migration_name = migration_file.name
-        
-        # Пропускаем миграции, которые уже были применены
-        if migration_name in applied_migrations:
-            print(f"⏭️  Миграция {migration_name} уже применена, пропускаем")
-            continue
-        
-        print(f"📄 Запуск миграции: {migration_name}")
-        
-        try:
-            with open(migration_file, 'r', encoding='utf-8') as f:
-                migration_sql = f.read()
+    async with engine.begin() as conn:
+        for migration_file in migration_files:
+            print(f"📄 Запуск миграции: {migration_file.name}")
             
-            # Применяем миграцию в транзакции
-            async with engine.begin() as conn:
-                # Выполняем SQL миграции
-                await conn.execute(text(migration_sql))
+            try:
+                with open(migration_file, 'r', encoding='utf-8') as f:
+                    migration_sql = f.read()
                 
-                # Записываем факт применения миграции
-                insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
-                await conn.execute(insert_migration, {"name": migration_name})
-            
-            print(f"✅ Миграция {migration_name} выполнена успешно")
-            
-        except Exception as e:
-            error_msg = f"❌ КРИТИЧЕСКАЯ ОШИБКА при выполнении миграции {migration_name}: {e}"
-            print(error_msg)
-            import traceback
-            traceback.print_exc()
-            raise RuntimeError(error_msg) from e
+                # Выполняем миграцию
+                await conn.execute(text(migration_sql))
+                print(f"✅ Миграция {migration_file.name} выполнена успешно")
+                
+            except Exception as e:
+                print(f"❌ Ошибка при выполнении миграции {migration_file.name}: {e}")
+                # Продолжаем выполнение других миграций
+                continue
     
     print("🎉 Все миграции выполнены!")
 
