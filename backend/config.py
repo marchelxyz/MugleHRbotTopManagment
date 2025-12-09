@@ -22,11 +22,6 @@ class Settings(BaseSettings):
     STATIX_BONUS_PASSWORD: str = "qd905xA_DI"
     STATIX_BONUS_RESTAURANT_NAME: str = "TG BOT"
     STATIX_BONUS_TIMEOUT_SECONDS: int = 10
-    
-    # Настройки JWT для аутентификации через браузер
-    JWT_SECRET_KEY: str = "your-secret-key-change-in-production"  # В production должен быть сложным случайным ключом
-    JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 дней
 
     class Config:
         env_file = ".env"
