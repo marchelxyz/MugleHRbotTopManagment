@@ -11,7 +11,8 @@ from sqlalchemy import text, select
 
 # Абсолютные импорты (без точек)
 from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache
+from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +196,20 @@ async def lifespan(app: FastAPI):
                 await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
                 await conn.commit()
                 logger.info("🔓 Блокировка освобождена")
+        
+        # Инициализируем Redis
+        try:
+            await redis_cache.connect()
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось подключиться к Redis: {e}. Кеширование будет недоступно.")
     
     yield
+    
+    # Закрываем соединение с Redis при остановке приложения
+    try:
+        await redis_cache.disconnect()
+    except Exception as e:
+        logger.error(f"Ошибка при отключении от Redis: {e}")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -260,6 +273,7 @@ app.include_router(scheduler.router)
 app.include_router(telegram.router)
 app.include_router(sessions.router)
 app.include_router(shared_gifts.router)
+app.include_router(cache.router)
 
 @app.get("/")
 def read_root():

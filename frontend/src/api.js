@@ -376,6 +376,45 @@ export const purchaseStatixBonus = (telegramId, bonusAmount) => {
     });
 };
 
+// --- Функции для работы с Redis кешем ---
+
+/**
+ * Получает значение из кеша Redis
+ * @param {string} key - Ключ кеша (feed, market, leaderboard, banners, history)
+ */
+export const getCache = (key) => {
+    return apiClient.get(`/cache/${key}`);
+};
+
+/**
+ * Устанавливает значение в кеш Redis
+ * @param {string} key - Ключ кеша
+ * @param {any} value - Значение для сохранения
+ * @param {number} ttl - Время жизни в секундах (опционально)
+ */
+export const setCache = (key, value, ttl = null) => {
+    return apiClient.post(`/cache/${key}`, {
+        key,
+        value,
+        ttl
+    });
+};
+
+/**
+ * Удаляет значение из кеша Redis
+ * @param {string} key - Ключ кеша
+ */
+export const deleteCache = (key) => {
+    return apiClient.delete(`/cache/${key}`);
+};
+
+/**
+ * Очищает весь кеш пользователя
+ */
+export const clearAllCache = () => {
+    return apiClient.delete('/cache/');
+};
+
 // --- АДМИН API ДЛЯ STATIX BONUS ---
 export const getStatixBonusSettings = () => {
     const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;

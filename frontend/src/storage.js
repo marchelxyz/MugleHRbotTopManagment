@@ -1,27 +1,38 @@
 // frontend/src/storage.js
 
-// --- 1. ИЗМЕНЯЕМ ИМПОРТЫ: убираем старый, добавляем новый ---
-import { getFeed, getMarketItems, getLeaderboard, getUserTransactions } from './api';
+// --- ИЗМЕНЯЕМ ИМПОРТЫ: используем Redis API вместо CloudStorage ---
+import { getFeed, getMarketItems, getLeaderboard, getUserTransactions, getCache, setCache as setCacheAPI, deleteCache as deleteCacheAPI } from './api';
 
-// Получаем доступ к API хранилища с fallback на localStorage
-const isTelegramWebApp = !!window.Telegram?.WebApp;
-const storage = isTelegramWebApp ? window.Telegram.WebApp.CloudStorage : {
-  getItem: (key, callback) => {
-    try {
-      const value = localStorage.getItem(key);
-      callback(null, value);
-    } catch (error) {
-      callback(error, null);
+// Получаем Telegram ID для работы с кешем
+const getTelegramId = () => {
+    return window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+};
+
+// Fallback на localStorage для случаев, когда Redis недоступен или пользователь не авторизован
+const fallbackStorage = {
+    getItem: (key) => {
+        try {
+            const value = localStorage.getItem(`cache_${key}`);
+            return value ? JSON.parse(value) : null;
+        } catch (error) {
+            console.error('Ошибка чтения из localStorage:', error);
+            return null;
+        }
+    },
+    setItem: (key, value) => {
+        try {
+            localStorage.setItem(`cache_${key}`, JSON.stringify(value));
+        } catch (error) {
+            console.error('Ошибка записи в localStorage:', error);
+        }
+    },
+    removeItem: (key) => {
+        try {
+            localStorage.removeItem(`cache_${key}`);
+        } catch (error) {
+            console.error('Ошибка удаления из localStorage:', error);
+        }
     }
-  },
-  setItem: (key, value, callback) => {
-    try {
-      localStorage.setItem(key, value);
-      if (callback) callback(null);
-    } catch (error) {
-      if (callback) callback(error);
-    }
-  }
 };
 
 // Локальная переменная для мгновенного доступа после первой загрузки
@@ -34,24 +45,27 @@ const memoryCache = {
 };
 
 /**
- * Асинхронно получает значение из локального хранилища TWA.
+ * Асинхронно получает значение из Redis кеша или fallback хранилища.
  * @param {string} key Ключ, по которому нужно найти данные.
  * @returns {Promise<any|null>} Распарсенный JSON-объект или null.
  */
-const getStoredValue = (key) => {
-  return new Promise((resolve) => {
-    storage.getItem(key, (error, value) => {
-      if (error || !value) {
-        resolve(null);
-      } else {
+const getStoredValue = async (key) => {
+    const telegramId = getTelegramId();
+    
+    // Если есть Telegram ID, используем Redis API
+    if (telegramId) {
         try {
-          resolve(JSON.parse(value));
-        } catch (e) {
-          resolve(null);
+            const response = await getCache(key);
+            if (response.data && response.data.exists && response.data.value !== null) {
+                return response.data.value;
+            }
+        } catch (error) {
+            console.warn(`Не удалось получить кеш из Redis для ключа ${key}, используем fallback:`, error);
         }
-      }
-    });
-  });
+    }
+    
+    // Fallback на localStorage
+    return fallbackStorage.getItem(key);
 };
 
 /**
@@ -88,15 +102,29 @@ export const getCachedData = (key) => {
 };
 
 /**
- * Устанавливает данные в кэш памяти и CloudStorage.
+ * Устанавливает данные в кэш памяти и Redis (с fallback на localStorage).
  * @param {'feed' | 'market' | 'leaderboard' | 'history' | 'banners'} key Ключ данных.
  * @param {any} data Данные для сохранения.
  */
-export const setCachedData = (key, data) => {
-  memoryCache[key] = data;
-  if (data !== null) {
-    storage.setItem(key, JSON.stringify(data));
-  }
+export const setCachedData = async (key, data) => {
+    // Обновляем кеш в памяти синхронно
+    memoryCache[key] = data;
+    
+    const telegramId = getTelegramId();
+    
+    // Если есть Telegram ID, используем Redis API
+    if (telegramId && data !== null) {
+        try {
+            await setCacheAPI(key, data);
+        } catch (error) {
+            console.warn(`Не удалось сохранить кеш в Redis для ключа ${key}, используем fallback:`, error);
+            // Fallback на localStorage
+            fallbackStorage.setItem(key, data);
+        }
+    } else if (data !== null) {
+        // Fallback на localStorage если нет Telegram ID
+        fallbackStorage.setItem(key, data);
+    }
 };
 
 /**
@@ -118,17 +146,17 @@ export const refreshAllData = async () => {
     // Обновляем ленту
     if (feedRes.data) {
       memoryCache.feed = feedRes.data;
-      storage.setItem('feed', JSON.stringify(feedRes.data));
+      await setCachedData('feed', feedRes.data);
     }
     // Обновляем товары
     if (marketRes.data) {
         memoryCache.market = marketRes.data;
-        storage.setItem('market', JSON.stringify(marketRes.data));
+        await setCachedData('market', marketRes.data);
     }
     // Обновляем лидерборд
     if (leaderboardRes.data) {
         memoryCache.leaderboard = leaderboardRes.data;
-        storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
+        await setCachedData('leaderboard', leaderboardRes.data);
     }
     console.log('All data refreshed and saved to storage.');
 
@@ -140,14 +168,26 @@ export const refreshAllData = async () => {
 /**
  * Очищает кэш для определенного ключа.
  * Используется после действий, которые делают данные неактуальными (например, покупка).
- * @param {'feed' | 'market' | 'leaderboard' | 'history'} key Ключ данных для очистки.
+ * @param {'feed' | 'market' | 'leaderboard' | 'history' | 'banners'} key Ключ данных для очистки.
  */
-export const clearCache = (key) => {
-  try {
-    const cacheKey = `cache_${key}`;
-    localStorage.removeItem(cacheKey); // Используем removeItem для надежности
-    console.log(`Cache for "${key}" has been cleared.`); // Добавляем лог для проверки
-  } catch (error) {
-    console.error(`Failed to clear cache for key "${key}":`, error);
-  }
+export const clearCache = async (key) => {
+    // Очищаем из памяти
+    memoryCache[key] = null;
+    
+    const telegramId = getTelegramId();
+    
+    // Если есть Telegram ID, очищаем из Redis
+    if (telegramId) {
+        try {
+            await deleteCacheAPI(key);
+            console.log(`Кеш "${key}" очищен из Redis.`);
+        } catch (error) {
+            console.warn(`Не удалось очистить кеш из Redis для ключа ${key}, используем fallback:`, error);
+            // Fallback на localStorage
+            fallbackStorage.removeItem(key);
+        }
+    } else {
+        // Fallback на localStorage
+        fallbackStorage.removeItem(key);
+    }
 };

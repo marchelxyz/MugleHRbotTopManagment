@@ -11,3 +11,5 @@ pyzipper
 openpyxl
 pandas
 pytz
+redis
+aioredis

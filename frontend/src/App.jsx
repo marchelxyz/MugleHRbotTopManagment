@@ -157,11 +157,16 @@ function App() {
         setUser(userResponse.data);
         
         // Сохраняем предзагруженные данные в кэш для HomePage
+        // Используем Promise.all для параллельного сохранения
+        const cachePromises = [];
         if (feedResponse?.data) {
-          setCachedData('feed', feedResponse.data);
+          cachePromises.push(setCachedData('feed', feedResponse.data));
         }
         if (bannersResponse?.data) {
-          setCachedData('banners', bannersResponse.data);
+          cachePromises.push(setCachedData('banners', bannersResponse.data));
+        }
+        if (cachePromises.length > 0) {
+          await Promise.all(cachePromises);
         }
       } catch (err) {
         if (err.response && err.response.status === 404) {
