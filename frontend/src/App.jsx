@@ -63,6 +63,8 @@ function App() {
 
   useEffect(() => {
     // Инициализация Telegram WebApp только если он доступен
+    let handleVisibilityChange = null;
+    
     if (tg) {
       tg.ready();
       tg.expand();
@@ -94,6 +96,29 @@ function App() {
           console.log('Mini App деактивирована - приостанавливаем операции');
           // Можно приостановить тяжелые операции или обновления
         });
+      } else {
+        // Fallback для старых версий: используем браузерное событие visibilitychange
+        handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible' && tg) {
+            console.log('App became visible (visibilitychange fallback), expanding and reconnecting...');
+            try {
+              tg.expand();
+              tg.ready();
+              if (tg.setHeaderColor) {
+                tg.setHeaderColor('#2196F3');
+              }
+              if (tg.setBackgroundColor) {
+                tg.setBackgroundColor('#E8F4F8');
+              }
+            } catch (error) {
+              console.error('Ошибка при переподключении после возврата из фонового режима:', error);
+            }
+          } else if (document.visibilityState === 'hidden' && tg) {
+            console.log('App became hidden (visibilitychange fallback)');
+          }
+        };
+        
+        document.addEventListener('visibilitychange', handleVisibilityChange);
       }
       
       // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем событие viewportChanged для отслеживания изменений
@@ -108,29 +133,7 @@ function App() {
           }
         }
       });
-      
-      // Fallback для старых версий: используем браузерное событие visibilitychange
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible' && tg) {
-          console.log('App became visible (visibilitychange fallback), expanding and reconnecting...');
-          try {
-            tg.expand();
-            tg.ready();
-            if (tg.setHeaderColor) {
-              tg.setHeaderColor('#2196F3');
-            }
-            if (tg.setBackgroundColor) {
-              tg.setBackgroundColor('#E8F4F8');
-            }
-          } catch (error) {
-            console.error('Ошибка при переподключении после возврата из фонового режима:', error);
-          }
-        } else if (document.visibilityState === 'hidden' && tg) {
-          console.log('App became hidden (visibilitychange fallback)');
-        }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
     
     initializeCache();  
       
@@ -185,8 +188,8 @@ function App() {
     
     // Очистка обработчиков при размонтировании
     return () => {
-      // Очистка браузерного события (если было добавлено)
-      if (typeof handleVisibilityChange !== 'undefined') {
+      // Очистка браузерного события visibilitychange (если было добавлено)
+      if (handleVisibilityChange) {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
