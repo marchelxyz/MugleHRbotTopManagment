@@ -15,25 +15,144 @@ const memoryCache = {
   banners: null,
 };
 
-/**
- * Асинхронно получает значение из локального хранилища TWA.
- * @param {string} key Ключ, по которому нужно найти данные.
- * @returns {Promise<any|null>} Распарсенный JSON-объект или null.
- */
-const getStoredValue = (key) => {
-  return new Promise((resolve) => {
-    storage.getItem(key, (error, value) => {
-      if (error || !value) {
-        resolve(null);
-      } else {
-        try {
-          resolve(JSON.parse(value));
-        } catch (e) {
-          resolve(null);
+// Лимит размера для Telegram Cloud Storage (примерно 64KB, используем 60KB для безопасности)
+const CLOUD_STORAGE_MAX_SIZE = 60 * 1024; // 60KB в байтах
+
+// Инициализация IndexedDB для больших данных
+let dbInstance = null;
+
+const initIndexedDB = () => {
+  return new Promise((resolve, reject) => {
+    if (dbInstance) {
+      resolve(dbInstance);
+      return;
+    }
+
+    const request = indexedDB.open('TelegramWebAppCache', 1);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      dbInstance = request.result;
+      resolve(dbInstance);
+    };
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('largeData')) {
+        db.createObjectStore('largeData', { keyPath: 'key' });
+      }
+    };
+  });
+};
+
+// Сохранение больших данных в IndexedDB
+const saveToIndexedDB = async (key, data) => {
+  try {
+    const db = await initIndexedDB();
+    const transaction = db.transaction(['largeData'], 'readwrite');
+    const store = transaction.objectStore('largeData');
+    
+    return new Promise((resolve, reject) => {
+      const request = store.put({ key, data, timestamp: Date.now() });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error(`Failed to save ${key} to IndexedDB:`, error);
+    throw error;
+  }
+};
+
+// Получение больших данных из IndexedDB
+const getFromIndexedDB = async (key) => {
+  try {
+    const db = await initIndexedDB();
+    const transaction = db.transaction(['largeData'], 'readonly');
+    const store = transaction.objectStore('largeData');
+    const request = store.get(key);
+    
+    return new Promise((resolve) => {
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? result.data : null);
+      };
+      request.onerror = () => resolve(null);
+    });
+  } catch (error) {
+    console.error(`Failed to get ${key} from IndexedDB:`, error);
+    return null;
+  }
+};
+
+// Безопасное сохранение данных с проверкой размера
+const safeSetItem = async (key, data) => {
+  const jsonString = JSON.stringify(data);
+  const sizeInBytes = new Blob([jsonString]).size;
+  
+  // Если данные меньше лимита, сохраняем в Cloud Storage
+  if (sizeInBytes <= CLOUD_STORAGE_MAX_SIZE) {
+    return new Promise((resolve) => {
+      storage.setItem(key, jsonString, (error) => {
+        if (error) {
+          console.warn(`Failed to save ${key} to Cloud Storage (${sizeInBytes} bytes), using IndexedDB:`, error);
+          // Fallback на IndexedDB при ошибке
+          saveToIndexedDB(key, data).then(() => resolve());
+        } else {
+          resolve();
         }
+      });
+    });
+  } else {
+    // Данные слишком большие, сохраняем только в IndexedDB
+    console.warn(`Data for ${key} is too large (${sizeInBytes} bytes), saving to IndexedDB only`);
+    await saveToIndexedDB(key, data);
+    // Помечаем в Cloud Storage, что данные хранятся в IndexedDB
+    storage.setItem(`${key}_source`, 'indexeddb', () => {});
+  }
+};
+
+// Безопасное получение данных с проверкой источника
+const safeGetItem = async (key) => {
+  // Сначала проверяем Cloud Storage
+  return new Promise((resolve) => {
+    storage.getItem(`${key}_source`, (error, source) => {
+      if (source === 'indexeddb') {
+        // Данные хранятся в IndexedDB
+        getFromIndexedDB(key).then(resolve);
+      } else {
+        // Пытаемся получить из Cloud Storage
+        storage.getItem(key, (error, value) => {
+          if (error || !value) {
+            // Fallback на IndexedDB
+            getFromIndexedDB(key).then(resolve);
+          } else {
+            try {
+              resolve(JSON.parse(value));
+            } catch (e) {
+              console.error(`Failed to parse ${key} from Cloud Storage:`, e);
+              getFromIndexedDB(key).then(resolve);
+            }
+          }
+        });
       }
     });
   });
+};
+
+/**
+ * Асинхронно получает значение из локального хранилища TWA.
+ * Использует безопасное получение с поддержкой IndexedDB для больших данных.
+ * @param {string} key Ключ, по которому нужно найти данные.
+ * @returns {Promise<any|null>} Распарсенный JSON-объект или null.
+ */
+const getStoredValue = async (key) => {
+  try {
+    const value = await safeGetItem(key);
+    return value;
+  } catch (error) {
+    console.error(`Error getting stored value for ${key}:`, error);
+    return null;
+  }
 };
 
 /**
@@ -70,14 +189,18 @@ export const getCachedData = (key) => {
 };
 
 /**
- * Устанавливает данные в кэш памяти и CloudStorage.
+ * Устанавливает данные в кэш памяти и CloudStorage (или IndexedDB для больших данных).
  * @param {'feed' | 'market' | 'leaderboard' | 'history' | 'banners'} key Ключ данных.
  * @param {any} data Данные для сохранения.
  */
-export const setCachedData = (key, data) => {
+export const setCachedData = async (key, data) => {
   memoryCache[key] = data;
   if (data !== null) {
-    storage.setItem(key, JSON.stringify(data));
+    try {
+      await safeSetItem(key, data);
+    } catch (error) {
+      console.error(`Failed to save ${key} to storage:`, error);
+    }
   }
 };
 
@@ -97,20 +220,20 @@ export const refreshAllData = async () => {
       getLeaderboard({ period: 'current_month', type: 'received' })
     ]);
     
-    // Обновляем ленту
+    // Обновляем ленту с безопасным сохранением
     if (feedRes.data) {
       memoryCache.feed = feedRes.data;
-      storage.setItem('feed', JSON.stringify(feedRes.data));
+      await safeSetItem('feed', feedRes.data);
     }
-    // Обновляем товары
+    // Обновляем товары с безопасным сохранением
     if (marketRes.data) {
         memoryCache.market = marketRes.data;
-        storage.setItem('market', JSON.stringify(marketRes.data));
+        await safeSetItem('market', marketRes.data);
     }
-    // Обновляем лидерборд
+    // Обновляем лидерборд с безопасным сохранением
     if (leaderboardRes.data) {
         memoryCache.leaderboard = leaderboardRes.data;
-        storage.setItem('leaderboard', JSON.stringify(leaderboardRes.data));
+        await safeSetItem('leaderboard', leaderboardRes.data);
     }
     console.log('All data refreshed and saved to storage.');
 
@@ -120,15 +243,35 @@ export const refreshAllData = async () => {
 };
 
 /**
- * Очищает кэш для определенного ключа.
+ * Очищает кэш для определенного ключа из памяти, Cloud Storage и IndexedDB.
  * Используется после действий, которые делают данные неактуальными (например, покупка).
- * @param {'feed' | 'market' | 'leaderboard' | 'history'} key Ключ данных для очистки.
+ * @param {'feed' | 'market' | 'leaderboard' | 'history' | 'banners'} key Ключ данных для очистки.
  */
-export const clearCache = (key) => {
+export const clearCache = async (key) => {
   try {
-    const cacheKey = `cache_${key}`;
-    localStorage.removeItem(cacheKey); // Используем removeItem для надежности
-    console.log(`Cache for "${key}" has been cleared.`); // Добавляем лог для проверки
+    // Очищаем из памяти
+    memoryCache[key] = null;
+    
+    // Очищаем из Cloud Storage
+    storage.removeItem(key, () => {});
+    storage.removeItem(`${key}_source`, () => {});
+    
+    // Очищаем из IndexedDB
+    try {
+      const db = await initIndexedDB();
+      const transaction = db.transaction(['largeData'], 'readwrite');
+      const store = transaction.objectStore('largeData');
+      
+      await new Promise((resolve, reject) => {
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.warn(`Failed to clear ${key} from IndexedDB:`, error);
+    }
+    
+    console.log(`Cache for "${key}" has been cleared.`);
   } catch (error) {
     console.error(`Failed to clear cache for key "${key}":`, error);
   }

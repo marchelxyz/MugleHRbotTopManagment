@@ -50,7 +50,7 @@ const StatixSettings = () => {
     try {
       await updateStatixBonusSettings(statixSettings);
       showAlert('Настройки Statix Bonus обновлены!', 'success');
-      clearCache('market');
+      await clearCache('market');
     } catch (error) {
       showAlert('Ошибка при обновлении настроек.', 'error');
     } finally {

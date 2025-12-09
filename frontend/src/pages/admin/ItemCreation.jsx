@@ -142,7 +142,7 @@ const ItemCreation = () => {
       }
       resetForm();
       fetchItems();
-      clearCache('market');
+      await clearCache('market');
     } catch (error) {
       showAlert(error.response?.data?.detail || 'Произошла ошибка.', 'error');
     } finally {
@@ -180,7 +180,7 @@ const ItemCreation = () => {
             await archiveMarketItem(itemId);
             showAlert('Товар архивирован.', 'success');
             fetchItems();
-            clearCache('market');
+            await clearCache('market');
         } catch (error) {
             showAlert('Ошибка архивации.', 'error');
         }
@@ -194,7 +194,7 @@ const ItemCreation = () => {
             await restoreMarketItem(itemId);
             showAlert('Товар восстановлен.', 'success');
             fetchItems();
-            clearCache('market');
+            await clearCache('market');
         } catch (error) {
             showAlert('Ошибка восстановления.', 'error');
         }
@@ -209,7 +209,7 @@ const ItemCreation = () => {
         await deleteMarketItemPermanently(itemId);
         showAlert('Товар удален навсегда.', 'success');
         fetchItems();
-        clearCache('market');
+        await clearCache('market');
       } catch (error) {
         showAlert('Ошибка при удалении.', 'error');
       } finally {

@@ -96,10 +96,10 @@ function App() {
         
         // Сохраняем предзагруженные данные в кэш для HomePage
         if (feedResponse?.data) {
-          setCachedData('feed', feedResponse.data);
+          await setCachedData('feed', feedResponse.data);
         }
         if (bannersResponse?.data) {
-          setCachedData('banners', bannersResponse.data);
+          await setCachedData('banners', bannersResponse.data);
         }
       } catch (err) {
         if (err.response && err.response.status === 404) {
@@ -124,15 +124,15 @@ function App() {
   
   const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
 
-  const handlePurchaseAndUpdate = (newUserData) => {
+  const handlePurchaseAndUpdate = async (newUserData) => {
     updateUser(newUserData);
-    clearCache('market');
+    await clearCache('market');
   };
 
   // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
-const handleTransferSuccess = (updatedSenderData) => {
+const handleTransferSuccess = async (updatedSenderData) => {
     updateUser(updatedSenderData); // Обновляем состояние user новыми данными
-    clearCache('feed');
+    await clearCache('feed');
     navigate('home');
 };
   
