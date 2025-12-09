@@ -132,7 +132,56 @@ function App() {
             // Можно обновить UI при необходимости
           }
         }
+        // Также обрабатываем случай, когда viewport становится видимым (для совместимости)
+        if (event.isStateVisible) {
+          console.log('Viewport стал видимым, разворачиваем приложение...');
+          tg.expand();
+          tg.ready();
+        }
       });
+      
+      // Обработчик изменения видимости (для мобильных устройств) - дополнительная поддержка
+      if (tg.onEvent) {
+        tg.onEvent('visibilityChanged', (event) => {
+          console.log('Visibility changed:', event);
+          // Когда приложение становится видимым, убеждаемся, что оно развернуто
+          if (event.isVisible) {
+            console.log('Приложение стало видимым, разворачиваем...');
+            tg.expand();
+            tg.ready(); // Переподключаемся
+          } else {
+            console.log('Приложение стало невидимым');
+          }
+        });
+      }
+    }
+    
+    // Обработчик события visibilitychange для браузера (fallback)
+    // Используется только если не был установлен выше (для старых версий API)
+    if (!handleVisibilityChange) {
+      handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && tg) {
+          console.log('App became visible (visibilitychange), expanding and reconnecting...');
+          // Агрессивно переподключаемся при возврате из фонового режима
+          try {
+            tg.expand();
+            tg.ready(); // Переподключаемся к Telegram WebApp
+            // Также пытаемся обновить состояние приложения
+            if (tg.setHeaderColor) {
+              tg.setHeaderColor('#2196F3');
+            }
+            if (tg.setBackgroundColor) {
+              tg.setBackgroundColor('#E8F4F8');
+            }
+          } catch (error) {
+            console.error('Ошибка при переподключении после возврата из фонового режима:', error);
+          }
+        } else if (document.visibilityState === 'hidden' && tg) {
+          console.log('App became hidden (visibilitychange)');
+        }
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     }
     
     initializeCache();  
@@ -142,7 +191,10 @@ function App() {
     // Если не в Telegram WebApp, показываем страницу входа/регистрации
     if (!isTelegramWebApp || !telegramUser) {
       setLoading(false);
-      return;
+      // Возвращаем функцию очистки даже при раннем выходе
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
 
     if (telegramUser.photo_url) {
@@ -210,11 +262,11 @@ function App() {
   };
 
   // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
-const handleTransferSuccess = (updatedSenderData) => {
+  const handleTransferSuccess = (updatedSenderData) => {
     updateUser(updatedSenderData); // Обновляем состояние user новыми данными
     clearCache('feed');
     navigate('home');
-};
+  };
   
   const handleProfileSaveSuccess = () => {
       setShowPendingBanner(true);
@@ -348,7 +400,10 @@ const handleTransferSuccess = (updatedSenderData) => {
       }, PING_INTERVAL);
     };
 
+<<<<<<< HEAD
     // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем события activated/deactivated из Telegram WebApp API
+    let sessionVisibilityHandler = null;
+    
     if (tg && tg.onEvent && tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
       // Событие activated - когда Mini App становится активной
       tg.onEvent('activated', () => {
@@ -368,7 +423,7 @@ const handleTransferSuccess = (updatedSenderData) => {
       });
     } else {
       // Fallback для старых версий: используем браузерное событие visibilitychange
-      const handleVisibilityChange = () => {
+      sessionVisibilityHandler = () => {
         if (document.visibilityState === 'visible') {
           console.log('Приложение вернулось в активное состояние (fallback)');
           isActive = true;
@@ -385,8 +440,18 @@ const handleTransferSuccess = (updatedSenderData) => {
         }
       };
       
-      document.addEventListener('visibilitychange', handleVisibilityChange);
+      document.addEventListener('visibilitychange', sessionVisibilityHandler);
     }
+
+    // Обработчик закрытия приложения через Telegram WebApp API
+    const handleClose = () => {
+      console.log('Приложение закрывается через Telegram WebApp');
+      isActive = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
 
     // Обработчик события beforeunload (когда пользователь закрывает вкладку/приложение)
     const handleBeforeUnload = () => {
@@ -399,6 +464,11 @@ const handleTransferSuccess = (updatedSenderData) => {
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Обработчик закрытия через Telegram WebApp API
+    if (tg && tg.onEvent) {
+      tg.onEvent('close', handleClose);
+    }
 
     // Инициализация сессии
     const sessionManager = async () => {
@@ -423,6 +493,9 @@ const handleTransferSuccess = (updatedSenderData) => {
     return () => {
       isActive = false;
       // Очищаем только те обработчики, которые были добавлены
+      if (sessionVisibilityHandler) {
+        document.removeEventListener('visibilitychange', sessionVisibilityHandler);
+      }
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (intervalId) {
         clearInterval(intervalId);
