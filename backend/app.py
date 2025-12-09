@@ -12,12 +12,16 @@ from sqlalchemy import text, select
 # Абсолютные импорты (без точек)
 from database import engine, Base
 from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts
+from redis_client import init_redis, close_redis
 
 logger = logging.getLogger(__name__)
 
 # --- ПРАВИЛЬНЫЙ АСИНХРОННЫЙ СПОСОБ СОЗДАНИЯ ТАБЛИЦ И ПРИМЕНЕНИЯ МИГРАЦИЙ ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Инициализация Redis (если доступен)
+    await init_redis()
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
@@ -197,6 +201,9 @@ async def lifespan(app: FastAPI):
                 logger.info("🔓 Блокировка освобождена")
     
     yield
+    
+    # Закрытие соединения с Redis при остановке приложения
+    await close_redis()
 
 app = FastAPI(lifespan=lifespan)
 

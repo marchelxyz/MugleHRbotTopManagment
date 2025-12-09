@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     STATIX_BONUS_PASSWORD: str = "qd905xA_DI"
     STATIX_BONUS_RESTAURANT_NAME: str = "TG BOT"
     STATIX_BONUS_TIMEOUT_SECONDS: int = 10
+    
+    # Настройки Redis (опционально, если не указано - приложение работает без кеша)
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     class Config:
         env_file = ".env"
