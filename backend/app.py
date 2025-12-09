@@ -40,155 +40,171 @@ async def lifespan(app: FastAPI):
     else:
         logger.info(f"✅ Папка migrations найдена: {migrations_dir}")
         
-        # Создаем таблицу для отслеживания миграций
-        create_table_sql = """
-        CREATE TABLE IF NOT EXISTS schema_migrations (
-            id SERIAL PRIMARY KEY,
-            migration_name VARCHAR(255) NOT NULL UNIQUE,
-            applied_at TIMESTAMP DEFAULT NOW() NOT NULL
-        )
-        """
+        # Используем advisory lock для предотвращения одновременного применения миграций
+        # несколькими воркерами gunicorn. Ключ 1234567890 - уникальный идентификатор для миграций
+        MIGRATION_LOCK_KEY = 1234567890
         
-        create_index_sql = """
-        CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name)
-        """
-        
-        try:
-            async with engine.begin() as conn:
-                # Выполняем команды отдельно, так как asyncpg не поддерживает множественные команды в одном prepared statement
-                await conn.execute(text(create_table_sql))
-                await conn.execute(text(create_index_sql))
-                logger.info("✅ Таблица schema_migrations создана/проверена")
-        except Exception as e:
-            logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
-            raise  # Прерываем запуск, если не можем создать таблицу отслеживания
-        
-        # Получаем список уже примененных миграций
-        async with engine.connect() as conn:
-            result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
-            applied_migrations = {row[0] for row in result.fetchall()}
-            logger.info(f"📋 Уже применено миграций: {len(applied_migrations)}")
-        
-        # Применяем миграции из папки migrations
-        migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
-        
-        if not migration_files:
-            logger.warning("⚠️ Файлы миграций не найдены")
-        else:
-            logger.info(f"🔍 Найдено {len(migration_files)} файлов миграций")
+        # Разбиваем SQL на отдельные команды (asyncpg не поддерживает множественные команды в одном prepared statement)
+        def split_sql_commands(sql_text):
+            """Разбивает SQL текст на отдельные команды, удаляя комментарии и учитывая dollar-quoted блоки"""
+            # Удаляем многострочные комментарии /* ... */
+            sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
             
-            for migration_file in migration_files:
-                migration_name = migration_file.name
+            # Разбиваем на строки и обрабатываем
+            lines = []
+            for line in sql_text.split('\n'):
+                # Удаляем однострочные комментарии
+                if '--' in line:
+                    line = line.split('--')[0]
+                # Убираем пробелы в начале и конце
+                line = line.strip()
+                if line:
+                    lines.append(line)
+            
+            # Объединяем строки обратно
+            sql_clean = ' '.join(lines)
+            
+            # Разбиваем по точке с запятой, учитывая dollar-quoted блоки
+            commands = []
+            current_command = []
+            in_dollar_quote = False
+            dollar_tag = None
+            i = 0
+            
+            while i < len(sql_clean):
+                # Проверяем начало dollar-quoted блока
+                if not in_dollar_quote and sql_clean[i] == '$':
+                    # Ищем закрывающий $ для определения тега
+                    tag_start = i
+                    j = i + 1
+                    while j < len(sql_clean) and sql_clean[j] != '$':
+                        j += 1
+                    
+                    if j < len(sql_clean):
+                        dollar_tag = sql_clean[tag_start:j + 1]
+                        in_dollar_quote = True
+                        current_command.append(dollar_tag)
+                        i = j + 1
+                        continue
                 
-                # Пропускаем миграции, которые уже были применены
-                if migration_name in applied_migrations:
-                    logger.info(f"⏭️  Миграция {migration_name} уже применена, пропускаем")
-                    continue
+                # Проверяем конец dollar-quoted блока
+                if in_dollar_quote and sql_clean[i] == '$':
+                    # Проверяем, совпадает ли тег
+                    if i + len(dollar_tag) <= len(sql_clean):
+                        potential_tag = sql_clean[i:i + len(dollar_tag)]
+                        if potential_tag == dollar_tag:
+                            current_command.append(dollar_tag)
+                            i += len(dollar_tag)
+                            in_dollar_quote = False
+                            dollar_tag = None
+                            continue
                 
-                logger.info(f"📄 Применение миграции: {migration_name}")
+                current_command.append(sql_clean[i])
+                
+                # Разбиваем по точке с запятой только если мы не внутри dollar-quoted блока
+                if not in_dollar_quote and sql_clean[i] == ';':
+                    cmd = ''.join(current_command).strip()
+                    if cmd:
+                        commands.append(cmd)
+                    current_command = []
+                
+                i += 1
+            
+            # Добавляем последнюю команду, если она есть
+            if current_command:
+                cmd = ''.join(current_command).strip()
+                if cmd:
+                    commands.append(cmd)
+            
+            return commands
+        
+        async with engine.connect() as conn:
+            # Пытаемся получить блокировку (будет ждать, если другой процесс уже её держит)
+            logger.info("🔒 Ожидание блокировки для применения миграций...")
+            await conn.execute(text(f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"))
+            await conn.commit()
+            logger.info("🔓 Блокировка получена, начинаем применение миграций")
+            
+            try:
+                # Создаем таблицу для отслеживания миграций
+                create_table_sql = """
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    id SERIAL PRIMARY KEY,
+                    migration_name VARCHAR(255) NOT NULL UNIQUE,
+                    applied_at TIMESTAMP DEFAULT NOW() NOT NULL
+                )
+                """
+                
+                create_index_sql = """
+                CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name)
+                """
                 
                 try:
-                    with open(migration_file, 'r', encoding='utf-8') as f:
-                        migration_sql = f.read()
-                    
-                    # Разбиваем SQL на отдельные команды (asyncpg не поддерживает множественные команды в одном prepared statement)
-                    def split_sql_commands(sql_text):
-                        """Разбивает SQL текст на отдельные команды, удаляя комментарии и учитывая dollar-quoted блоки"""
-                        # Удаляем многострочные комментарии /* ... */
-                        sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
-                        
-                        # Разбиваем на строки и обрабатываем
-                        lines = []
-                        for line in sql_text.split('\n'):
-                            # Удаляем однострочные комментарии
-                            if '--' in line:
-                                line = line.split('--')[0]
-                            # Убираем пробелы в начале и конце
-                            line = line.strip()
-                            if line:
-                                lines.append(line)
-                        
-                        # Объединяем строки обратно
-                        sql_clean = ' '.join(lines)
-                        
-                        # Разбиваем по точке с запятой, учитывая dollar-quoted блоки
-                        commands = []
-                        current_command = []
-                        in_dollar_quote = False
-                        dollar_tag = None
-                        i = 0
-                        
-                        while i < len(sql_clean):
-                            # Проверяем начало dollar-quoted блока
-                            if not in_dollar_quote and sql_clean[i] == '$':
-                                # Ищем закрывающий $ для определения тега
-                                tag_start = i
-                                j = i + 1
-                                while j < len(sql_clean) and sql_clean[j] != '$':
-                                    j += 1
-                                
-                                if j < len(sql_clean):
-                                    dollar_tag = sql_clean[tag_start:j + 1]
-                                    in_dollar_quote = True
-                                    current_command.append(dollar_tag)
-                                    i = j + 1
-                                    continue
-                            
-                            # Проверяем конец dollar-quoted блока
-                            if in_dollar_quote and sql_clean[i] == '$':
-                                # Проверяем, совпадает ли тег
-                                if i + len(dollar_tag) <= len(sql_clean):
-                                    potential_tag = sql_clean[i:i + len(dollar_tag)]
-                                    if potential_tag == dollar_tag:
-                                        current_command.append(dollar_tag)
-                                        i += len(dollar_tag)
-                                        in_dollar_quote = False
-                                        dollar_tag = None
-                                        continue
-                            
-                            current_command.append(sql_clean[i])
-                            
-                            # Разбиваем по точке с запятой только если мы не внутри dollar-quoted блока
-                            if not in_dollar_quote and sql_clean[i] == ';':
-                                cmd = ''.join(current_command).strip()
-                                if cmd:
-                                    commands.append(cmd)
-                                current_command = []
-                            
-                            i += 1
-                        
-                        # Добавляем последнюю команду, если она есть
-                        if current_command:
-                            cmd = ''.join(current_command).strip()
-                            if cmd:
-                                commands.append(cmd)
-                        
-                        return commands
-                    
-                    # Применяем миграцию в транзакции
-                    async with engine.begin() as conn:
-                        # Разбиваем SQL на отдельные команды и выполняем каждую отдельно
-                        sql_commands = split_sql_commands(migration_sql)
-                        
-                        for i, sql_command in enumerate(sql_commands, 1):
-                            if sql_command.strip():
-                                logger.debug(f"  Выполнение команды {i}/{len(sql_commands)}: {sql_command[:50]}...")
-                                await conn.execute(text(sql_command))
-                        
-                        # Записываем факт применения миграции
-                        insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
-                        await conn.execute(insert_migration, {"name": migration_name})
-                    
-                    logger.info(f"✅ Миграция {migration_name} применена успешно")
-                    
+                    await conn.execute(text(create_table_sql))
+                    await conn.execute(text(create_index_sql))
+                    await conn.commit()
+                    logger.info("✅ Таблица schema_migrations создана/проверена")
                 except Exception as e:
-                    error_msg = f"❌ КРИТИЧЕСКАЯ ОШИБКА при применении миграции {migration_name}: {e}"
-                    logger.error(error_msg)
-                    logger.exception(e)  # Выводим полный traceback
-                    # Прерываем запуск приложения при ошибке миграции
-                    raise RuntimeError(error_msg) from e
-            
-            logger.info("🎉 Применение миграций завершено")
+                    await conn.rollback()
+                    logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
+                    raise  # Прерываем запуск, если не можем создать таблицу отслеживания
+                
+                # Получаем список уже примененных миграций
+                result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
+                applied_migrations = {row[0] for row in result.fetchall()}
+                logger.info(f"📋 Уже применено миграций: {len(applied_migrations)}")
+                
+                # Применяем миграции из папки migrations
+                migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
+                
+                if not migration_files:
+                    logger.warning("⚠️ Файлы миграций не найдены")
+                else:
+                    logger.info(f"🔍 Найдено {len(migration_files)} файлов миграций")
+                    
+                    for migration_file in migration_files:
+                        migration_name = migration_file.name
+                        
+                        # Пропускаем миграции, которые уже были применены
+                        if migration_name in applied_migrations:
+                            logger.info(f"⏭️  Миграция {migration_name} уже применена, пропускаем")
+                            continue
+                        
+                        logger.info(f"📄 Применение миграции: {migration_name}")
+                        
+                        try:
+                            with open(migration_file, 'r', encoding='utf-8') as f:
+                                migration_sql = f.read()
+                            
+                            # Применяем миграцию в транзакции на том же соединении
+                            async with conn.begin():
+                                # Разбиваем SQL на отдельные команды и выполняем каждую отдельно
+                                sql_commands = split_sql_commands(migration_sql)
+                                
+                                for i, sql_command in enumerate(sql_commands, 1):
+                                    if sql_command.strip():
+                                        logger.debug(f"  Выполнение команды {i}/{len(sql_commands)}: {sql_command[:50]}...")
+                                        await conn.execute(text(sql_command))
+                                
+                                # Записываем факт применения миграции
+                                insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
+                                await conn.execute(insert_migration, {"name": migration_name})
+                            
+                            logger.info(f"✅ Миграция {migration_name} применена успешно")
+                            
+                        except Exception as e:
+                            error_msg = f"❌ КРИТИЧЕСКАЯ ОШИБКА при применении миграции {migration_name}: {e}"
+                            logger.error(error_msg)
+                            logger.exception(e)  # Выводим полный traceback
+                            # Прерываем запуск приложения при ошибке миграции
+                            raise RuntimeError(error_msg) from e
+                    
+                    logger.info("🎉 Применение миграций завершено")
+            finally:
+                # Освобождаем блокировку
+                await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
+                await conn.commit()
+                logger.info("🔓 Блокировка освобождена")
     
     yield
 
