@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS statix_bonus_items (
 );
 
 -- Вставляем запись по умолчанию
-INSERT INTO statix_bonus_items (name, description, is_active, thanks_to_statix_rate, min_bonus_per_step, max_bonus_per_step, bonus_step)
-VALUES ('Бонусы Statix', 'Покупка бонусов для платформы Statix', true, 10, 100, 10000, 100)
+INSERT INTO statix_bonus_items (name, description, thanks_to_statix_rate, min_bonus_per_step, max_bonus_per_step, bonus_step)
+VALUES ('Бонусы Statix', 'Покупка бонусов для платформы Statix', 10, 100, 10000, 100)
 ON CONFLICT DO NOTHING;
 
 -- Создаем индекс для быстрого поиска активных товаров

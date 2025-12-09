@@ -4,30 +4,20 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
+from pathlib import Path
+import logging
+import re
+from sqlalchemy import text, select
 
 # Абсолютные импорты (без точек)
 from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, auth
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts
+
+logger = logging.getLogger(__name__)
 
 # --- ПРАВИЛЬНЫЙ АСИНХРОННЫЙ СПОСОБ СОЗДАНИЯ ТАБЛИЦ И ПРИМЕНЕНИЯ МИГРАЦИЙ ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from pathlib import Path
-    from sqlalchemy import text, select
-    import logging
-    import sys
-    import re
-    
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    
-    # Настраиваем вывод логов в консоль
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        logger.addHandler(handler)
-    
-    # Создаем таблицы на основе моделей (если их еще нет)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
@@ -249,8 +239,6 @@ origins = [
     
     # 2. Адрес для локальной разработки (РАЗРАБОТКА)
     "http://localhost:8080", # (или 3000, 8000 в зависимости от твоих настроек)
-    "http://localhost:5173", # Vite dev server
-    "http://localhost:3000", # React dev server
 ]
 
 app.add_middleware(
@@ -262,7 +250,6 @@ app.add_middleware(
 )
 
 # Подключение роутеров
-app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(market.router)

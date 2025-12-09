@@ -20,24 +20,8 @@ const formatDateForApi = (date) => {
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   const { showAlert } = useModalAlert();
-  
-  // Защита от undefined telegramUser - используем безопасный доступ
-  const safeTelegramUser = telegramUser || {};
-  const firstName = safeTelegramUser?.first_name || '';
-  
-  // Защита от undefined telegramUser
-  if (!telegramUser || !telegramUser.id) {
-    return (
-      <PageLayout title="Регистрация">
-        <p className={styles.subtitle}>
-          Ошибка: данные Telegram не найдены. Пожалуйста, перезагрузите страницу.
-        </p>
-      </PageLayout>
-    );
-  }
-  
   const [formData, setFormData] = useState({
-    firstName: firstName,
+    firstName: telegramUser?.first_name || '',
     lastName: '',
     department: '',
     position: '',
@@ -85,18 +69,18 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
       const apiDate = formatDateForApi(formData.dateOfBirth);
 
       const userData = {
-        telegram_id: String(safeTelegramUser.id || ''),
+        telegram_id: String(telegramUser.id),
         first_name: formData.firstName,
         last_name: formData.lastName,
         department: formData.department,
         position: formData.position,
-        username: safeTelegramUser?.username || null,
-        telegram_photo_url: safeTelegramUser?.photo_url || null,
+        username: telegramUser.username,
+        telegram_photo_url: telegramUser.photo_url || null,
         phone_number: formData.phoneNumber,
         date_of_birth: apiDate,
       };
 
-      await registerUser(safeTelegramUser.id, userData);
+      await registerUser(telegramUser.id, userData);
       showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
       
       setTimeout(() => {
@@ -114,7 +98,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess }) {
   return (
     <PageLayout title="Регистрация">
       <p className={styles.subtitle}>
-        Привет, {firstName || 'друг'}! Для завершения настройки, пожалуйста, укажите вашу информацию.
+        Привет, {telegramUser.first_name}! Для завершения настройки, пожалуйста, укажите вашу информацию.
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
