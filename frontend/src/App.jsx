@@ -349,6 +349,8 @@ const handleTransferSuccess = (updatedSenderData) => {
     };
 
     // ✅ ОФИЦИАЛЬНОЕ РЕШЕНИЕ: Используем события activated/deactivated из Telegram WebApp API
+    let sessionHandleVisibilityChange = null;
+    
     if (tg && tg.onEvent && tg.isVersionAtLeast && tg.isVersionAtLeast('8.0')) {
       // Событие activated - когда Mini App становится активной
       tg.onEvent('activated', () => {
@@ -368,7 +370,7 @@ const handleTransferSuccess = (updatedSenderData) => {
       });
     } else {
       // Fallback для старых версий: используем браузерное событие visibilitychange
-      const handleVisibilityChange = () => {
+      sessionHandleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           console.log('Приложение вернулось в активное состояние (fallback)');
           isActive = true;
@@ -385,7 +387,7 @@ const handleTransferSuccess = (updatedSenderData) => {
         }
       };
       
-      document.addEventListener('visibilitychange', handleVisibilityChange);
+      document.addEventListener('visibilitychange', sessionHandleVisibilityChange);
     }
 
     // Обработчик события beforeunload (когда пользователь закрывает вкладку/приложение)
@@ -423,6 +425,9 @@ const handleTransferSuccess = (updatedSenderData) => {
     return () => {
       isActive = false;
       // Очищаем только те обработчики, которые были добавлены
+      if (sessionHandleVisibilityChange) {
+        document.removeEventListener('visibilitychange', sessionHandleVisibilityChange);
+      }
       window.removeEventListener('beforeunload', handleBeforeUnload);
       if (intervalId) {
         clearInterval(intervalId);
