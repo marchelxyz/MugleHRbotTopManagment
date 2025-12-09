@@ -129,7 +129,10 @@ function App() {
     // Если не в Telegram WebApp, показываем страницу входа/регистрации
     if (!isTelegramWebApp || !telegramUser) {
       setLoading(false);
-      return;
+      // Возвращаем функцию очистки даже при раннем выходе
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     }
 
     if (telegramUser.photo_url) {
@@ -175,9 +178,7 @@ function App() {
     
     // Очистка обработчика при размонтировании
     return () => {
-      if (handleVisibilityChange) {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
   
@@ -196,11 +197,11 @@ function App() {
   };
 
   // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
-const handleTransferSuccess = (updatedSenderData) => {
+  const handleTransferSuccess = (updatedSenderData) => {
     updateUser(updatedSenderData); // Обновляем состояние user новыми данными
     clearCache('feed');
     navigate('home');
-};
+  };
   
   const handleProfileSaveSuccess = () => {
       setShowPendingBanner(true);
