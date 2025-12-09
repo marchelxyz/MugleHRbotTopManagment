@@ -11,7 +11,7 @@ from sqlalchemy import text, select
 
 # Абсолютные импорты (без точек)
 from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache
 from redis_client import init_redis, close_redis
 
 logger = logging.getLogger(__name__)
@@ -267,6 +267,7 @@ app.include_router(scheduler.router)
 app.include_router(telegram.router)
 app.include_router(sessions.router)
 app.include_router(shared_gifts.router)
+app.include_router(cache.router)
 
 @app.get("/")
 def read_root():

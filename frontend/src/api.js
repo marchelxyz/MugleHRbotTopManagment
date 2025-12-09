@@ -436,3 +436,51 @@ export const cleanupExpiredSharedGiftInvitations = () => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- API ФУНКЦИИ ДЛЯ РАБОТЫ С КЕШЕМ (заменяют Telegram CloudStorage) ---
+export const getCacheItem = (key) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+        return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.get(`/cache/${key}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    }).then(response => response.data.value)
+      .catch(error => {
+          // Если ключ не найден (404), возвращаем null (как в CloudStorage)
+          if (error.response && error.response.status === 404) {
+              return null;
+          }
+          throw error;
+      });
+};
+
+export const setCacheItem = (key, value) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+        return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.put(`/cache/${key}`, value, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const deleteCacheItem = (key) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+        return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.delete(`/cache/${key}`, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const clearAllCache = () => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!telegramId) {
+        return Promise.reject(new Error('Telegram ID не найден'));
+    }
+    return apiClient.delete('/cache/', {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
