@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError # <-- ДОБАВЬ ЭТУ СТРОКУ
+from sqlalchemy import select
 from typing import List, Optional
 from datetime import date, datetime, timedelta  # <--- ИСПРАВЛЕНИЕ ЗДЕСЬ
 import crud
@@ -149,6 +150,38 @@ async def reset_daily_transfer_limits_route(db: AsyncSession = Depends(get_db)):
 @router.get("/users", response_model=List[schemas.UserResponse])
 async def get_all_users_for_admin_route(db: AsyncSession = Depends(get_db)):
     return await crud.get_all_users_for_admin(db)
+
+@router.get("/users/pending", response_model=List[schemas.UserResponse])
+async def get_pending_users_route(db: AsyncSession = Depends(get_db)):
+    """Получает список пользователей со статусом pending (ожидающих одобрения)."""
+    result = await db.execute(
+        select(models.User).where(models.User.status == 'pending').order_by(models.User.registration_date.desc())
+    )
+    return result.scalars().all()
+
+@router.post("/users/{user_id}/approve", response_model=schemas.UserResponse)
+async def approve_user_registration_route(
+    user_id: int,
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Одобряет регистрацию пользователя."""
+    updated_user = await crud.update_user_status(db, user_id, "approved")
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated_user
+
+@router.post("/users/{user_id}/reject", response_model=schemas.UserResponse)
+async def reject_user_registration_route(
+    user_id: int,
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Отклоняет регистрацию пользователя."""
+    updated_user = await crud.update_user_status(db, user_id, "rejected")
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated_user
 
 @router.put("/users/{user_id}", response_model=schemas.UserResponse)
 async def admin_update_user_route(user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User = Depends(get_current_admin_user), db: AsyncSession = Depends(get_db)):

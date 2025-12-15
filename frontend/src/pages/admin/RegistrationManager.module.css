@@ -1,0 +1,108 @@
+/* frontend/src/pages/admin/RegistrationManager.module.css */
+
+.usersList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.userCard {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  background: #f9f9f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.userInfo {
+  flex: 1;
+}
+
+.userInfo h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.userDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.userDetails p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.userDetails strong {
+  color: #333;
+  margin-right: 5px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 120px;
+}
+
+.approveButton,
+.rejectButton {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.approveButton {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+}
+
+.approveButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+}
+
+.rejectButton {
+  background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+  color: white;
+}
+
+.rejectButton:hover:not(:disabled) {
+  background: linear-gradient(135deg, #da190b 0%, #c62828 100%);
+}
+
+.approveButton:disabled,
+.rejectButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .userCard {
+    flex-direction: column;
+  }
+  
+  .actions {
+    flex-direction: row;
+    width: 100%;
+  }
+  
+  .approveButton,
+  .rejectButton {
+    flex: 1;
+  }
+}

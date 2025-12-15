@@ -9,7 +9,30 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
 
+// Интерсептор для автоматического добавления заголовка авторизации
+apiClient.interceptors.request.use(
+  (config) => {
+    // Если есть userId в localStorage (браузерная авторизация), добавляем заголовок
+    const userId = localStorage.getItem('userId');
+    if (userId && !config.headers['X-Telegram-Id']) {
+      config.headers['X-User-Id'] = userId;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // --- Существующие функции (без изменений) ---
+
+// --- ФУНКЦИЯ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР ---
+export const loginUser = (login, password) => {
+  return apiClient.post('/users/auth/login', {
+    login,
+    password
+  });
+};
 
 export const checkUserStatus = (telegramId) => {
   return apiClient.get('/users/me', {
@@ -17,9 +40,20 @@ export const checkUserStatus = (telegramId) => {
   });
 };
 
+// --- ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ПОЛЬЗОВАТЕЛЯ ПО USER ID (для браузерной авторизации) ---
+export const checkUserStatusById = (userId) => {
+  return apiClient.get('/users/me', {
+    headers: { 'X-User-Id': userId },
+  });
+};
+
 export const registerUser = (telegramId, userData) => {
+  const headers = {};
+  if (telegramId) {
+    headers['X-Telegram-Id'] = telegramId;
+  }
   return apiClient.post('/users/auth/register', userData, {
-    headers: { 'X-Telegram-Id': telegramId },
+    headers,
   });
 };
 
@@ -216,6 +250,43 @@ export const adminDeleteUser = (userId) => {
     return apiClient.delete(`/admin/users/${userId}`, {
         headers: { 'X-Telegram-Id': telegramId },
     });
+};
+
+// --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ РЕГИСТРАЦИЯМИ ---
+export const getPendingUsers = () => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.get('/admin/users/pending', { headers });
+};
+
+export const approveUserRegistration = (userId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const currentUserId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (currentUserId) {
+        headers['X-User-Id'] = currentUserId;
+    }
+    return apiClient.post(`/admin/users/${userId}/approve`, {}, { headers });
+};
+
+export const rejectUserRegistration = (userId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const currentUserId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (currentUserId) {
+        headers['X-User-Id'] = currentUserId;
+    }
+    return apiClient.post(`/admin/users/${userId}/reject`, {}, { headers });
 };
 
 // --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---

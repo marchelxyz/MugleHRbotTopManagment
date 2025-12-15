@@ -8,6 +8,7 @@ import { initializeCache, clearCache, setCachedData } from './storage';
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
 import RegistrationPage from './pages/RegistrationPage';
+import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
@@ -46,6 +47,8 @@ function App() {
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  // Состояние для переключения между страницами входа и регистрации в браузере
+  const [showRegistration, setShowRegistration] = useState(false);
   
   // Определяем, является ли устройство десктопом
   // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
@@ -126,9 +129,33 @@ function App() {
       
     const telegramUser = tg?.initDataUnsafe?.user;
     
-    // Если не в Telegram WebApp, показываем страницу входа/регистрации
+    // Если не в Telegram WebApp, проверяем браузерную авторизацию
     if (!isTelegramWebApp || !telegramUser) {
-      setLoading(false);
+      // Проверяем, есть ли сохраненный пользователь в localStorage
+      const savedUserId = localStorage.getItem('userId');
+      const savedUser = localStorage.getItem('user');
+      
+      if (savedUserId && savedUser) {
+        // Пытаемся проверить статус пользователя
+        const checkBrowserUser = async () => {
+          try {
+            const { checkUserStatusById } = await import('./api');
+            const userResponse = await checkUserStatusById(savedUserId);
+            setUser(userResponse.data);
+          } catch (err) {
+            // Если пользователь не найден или ошибка, очищаем localStorage
+            localStorage.removeItem('userId');
+            localStorage.removeItem('user');
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        checkBrowserUser();
+      } else {
+        setLoading(false);
+      }
+      
       // Возвращаем функцию очистки даже при раннем выходе
       return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -189,6 +216,13 @@ function App() {
   
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    // Сохраняем пользователя в localStorage
+    localStorage.setItem('userId', userData.id.toString());
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+  
   const navigate = (targetPage) => {
     setShowPendingBanner(false);
     setPage(targetPage);
@@ -232,15 +266,24 @@ function App() {
       return <LoadingScreen />;
     }
   
-    // Если не в Telegram WebApp, показываем страницу входа
+    // Если не в Telegram WebApp, показываем страницу входа или регистрации
     if (!isTelegramWebApp) {
-      return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+      // Если пользователь не авторизован, показываем страницу входа или регистрации
+      if (!user) {
+        if (showRegistration) {
+          return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+        }
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
+      }
+      // Если пользователь авторизован, но статус pending, показываем соответствующую страницу
+      // (остальная логика будет обработана ниже)
     }
   
     if (!user) {
       const telegramUser = tg?.initDataUnsafe?.user;
       if (!telegramUser) {
-        return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+        // Для веб-браузера показываем страницу входа
+        return <LoginPage onLoginSuccess={handleLoginSuccess} />;
       }
       return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
