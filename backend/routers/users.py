@@ -75,29 +75,6 @@ async def delete_card(
 ):
     return await crud.delete_user_card(db, user.id)
 
-# --- ЭНДПОИНТ ДЛЯ ОБНОВЛЕНИЯ БАЛАНСА КАРТЫ ---
-@router.post("/me/card/refresh-balance", response_model=schemas.UserResponse)
-async def refresh_card_balance(
-    user: models.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Обновить баланс карты из Statix API"""
-    if not user.card_barcode:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="У вас не добавлена карта статикс"
-        )
-    
-    new_balance = await crud.update_user_card_balance(db, user.id)
-    if new_balance is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Не удалось получить баланс карты из Statix API. Попробуйте позже."
-        )
-    
-    await db.refresh(user)
-    return user
-
 # Этот путь правильный, так как он не дублирует префикс
 @router.get("/search/", response_model=list[schemas.UserResponse])
 async def search_users(

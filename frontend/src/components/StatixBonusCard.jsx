@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { purchaseStatixBonus, getStatixBonusItem, refreshCardBalance } from '../api';
+import { purchaseStatixBonus, getStatixBonusItem } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import styles from './StatixBonusCard.module.css';
@@ -52,22 +52,7 @@ function StatixBonusCard({ user, onPurchaseSuccess }) {
         const response = await purchaseStatixBonus(user.telegram_id, bonusAmount);
         const { new_balance, purchased_bonus_amount } = response.data;
         
-        // Обновляем баланс спасибок
         onPurchaseSuccess({ balance: new_balance });
-        
-        // Пытаемся обновить баланс карты после покупки бонусов
-        try {
-          const cardBalanceResponse = await refreshCardBalance();
-          if (cardBalanceResponse?.data) {
-            onPurchaseSuccess({ 
-              balance: new_balance,
-              card_balance: cardBalanceResponse.data.card_balance 
-            });
-          }
-        } catch (cardError) {
-          // Не критично, если не удалось обновить баланс карты
-          console.warn("Не удалось обновить баланс карты после покупки:", cardError);
-        }
         
         // Показываем модальное окно с результатом покупки
         showAlert(
