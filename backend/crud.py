@@ -2163,11 +2163,13 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
     if not isinstance(data, dict):
         return None
     
-    # Прямые поля баланса
+    # Прямые поля баланса (расширенный список)
     balance_fields = [
         "balance", "card_balance", "bonus_balance", "points", "bonus_points",
         "current_balance", "total_balance", "available_balance", "cardBalance",
-        "bonusBalance", "currentBalance"
+        "bonusBalance", "currentBalance", "totalBalance", "availableBalance",
+        "card_balance_after", "balance_after", "new_balance", "newBalance",
+        "remaining_balance", "remainingBalance", "final_balance", "finalBalance"
     ]
     
     for field in balance_fields:
@@ -2181,8 +2183,13 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
             except (ValueError, TypeError):
                 continue
     
-    # Проверяем вложенные структуры (card, card_info, result и т.д.)
-    nested_keys = ["card", "card_info", "result", "data", "response", "info"]
+    # Проверяем вложенные структуры (расширенный список)
+    nested_keys = [
+        "card", "card_info", "result", "data", "response", "info", 
+        "cardData", "cardInfo", "card_data", "card_info",
+        "user", "user_info", "customer", "customer_info",
+        "account", "account_info", "balance_info", "balanceInfo"
+    ]
     for key in nested_keys:
         nested = data.get(key)
         if isinstance(nested, dict):
@@ -2191,25 +2198,58 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
                 return balance
     
     # Проверяем массивы (может быть список объектов с балансом)
-    if isinstance(data.get("cards"), list) and len(data.get("cards", [])) > 0:
-        for card_item in data.get("cards", []):
-            if isinstance(card_item, dict):
-                balance = _extract_balance_from_response(card_item, card_number)
-                if balance is not None:
-                    return balance
+    array_keys = ["cards", "card_list", "cardList", "items", "results"]
+    for array_key in array_keys:
+        if isinstance(data.get(array_key), list) and len(data.get(array_key, [])) > 0:
+            for item in data.get(array_key, []):
+                if isinstance(item, dict):
+                    balance = _extract_balance_from_response(item, card_number)
+                    if balance is not None:
+                        return balance
+    
+    # Проверяем все значения словаря на наличие числовых значений, которые могут быть балансом
+    # Это последний резервный метод
+    for key, value in data.items():
+        if isinstance(value, (int, float)) and value >= 0:
+            # Если это положительное число и ключ содержит слова, связанные с балансом
+            if any(word in key.lower() for word in ["balance", "point", "bonus", "score"]):
+                try:
+                    balance_float = float(value)
+                    logger.info(f"Баланс найден в числовом поле '{key}': {balance_float} для карты {card_number}")
+                    return str(int(balance_float)) if balance_float.is_integer() else str(balance_float)
+                except (ValueError, TypeError):
+                    continue
     
     return None
 
 
-async def _get_statix_card_balance(card_number: str) -> Optional[str]:
+async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None) -> Optional[str]:
     """
     Получить баланс карты из Statix API.
     Пытается несколько способов получения баланса:
-    1. Использование action 'add_bonus_points' с нулевым количеством бонусов (может вернуть текущий баланс)
-    2. Различные actions для получения информации о карте
-    3. Проверка всех возможных полей в ответе
+    1. Использование _send_statix_bonus_request с нулевым количеством бонусов (если доступен телефон)
+    2. Использование action 'add_bonus_points' с нулевым количеством бонусов (может вернуть текущий баланс)
+    3. Различные actions для получения информации о карте
+    4. Проверка всех возможных полей в ответе
     """
     timeout_seconds = settings.STATIX_BONUS_TIMEOUT_SECONDS or 10
+    
+    # Метод 0: Использование _send_statix_bonus_request с нулевым количеством (если доступен телефон)
+    # Этот метод уже работает при покупке бонусов, поэтому пробуем его первым
+    if phone:
+        try:
+            formatted_phone = _normalize_statix_phone(phone)
+            logger.info(f"Попытка получить баланс карты {card_number} через _send_statix_bonus_request с нулевым количеством бонусов")
+            statix_response = await _send_statix_bonus_request(formatted_phone, 0, card_number)
+            if isinstance(statix_response, dict):
+                balance = _extract_balance_from_response(statix_response, card_number)
+                if balance is not None:
+                    logger.info(f"✅ Баланс карты {card_number} успешно получен через _send_statix_bonus_request: {balance}")
+                    return balance
+                else:
+                    logger.info(f"Баланс не найден в ответе _send_statix_bonus_request, пробуем другие методы")
+        except Exception as exc:
+            logger.info(f"Метод _send_statix_bonus_request не сработал: {exc}, пробуем другие методы")
     
     # Список методов для попытки получения баланса
     methods_to_try = [
@@ -2304,8 +2344,11 @@ async def _get_statix_card_balance(card_number: str) -> Optional[str]:
                     logger.warning(f"API вернул не-JSON ответ для метода '{method_name}': {response_text}")
                     continue
                 
-                # Логируем полный ответ для отладки (первые 1000 символов)
-                response_str = str(data)[:1000]
+                # Логируем полный ответ для отладки (первые 2000 символов)
+                try:
+                    response_str = json.dumps(data, ensure_ascii=False, indent=2)[:2000]
+                except:
+                    response_str = str(data)[:2000]
                 logger.info(f"Полный ответ API для метода '{method_name}': {response_str}")
                 
                 if isinstance(data, dict):
@@ -2324,7 +2367,11 @@ async def _get_statix_card_balance(card_number: str) -> Optional[str]:
                         logger.info(f"✅ Баланс карты {card_number} успешно получен методом '{method_name}': {balance}")
                         return balance
                     else:
-                        logger.info(f"Баланс не найден в ответе метода '{method_name}', пробуем следующий метод")
+                        logger.warning(
+                            f"Баланс не найден в ответе метода '{method_name}'. "
+                            f"Структура ответа: {list(data.keys()) if isinstance(data, dict) else 'не словарь'}. "
+                            f"Пробуем следующий метод"
+                        )
                         
             except httpx.HTTPStatusError as exc:
                 error_msg = _extract_statix_error_message(exc.response)
@@ -2337,8 +2384,12 @@ async def _get_statix_card_balance(card_number: str) -> Optional[str]:
                 logger.warning(f"Неожиданная ошибка для метода '{method_name}': {exc}", exc_info=True)
                 continue
     
-    # Если ни один метод не сработал, логируем предупреждение
-    logger.warning(f"Не удалось получить баланс карты {card_number} из Statix API ни одним из методов")
+    # Если ни один метод не сработал, логируем предупреждение с деталями
+    logger.warning(
+        f"Не удалось получить баланс карты {card_number} из Statix API ни одним из методов. "
+        f"Было испробовано методов: {len(methods_to_try) + (1 if phone else 0)}. "
+        f"Проверьте логи выше для деталей ответов API."
+    )
     return None
 
 
@@ -2359,7 +2410,8 @@ async def update_user_card_balance(db: AsyncSession, user_id: int) -> Optional[s
     logger.info(f"Начинаем обновление баланса карты для user_id={user_id}, card_barcode={user.card_barcode}")
     
     try:
-        new_balance = await _get_statix_card_balance(user.card_barcode)
+        # Передаем телефон пользователя, если он доступен
+        new_balance = await _get_statix_card_balance(user.card_barcode, phone=user.phone_number)
         if new_balance is not None:
             old_balance = user.card_balance
             user.card_balance = new_balance
