@@ -9,7 +9,7 @@ from models import User
 # --- ОБНОВЛЕННАЯ ФУНКЦИЯ: Поддержка как Telegram, так и браузерной авторизации ---
 async def get_current_user(
     telegram_id: Optional[str] = Header(alias="X-Telegram-Id", default=None),
-    user_id: Optional[str] = Header(alias="X-User-Id", default=None),
+    header_user_id: Optional[str] = Header(alias="X-User-Id", default=None),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """Получает текущего пользователя по Telegram ID или User ID из заголовка."""
@@ -23,9 +23,9 @@ async def get_current_user(
             pass
     
     # Если не найден по Telegram ID, проверяем User ID (для браузерной авторизации)
-    if not user and user_id:
+    if not user and header_user_id:
         try:
-            user = await crud.get_user(db, user_id=int(user_id))
+            user = await crud.get_user(db, user_id=int(header_user_id))
         except (ValueError, TypeError):
             pass
     
@@ -39,7 +39,7 @@ async def get_current_user(
 
 async def get_current_admin_user(
     telegram_id: Optional[str] = Header(alias="X-Telegram-Id", default=None),
-    user_id: Optional[str] = Header(alias="X-User-Id", default=None),
+    header_user_id: Optional[str] = Header(alias="X-User-Id", default=None),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """Получает текущего администратора по Telegram ID или User ID из заголовка."""
@@ -53,9 +53,9 @@ async def get_current_admin_user(
             pass
     
     # Если не найден по Telegram ID, проверяем User ID (для браузерной авторизации)
-    if not user and user_id:
+    if not user and header_user_id:
         try:
-            user = await crud.get_user(db, user_id=int(user_id))
+            user = await crud.get_user(db, user_id=int(header_user_id))
         except (ValueError, TypeError):
             pass
     
