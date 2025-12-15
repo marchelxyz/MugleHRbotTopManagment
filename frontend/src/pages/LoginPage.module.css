@@ -1,58 +1,98 @@
 /* frontend/src/pages/LoginPage.module.css */
 
-.page {}
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 150px);
+  padding: 20px;
+}
+
+.loginContainer {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
 
 .subtitle {
   text-align: center;
   margin-top: 0;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   color: #333;
+  font-size: 16px;
 }
 
 .form {
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .input {
   display: block;
-  width: 80%;
-  padding: 12px;
-  margin: 0 auto 10px auto;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  margin: 0 0 16px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
   font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
 }
 
 .submitButton {
-  width: 85%;
+  width: 100%;
   padding: 15px;
   border: none;
-  border-radius: 20px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
   color: white;
   font-size: 16px;
   cursor: pointer;
-  margin: 10px auto 0 auto;
+  margin: 20px 0 0 0;
   display: block;
   font-family: 'Arial', sans-serif;
   font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .submitButton:disabled {
-  background-color: #a3d9b1;
+  background: #a3d9b1;
   cursor: not-allowed;
+  transform: none;
 }
 
 .error {
-  color: red;
-  margin-top: 15px;
-  text-align: center;
+  color: #d32f2f;
+  margin-top: -12px;
+  margin-bottom: 8px;
+  text-align: left;
   font-size: 14px;
+  padding-left: 4px;
 }
 
 .registerLink {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
+  font-size: 15px;
 }
 
 .linkButton {
@@ -61,10 +101,38 @@
   color: #2196F3;
   cursor: pointer;
   text-decoration: underline;
-  font-size: 16px;
+  font-size: 15px;
   padding: 0;
+  transition: color 0.2s;
 }
 
 .linkButton:hover {
   color: #1976D2;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .loginContainer {
+    padding: 30px 24px;
+    border-radius: 20px;
+  }
+  
+  .page {
+    min-height: auto;
+    padding: 20px 16px;
+  }
+}
+
+/* Адаптация для планшетов */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .loginContainer {
+    max-width: 480px;
+  }
+}
+
+/* Адаптация для ПК */
+@media (min-width: 1025px) {
+  .loginContainer {
+    max-width: 420px;
+  }
 }
