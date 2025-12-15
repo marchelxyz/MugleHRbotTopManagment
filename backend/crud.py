@@ -2156,189 +2156,55 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
     return data if isinstance(data, dict) else None
 
 
-def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str]:
-    """
-    Извлечь баланс из ответа API Statix, проверяя различные возможные поля и структуры.
-    """
-    if not isinstance(data, dict):
-        return None
-    
-    # Прямые поля баланса
-    balance_fields = [
-        "balance", "card_balance", "bonus_balance", "points", "bonus_points",
-        "current_balance", "total_balance", "available_balance", "cardBalance",
-        "bonusBalance", "currentBalance"
-    ]
-    
-    for field in balance_fields:
-        value = data.get(field)
-        if value is not None:
-            try:
-                # Пробуем преобразовать в число и обратно в строку для нормализации
-                balance_float = float(value)
-                logger.info(f"Баланс найден в поле '{field}': {balance_float} для карты {card_number}")
-                return str(int(balance_float)) if balance_float.is_integer() else str(balance_float)
-            except (ValueError, TypeError):
-                continue
-    
-    # Проверяем вложенные структуры (card, card_info, result и т.д.)
-    nested_keys = ["card", "card_info", "result", "data", "response", "info"]
-    for key in nested_keys:
-        nested = data.get(key)
-        if isinstance(nested, dict):
-            balance = _extract_balance_from_response(nested, card_number)
-            if balance is not None:
-                return balance
-    
-    # Проверяем массивы (может быть список объектов с балансом)
-    if isinstance(data.get("cards"), list) and len(data.get("cards", [])) > 0:
-        for card_item in data.get("cards", []):
-            if isinstance(card_item, dict):
-                balance = _extract_balance_from_response(card_item, card_number)
-                if balance is not None:
-                    return balance
-    
-    return None
-
-
 async def _get_statix_card_balance(card_number: str) -> Optional[str]:
     """
     Получить баланс карты из Statix API.
-    Пытается несколько способов получения баланса:
-    1. Использование action 'add_bonus_points' с нулевым количеством бонусов (может вернуть текущий баланс)
-    2. Различные actions для получения информации о карте
-    3. Проверка всех возможных полей в ответе
+    Пытается получить баланс через API, используя action 'get_card_balance' или 'get_balance'.
+    Если такой метод недоступен, возвращает None.
     """
+    # Пробуем разные варианты action для получения баланса
+    possible_actions = ["get_card_balance", "get_balance", "card_info"]
+    
     timeout_seconds = settings.STATIX_BONUS_TIMEOUT_SECONDS or 10
     
-    # Список методов для попытки получения баланса
-    methods_to_try = [
-        # Метод 1: Использование add_bonus_points с нулевым количеством (может вернуть баланс)
-        {
-            "name": "add_bonus_points_zero",
-            "payload": {
-                "action": settings.STATIX_BONUS_ACTION,
-                "bonus_points": 0,
-                "card_number": card_number,
-                "credentials": {
-                    "login": settings.STATIX_BONUS_LOGIN,
-                    "password": settings.STATIX_BONUS_PASSWORD,
-                },
-                "restaurant": {
-                    "name": settings.STATIX_BONUS_RESTAURANT_NAME,
-                },
-            }
-        },
-        # Метод 2: Стандартные actions для получения информации о карте
-        {
-            "name": "get_card_balance",
-            "payload": {
-                "action": "get_card_balance",
-                "card_number": card_number,
-                "credentials": {
-                    "login": settings.STATIX_BONUS_LOGIN,
-                    "password": settings.STATIX_BONUS_PASSWORD,
-                },
-            }
-        },
-        {
-            "name": "get_balance",
-            "payload": {
-                "action": "get_balance",
-                "card_number": card_number,
-                "credentials": {
-                    "login": settings.STATIX_BONUS_LOGIN,
-                    "password": settings.STATIX_BONUS_PASSWORD,
-                },
-            }
-        },
-        {
-            "name": "card_info",
-            "payload": {
-                "action": "card_info",
-                "card_number": card_number,
-                "credentials": {
-                    "login": settings.STATIX_BONUS_LOGIN,
-                    "password": settings.STATIX_BONUS_PASSWORD,
-                },
-            }
-        },
-        {
-            "name": "get_card_info",
-            "payload": {
-                "action": "get_card_info",
-                "card_number": card_number,
-                "credentials": {
-                    "login": settings.STATIX_BONUS_LOGIN,
-                    "password": settings.STATIX_BONUS_PASSWORD,
-                },
-            }
-        },
-    ]
-    
     async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
-        for method in methods_to_try:
-            method_name = method["name"]
-            payload = method["payload"]
-            
+        for action in possible_actions:
             try:
-                logger.info(f"Попытка получить баланс карты {card_number} методом '{method_name}'")
+                payload = {
+                    "action": action,
+                    "card_number": card_number,
+                    "credentials": {
+                        "login": settings.STATIX_BONUS_LOGIN,
+                        "password": settings.STATIX_BONUS_PASSWORD,
+                    },
+                }
                 
                 response = await client.post(
                     settings.STATIX_BONUS_API_URL,
                     json=payload,
                     headers={"Content-Type": "application/json"},
                 )
-                
-                # Логируем статус ответа
-                logger.info(f"Ответ API для метода '{method_name}': статус {response.status_code}")
-                
                 response.raise_for_status()
                 
-                # Парсим ответ
-                try:
-                    data = response.json()
-                except ValueError:
-                    # Если не JSON, логируем текст ответа
-                    response_text = response.text[:500]  # Ограничиваем длину
-                    logger.warning(f"API вернул не-JSON ответ для метода '{method_name}': {response_text}")
-                    continue
-                
-                # Логируем полный ответ для отладки (первые 1000 символов)
-                response_str = str(data)[:1000]
-                logger.info(f"Полный ответ API для метода '{method_name}': {response_str}")
-                
+                data = response.json()
                 if isinstance(data, dict):
-                    # Проверяем статус ответа
-                    status_value = str(data.get("status", "")).lower()
-                    error_message = data.get("message") or data.get("error") or data.get("detail")
-                    
-                    # Если статус указывает на ошибку, но это не критично, продолжаем
-                    if status_value and status_value not in {"ok", "success", "done", ""} and error_message:
-                        logger.info(f"Метод '{method_name}' вернул статус '{status_value}': {error_message}")
-                        # Не прерываем выполнение, продолжаем искать баланс
-                    
-                    # Пытаемся извлечь баланс из ответа
-                    balance = _extract_balance_from_response(data, card_number)
+                    # Ищем баланс в различных возможных полях ответа
+                    balance = (
+                        data.get("balance") or 
+                        data.get("card_balance") or 
+                        data.get("bonus_balance") or 
+                        data.get("points") or
+                        data.get("bonus_points")
+                    )
                     if balance is not None:
-                        logger.info(f"✅ Баланс карты {card_number} успешно получен методом '{method_name}': {balance}")
-                        return balance
-                    else:
-                        logger.info(f"Баланс не найден в ответе метода '{method_name}', пробуем следующий метод")
+                        return str(balance)
                         
-            except httpx.HTTPStatusError as exc:
-                error_msg = _extract_statix_error_message(exc.response)
-                logger.info(f"HTTP ошибка для метода '{method_name}': {exc.response.status_code if exc.response else '?'} - {error_msg}")
-                continue
-            except httpx.RequestError as exc:
-                logger.info(f"Ошибка запроса для метода '{method_name}': {exc}")
-                continue
-            except Exception as exc:
-                logger.warning(f"Неожиданная ошибка для метода '{method_name}': {exc}", exc_info=True)
+            except (httpx.HTTPStatusError, httpx.RequestError, ValueError):
+                # Пробуем следующий action
                 continue
     
-    # Если ни один метод не сработал, логируем предупреждение
-    logger.warning(f"Не удалось получить баланс карты {card_number} из Statix API ни одним из методов")
+    # Если ни один метод не сработал, возвращаем None
+    logger.warning(f"Не удалось получить баланс карты {card_number} из Statix API")
     return None
 
 
@@ -2348,39 +2214,19 @@ async def update_user_card_balance(db: AsyncSession, user_id: int) -> Optional[s
     Возвращает новый баланс или None, если не удалось получить.
     """
     user = await db.get(models.User, user_id)
-    if not user:
-        logger.warning(f"Пользователь с user_id={user_id} не найден")
+    if not user or not user.card_barcode:
         return None
-    
-    if not user.card_barcode:
-        logger.warning(f"У пользователя user_id={user_id} не указан card_barcode")
-        return None
-    
-    logger.info(f"Начинаем обновление баланса карты для user_id={user_id}, card_barcode={user.card_barcode}")
     
     try:
         new_balance = await _get_statix_card_balance(user.card_barcode)
         if new_balance is not None:
-            old_balance = user.card_balance
             user.card_balance = new_balance
             await db.commit()
             await db.refresh(user)
-            logger.info(
-                f"Баланс карты успешно обновлен для user_id={user_id}: "
-                f"старый={old_balance}, новый={new_balance}"
-            )
+            logger.info(f"Баланс карты обновлен для user_id={user_id}: {new_balance}")
             return new_balance
-        else:
-            logger.warning(
-                f"Не удалось получить баланс карты из Statix API для user_id={user_id}, "
-                f"card_barcode={user.card_barcode}"
-            )
     except Exception as exc:
-        logger.error(
-            f"Ошибка при обновлении баланса карты для user_id={user_id}, "
-            f"card_barcode={user.card_barcode}: {exc}",
-            exc_info=True
-        )
+        logger.error(f"Ошибка при обновлении баланса карты для user_id={user_id}: {exc}", exc_info=True)
     
     return None
 
