@@ -1,9 +1,9 @@
 // frontend/src/pages/BonusCardPage.jsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import Barcode from 'react-barcode';
 import PageLayout from '../components/PageLayout';
-import { deleteUserCard } from '../api';
+import { deleteUserCard, refreshCardBalance } from '../api';
 import styles from './BonusCardPage.module.css';
 import BonusCard from '../components/BonusCard';
 import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем наш хук
@@ -12,6 +12,7 @@ import { useConfirmation } from '../contexts/ConfirmationContext'; // 1. Имп�
 function BonusCardPage({ user, onBack, onUpdateUser }) {
   const { confirm } = useConfirmation(); // 2. Получаем функцию
   const { showAlert } = useModalAlert(); // 2. Получаем функцию для вызова уведомлений
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   
   // Ссылка на аккаунт поддержки в Telegram (такой же, как в настройках)
   const supportUrl = 'https://t.me/fix2Form';
@@ -54,6 +55,22 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
     }
   };
 
+  const handleRefreshBalance = async () => {
+    setIsRefreshingBalance(true);
+    try {
+      const response = await refreshCardBalance();
+      onUpdateUser(response.data);
+      showAlert('Баланс карты обновлен!', 'success');
+    } catch (error) {
+      showAlert(
+        error.response?.data?.detail || 'Не удалось обновить баланс карты. Попробуйте позже.',
+        'error'
+      );
+    } finally {
+      setIsRefreshingBalance(false);
+    }
+  };
+
   return (
     <PageLayout title="Бонусная карта">
       <button onClick={onBack} className={styles.backButton}>&larr; Назад в профиль</button>
@@ -62,7 +79,16 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
         <div className={styles.cardContainer}>
           {/* --- ИЗМЕНЕНИЕ: Используем новый компонент BonusCard --- */}
           <BonusCard user={user} />
-          <button onClick={handleDelete} className={styles.deleteButton}>Удалить карту</button>
+          <div className={styles.buttonGroup}>
+            <button 
+              onClick={handleRefreshBalance} 
+              className={styles.refreshButton}
+              disabled={isRefreshingBalance}
+            >
+              {isRefreshingBalance ? 'Обновление...' : '🔄 Обновить баланс'}
+            </button>
+            <button onClick={handleDelete} className={styles.deleteButton}>Удалить карту</button>
+          </div>
         </div>
       ) : (
         <div className={styles.cardContainer}>
