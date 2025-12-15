@@ -2161,6 +2161,7 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
     Извлечь баланс из ответа API Statix, проверяя различные возможные поля и структуры.
     """
     if not isinstance(data, dict):
+        logger.debug(f"Данные для извлечения баланса не являются словарем: {type(data)}")
         return None
     
     # Прямые поля баланса (расширенный список)
@@ -2178,9 +2179,10 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
             try:
                 # Пробуем преобразовать в число и обратно в строку для нормализации
                 balance_float = float(value)
-                logger.info(f"Баланс найден в поле '{field}': {balance_float} для карты {card_number}")
+                logger.info(f"✅ Баланс найден в поле '{field}': {balance_float} для карты {card_number}")
                 return str(int(balance_float)) if balance_float.is_integer() else str(balance_float)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
+                logger.debug(f"Не удалось преобразовать значение поля '{field}' ({value}) в число: {e}")
                 continue
     
     # Проверяем вложенные структуры (расширенный список)
@@ -2220,6 +2222,11 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
                 except (ValueError, TypeError):
                     continue
     
+    # Если баланс не найден, логируем структуру данных для отладки
+    logger.debug(
+        f"Баланс не найден в ответе для карты {card_number}. "
+        f"Все ключи верхнего уровня: {list(data.keys()) if isinstance(data, dict) else 'не словарь'}"
+    )
     return None
 
 
@@ -2239,17 +2246,27 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
     if phone:
         try:
             formatted_phone = _normalize_statix_phone(phone)
-            logger.info(f"Попытка получить баланс карты {card_number} через _send_statix_bonus_request с нулевым количеством бонусов")
+            logger.info(
+                f"Попытка получить баланс карты {card_number} через _send_statix_bonus_request "
+                f"с нулевым количеством бонусов, телефон: {formatted_phone}"
+            )
             statix_response = await _send_statix_bonus_request(formatted_phone, 0, card_number)
             if isinstance(statix_response, dict):
+                logger.info(f"Ответ _send_statix_bonus_request: {json.dumps(statix_response, ensure_ascii=False)[:1000]}")
                 balance = _extract_balance_from_response(statix_response, card_number)
                 if balance is not None:
                     logger.info(f"✅ Баланс карты {card_number} успешно получен через _send_statix_bonus_request: {balance}")
                     return balance
                 else:
-                    logger.info(f"Баланс не найден в ответе _send_statix_bonus_request, пробуем другие методы")
+                    logger.warning(
+                        f"Баланс не найден в ответе _send_statix_bonus_request. "
+                        f"Структура ответа: {list(statix_response.keys()) if isinstance(statix_response, dict) else 'не словарь'}, "
+                        f"пробуем другие методы"
+                    )
+            else:
+                logger.warning(f"Ответ _send_statix_bonus_request не является словарем: {type(statix_response)}, пробуем другие методы")
         except Exception as exc:
-            logger.info(f"Метод _send_statix_bonus_request не сработал: {exc}, пробуем другие методы")
+            logger.error(f"Метод _send_statix_bonus_request не сработал: {exc}, тип: {type(exc).__name__}", exc_info=True)
     
     # Список методов для попытки получения баланса
     methods_to_try = [
@@ -2322,7 +2339,10 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
             payload = method["payload"]
             
             try:
-                logger.info(f"Попытка получить баланс карты {card_number} методом '{method_name}'")
+                logger.info(
+                    f"Попытка получить баланс карты {card_number} методом '{method_name}'. "
+                    f"Запрос: {json.dumps(payload, ensure_ascii=False)[:500]}"
+                )
                 
                 response = await client.post(
                     settings.STATIX_BONUS_API_URL,
@@ -2330,8 +2350,12 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
                     headers={"Content-Type": "application/json"},
                 )
                 
-                # Логируем статус ответа
-                logger.info(f"Ответ API для метода '{method_name}': статус {response.status_code}")
+                # Логируем статус ответа и URL
+                logger.info(
+                    f"Ответ API для метода '{method_name}': "
+                    f"статус {response.status_code}, "
+                    f"URL: {settings.STATIX_BONUS_API_URL}"
+                )
                 
                 response.raise_for_status()
                 
@@ -2344,12 +2368,15 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
                     logger.warning(f"API вернул не-JSON ответ для метода '{method_name}': {response_text}")
                     continue
                 
-                # Логируем полный ответ для отладки (первые 2000 символов)
+                # Логируем полный ответ для отладки (первые 3000 символов)
                 try:
-                    response_str = json.dumps(data, ensure_ascii=False, indent=2)[:2000]
+                    response_str = json.dumps(data, ensure_ascii=False, indent=2)[:3000]
                 except:
-                    response_str = str(data)[:2000]
+                    response_str = str(data)[:3000]
                 logger.info(f"Полный ответ API для метода '{method_name}': {response_str}")
+                
+                # Также логируем сырой текст ответа для отладки
+                logger.debug(f"Сырой текст ответа для метода '{method_name}': {response.text[:1000]}")
                 
                 if isinstance(data, dict):
                     # Проверяем статус ответа
@@ -2367,28 +2394,53 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
                         logger.info(f"✅ Баланс карты {card_number} успешно получен методом '{method_name}': {balance}")
                         return balance
                     else:
-                        logger.warning(
-                            f"Баланс не найден в ответе метода '{method_name}'. "
-                            f"Структура ответа: {list(data.keys()) if isinstance(data, dict) else 'не словарь'}. "
-                            f"Пробуем следующий метод"
-                        )
+                        # Детальное логирование структуры ответа
+                        if isinstance(data, dict):
+                            all_keys = list(data.keys())
+                            logger.warning(
+                                f"Баланс не найден в ответе метода '{method_name}'. "
+                                f"Структура ответа: {all_keys}. "
+                                f"Все значения: {json.dumps({k: str(v)[:100] for k, v in data.items()}, ensure_ascii=False)[:1000]}. "
+                                f"Пробуем следующий метод"
+                            )
+                        else:
+                            logger.warning(
+                                f"Баланс не найден в ответе метода '{method_name}'. "
+                                f"Тип ответа: {type(data)}, значение: {str(data)[:500]}. "
+                                f"Пробуем следующий метод"
+                            )
                         
             except httpx.HTTPStatusError as exc:
                 error_msg = _extract_statix_error_message(exc.response)
-                logger.info(f"HTTP ошибка для метода '{method_name}': {exc.response.status_code if exc.response else '?'} - {error_msg}")
+                logger.error(
+                    f"HTTP ошибка для метода '{method_name}': "
+                    f"статус {exc.response.status_code if exc.response else '?'}, "
+                    f"ошибка: {error_msg}, "
+                    f"запрос: {json.dumps(payload, ensure_ascii=False)[:500]}"
+                )
+                # Логируем полный ответ при ошибке
+                if exc.response:
+                    try:
+                        error_response = exc.response.json()
+                        logger.error(f"Полный ответ ошибки для метода '{method_name}': {json.dumps(error_response, ensure_ascii=False)[:1000]}")
+                    except:
+                        logger.error(f"Текст ответа ошибки для метода '{method_name}': {exc.response.text[:1000]}")
                 continue
             except httpx.RequestError as exc:
-                logger.info(f"Ошибка запроса для метода '{method_name}': {exc}")
+                logger.error(f"Ошибка запроса для метода '{method_name}': {exc}, тип: {type(exc).__name__}")
                 continue
             except Exception as exc:
-                logger.warning(f"Неожиданная ошибка для метода '{method_name}': {exc}", exc_info=True)
+                logger.error(f"Неожиданная ошибка для метода '{method_name}': {exc}", exc_info=True)
                 continue
     
     # Если ни один метод не сработал, логируем предупреждение с деталями
-    logger.warning(
+    logger.error(
         f"Не удалось получить баланс карты {card_number} из Statix API ни одним из методов. "
         f"Было испробовано методов: {len(methods_to_try) + (1 if phone else 0)}. "
-        f"Проверьте логи выше для деталей ответов API."
+        f"Проверьте логи выше для деталей ответов API. "
+        f"URL API: {settings.STATIX_BONUS_API_URL}, "
+        f"Action: {settings.STATIX_BONUS_ACTION}, "
+        f"Login: {settings.STATIX_BONUS_LOGIN}"
     )
     return None
 
@@ -2423,14 +2475,17 @@ async def update_user_card_balance(db: AsyncSession, user_id: int) -> Optional[s
             )
             return new_balance
         else:
-            logger.warning(
+            logger.error(
                 f"Не удалось получить баланс карты из Statix API для user_id={user_id}, "
-                f"card_barcode={user.card_barcode}"
+                f"card_barcode={user.card_barcode}, "
+                f"phone={user.phone_number if user.phone_number else 'не указан'}. "
+                f"Все методы получения баланса не сработали. Проверьте логи выше для деталей."
             )
     except Exception as exc:
         logger.error(
-            f"Ошибка при обновлении баланса карты для user_id={user_id}, "
-            f"card_barcode={user.card_barcode}: {exc}",
+            f"Критическая ошибка при обновлении баланса карты для user_id={user_id}, "
+            f"card_barcode={user.card_barcode}, "
+            f"phone={user.phone_number if user.phone_number else 'не указан'}: {exc}",
             exc_info=True
         )
     
