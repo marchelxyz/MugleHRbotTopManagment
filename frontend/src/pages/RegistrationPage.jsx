@@ -27,7 +27,6 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     position: '',
     phoneNumber: '',
     dateOfBirth: '',
-    telegramId: '', // Для веб-браузера
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -46,11 +45,6 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     if (!formData.position.trim()) newErrors.position = 'Должность обязательна';
     if (formData.phoneNumber.includes('_')) newErrors.phoneNumber = 'Введите телефон полностью';
     if (formData.dateOfBirth.includes('_')) newErrors.dateOfBirth = 'Введите дату полностью';
-    
-    // Для веб-браузера требуется Telegram ID
-    if (isWebBrowser && !formData.telegramId.trim()) {
-      newErrors.telegramId = 'Telegram ID обязателен';
-    }
     
     // Проверка формата даты
     const formattedDate = formatDateForApi(formData.dateOfBirth);
@@ -75,16 +69,10 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
       const apiDate = formatDateForApi(formData.dateOfBirth);
       
       // Определяем telegram_id в зависимости от контекста
-      const telegramId = isWebBrowser ? formData.telegramId : telegramUser?.id;
-      
-      if (!telegramId) {
-        showAlert('Telegram ID не найден.', 'error');
-        setIsLoading(false);
-        return;
-      }
+      const telegramId = isWebBrowser ? null : telegramUser?.id;
 
       const userData = {
-        telegram_id: String(telegramId),
+        telegram_id: telegramId ? String(telegramId) : null,
         first_name: formData.firstName,
         last_name: formData.lastName,
         department: formData.department,
@@ -95,7 +83,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
         date_of_birth: apiDate,
       };
 
-      await registerUser(telegramId, userData);
+      await registerUser(telegramId || '', userData);
       showAlert('Ваша заявка отправлена на рассмотрение!', 'success');
       
       setTimeout(() => {
@@ -112,26 +100,18 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
 
   return (
     <PageLayout title="Регистрация">
+      {isWebBrowser && (
+        <button onClick={() => window.history.back()} className={styles.backButton}>
+          &larr; Назад к входу
+        </button>
+      )}
       <p className={styles.subtitle}>
         {isWebBrowser 
-          ? 'Для регистрации в приложении, пожалуйста, укажите вашу информацию.'
+          ? 'Для регистрации в приложении, пожалуйста, укажите вашу информацию. После регистрации ваша заявка будет рассмотрена администратором.'
           : `Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`
         }
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
-        {isWebBrowser && (
-          <>
-            <input 
-              name="telegramId" 
-              type="text" 
-              value={formData.telegramId} 
-              onChange={handleChange} 
-              placeholder="Ваш Telegram ID (число)" 
-              className={styles.input} 
-            />
-            {errors.telegramId && <p className={styles.error}>{errors.telegramId}</p>}
-          </>
-        )}
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
         {errors.firstName && <p className={styles.error}>{errors.firstName}</p>}
 

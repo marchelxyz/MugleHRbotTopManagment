@@ -10,12 +10,50 @@ router = APIRouter(
     tags=["users"],
 )
 
+# --- ЭНДПОИНТ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР ---
+@router.post("/auth/login", response_model=schemas.UserResponse)
+async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
+    """Вход пользователя через браузер по логину и паролю."""
+    user = await crud.verify_user_credentials(db, request.login, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный логин или пароль"
+        )
+    
+    # Проверяем статус пользователя
+    if user.status == 'blocked':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ваш аккаунт заблокирован"
+        )
+    
+    if user.status == 'rejected':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ваша заявка была отклонена"
+        )
+    
+    if user.status == 'pending':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ваша заявка еще на рассмотрении"
+        )
+    
+    return schemas.UserResponse.model_validate(user)
+
 # Путь "/auth/register" правильный, так как он не дублирует префикс
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
-    existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
-    if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already registered")
+    # Для веб-формата telegram_id может быть None
+    if request.telegram_id:
+        try:
+            existing = await crud.get_user_by_telegram(db, int(request.telegram_id))
+            if existing:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already registered")
+        except ValueError:
+            # Если telegram_id не число, игнорируем проверку
+            pass
     
     try:
         new_user = await crud.create_user(db, request)

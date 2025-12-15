@@ -65,15 +65,23 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     return user
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
-    user_telegram_id = int(user.telegram_id)
+    # Для веб-формата telegram_id может быть None
+    user_telegram_id = None
+    is_admin = False
     
-    # Проверяем, что telegram_id не отрицательный (зарезервировано для анонимизированных пользователей)
-    if user_telegram_id < 0:
-        raise ValueError("telegram_id не может быть отрицательным (зарезервировано для анонимизированных пользователей)")
-    
-    admin_ids_str = settings.TELEGRAM_ADMIN_IDS
-    admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
-    is_admin = user_telegram_id in admin_ids
+    if user.telegram_id:
+        try:
+            user_telegram_id = int(user.telegram_id)
+            # Проверяем, что telegram_id не отрицательный (зарезервировано для анонимизированных пользователей)
+            if user_telegram_id < 0:
+                raise ValueError("telegram_id не может быть отрицательным (зарезервировано для анонимизированных пользователей)")
+            
+            admin_ids_str = settings.TELEGRAM_ADMIN_IDS
+            admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
+            is_admin = user_telegram_id in admin_ids
+        except (ValueError, TypeError):
+            # Если telegram_id не число или None, оставляем его как None
+            user_telegram_id = None
     
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():
@@ -97,34 +105,36 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     await db.commit()
     await db.refresh(db_user)
     
+    # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
     try:
-        user_info = (
-            f"Новая заявка на регистрацию:\n\n"
-            f"👤 Имя: {db_user.first_name or ''} {db_user.last_name or ''}\n"
-            f"🏢 Подразделение: {db_user.department or ''}\n"
-            f"💼 Должность: {db_user.position or ''}\n"
-            f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
-            f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
-            f"🆔 Telegram ID: {db_user.telegram_id}"
-        )
+        if settings.TELEGRAM_CHAT_ID:
+            user_info = (
+                f"Новая заявка на регистрацию:\n\n"
+                f"👤 Имя: {db_user.first_name or ''} {db_user.last_name or ''}\n"
+                f"🏢 Подразделение: {db_user.department or ''}\n"
+                f"💼 Должность: {db_user.position or ''}\n"
+                f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
+                f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
+                f"🆔 Telegram ID: {db_user.telegram_id or 'не указан (веб-регистрация)'}"
+            )
 
-        # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
-        keyboard = {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
-                    {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
+            # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
+            keyboard = {
+                "inline_keyboard": [
+                    [
+                        {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
+                        {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
+                    ]
                 ]
-            ]
-        }
-        
-        await send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID,
-            text=user_info,
-            reply_markup=keyboard,
-            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
-            parse_mode=None
-        )
+            }
+            
+            await send_telegram_message(
+                chat_id=settings.TELEGRAM_CHAT_ID,
+                text=user_info,
+                reply_markup=keyboard,
+                message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
+                parse_mode=None
+            )
     except Exception as e:
         print(f"FAILED to send admin notification. Error: {e}")
     
@@ -1420,6 +1430,47 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     user.password_hash = get_password_hash(password)
     user.browser_auth_enabled = True
     
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
+# --- ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЛОГИНА И ПАРОЛЯ ---
+async def verify_user_credentials(db: AsyncSession, login: str, password: str):
+    """
+    Проверяет логин и пароль пользователя.
+    Возвращает пользователя, если учетные данные верны, иначе None.
+    """
+    from passlib.context import CryptContext
+    
+    # Контекст для проверки паролей
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    # Ищем пользователя по логину
+    result = await db.execute(
+        select(models.User).where(
+            models.User.login == login,
+            models.User.browser_auth_enabled == True
+        )
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return None
+    
+    # Проверяем пароль
+    if not user.password_hash:
+        return None
+    
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """Проверяет пароль."""
+        return pwd_context.verify(plain_password, hashed_password)
+    
+    if not verify_password(password, user.password_hash):
+        return None
+    
+    # Обновляем время последнего входа
+    user.last_login_date = datetime.utcnow()
     await db.commit()
     await db.refresh(user)
     

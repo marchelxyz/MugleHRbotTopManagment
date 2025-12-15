@@ -86,8 +86,12 @@ class MarketItemResponse(OrmBase):
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
 
+class LoginRequest(BaseModel):
+    login: str
+    password: str
+
 class RegisterRequest(BaseModel):
-    telegram_id: str
+    telegram_id: Optional[str] = None  # Опционально для веб-формата
     first_name: str # Добавляем это поле
     last_name: str
     position: str

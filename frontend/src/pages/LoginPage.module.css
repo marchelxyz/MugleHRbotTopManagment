@@ -1,0 +1,70 @@
+/* frontend/src/pages/LoginPage.module.css */
+
+.page {}
+
+.subtitle {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.form {
+  margin-top: 20px;
+}
+
+.input {
+  display: block;
+  width: 80%;
+  padding: 12px;
+  margin: 0 auto 10px auto;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.submitButton {
+  width: 85%;
+  padding: 15px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 10px auto 0 auto;
+  display: block;
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+}
+
+.submitButton:disabled {
+  background-color: #a3d9b1;
+  cursor: not-allowed;
+}
+
+.error {
+  color: red;
+  margin-top: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.registerLink {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  color: #2196F3;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 16px;
+  padding: 0;
+}
+
+.linkButton:hover {
+  color: #1976D2;
+}
