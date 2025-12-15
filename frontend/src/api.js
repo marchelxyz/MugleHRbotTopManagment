@@ -190,13 +190,6 @@ export const deleteUserCard = () => {
   });
 };
 
-export const refreshCardBalance = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/users/me/card/refresh-balance', {}, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
-
 export const searchUsers = (query) => {
   const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
   return apiClient.get(`/users/search/?query=${query}`, {
