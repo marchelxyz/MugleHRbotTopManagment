@@ -31,6 +31,54 @@ from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
+# --- УТИЛИТЫ ДЛЯ РАБОТЫ С ПАРОЛЯМИ ---
+def _get_password_context():
+    """Создает и возвращает контекст для работы с паролями."""
+    from passlib.context import CryptContext
+    return CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password: str) -> str:
+    """
+    Создает хеш пароля с обрезкой до 72 байт (ограничение bcrypt).
+    
+    Args:
+        password: Пароль для хеширования
+        
+    Returns:
+        Хеш пароля
+    """
+    # Bcrypt имеет ограничение на длину пароля в 72 байта
+    # Обрезаем пароль до 72 байт перед хешированием
+    if isinstance(password, str):
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
+    
+    pwd_context = _get_password_context()
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Проверяет пароль с обрезкой до 72 байт (ограничение bcrypt).
+    
+    Args:
+        plain_password: Пароль в открытом виде
+        hashed_password: Хеш пароля для проверки
+        
+    Returns:
+        True если пароль верный, False в противном случае
+    """
+    # Обрезаем пароль до 72 байт перед проверкой
+    if isinstance(plain_password, str):
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            plain_password = password_bytes.decode('utf-8', errors='ignore')
+    
+    pwd_context = _get_password_context()
+    return pwd_context.verify(plain_password, hashed_password)
+
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
@@ -1282,10 +1330,6 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
                 setattr(user, key, None)
         elif key == 'password' and new_value:
             # Хешируем пароль перед сохранением
-            from passlib.context import CryptContext
-            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-            def get_password_hash(password: str) -> str:
-                return pwd_context.hash(password)
             user.password_hash = get_password_hash(new_value)
             # Не сохраняем сам пароль в поле password (его там нет в модели)
         else:
@@ -1391,15 +1435,6 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     Устанавливает логин и пароль для пользователя.
     Включает browser_auth_enabled для возможности входа через браузер.
     """
-    from passlib.context import CryptContext
-    
-    # Контекст для хеширования паролей
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
-    def get_password_hash(password: str) -> str:
-        """Создает хеш пароля."""
-        return pwd_context.hash(password)
-    
     # Получаем пользователя
     user = await get_user(db, user_id)
     if not user:
@@ -1441,11 +1476,6 @@ async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     Проверяет логин и пароль пользователя.
     Возвращает пользователя, если учетные данные верны, иначе None.
     """
-    from passlib.context import CryptContext
-    
-    # Контекст для проверки паролей
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
     # Ищем пользователя по логину
     result = await db.execute(
         select(models.User).where(
@@ -1461,10 +1491,6 @@ async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     # Проверяем пароль
     if not user.password_hash:
         return None
-    
-    def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Проверяет пароль."""
-        return pwd_context.verify(plain_password, hashed_password)
     
     if not verify_password(password, user.password_hash):
         return None
@@ -1556,15 +1582,6 @@ async def bulk_send_credentials(
     Returns:
         dict со статистикой: total_users, credentials_generated, messages_sent, failed_users
     """
-    from passlib.context import CryptContext
-    
-    # Контекст для хеширования паролей
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
-    def get_password_hash(password: str) -> str:
-        """Создает хеш пароля."""
-        return pwd_context.hash(password)
-    
     # Формируем условия для выборки пользователей
     status_conditions = []
     if include_active:
