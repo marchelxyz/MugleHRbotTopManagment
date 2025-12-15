@@ -2222,48 +2222,6 @@ def _extract_balance_from_response(data: dict, card_number: str) -> Optional[str
                 except (ValueError, TypeError):
                     continue
     
-    # Проверяем текстовые поля (message, error, detail и т.д.) на наличие числовых значений
-    # Возможно, баланс возвращается в тексте сообщения типа "Bonus points added. Balance: 1000"
-    text_fields_to_check = ["message", "error", "detail", "description", "info", "response", "text", "content"]
-    for text_field in text_fields_to_check:
-        text_value = data.get(text_field)
-        if isinstance(text_value, str) and text_value:
-            # Ищем числа в тексте (целые числа и числа с плавающей точкой)
-            # Ищем паттерны типа "balance: 1000", "balance=1000", "1000 points" и т.д.
-            patterns = [
-                r'(?:balance|баланс|points|баллы|бонусы)[\s:=]+(\d+(?:\.\d+)?)',
-                r'(\d+(?:\.\d+)?)\s*(?:points|баллов|бонусов|рублей|руб)',
-                r'(?:current|текущий|остаток)[\s:=]+(\d+(?:\.\d+)?)',
-            ]
-            for pattern in patterns:
-                matches = re.findall(pattern, text_value, re.IGNORECASE)
-                if matches:
-                    try:
-                        # Берем последнее найденное число (обычно это баланс)
-                        balance_float = float(matches[-1])
-                        if balance_float >= 0:  # Баланс не может быть отрицательным
-                            logger.info(
-                                f"✅ Баланс найден в текстовом поле '{text_field}' "
-                                f"по паттерну '{pattern}': {balance_float} для карты {card_number}"
-                            )
-                            return str(int(balance_float)) if balance_float.is_integer() else str(balance_float)
-                    except (ValueError, TypeError):
-                        continue
-            
-            # Также проверяем, может быть весь текст - это число
-            text_stripped = text_value.strip()
-            if re.match(r'^\d+(?:\.\d+)?$', text_stripped):
-                try:
-                    balance_float = float(text_stripped)
-                    if balance_float >= 0:
-                        logger.info(
-                            f"✅ Баланс найден как числовое значение в текстовом поле '{text_field}': "
-                            f"{balance_float} для карты {card_number}"
-                        )
-                        return str(int(balance_float)) if balance_float.is_integer() else str(balance_float)
-                except (ValueError, TypeError):
-                    continue
-    
     # Если баланс не найден, логируем структуру данных для отладки
     logger.debug(
         f"Баланс не найден в ответе для карты {card_number}. "
@@ -2310,14 +2268,6 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
         except Exception as exc:
             logger.error(f"Метод _send_statix_bonus_request не сработал: {exc}, тип: {type(exc).__name__}", exc_info=True)
     
-    # Подготавливаем телефон для использования в запросах (если доступен)
-    formatted_phone_for_requests = None
-    if phone:
-        try:
-            formatted_phone_for_requests = _normalize_statix_phone(phone)
-        except Exception as exc:
-            logger.debug(f"Не удалось нормализовать телефон для запросов: {exc}")
-    
     # Список методов для попытки получения баланса
     methods_to_try = [
         # Метод 1: Использование add_bonus_points с нулевым количеством (может вернуть баланс)
@@ -2336,7 +2286,7 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
                 },
             }
         },
-        # Метод 2: Стандартные actions для получения информации о карте (с телефоном, если доступен)
+        # Метод 2: Стандартные actions для получения информации о карте
         {
             "name": "get_card_balance",
             "payload": {
@@ -2382,14 +2332,6 @@ async def _get_statix_card_balance(card_number: str, phone: Optional[str] = None
             }
         },
     ]
-    
-    # Добавляем телефон в payload методов, если он доступен
-    if formatted_phone_for_requests:
-        for method in methods_to_try:
-            if "phone" not in method["payload"]:
-                method["payload"]["phone"] = formatted_phone_for_requests
-            if "phone_number" not in method["payload"]:
-                method["payload"]["phone_number"] = formatted_phone_for_requests
     
     async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
         for method in methods_to_try:
