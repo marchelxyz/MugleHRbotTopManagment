@@ -13,3 +13,4 @@ pandas
 pytz
 redis
 aioredis
+passlib[bcrypt]
