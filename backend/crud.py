@@ -2156,6 +2156,81 @@ async def _send_statix_bonus_request(phone: str, bonus_amount: int, card_number:
     return data if isinstance(data, dict) else None
 
 
+async def _get_statix_card_balance(card_number: str) -> Optional[str]:
+    """
+    Получить баланс карты из Statix API.
+    Пытается получить баланс через API, используя action 'get_card_balance' или 'get_balance'.
+    Если такой метод недоступен, возвращает None.
+    """
+    # Пробуем разные варианты action для получения баланса
+    possible_actions = ["get_card_balance", "get_balance", "card_info"]
+    
+    timeout_seconds = settings.STATIX_BONUS_TIMEOUT_SECONDS or 10
+    
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds)) as client:
+        for action in possible_actions:
+            try:
+                payload = {
+                    "action": action,
+                    "card_number": card_number,
+                    "credentials": {
+                        "login": settings.STATIX_BONUS_LOGIN,
+                        "password": settings.STATIX_BONUS_PASSWORD,
+                    },
+                }
+                
+                response = await client.post(
+                    settings.STATIX_BONUS_API_URL,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                response.raise_for_status()
+                
+                data = response.json()
+                if isinstance(data, dict):
+                    # Ищем баланс в различных возможных полях ответа
+                    balance = (
+                        data.get("balance") or 
+                        data.get("card_balance") or 
+                        data.get("bonus_balance") or 
+                        data.get("points") or
+                        data.get("bonus_points")
+                    )
+                    if balance is not None:
+                        return str(balance)
+                        
+            except (httpx.HTTPStatusError, httpx.RequestError, ValueError):
+                # Пробуем следующий action
+                continue
+    
+    # Если ни один метод не сработал, возвращаем None
+    logger.warning(f"Не удалось получить баланс карты {card_number} из Statix API")
+    return None
+
+
+async def update_user_card_balance(db: AsyncSession, user_id: int) -> Optional[str]:
+    """
+    Обновить баланс карты пользователя из Statix API.
+    Возвращает новый баланс или None, если не удалось получить.
+    """
+    user = await db.get(models.User, user_id)
+    if not user or not user.card_barcode:
+        return None
+    
+    try:
+        new_balance = await _get_statix_card_balance(user.card_barcode)
+        if new_balance is not None:
+            user.card_balance = new_balance
+            await db.commit()
+            await db.refresh(user)
+            logger.info(f"Баланс карты обновлен для user_id={user_id}: {new_balance}")
+            return new_balance
+    except Exception as exc:
+        logger.error(f"Ошибка при обновлении баланса карты для user_id={user_id}: {exc}", exc_info=True)
+    
+    return None
+
+
 async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amount: int):
     """Создать покупку бонусов Statix"""
     # Получаем настройки товара
@@ -2189,7 +2264,31 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
         user.balance -= thanks_cost
 
         # Начисляем бонусы через Statix API
-        await _send_statix_bonus_request(formatted_phone, bonus_amount, user.card_barcode)
+        statix_response = await _send_statix_bonus_request(formatted_phone, bonus_amount, user.card_barcode)
+        
+        # Пытаемся получить баланс из ответа Statix API
+        balance_from_response = None
+        if isinstance(statix_response, dict):
+            balance_from_response = (
+                statix_response.get("balance") or 
+                statix_response.get("card_balance") or 
+                statix_response.get("bonus_balance") or 
+                statix_response.get("points") or
+                statix_response.get("bonus_points")
+            )
+            if balance_from_response is not None:
+                user.card_balance = str(balance_from_response)
+                logger.info(f"Баланс карты обновлен из ответа Statix API: {balance_from_response}")
+        
+        # Если баланс не был в ответе, пытаемся получить его отдельным запросом
+        if balance_from_response is None:
+            try:
+                new_balance = await _get_statix_card_balance(user.card_barcode)
+                if new_balance is not None:
+                    user.card_balance = new_balance
+                    logger.info(f"Баланс карты получен отдельным запросом: {new_balance}")
+            except Exception as balance_exc:
+                logger.warning(f"Не удалось получить баланс карты после покупки: {balance_exc}")
 
         await db.commit()
         await db.refresh(user)
