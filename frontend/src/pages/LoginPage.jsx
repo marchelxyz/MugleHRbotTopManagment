@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { loginUser } from '../api';
 import styles from './LoginPage.module.css';
-import PageLayout from '../components/PageLayout';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 
 function LoginPage({ onLoginSuccess, onShowRegistration }) {
@@ -66,45 +65,43 @@ function LoginPage({ onLoginSuccess, onShowRegistration }) {
   };
 
   return (
-    <PageLayout title="Вход">
-      <div className={styles.page}>
-        <div className={styles.loginContainer}>
-          <p className={styles.subtitle}>
-            Войдите в систему, используя ваш логин и пароль
-          </p>
-          <form onSubmit={handleSubmit} className={styles.form}>
-            <input 
-              name="login" 
-              type="text" 
-              value={formData.login} 
-              onChange={handleChange} 
-              placeholder="Логин" 
-              className={styles.input}
-              autoComplete="username"
-            />
-            {errors.login && <p className={styles.error}>{errors.login}</p>}
+    <div className={styles.page}>
+      <div className={styles.loginContainer}>
+        <p className={styles.subtitle}>
+          Войдите в систему, используя ваш логин и пароль
+        </p>
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <input 
+            name="login" 
+            type="text" 
+            value={formData.login} 
+            onChange={handleChange} 
+            placeholder="Логин" 
+            className={styles.input}
+            autoComplete="username"
+          />
+          {errors.login && <p className={styles.error}>{errors.login}</p>}
 
-            <input 
-              name="password" 
-              type="password" 
-              value={formData.password} 
-              onChange={handleChange} 
-              placeholder="Пароль" 
-              className={styles.input}
-              autoComplete="current-password"
-            />
-            {errors.password && <p className={styles.error}>{errors.password}</p>}
+          <input 
+            name="password" 
+            type="password" 
+            value={formData.password} 
+            onChange={handleChange} 
+            placeholder="Пароль" 
+            className={styles.input}
+            autoComplete="current-password"
+          />
+          {errors.password && <p className={styles.error}>{errors.password}</p>}
 
-            <button type="submit" disabled={isLoading} className={styles.submitButton}>
-              {isLoading ? 'Вход...' : 'Войти'}
-            </button>
-          </form>
-          <div className={styles.registerLink}>
-            <p>Нет аккаунта? <button type="button" onClick={() => onShowRegistration && onShowRegistration()} className={styles.linkButton}>Зарегистрироваться</button></p>
-          </div>
+          <button type="submit" disabled={isLoading} className={styles.submitButton}>
+            {isLoading ? 'Вход...' : 'Войти'}
+          </button>
+        </form>
+        <div className={styles.registerLink}>
+          <p>Нет аккаунта? <button type="button" onClick={() => onShowRegistration && onShowRegistration()} className={styles.linkButton}>Зарегистрироваться</button></p>
         </div>
       </div>
-    </PageLayout>
+    </div>
   );
 }
 
