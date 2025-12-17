@@ -1278,8 +1278,34 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
                 return pwd_context.hash(password)
             user.password_hash = get_password_hash(new_value)
             # Не сохраняем сам пароль в поле password (его там нет в модели)
+        elif key == 'login':
+            # Конвертируем пустые строки в None для поля login,
+            # чтобы избежать нарушения уникального ограничения
+            # (PostgreSQL считает все пустые строки одинаковыми)
+            if new_value is not None and new_value.strip() == '':
+                setattr(user, key, None)
+            else:
+                setattr(user, key, new_value)
         else:
             setattr(user, key, new_value)
+    
+    # Проверяем уникальность логина перед сохранением
+    if 'login' in update_data and user.login:
+        # Проверяем, не используется ли этот логин другим пользователем
+        existing_user = await db.execute(
+            select(models.User).where(
+                and_(
+                    models.User.login == user.login,
+                    models.User.id != user_id
+                )
+            )
+        )
+        if existing_user.scalar_one_or_none():
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=400,
+                detail=f"Логин '{user.login}' уже используется другим пользователем"
+            )
     
     # Автоматически включаем browser_auth_enabled, если есть логин и пароль
     if user.login and user.password_hash:
