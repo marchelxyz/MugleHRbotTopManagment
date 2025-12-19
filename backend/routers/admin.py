@@ -161,6 +161,101 @@ async def reject_user_registration_route(
         raise HTTPException(status_code=404, detail="User not found")
     return updated_user
 
+@router.get("/local-purchases/pending")
+async def get_pending_local_purchases_route(db: AsyncSession = Depends(get_db)):
+    """Получает список локальных покупок, ожидающих согласования"""
+    from sqlalchemy import select
+    from models import LocalGift
+    result = await db.execute(
+        select(LocalGift).where(LocalGift.status == 'pending').order_by(LocalGift.created_at.desc())
+    )
+    local_purchases = result.scalars().all()
+    return [
+        {
+            "id": lp.id,
+            "user_id": lp.user_id,
+            "user_name": f"{lp.user.first_name} {lp.user.last_name}",
+            "item_id": lp.item_id,
+            "item_name": lp.item.name,
+            "city": lp.city,
+            "website_url": lp.website_url,
+            "reserved_amount": lp.reserved_amount,
+            "created_at": lp.created_at.isoformat() if lp.created_at else None,
+            "status": lp.status
+        }
+        for lp in local_purchases
+    ]
+
+@router.get("/profile-updates/pending")
+async def get_pending_profile_updates_route(db: AsyncSession = Depends(get_db)):
+    """Получает список запросов на изменение профиля, ожидающих согласования"""
+    from sqlalchemy import select
+    from models import PendingUpdate
+    result = await db.execute(
+        select(PendingUpdate).where(PendingUpdate.status == 'pending').order_by(PendingUpdate.created_at.desc())
+    )
+    pending_updates = result.scalars().all()
+    return [
+        {
+            "id": pu.id,
+            "user_id": pu.user_id,
+            "user_name": f"{pu.user.first_name} {pu.user.last_name}",
+            "old_data": pu.old_data,
+            "new_data": pu.new_data,
+            "created_at": pu.created_at.isoformat() if pu.created_at else None,
+            "status": pu.status
+        }
+        for pu in pending_updates
+    ]
+
+@router.post("/local-purchases/{purchase_id}/approve")
+async def approve_local_purchase_route(
+    purchase_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_user: models.User = Depends(get_current_admin_user)
+):
+    """Одобряет локальную покупку"""
+    result = await crud.process_local_gift_approval(db, purchase_id, 'approve')
+    if result is None:
+        raise HTTPException(status_code=404, detail="Покупка не найдена или уже обработана")
+    return result
+
+@router.post("/local-purchases/{purchase_id}/reject")
+async def reject_local_purchase_route(
+    purchase_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_user: models.User = Depends(get_current_admin_user)
+):
+    """Отклоняет локальную покупку"""
+    result = await crud.process_local_gift_approval(db, purchase_id, 'reject')
+    if result is None:
+        raise HTTPException(status_code=404, detail="Покупка не найдена или уже обработана")
+    return result
+
+@router.post("/profile-updates/{update_id}/approve")
+async def approve_profile_update_route(
+    update_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_user: models.User = Depends(get_current_admin_user)
+):
+    """Одобряет запрос на изменение профиля"""
+    user, status = await crud.process_profile_update(db, update_id, 'approve')
+    if user is None:
+        raise HTTPException(status_code=404, detail="Запрос не найден или уже обработан")
+    return {"status": status, "user": schemas.UserResponse.model_validate(user)}
+
+@router.post("/profile-updates/{update_id}/reject")
+async def reject_profile_update_route(
+    update_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_user: models.User = Depends(get_current_admin_user)
+):
+    """Отклоняет запрос на изменение профиля"""
+    user, status = await crud.process_profile_update(db, update_id, 'reject')
+    if user is None:
+        raise HTTPException(status_code=404, detail="Запрос не найден или уже обработан")
+    return {"status": status, "user": schemas.UserResponse.model_validate(user)}
+
 @router.put("/users/{user_id}", response_model=schemas.UserResponse)
 async def admin_update_user_route(user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User = Depends(get_current_admin_user), db: AsyncSession = Depends(get_db)):
     updated_user = await crud.admin_update_user(db, user_id, user_data, admin_user)

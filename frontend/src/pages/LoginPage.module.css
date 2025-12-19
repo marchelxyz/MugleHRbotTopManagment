@@ -8,6 +8,8 @@
   min-height: 100vh;
   padding: 20px;
   background-color: #ffffff;
+  position: relative;
+  overflow-x: hidden;
 }
 
 .loginContainer {
@@ -18,6 +20,8 @@
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .subtitle {
@@ -109,6 +113,133 @@
 
 .linkButton:hover {
   color: #1976D2;
+}
+
+.linkButton:active {
+  color: #1565C0;
+}
+
+/* Контейнер для поля пароля с глазком */
+.passwordContainer {
+  position: relative;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.passwordContainer .input {
+  padding-right: 45px;
+  margin-bottom: 0;
+}
+
+.eyeButton {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.eyeButton:hover {
+  color: #2196F3;
+}
+
+.eyeButton:focus {
+  outline: none;
+}
+
+/* Ссылка "Забыли пароль?" */
+.forgotPasswordLink {
+  margin-top: -8px;
+  margin-bottom: 16px;
+  text-align: right;
+}
+
+.forgotPasswordButton {
+  background: none;
+  border: none;
+  color: #2196F3;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 14px;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.forgotPasswordButton:hover {
+  color: #1976D2;
+}
+
+/* Модальное окно "Забыли пароль" */
+.forgotPasswordModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.forgotPasswordContent {
+  background: white;
+  border-radius: 24px;
+  padding: 30px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.forgotPasswordContent h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #333;
+  font-size: 24px;
+}
+
+.forgotPasswordText {
+  margin-bottom: 24px;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.forgotPasswordButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cancelButton {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: white;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.cancelButton:hover {
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 /* Адаптация для мобильных устройств */

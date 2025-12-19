@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, schemas, models
 from database import get_db
-from dependencies import get_current_user 
+from dependencies import get_current_user
+from crud import verify_password, get_password_hash 
 
 router = APIRouter(
     prefix="/users",
@@ -119,3 +120,36 @@ async def complete_onboarding_route(
     db: AsyncSession = Depends(get_db)
 ):
     return await crud.mark_onboarding_as_seen(db, user_id=user.id)
+
+@router.post("/me/change-password", response_model=schemas.UserResponse)
+async def change_password_route(
+    password_data: schemas.ChangePasswordRequest,
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if not user.login or not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="У вас нет пароля для изменения. Обратитесь к администратору."
+        )
+    
+    # Проверяем текущий пароль
+    if not verify_password(password_data.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный текущий пароль"
+        )
+    
+    # Проверяем длину нового пароля
+    if len(password_data.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Пароль должен содержать минимум 6 символов"
+        )
+    
+    # Устанавливаем новый пароль
+    user.password_hash = get_password_hash(password_data.new_password)
+    await db.commit()
+    await db.refresh(user)
+    
+    return schemas.UserResponse.model_validate(user)
