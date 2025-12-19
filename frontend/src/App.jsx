@@ -272,7 +272,12 @@ function App() {
       // Если пользователь не авторизован, показываем страницу входа или регистрации
       if (!user) {
         if (showRegistration) {
-          return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
         }
         return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }

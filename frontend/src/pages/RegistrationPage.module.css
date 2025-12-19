@@ -1,56 +1,199 @@
 /* frontend/src/pages/RegistrationPage.module.css */
 
-.page {}
+/* Стили для веб-версии (похожие на LoginPage) */
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%);
+  position: relative;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.registrationContainer {
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
 
 /* Добавляем стиль для подзаголовка, чтобы он выглядел аккуратно */
 .subtitle {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 30px;
+  color: #333;
+  font-size: 16px;
+}
+
+.form {
+  margin-top: 0;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  margin: 0 0 16px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.submitButton {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 20px 0 0 0;
+  display: block;
+  font-family: 'Arial', sans-serif;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.submitButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submitButton:disabled {
+  background: #a3d9b1;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.error {
+  color: #d32f2f;
+  margin-top: -12px;
+  margin-bottom: 8px;
+  text-align: left;
+  font-size: 14px;
+  padding-left: 4px;
+}
+
+/* Кнопка "Назад" */
+.backButton {
+  margin-bottom: 20px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #2196F3;
+  padding: 0;
+  font-weight: bold;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.backButton:hover {
+  color: #1976D2;
+}
+
+.backButton:active {
+  color: #1565C0;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .registrationContainer {
+    padding: 30px 24px;
+    border-radius: 20px;
+  }
+  
+  .page {
+    min-height: auto;
+    padding: 20px 16px;
+  }
+}
+
+/* Адаптация для планшетов */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .registrationContainer {
+    max-width: 480px;
+  }
+}
+
+/* Адаптация для ПК */
+@media (min-width: 1025px) {
+  .registrationContainer {
+    max-width: 420px;
+  }
+}
+
+/* Стили для Telegram версии (когда используется PageLayout) */
+/* Эти стили применяются только когда .page не используется (внутри PageLayout) */
+.pageContainer .subtitle {
   text-align: center;
   margin-top: 0;
   margin-bottom: 20px;
   color: #333;
 }
 
-.form {
+.pageContainer .form {
   margin-top: 20px;
 }
-.input {
+
+.pageContainer .input {
   display: block;
   width: 80%;
   padding: 12px;
-  margin: 0 auto 10px auto; /* Центрируем и добавляем отступ снизу */
+  margin: 0 auto 10px auto;
   border: 1px solid #ccc;
   border-radius: 8px;
   font-size: 16px;
 }
 
-.submitButton {
+.pageContainer .submitButton {
   width: 85%;
-  padding: 15px; /* Увеличим отступ для солидности */
+  padding: 15px;
   border: none;
-  border-radius: 20px; /* Сделаем скругление как у других кнопок */
-  /* --- ИСПРАВЛЕНИЕ: Меняем цвет --- */
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */ 
+  border-radius: 20px;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
   color: white;
   font-size: 16px;
   cursor: pointer;
-  margin: 10px auto 0 auto; /* Центрируем кнопку */
-  display: block; /* Необходимо для работы auto margin */
+  margin: 10px auto 0 auto;
+  display: block;
   font-family: 'Arial', sans-serif;
   font-weight: bold;
 }
 
-.submitButton:disabled {
-  background-color: #a3d9b1; /* Цвет для неактивной кнопки */
+.pageContainer .submitButton:disabled {
+  background-color: #a3d9b1;
   cursor: not-allowed;
 }
 
-.error {
+.pageContainer .error {
   color: red;
   margin-top: 15px;
+  text-align: center;
 }
-
-/* Кнопка "Назад" */
-.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #1976D2; padding: 0; font-weight: bold; }
 
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
