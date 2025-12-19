@@ -152,12 +152,12 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                 
                 action = "approve" if callback_data.startswith("approve_local_purchase_") else "reject"
                 try:
-                    result = await crud.process_local_purchase_approval(db, local_purchase_id, action)
+                    result = await crud.process_local_gift_approval(db, local_purchase_id, action)
                     if result:
                         action_text = "одобрена" if action == "approve" else "отклонена"
                         await safe_send_message(
                             settings.TELEGRAM_CHAT_ID,
-                            f"✅ Локальная покупка #{local_purchase_id} {action_text} администратором @{escape_html(admin_username)}",
+                            f"✅ Локальный подарок #{local_purchase_id} {action_text} администратором @{escape_html(admin_username)}",
                             message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
                         )
                 except ValueError as e:

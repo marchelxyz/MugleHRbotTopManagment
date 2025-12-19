@@ -31,13 +31,13 @@ async def purchase_item(
 
 @router.post("/market/local-purchase", response_model=schemas.PurchaseResponse)
 async def purchase_local_item(
-    request: schemas.LocalPurchaseRequest, db: AsyncSession = Depends(get_db)
+    request: schemas.LocalGiftRequest, db: AsyncSession = Depends(get_db)
 ):
     try:
-        purchase_result = await crud.create_local_purchase(db, request)
+        purchase_result = await crud.create_local_gift(db, request)
         
         return {
-            "message": "Local purchase request created",
+            "message": "Local gift request created",
             "new_balance": purchase_result["new_balance"],
             "reserved_balance": purchase_result["reserved_balance"],
         }

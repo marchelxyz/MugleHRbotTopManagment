@@ -1,6 +1,6 @@
--- Миграция для поддержки локальных покупок
+-- Миграция для поддержки локальных подарков
 -- Дата: 2025-01-XX
--- Описание: Добавляет поддержку локальных покупок с резервированием спасибок
+-- Описание: Добавляет поддержку локальных подарков с резервированием спасибок
 
 -- Шаг 1: Добавляем поле reserved_balance в таблицу users
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reserved_balance INTEGER DEFAULT 0 NOT NULL;
@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_local_purchases_status ON local_purchases(status)
 CREATE INDEX IF NOT EXISTS idx_local_purchases_purchase_id ON local_purchases(purchase_id);
 
 -- Комментарии для документации
-COMMENT ON COLUMN users.reserved_balance IS 'Зарезервированные спасибки для локальных покупок';
-COMMENT ON COLUMN market_items.is_local_purchase IS 'Флаг товара для локальной покупки';
-COMMENT ON TABLE local_purchases IS 'Таблица локальных покупок с информацией о городе и ссылке на сайт';
-COMMENT ON COLUMN local_purchases.status IS 'Статус покупки: pending, approved, rejected';
+COMMENT ON COLUMN users.reserved_balance IS 'Зарезервированные спасибки для локальных подарков';
+COMMENT ON COLUMN market_items.is_local_purchase IS 'Флаг товара для локального подарка';
+COMMENT ON TABLE local_purchases IS 'Таблица локальных подарков с информацией о городе и ссылке на сайт';
+COMMENT ON COLUMN local_purchases.status IS 'Статус подарка: pending, approved, rejected';

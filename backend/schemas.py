@@ -112,7 +112,7 @@ class PurchaseRequest(BaseModel):
     user_id: int
     item_id: int
     
-class LocalPurchaseRequest(BaseModel):
+class LocalGiftRequest(BaseModel):
     user_id: int
     item_id: int
     city: str
@@ -357,7 +357,7 @@ class BulkSendCredentialsResponse(BaseModel):
     messages_sent: int
     failed_users: List[int] = []
 
-class LocalPurchaseResponse(OrmBase):
+class LocalGiftResponse(OrmBase):
     id: int
     user_id: int
     item_id: int
@@ -371,6 +371,6 @@ class LocalPurchaseResponse(OrmBase):
     user: UserBase
     item: MarketItemBase
 
-class LocalPurchaseApprovalRequest(BaseModel):
-    local_purchase_id: int
+class LocalGiftApprovalRequest(BaseModel):
+    local_purchase_id: int  # Оставляем старое название поля для совместимости с БД
     action: str  # 'approve' или 'reject'

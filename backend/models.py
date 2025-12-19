@@ -181,8 +181,8 @@ class SharedGiftInvitation(Base):
     invited_user = relationship("User", foreign_keys=[invited_user_id], lazy='selectin')
     item = relationship("MarketItem", lazy='selectin')
 
-class LocalPurchase(Base):
-    __tablename__ = "local_purchases"
+class LocalGift(Base):
+    __tablename__ = "local_purchases"  # Оставляем старое название таблицы для совместимости
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)

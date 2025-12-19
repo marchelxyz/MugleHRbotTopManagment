@@ -324,7 +324,7 @@ const ItemCreation = () => {
               onChange={handleFormChange}
               disabled={!!editingItemId || form.is_auto_issuance || form.is_shared_gift} 
             />
-            <label htmlFor="is_local_purchase">Локальная покупка</label>
+            <label htmlFor="is_local_purchase">Локальный подарок</label>
           </div>
 
           {form.is_auto_issuance ? (
@@ -385,7 +385,7 @@ const ItemCreation = () => {
                 <p><strong>{item.name}</strong></p>
                 {item.is_auto_issuance && <p style={{color: '#007bff', fontSize: '12px', fontWeight: 'bold'}}>Автовыдача</p>}
                 {item.is_shared_gift && <p style={{color: '#28a745', fontSize: '12px', fontWeight: 'bold'}}>Совместный подарок</p>}
-                {item.is_local_purchase && <p style={{color: '#ff9800', fontSize: '12px', fontWeight: 'bold'}}>Локальная покупка</p>}
+                {item.is_local_purchase && <p style={{color: '#ff9800', fontSize: '12px', fontWeight: 'bold'}}>Локальный подарок</p>}
                 {item.original_price && item.original_price > item.price ? (
                   <p>
                     Цена: {item.price} (было <s style={{color: '#999'}}>{item.original_price}</s>) спасибок

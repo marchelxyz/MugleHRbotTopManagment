@@ -7,7 +7,7 @@ import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import StatixBonusCard from '../components/StatixBonusCard';
 import ColleagueSelector from '../components/ColleagueSelector';
-import LocalPurchaseModal from '../components/LocalPurchaseModal';
+import LocalGiftModal from '../components/LocalGiftModal';
 import styles from './MarketplacePage.module.css';
 import { FaStar, FaCopy, FaUsers } from 'react-icons/fa';
 import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
@@ -17,7 +17,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseSuccessData, setPurchaseSuccessData] = useState(null);
   const [showColleagueSelector, setShowColleagueSelector] = useState(false);
-  const [showLocalPurchaseModal, setShowLocalPurchaseModal] = useState(false);
+  const [showLocalGiftModal, setShowLocalGiftModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const { showAlert } = useModalAlert();
   const { confirm } = useConfirmation();
@@ -43,9 +43,9 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       setSelectedItem(item);
       setShowColleagueSelector(true);
     } else if (item.is_local_purchase) {
-      // Для локальных покупок показываем модальное окно для ввода города и ссылки
+      // Для локальных подарков показываем модальное окно для ввода города и ссылки
       setSelectedItem(item);
-      setShowLocalPurchaseModal(true);
+      setShowLocalGiftModal(true);
     } else {
       // Обычная покупка
       const isConfirmed = await confirm(`Вы уверены, что хотите купить "${item.name}" за ${item.price} спасибок?`);
@@ -72,7 +72,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
     }
   };
 
-  const handleLocalPurchaseConfirm = async (city, websiteUrl) => {
+  const handleLocalGiftConfirm = async (city, websiteUrl) => {
     if (!selectedItem) return;
 
     const isConfirmed = await confirm(
@@ -90,11 +90,11 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         const { new_balance, reserved_balance } = response.data;
         
         onPurchaseSuccess({ balance: new_balance, reserved_balance });
-        setShowLocalPurchaseModal(false);
+        setShowLocalGiftModal(false);
         setSelectedItem(null);
         
         showAlert(
-          `Заявка на локальную покупку создана! Зарезервировано ${reserved_balance} спасибок. Ожидайте решения администратора.`,
+          `Заявка на локальный подарок создана! Зарезервировано ${reserved_balance} спасибок. Ожидайте решения администратора.`,
           'success'
         );
 
@@ -103,7 +103,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         setItems(updatedItems.data);
 
       } catch (error) {
-        console.error("Local purchase failed:", error);
+        console.error("Local gift failed:", error);
         showAlert(error.response?.data?.detail || "Произошла ошибка при создании заявки.", 'error');
       }
     }
@@ -215,7 +215,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
                       className={styles.purchaseButton}
                       disabled={(user?.balance - (user?.reserved_balance || 0)) < currentPrice || item.stock <= 0} 
                     >
-                      {item.stock > 0 ? 'Локальная покупка' : 'Нет в наличии'}
+                      {item.stock > 0 ? 'Локальный подарок' : 'Нет в наличии'}
                     </button>
                   ) : (
                     <button 
@@ -250,14 +250,14 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         currentUserId={user?.id}
       />
 
-      <LocalPurchaseModal
-        isOpen={showLocalPurchaseModal}
+      <LocalGiftModal
+        isOpen={showLocalGiftModal}
         onClose={() => {
-          setShowLocalPurchaseModal(false);
+          setShowLocalGiftModal(false);
           setSelectedItem(null);
         }}
         item={selectedItem}
-        onConfirm={handleLocalPurchaseConfirm}
+        onConfirm={handleLocalGiftConfirm}
       />
     </PageLayout>
   );
