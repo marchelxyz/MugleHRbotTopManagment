@@ -1,10 +1,7 @@
-# backend/database.py
-
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base # 1. Добавляем declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base
 from config import Settings
 
-# 2. Создаем наш главный "чертёж" (Base) здесь
 Base = declarative_base()
 
 settings = Settings()
@@ -13,13 +10,12 @@ database_url = settings.DATABASE_URL
 if database_url and database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# НАСТРОЙКИ ДЛЯ СТАБИЛЬНОЙ РАБОТЫ В ОБЛАКЕ
 engine = create_async_engine(
     database_url,
     echo=True,
     future=True,
-    pool_pre_ping=True,  # Проверять "живое" ли соединение перед использованием
-    pool_recycle=1800,   # Принудительно обновлять соединение каждые 30 минут
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 
 AsyncSessionLocal = sessionmaker(
