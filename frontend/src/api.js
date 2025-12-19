@@ -567,3 +567,92 @@ export const cleanupExpiredSharedGiftInvitations = () => {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };
+
+// --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ ПАРОЛЯ ---
+export const changePassword = (currentPassword, newPassword) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.post('/users/me/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword
+    }, { headers });
+};
+
+// --- АДМИН API ДЛЯ УПРАВЛЕНИЯ ПОКУПКАМИ И СОГЛАСОВАНИЯМИ ---
+export const getPendingLocalPurchases = () => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.get('/admin/local-purchases/pending', { headers });
+};
+
+export const getPendingProfileUpdates = () => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.get('/admin/profile-updates/pending', { headers });
+};
+
+export const approveLocalPurchase = (purchaseId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.post(`/admin/local-purchases/${purchaseId}/approve`, {}, { headers });
+};
+
+export const rejectLocalPurchase = (purchaseId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.post(`/admin/local-purchases/${purchaseId}/reject`, {}, { headers });
+};
+
+export const approveProfileUpdate = (updateId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.post(`/admin/profile-updates/${updateId}/approve`, {}, { headers });
+};
+
+export const rejectProfileUpdate = (updateId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const userId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (userId) {
+        headers['X-User-Id'] = userId;
+    }
+    return apiClient.post(`/admin/profile-updates/${updateId}/reject`, {}, { headers });
+};

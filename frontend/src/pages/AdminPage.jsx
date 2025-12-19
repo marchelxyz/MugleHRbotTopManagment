@@ -11,6 +11,8 @@ import UserManager from './admin/UserManager';
 import StatisticsDashboard from './admin/StatisticsDashboard';
 import CredentialsGenerator from './admin/CredentialsGenerator';
 import RegistrationManager from './admin/RegistrationManager';
+import PurchasesManager from './admin/PurchasesManager';
+import ApprovalsManager from './admin/ApprovalsManager';
 import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners, resetDailyTransferLimits } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
@@ -161,6 +163,8 @@ function AdminPage() {
           <button onClick={() => setActiveSection('stats')} className={styles.gridButton}>Статистика</button>
           <button onClick={() => setActiveSection('users')} className={styles.gridButton}>Пользователи</button>
           <button onClick={() => setActiveSection('registrations')} className={styles.gridButton}>Заявки на регистрацию</button>
+          <button onClick={() => setActiveSection('purchases')} className={styles.gridButton}>Покупки</button>
+          <button onClick={() => setActiveSection('approvals')} className={styles.gridButton}>Согласования</button>
           <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
           <button onClick={() => setActiveSection('credentials')} className={styles.gridButton}>Генерация учетных данных</button>
@@ -202,6 +206,8 @@ function AdminPage() {
         {/*case 'mass-actions': return <MassActions />;*/}
       case 'users': return <UserManager />;
       case 'registrations': return <RegistrationManager />;
+      case 'purchases': return <PurchasesManager />;
+      case 'approvals': return <ApprovalsManager />;
       case 'credentials': return <CredentialsGenerator />;
       default: return null; // На случай непредвиденного значения
     }

@@ -80,6 +80,10 @@ class LoginRequest(BaseModel):
     login: str
     password: str
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
 class RegisterRequest(BaseModel):
     telegram_id: Optional[str] = None
     first_name: str

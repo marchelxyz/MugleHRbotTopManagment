@@ -24,6 +24,7 @@ import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
 import TransferPage from './pages/TransferPage'; // Страница отправки спасибок
+import NotificationsPage from './pages/NotificationsPage';
 import { startSession, pingSession } from './api';
 import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
 import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
@@ -313,12 +314,14 @@ function App() {
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
+        case 'notifications': return <NotificationsPage user={user} onBack={() => navigate('profile')} />;
   case 'settings': 
     return (
       <SettingsPage 
         onBack={() => navigate('profile')} 
         onNavigate={navigate} 
         onRepeatOnboarding={() => setShowOnboarding(true)}
+        user={user}
       />
     );
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;

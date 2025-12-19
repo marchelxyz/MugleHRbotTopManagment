@@ -1,0 +1,147 @@
+/* frontend/src/pages/NotificationsPage.module.css */
+
+.backButton {
+  margin-bottom: 20px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #1976D2;
+  padding: 0;
+  font-weight: bold;
+}
+
+.unreadBadge {
+  background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+.filterButtons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.filterButton {
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: white;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterButton:hover {
+  background: #f5f5f5;
+  border-color: #2196F3;
+}
+
+.filterButton.active {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: white;
+  border-color: #2196F3;
+}
+
+.notificationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notificationItem {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border: 1px solid #f0f0f0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.notificationItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.notificationItem.unread {
+  border-left: 4px solid #2196F3;
+  background: #F5F9FF;
+}
+
+.notificationIconContainer {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notificationIcon {
+  color: #2196F3;
+  font-size: 20px;
+}
+
+.notificationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  gap: 12px;
+}
+
+.notificationTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  flex: 1;
+}
+
+.notificationTime {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.notificationMessage {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.emptyIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 16px;
+}
