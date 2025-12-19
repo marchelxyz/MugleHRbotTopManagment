@@ -1,8 +1,3 @@
-# backend/redis_cache.py
-"""
-Модуль для работы с Redis кешем.
-Заменяет функциональность Telegram CloudStorage на серверное кеширование.
-"""
 import json
 import logging
 from typing import Optional, Any
@@ -22,13 +17,11 @@ class RedisCache:
         """Подключается к Redis."""
         try:
             if settings.REDIS_URL:
-                # Используем URL для подключения
                 self._connection_pool = aioredis.ConnectionPool.from_url(
                     settings.REDIS_URL,
                     decode_responses=True
                 )
             else:
-                # Используем отдельные параметры
                 self._connection_pool = aioredis.ConnectionPool(
                     host=settings.REDIS_HOST,
                     port=settings.REDIS_PORT,
@@ -39,7 +32,6 @@ class RedisCache:
             
             self.redis_client = aioredis.Redis(connection_pool=self._connection_pool)
             
-            # Проверяем подключение
             await self.redis_client.ping()
             logger.info("✅ Redis подключен успешно")
         except Exception as e:
@@ -79,11 +71,9 @@ class RedisCache:
             if value is None:
                 return None
             
-            # Пытаемся распарсить JSON
             try:
                 return json.loads(value)
             except json.JSONDecodeError:
-                # Если не JSON, возвращаем как строку
                 return value
         except Exception as e:
             logger.error(f"Ошибка при получении из кеша {key} для пользователя {user_id}: {e}")
@@ -105,18 +95,16 @@ class RedisCache:
         try:
             redis_key = self._get_key(user_id, key)
             
-            # Определяем TTL по умолчанию в зависимости от типа данных
             if ttl is None:
                 if key in ['feed', 'market', 'banners']:
-                    ttl = 3600  # 1 час
+                    ttl = 3600
                 elif key == 'leaderboard':
-                    ttl = 300  # 5 минут
+                    ttl = 300
                 elif key == 'history':
-                    ttl = 1800  # 30 минут
+                    ttl = 1800
                 else:
-                    ttl = 3600  # По умолчанию 1 час
+                    ttl = 3600
             
-            # Сериализуем значение в JSON
             if isinstance(value, (dict, list)):
                 serialized_value = json.dumps(value, ensure_ascii=False)
             else:
@@ -126,7 +114,7 @@ class RedisCache:
             logger.debug(f"Кеш установлен: {redis_key} (TTL: {ttl}s)")
         except Exception as e:
             logger.error(f"Ошибка при установке кеша {key} для пользователя {user_id}: {e}")
-            raise  # Пробрасываем исключение дальше, чтобы frontend мог обработать ошибку
+            raise
     
     async def delete(self, user_id: int, key: str):
         """
@@ -186,5 +174,4 @@ class RedisCache:
             logger.error(f"Ошибка при проверке существования кеша {key} для пользователя {user_id}: {e}")
             return False
 
-# Глобальный экземпляр Redis кеша
 redis_cache = RedisCache()

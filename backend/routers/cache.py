@@ -1,5 +1,3 @@
-# backend/routers/cache.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, Any
 from pydantic import BaseModel
@@ -34,11 +32,6 @@ async def get_cache(
     key: str,
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Получает значение из кеша для текущего пользователя.
-    
-    Поддерживаемые ключи: feed, market, leaderboard, banners, history
-    """
     if not current_user.telegram_id or current_user.telegram_id < 0:
         raise HTTPException(status_code=400, detail="Telegram ID не доступен")
     
@@ -61,11 +54,6 @@ async def set_cache(
     request: CacheSetRequest,
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Устанавливает значение в кеш для текущего пользователя.
-    
-    Поддерживаемые ключи: feed, market, leaderboard, banners, history
-    """
     if not current_user.telegram_id or current_user.telegram_id < 0:
         raise HTTPException(status_code=400, detail="Telegram ID не доступен")
     
@@ -86,11 +74,6 @@ async def delete_cache(
     key: str,
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Удаляет значение из кеша для текущего пользователя.
-    
-    Поддерживаемые ключи: feed, market, leaderboard, banners, history
-    """
     if not current_user.telegram_id or current_user.telegram_id < 0:
         raise HTTPException(status_code=400, detail="Telegram ID не доступен")
     
@@ -105,9 +88,6 @@ async def delete_cache(
 async def clear_all_cache(
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Очищает весь кеш для текущего пользователя.
-    """
     if not current_user.telegram_id or current_user.telegram_id < 0:
         raise HTTPException(status_code=400, detail="Telegram ID не доступен")
     

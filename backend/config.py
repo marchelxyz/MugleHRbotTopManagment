@@ -1,12 +1,9 @@
-# backend/config.py
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # Основные настройки
     DATABASE_URL: str
     ADMIN_API_KEY: str
     
-    # Настройки Telegram
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_CHAT_ID: int
     TELEGRAM_ADMIN_IDS: str 
@@ -28,11 +25,10 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
     REDIS_PASSWORD: str = ""
-    REDIS_URL: str = ""  # Если указан, используется вместо отдельных параметров
+    REDIS_URL: str = ""
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-# --- ДОБАВЛЯЕМ ЭТУ СТРОКУ В КОНЕЦ ФАЙЛА ---
-# Создаем один экземпляр настроек для всего приложения
+
 settings = Settings()

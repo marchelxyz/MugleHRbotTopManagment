@@ -1,4 +1,3 @@
-# backend/dependencies.py
 from fastapi import Depends, HTTPException, status, Header
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,7 +5,6 @@ import crud
 from database import get_db
 from models import User
 
-# --- ОБНОВЛЕННАЯ ФУНКЦИЯ: Поддержка как Telegram, так и браузерной авторизации ---
 async def get_current_user(
     telegram_id: Optional[str] = Header(alias="X-Telegram-Id", default=None),
     header_user_id: Optional[str] = Header(alias="X-User-Id", default=None),
@@ -15,14 +13,12 @@ async def get_current_user(
     """Получает текущего пользователя по Telegram ID или User ID из заголовка."""
     user = None
     
-    # Приоритет: сначала проверяем Telegram ID (для обратной совместимости)
     if telegram_id:
         try:
             user = await crud.get_user_by_telegram(db, telegram_id=int(telegram_id))
         except (ValueError, TypeError):
             pass
     
-    # Если не найден по Telegram ID, проверяем User ID (для браузерной авторизации)
     if not user and header_user_id:
         try:
             user = await crud.get_user(db, user_id=int(header_user_id))
@@ -45,14 +41,12 @@ async def get_current_admin_user(
     """Получает текущего администратора по Telegram ID или User ID из заголовка."""
     user = None
     
-    # Приоритет: сначала проверяем Telegram ID (для обратной совместимости)
     if telegram_id:
         try:
             user = await crud.get_user_by_telegram(db, telegram_id=int(telegram_id))
         except (ValueError, TypeError):
             pass
     
-    # Если не найден по Telegram ID, проверяем User ID (для браузерной авторизации)
     if not user and header_user_id:
         try:
             user = await crud.get_user(db, user_id=int(header_user_id))

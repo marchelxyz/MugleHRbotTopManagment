@@ -1,9 +1,7 @@
-# backend/models.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date, func
-from sqlalchemy.orm import declarative_base, relationship # <-- ДОБАВЬ ИЗМЕНЕНИЕ
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-# Стало
 from database import Base
 from datetime import date, datetime
 from typing import Optional
@@ -11,7 +9,7 @@ from typing import Optional
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    telegram_id = Column(BigInteger, nullable=True)  # unique обеспечивается частичным индексом через миграцию
+    telegram_id = Column(BigInteger, nullable=True)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=False)
     status = Column(String, default='pending', nullable=False)
@@ -19,10 +17,10 @@ class User(Base):
     department = Column(String, nullable=False)
     username = Column(String, nullable=True)
     telegram_photo_url = Column(String, nullable=True)
-    phone_number = Column(String, nullable=False) # Было nullable=True
-    date_of_birth = Column(Date, nullable=False)   # Было nullable=True
+    phone_number = Column(String, nullable=False)
+    date_of_birth = Column(Date, nullable=False)
     balance = Column(Integer, default=0)
-    reserved_balance = Column(Integer, default=0) # Зарезервированные спасибки
+    reserved_balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)
     daily_transfer_count = Column(Integer, default=0)
     last_login_date: Mapped[datetime] = mapped_column(DateTime, nullable=True, onupdate=func.now())
@@ -45,7 +43,6 @@ class User(Base):
     sent_transactions = relationship(
         "Transaction",
         back_populates="sender",
-        # Правильный синтаксис: просто строка, без скобок []
         foreign_keys="Transaction.sender_id",
         cascade="all, delete-orphan",
         passive_deletes=True
@@ -53,7 +50,6 @@ class User(Base):
     received_transactions = relationship(
         "Transaction",
         back_populates="receiver",
-        # И здесь тоже
         foreign_keys="Transaction.receiver_id",
         cascade="all, delete-orphan",
         passive_deletes=True
@@ -63,12 +59,10 @@ class User(Base):
 
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
 
-# --- НОВАЯ ТАБЛИЦА ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИЙ ---
 class UserSession(Base):
     __tablename__ = 'user_sessions'
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # Добавляем ondelete="CASCADE" прямо сюда
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id', ondelete="CASCADE"))
 
     session_start: Mapped[datetime] = mapped_column(DateTime, default=func.now())
@@ -95,13 +89,13 @@ class MarketItem(Base):
     price = Column(Integer, nullable=False)
     price_rub = Column(Integer, nullable=False) 
     stock = Column(Integer, default=0)
-    original_price: Mapped[Optional[int]] # Старая цена, если есть скидка
+    original_price: Mapped[Optional[int]]
     image_url = Column(String, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False)
     archived_at = Column(DateTime, nullable=True)
-    is_auto_issuance: Mapped[bool] = mapped_column(default=False) # Флаг автовыдачи
-    is_shared_gift: Mapped[bool] = mapped_column(default=False) # Флаг совместного подарка
-    is_local_purchase: Mapped[bool] = mapped_column(default=False) # Флаг локальной покупки
+    is_auto_issuance: Mapped[bool] = mapped_column(default=False)
+    is_shared_gift: Mapped[bool] = mapped_column(default=False)
+    is_local_purchase: Mapped[bool] = mapped_column(default=False)
     purchases = relationship("Purchase", back_populates="item")
     codes = relationship("ItemCode", back_populates="market_item", cascade="all, delete-orphan")
 
@@ -114,13 +108,12 @@ class Purchase(Base):
     user = relationship("User", back_populates="purchases")
     item = relationship("MarketItem", back_populates="purchases")
 
-# --- ДОБАВЬ ЭТОТ НОВЫЙ КЛАСС ПОЛНОСТЬЮ ---
 class ItemCode(Base):
     __tablename__ = 'item_codes'
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    code_value: Mapped[str] = mapped_column(unique=True, index=True) # Уникальный код или ссылка
-    is_issued: Mapped[bool] = mapped_column(default=False) # Выдан ли код?
+    code_value: Mapped[str] = mapped_column(unique=True, index=True)
+    is_issued: Mapped[bool] = mapped_column(default=False)
 
     market_item_id: Mapped[int] = mapped_column(ForeignKey('market_items.id', ondelete="CASCADE"))
     issued_to_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey('users.id', ondelete="SET NULL"))
@@ -132,13 +125,11 @@ class ItemCode(Base):
 class Banner(Base):
     __tablename__ = "banners"
     id = Column(Integer, primary_key=True, index=True)
-    image_url = Column(String, nullable=True) # Было nullable=False
+    image_url = Column(String, nullable=True)
     link_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     position = Column(String, default='feed', nullable=False)
-    # Тип баннера: 'image' (по умолч.), 'leaderboard_receivers', 'leaderboard_senders'
     banner_type: Mapped[str] = mapped_column(String(50), default='image', server_default='image', nullable=False)
-    # Поле для хранения данных (например, списка топ-3 пользователей)
     data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 class RouletteWin(Base):
@@ -153,8 +144,8 @@ class PendingUpdate(Base):
     __tablename__ = "pending_updates"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    old_data = Column(JSON, nullable=False) # JSON со старыми данными
-    new_data = Column(JSON, nullable=False) # JSON с новыми данными
+    old_data = Column(JSON, nullable=False)
+    new_data = Column(JSON, nullable=False)
     status = Column(String, default='pending', nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -167,12 +158,9 @@ class StatixBonusItem(Base):
     description = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    # Курс валют: сколько спасибок за 100 бонусов Statix
     thanks_to_statix_rate = Column(Integer, default=10, nullable=False)
-    # Минимальное и максимальное количество бонусов за один шаг
     min_bonus_per_step = Column(Integer, default=100, nullable=False)
     max_bonus_per_step = Column(Integer, default=10000, nullable=False)
-    # Шаг увеличения бонусов
     bonus_step = Column(Integer, default=100, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -183,13 +171,12 @@ class SharedGiftInvitation(Base):
     buyer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     invited_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
-    status = Column(String, default='pending', nullable=False)  # pending, accepted, rejected, expired
+    status = Column(String, default='pending', nullable=False)
     created_at = Column(DateTime, default=func.now())
     expires_at = Column(DateTime, nullable=False)
     accepted_at = Column(DateTime, nullable=True)
     rejected_at = Column(DateTime, nullable=True)
     
-    # Связи
     buyer = relationship("User", foreign_keys=[buyer_id], lazy='selectin')
     invited_user = relationship("User", foreign_keys=[invited_user_id], lazy='selectin')
     item = relationship("MarketItem", lazy='selectin')
@@ -202,12 +189,11 @@ class LocalPurchase(Base):
     purchase_id = Column(Integer, ForeignKey("purchases.id"), nullable=False)
     city = Column(String, nullable=False)
     website_url = Column(String, nullable=False)
-    status = Column(String, default='pending', nullable=False)  # pending, approved, rejected
-    reserved_amount = Column(Integer, nullable=False)  # Зарезервированная сумма
+    status = Column(String, default='pending', nullable=False)
+    reserved_amount = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    # Связи
     user = relationship("User", lazy='selectin')
     item = relationship("MarketItem", lazy='selectin')
     purchase = relationship("Purchase", lazy='selectin')
