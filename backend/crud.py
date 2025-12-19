@@ -655,6 +655,7 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
             f"🛍️ <b>Новая локальная покупка!</b>\n\n"
             f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
             f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
+            f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
             f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
             f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
@@ -2741,7 +2742,9 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         admin_message = (
             f"🎁 <b>Совместная покупка в магазине!</b>\n\n"
             f"👤 <b>Покупатель:</b> {escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')} (@{escape_html(buyer.username or str(buyer.telegram_id))})\n"
-            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n\n"
+            f"📞 <b>Телефон покупателя:</b> {escape_html(buyer.phone_number or 'не указан')}\n"
+            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n"
+            f"📞 <b>Телефон приглашенного:</b> {escape_html(invitation.invited_user.phone_number or 'не указан')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Стоимость:</b> {item.price} спасибок (оплачено покупателем)\n\n"
             f"📉 <b>Баланс покупателя:</b> {buyer.balance} спасибок"
