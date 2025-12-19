@@ -16,6 +16,9 @@ engine = create_async_engine(
     future=True,
     pool_pre_ping=True,
     pool_recycle=1800,
+    pool_size=20,  # Размер пула соединений
+    max_overflow=10,  # Дополнительные соединения сверх pool_size
+    pool_timeout=30,  # Таймаут ожидания свободного соединения
 )
 
 AsyncSessionLocal = sessionmaker(
