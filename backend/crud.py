@@ -529,11 +529,12 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         raise ValueError("Для локальных покупок используйте специальный API")
 
     if item.is_auto_issuance:
+        # Используем with_for_update(skip_locked=True) для предотвращения блокировок
         stmt = (
             select(models.ItemCode)
             .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
             .limit(1)
-            .with_for_update()
+            .with_for_update(skip_locked=True)
         )
         result = await db.execute(stmt)
         code_to_issue = result.scalars().first()
@@ -555,22 +556,37 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
+    # Сохраняем данные перед отправкой уведомлений
+    await db.commit()
+    
+    # Сохраняем данные для уведомлений перед отправкой
+    item_name = item.name
+    user_telegram_id = user.telegram_id
+    user_first_name = user.first_name
+    user_username = user.username
+    user_position = user.position
+    user_phone_number = user.phone_number
+    user_balance = user.balance
+    item_price = item.price
+
     # --- ФИНАЛЬНАЯ ВЕРСИЯ УВЕДОМЛЕНИЙ ---
+    # Отправляем уведомления ПОСЛЕ commit, чтобы не блокировать транзакцию
     try:
         # Уведомление для администратора (без изменений)
         admin_message = (
             f"🛍️ <b>Новая покупка в магазине!</b>\n\n"
-            f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} (@{escape_html(user.username or str(user.telegram_id))})\n"
-            f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n\n"
-            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
-            f"💰 <b>Стоимость:</b> {item.price} спасибок"
+            f"👤 <b>Пользователь:</b> {escape_html(user_first_name or '')} (@{escape_html(user_username or str(user_telegram_id))})\n"
+            f"📞 <b>Телефон:</b> {escape_html(user_phone_number or 'не указан')}\n"
+            f"💼 <b>Должность:</b> {escape_html(user_position or '')}\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item_name)}\n"
+            f"💰 <b>Стоимость:</b> {item_price} спасибок"
         )
         if issued_code_value:
             admin_message += (
                 f"\n\n✨ <b>Товар с автовыдачей</b>\n"
                 f"🔑 <b>Выданный код:</b> <code>{escape_html(issued_code_value)}</code>"
             )
-        admin_message += f"\n\n📉 <b>Новый баланс пользователя:</b> {user.balance} спасибок"
+        admin_message += f"\n\n📉 <b>Новый баланс пользователя:</b> {user_balance} спасибок"
         
         await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
@@ -579,17 +595,15 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         )
 
         # Уведомление для пользователя (теперь для всех покупок)
-        user_message = f"🎉 Поздравляем с покупкой \"{escape_html(item.name)}\"!"
+        user_message = f"🎉 Поздравляем с покупкой \"{escape_html(item_name)}\"!"
         if issued_code_value:
             # Для товаров с кодом добавляем сам код
             user_message += f"\n\nВаш уникальный код/ссылка:\n<code>{escape_html(issued_code_value)}</code>"
         
-        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+        await send_telegram_message(chat_id=user_telegram_id, text=user_message)
 
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
-
-    await db.commit()
     
     return {"new_balance": user.balance, "issued_code": issued_code_value}
 
@@ -641,6 +655,7 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
             f"🛍️ <b>Новая локальная покупка!</b>\n\n"
             f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
             f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
+            f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
             f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
             f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
@@ -1022,6 +1037,7 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
         raise # Пробрасываем ошибку дальше, чтобы роутер ее поймал
 
     # Перечитываем объект из базы с кодами для корректного ответа
+    # Используем новую сессию для чтения, чтобы не блокировать транзакцию
     print(f"--- [UPDATE ITEM {item_id}] Перечитываем товар из БД с кодами... ---") # <-- Лог 8
     result = await db.execute(
         select(models.MarketItem)
@@ -2726,7 +2742,9 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         admin_message = (
             f"🎁 <b>Совместная покупка в магазине!</b>\n\n"
             f"👤 <b>Покупатель:</b> {escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')} (@{escape_html(buyer.username or str(buyer.telegram_id))})\n"
-            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n\n"
+            f"📞 <b>Телефон покупателя:</b> {escape_html(buyer.phone_number or 'не указан')}\n"
+            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n"
+            f"📞 <b>Телефон приглашенного:</b> {escape_html(invitation.invited_user.phone_number or 'не указан')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Стоимость:</b> {item.price} спасибок (оплачено покупателем)\n\n"
             f"📉 <b>Баланс покупателя:</b> {buyer.balance} спасибок"
