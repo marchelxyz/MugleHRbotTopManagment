@@ -565,6 +565,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     user_first_name = user.first_name
     user_username = user.username
     user_position = user.position
+    user_phone_number = user.phone_number
     user_balance = user.balance
     item_price = item.price
 
@@ -575,6 +576,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         admin_message = (
             f"🛍️ <b>Новая покупка в магазине!</b>\n\n"
             f"👤 <b>Пользователь:</b> {escape_html(user_first_name or '')} (@{escape_html(user_username or str(user_telegram_id))})\n"
+            f"📞 <b>Телефон:</b> {escape_html(user_phone_number or 'не указан')}\n"
             f"💼 <b>Должность:</b> {escape_html(user_position or '')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item_name)}\n"
             f"💰 <b>Стоимость:</b> {item_price} спасибок"
