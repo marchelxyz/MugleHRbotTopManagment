@@ -516,6 +516,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     # Проверяем, что товар не является совместным подарком
     if item.is_shared_gift:
         raise ValueError("Для совместных подарков используйте специальный API")
+    
+    # Проверяем, что товар не является локальной покупкой
+    if item.is_local_purchase:
+        raise ValueError("Для локальных покупок используйте специальный API")
 
     if item.is_auto_issuance:
         stmt = (
@@ -581,6 +585,173 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     await db.commit()
     
     return {"new_balance": user.balance, "issued_code": issued_code_value}
+
+async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseRequest):
+    """Создает локальную покупку с резервированием спасибок"""
+    item = await db.get(models.MarketItem, pr.item_id)
+    result = await db.execute(
+        select(models.User).where(models.User.telegram_id == pr.user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not item or not user:
+        raise ValueError("Товар или пользователь не найдены")
+    
+    if not item.is_local_purchase:
+        raise ValueError("Этот товар не является локальной покупкой")
+    
+    # Проверяем доступный баланс (баланс - зарезервированные средства)
+    available_balance = user.balance - (user.reserved_balance or 0)
+    if available_balance < item.price:
+        raise ValueError("Недостаточно средств")
+    
+    # Резервируем спасибки
+    if user.reserved_balance is None:
+        user.reserved_balance = 0
+    user.reserved_balance += item.price
+    
+    # Создаем запись о покупке
+    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id)
+    db.add(db_purchase)
+    await db.flush()  # Получаем ID покупки
+    
+    # Создаем запись о локальной покупке
+    local_purchase = models.LocalPurchase(
+        user_id=user.id,
+        item_id=pr.item_id,
+        purchase_id=db_purchase.id,
+        city=pr.city,
+        website_url=pr.website_url,
+        status='pending',
+        reserved_amount=item.price
+    )
+    db.add(local_purchase)
+    await db.flush()
+    
+    # Отправляем уведомление администраторам
+    try:
+        admin_message = (
+            f"🛍️ <b>Новая локальная покупка!</b>\n\n"
+            f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
+            f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
+            f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
+            f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Стоимость:</b> {item.price} спасибок\n"
+            f"🏙️ <b>Город:</b> {escape_html(pr.city)}\n"
+            f"🔗 <b>Ссылка:</b> {escape_html(pr.website_url)}\n\n"
+            f"📉 <b>Баланс пользователя:</b> {user.balance} спасибок\n"
+            f"🔒 <b>Зарезервировано:</b> {user.reserved_balance} спасибок"
+        )
+        
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "✅ Принять",
+                        "callback_data": f"approve_local_purchase_{local_purchase.id}"
+                    },
+                    {
+                        "text": "❌ Отказать",
+                        "callback_data": f"reject_local_purchase_{local_purchase.id}"
+                    }
+                ]
+            ]
+        }
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=admin_message,
+            reply_markup=reply_markup,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+    except Exception as e:
+        print(f"Could not send admin notification. Error: {e}")
+    
+    # Отправляем уведомление пользователю
+    try:
+        user_message = (
+            f"🛍️ <b>Ваша заявка на локальную покупку принята!</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"🏙️ <b>Город:</b> {escape_html(pr.city)}\n"
+            f"🔗 <b>Ссылка:</b> {escape_html(pr.website_url)}\n\n"
+            f"💰 <b>Зарезервировано:</b> {item.price} спасибок\n\n"
+            f"⏳ Ожидайте решения администратора"
+        )
+        
+        if user.telegram_id and user.telegram_id >= 0:
+            await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
+
+    await db.commit()
+    
+    return {
+        "new_balance": user.balance,
+        "reserved_balance": user.reserved_balance,
+        "local_purchase_id": local_purchase.id
+    }
+
+async def process_local_purchase_approval(db: AsyncSession, local_purchase_id: int, action: str):
+    """Обрабатывает принятие или отказ в локальной покупке"""
+    local_purchase = await db.get(models.LocalPurchase, local_purchase_id)
+    if not local_purchase:
+        raise ValueError("Локальная покупка не найдена")
+    
+    if local_purchase.status != 'pending':
+        return None  # Уже обработано
+    
+    user = await db.get(models.User, local_purchase.user_id)
+    item = await db.get(models.MarketItem, local_purchase.item_id)
+    
+    if not user or not item:
+        raise ValueError("Пользователь или товар не найдены")
+    
+    if action == 'approve':
+        # Списываем зарезервированные спасибки
+        if user.reserved_balance is None:
+            user.reserved_balance = 0
+        user.reserved_balance -= local_purchase.reserved_amount
+        user.balance -= local_purchase.reserved_amount
+        local_purchase.status = 'approved'
+        
+        # Уведомление пользователю
+        user_message = (
+            f"✅ <b>Ваша локальная покупка одобрена!</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Списано:</b> {local_purchase.reserved_amount} спасибок\n\n"
+            f"📉 <b>Ваш баланс:</b> {user.balance} спасибок"
+        )
+        
+    elif action == 'reject':
+        # Возвращаем зарезервированные спасибки (не списываем баланс)
+        if user.reserved_balance is None:
+            user.reserved_balance = 0
+        user.reserved_balance -= local_purchase.reserved_amount
+        local_purchase.status = 'rejected'
+        
+        # Уведомление пользователю
+        user_message = (
+            f"❌ <b>Ваша локальная покупка отклонена</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Возвращено:</b> {local_purchase.reserved_amount} спасибок\n\n"
+            f"📉 <b>Ваш баланс:</b> {user.balance} спасибок\n"
+            f"🔒 <b>Зарезервировано:</b> {user.reserved_balance} спасибок"
+        )
+    else:
+        raise ValueError("Неверное действие")
+    
+    local_purchase.updated_at = datetime.utcnow()
+    await db.commit()
+    
+    # Отправляем уведомление пользователю
+    try:
+        if user.telegram_id and user.telegram_id >= 0:
+            await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
+    
+    return {"status": local_purchase.status, "user_balance": user.balance, "reserved_balance": user.reserved_balance}
     
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):

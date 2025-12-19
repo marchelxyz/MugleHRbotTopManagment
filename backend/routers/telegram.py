@@ -165,7 +165,31 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID) # <-- Используем новую переменную
                 # Если status == None, значит запрос уже был обработан, ничего не делаем.
 
-            # 2. ПРОВЕРЯЕМ КОЛБЭКИ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ
+            # 2. ПРОВЕРЯЕМ КОЛБЭКИ ДЛЯ ЛОКАЛЬНЫХ ПОКУПОК
+            elif callback_data.startswith("approve_local_purchase_") or callback_data.startswith("reject_local_purchase_"):
+                local_purchase_id = int(callback_data.split("_")[-1])
+                admin_telegram_id = callback_query["from"]["id"]
+                
+                # Проверяем, что это администратор
+                admin_user = await crud.get_user_by_telegram(db, admin_telegram_id)
+                if not admin_user or not admin_user.is_admin:
+                    await safe_send_message(admin_telegram_id, "❌ У вас нет прав для выполнения этого действия")
+                    return {"ok": False, "error": "Not an admin"}
+                
+                action = "approve" if callback_data.startswith("approve_local_purchase_") else "reject"
+                try:
+                    result = await crud.process_local_purchase_approval(db, local_purchase_id, action)
+                    if result:
+                        action_text = "одобрена" if action == "approve" else "отклонена"
+                        await safe_send_message(
+                            settings.TELEGRAM_CHAT_ID,
+                            f"✅ Локальная покупка #{local_purchase_id} {action_text} администратором @{escape_html(admin_username)}",
+                            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+                        )
+                except ValueError as e:
+                    await safe_send_message(admin_telegram_id, f"❌ {str(e)}")
+            
+            # 3. ПРОВЕРЯЕМ КОЛБЭКИ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ
             elif callback_data.startswith("accept_shared_gift_") or callback_data.startswith("reject_shared_gift_"):
                 invitation_id = int(callback_data.split("_")[-1])
                 user_telegram_id = callback_query["from"]["id"]
@@ -189,7 +213,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     except ValueError as e:
                         await safe_send_message(user_telegram_id, f"❌ {str(e)}")
 
-            # 3. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
+            # 4. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
             elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
                 # --- Это СТАРАЯ ЛОГИКА (оставляем ее) ---
                 user_id = int(callback_data.split("_")[1])

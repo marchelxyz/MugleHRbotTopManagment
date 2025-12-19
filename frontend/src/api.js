@@ -104,6 +104,15 @@ export const purchaseItem = (userId, itemId) => {
   return apiClient.post('/market/purchase/', { user_id: userId, item_id: itemId });
 };
 
+export const purchaseLocalItem = (userId, itemId, city, websiteUrl) => {
+  return apiClient.post('/market/local-purchase', {
+    user_id: userId,
+    item_id: itemId,
+    city: city,
+    website_url: websiteUrl
+  });
+};
+
 export const getUserTransactions = (userId) => {
   return apiClient.get(`/users/${userId}/transactions`);
 };

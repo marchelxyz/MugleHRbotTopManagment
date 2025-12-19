@@ -22,6 +22,7 @@ class User(Base):
     phone_number = Column(String, nullable=False) # Было nullable=True
     date_of_birth = Column(Date, nullable=False)   # Было nullable=True
     balance = Column(Integer, default=0)
+    reserved_balance = Column(Integer, default=0) # Зарезервированные спасибки
     is_admin = Column(Boolean, default=False, nullable=False)
     daily_transfer_count = Column(Integer, default=0)
     last_login_date: Mapped[datetime] = mapped_column(DateTime, nullable=True, onupdate=func.now())
@@ -100,6 +101,7 @@ class MarketItem(Base):
     archived_at = Column(DateTime, nullable=True)
     is_auto_issuance: Mapped[bool] = mapped_column(default=False) # Флаг автовыдачи
     is_shared_gift: Mapped[bool] = mapped_column(default=False) # Флаг совместного подарка
+    is_local_purchase: Mapped[bool] = mapped_column(default=False) # Флаг локальной покупки
     purchases = relationship("Purchase", back_populates="item")
     codes = relationship("ItemCode", back_populates="market_item", cascade="all, delete-orphan")
 
@@ -191,3 +193,21 @@ class SharedGiftInvitation(Base):
     buyer = relationship("User", foreign_keys=[buyer_id], lazy='selectin')
     invited_user = relationship("User", foreign_keys=[invited_user_id], lazy='selectin')
     item = relationship("MarketItem", lazy='selectin')
+
+class LocalPurchase(Base):
+    __tablename__ = "local_purchases"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("market_items.id"), nullable=False)
+    purchase_id = Column(Integer, ForeignKey("purchases.id"), nullable=False)
+    city = Column(String, nullable=False)
+    website_url = Column(String, nullable=False)
+    status = Column(String, default='pending', nullable=False)  # pending, approved, rejected
+    reserved_amount = Column(Integer, nullable=False)  # Зарезервированная сумма
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Связи
+    user = relationship("User", lazy='selectin')
+    item = relationship("MarketItem", lazy='selectin')
+    purchase = relationship("Purchase", lazy='selectin')
