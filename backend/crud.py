@@ -877,14 +877,78 @@ async def process_birthday_bonuses(db: AsyncSession):
     return len(users)
 
 # --- ДОБАВЬТЕ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
+async def _ensure_unique_login(db: AsyncSession, base_login: str, exclude_user_id: int) -> str:
+    """
+    Проверяет уникальность логина и добавляет суффикс, если логин уже занят.
+    """
+    login = base_login
+    counter = 1
+    
+    while True:
+        result = await db.execute(
+            select(models.User).where(
+                models.User.login == login,
+                models.User.id != exclude_user_id
+            )
+        )
+        existing_user = result.scalar_one_or_none()
+        
+        if not existing_user:
+            return login
+        
+        # Если логин занят, добавляем суффикс
+        login = f"{base_login}{counter}"
+        counter += 1
+
 async def update_user_status(db: AsyncSession, user_id: int, status: str):
-    """Обновляет статус пользователя."""
+    """
+    Обновляет статус пользователя.
+    При одобрении веб-пользователей автоматически генерирует логин и пароль.
+    """
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
-    if user:
-        user.status = status
-        await db.commit()
-        await db.refresh(user)
+    if not user:
+        return None
+    
+    generated_login = None
+    generated_password = None
+    
+    # Если статус меняется на 'approved' и это веб-пользователь (нет telegram_id или telegram_id < 0)
+    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0):
+        # Генерируем логин, если его еще нет
+        login_was_generated = False
+        if not user.login:
+            base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+            generated_login = await _ensure_unique_login(db, base_login, user.id)
+            user.login = generated_login
+            login_was_generated = True
+        
+        # Генерируем пароль, если его еще нет
+        password_was_generated = False
+        if not user.password_hash:
+            generated_password = generate_random_password(12)
+            user.password_hash = get_password_hash(generated_password)
+            password_was_generated = True
+        
+        # Включаем возможность входа через браузер
+        user.browser_auth_enabled = True
+        
+        # Сохраняем флаги генерации для возврата в ответе
+        user._login_was_generated = login_was_generated
+        user._password_was_generated = password_was_generated
+    
+    user.status = status
+    await db.commit()
+    await db.refresh(user)
+    
+    # Если были сгенерированы новые учетные данные, сохраняем их в объекте пользователя
+    # для возврата в ответе (временное поле, не сохраняется в БД)
+    if hasattr(user, '_login_was_generated') or hasattr(user, '_password_was_generated'):
+        if hasattr(user, '_login_was_generated') and user._login_was_generated:
+            user._generated_login = user.login
+        if hasattr(user, '_password_was_generated') and user._password_was_generated:
+            user._generated_password = generated_password
+    
     return user
 
 # --- ИЗМЕНЕНИЕ: Новая, простая формула расчета цены ---

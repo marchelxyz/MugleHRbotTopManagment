@@ -348,6 +348,13 @@ class SetUserCredentialsResponse(BaseModel):
     login: str
     user_id: int
 
+class ApproveUserRegistrationResponse(BaseModel):
+    """Ответ при одобрении регистрации пользователя"""
+    user: UserResponse
+    login: Optional[str] = None  # Логин, если был сгенерирован
+    password: Optional[str] = None  # Пароль, если был сгенерирован
+    credentials_generated: bool = False  # Флаг, были ли сгенерированы учетные данные
+
 class BulkSendCredentialsRequest(BaseModel):
     message: Optional[str] = ""
     include_active: bool = True

@@ -1,6 +1,6 @@
 // frontend/src/pages/LoginPage.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { loginUser } from '../api';
 import styles from './LoginPage.module.css';
 import { useModalAlert } from '../contexts/ModalAlertContext';
@@ -23,6 +23,29 @@ function LoginPage({ onLoginSuccess, onShowRegistration }) {
     position: '',
     balance: ''
   });
+
+  // Автозаполнение полей из sessionStorage при загрузке страницы
+  useEffect(() => {
+    const storedCredentials = sessionStorage.getItem('pendingLoginCredentials');
+    if (storedCredentials) {
+      try {
+        const credentials = JSON.parse(storedCredentials);
+        if (credentials.login && credentials.password) {
+          setFormData({
+            login: credentials.login,
+            password: credentials.password
+          });
+          // Очищаем sessionStorage после использования
+          sessionStorage.removeItem('pendingLoginCredentials');
+          // Показываем уведомление
+          showAlert('Данные для входа автоматически заполнены', 'success');
+        }
+      } catch (error) {
+        console.error('Ошибка при чтении сохраненных учетных данных:', error);
+        sessionStorage.removeItem('pendingLoginCredentials');
+      }
+    }
+  }, [showAlert]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
