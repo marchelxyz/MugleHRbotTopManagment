@@ -604,3 +604,49 @@ async def trigger_leaderboard_test_banner_generation(
     except Exception as e:
         print(f"Ошибка при ручной генерации ТЕСТОВЫХ баннеров: {e}")
         raise HTTPException(status_code=500, detail="Не удалось сгенерировать тестовые баннеры")
+
+# --- ЭНДПОИНТЫ ДЛЯ УПРАВЛЕНИЯ ЛОКАЛЬНЫМИ ПОКУПКАМИ ---
+@router.get("/local-purchases", response_model=List[schemas.LocalPurchaseResponse])
+async def get_local_purchases(
+    status: Optional[str] = Query(None, description="Фильтр по статусу: pending, approved, rejected"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Получить список локальных покупок"""
+    purchases = await crud.get_local_purchases(db, status=status)
+    return purchases
+
+@router.post("/local-purchases/{local_purchase_id}/approve", response_model=schemas.LocalPurchaseActionResponse)
+async def approve_local_purchase(
+    local_purchase_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Одобрить локальную покупку"""
+    try:
+        result = await crud.approve_local_purchase(db, local_purchase_id)
+        return {
+            "message": "Локальная покупка одобрена",
+            "new_balance": result["new_balance"]
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+@router.post("/local-purchases/{local_purchase_id}/reject", response_model=schemas.LocalPurchaseActionResponse)
+async def reject_local_purchase(
+    local_purchase_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Отклонить локальную покупку"""
+    try:
+        result = await crud.reject_local_purchase(db, local_purchase_id)
+        return {
+            "message": "Локальная покупка отклонена",
+            "new_balance": result["new_balance"]
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

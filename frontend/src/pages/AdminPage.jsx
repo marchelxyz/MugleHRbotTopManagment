@@ -10,6 +10,7 @@ import ItemManager from './admin/ItemManager';
 import UserManager from './admin/UserManager';
 import StatisticsDashboard from './admin/StatisticsDashboard';
 import CredentialsGenerator from './admin/CredentialsGenerator';
+import LocalPurchaseManager from './admin/LocalPurchaseManager';
 import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners, resetDailyTransferLimits } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
@@ -162,6 +163,7 @@ function AdminPage() {
           <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
           <button onClick={() => setActiveSection('credentials')} className={styles.gridButton}>Генерация учетных данных</button>
+          <button onClick={() => setActiveSection('local-purchases')} className={styles.gridButton}>Локальные покупки</button>
 {/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
           <button 
             onClick={handleGenerateBanners} 
@@ -200,6 +202,7 @@ function AdminPage() {
         {/*case 'mass-actions': return <MassActions />;*/}
       case 'users': return <UserManager />;
       case 'credentials': return <CredentialsGenerator />;
+      case 'local-purchases': return <LocalPurchaseManager />;
       default: return null; // На случай непредвиденного значения
     }
   };

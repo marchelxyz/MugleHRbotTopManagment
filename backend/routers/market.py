@@ -65,3 +65,23 @@ async def purchase_statix_bonus(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+# --- ЭНДПОИНТЫ ДЛЯ ЛОКАЛЬНЫХ ПОКУПОК ---
+@router.post("/market/local-purchase", response_model=schemas.LocalPurchaseCreateResponse)
+async def create_local_purchase(
+    request: schemas.LocalPurchaseRequest, db: AsyncSession = Depends(get_db)
+):
+    """Создать локальную покупку с резервированием спасибок"""
+    try:
+        result = await crud.create_local_purchase(db, request)
+        return {
+            "message": "Запрос на локальную покупку создан. Ожидайте решения администратора.",
+            "new_balance": result["new_balance"],
+            "reserved_balance": result["reserved_balance"],
+            "local_purchase_id": result["local_purchase_id"]
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

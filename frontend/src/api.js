@@ -70,6 +70,15 @@ export const purchaseItem = (userId, itemId) => {
   return apiClient.post('/market/purchase/', { user_id: userId, item_id: itemId });
 };
 
+export const createLocalPurchase = (userId, itemId, city, purchaseUrl) => {
+  return apiClient.post('/market/local-purchase', {
+    user_id: userId,
+    item_id: itemId,
+    city: city,
+    purchase_url: purchaseUrl
+  });
+};
+
 export const getUserTransactions = (userId) => {
   return apiClient.get(`/users/${userId}/transactions`);
 };
@@ -453,6 +462,30 @@ export const adminGenerateLeaderboardBanners = () => {
 export const adminGenerateTestLeaderboardBanners = () => {
     const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
     return apiClient.post('/admin/generate-test-banners', {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+// --- API для локальных покупок ---
+export const getLocalPurchases = (status = null) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    const params = status ? { status } : {};
+    return apiClient.get('/admin/local-purchases', {
+        params,
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const approveLocalPurchase = (localPurchaseId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post(`/admin/local-purchases/${localPurchaseId}/approve`, {}, {
+        headers: { 'X-Telegram-Id': telegramId },
+    });
+};
+
+export const rejectLocalPurchase = (localPurchaseId) => {
+    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+    return apiClient.post(`/admin/local-purchases/${localPurchaseId}/reject`, {}, {
         headers: { 'X-Telegram-Id': telegramId },
     });
 };

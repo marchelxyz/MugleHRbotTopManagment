@@ -204,6 +204,19 @@
   color: #888;
 }
 
+/* Стили для баланса */
+.balance {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.reservedBalance {
+  color: #ff9800;
+  font-weight: 500;
+  font-size: 16px;
+}
+
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
 button:focus,

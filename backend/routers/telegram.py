@@ -189,7 +189,34 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     except ValueError as e:
                         await safe_send_message(user_telegram_id, f"❌ {str(e)}")
 
-            # 3. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
+            # 3. ПРОВЕРЯЕМ КОЛБЭКИ ДЛЯ ЛОКАЛЬНЫХ ПОКУПОК
+            elif callback_data.startswith("approve_local_") or callback_data.startswith("reject_local_"):
+                local_purchase_id = int(callback_data.split("_")[-1])
+                action = callback_data.split("_")[0]  # "approve" или "reject"
+                
+                try:
+                    if action == "approve":
+                        result = await crud.approve_local_purchase(db, local_purchase_id)
+                        await safe_send_message(
+                            settings.TELEGRAM_CHAT_ID,
+                            f"✅ Локальная покупка #{local_purchase_id} одобрена администратором @{escape_html(admin_username)}!",
+                            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+                        )
+                    else:  # reject
+                        result = await crud.reject_local_purchase(db, local_purchase_id)
+                        await safe_send_message(
+                            settings.TELEGRAM_CHAT_ID,
+                            f"❌ Локальная покупка #{local_purchase_id} отклонена администратором @{escape_html(admin_username)}.",
+                            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+                        )
+                except ValueError as e:
+                    await safe_send_message(
+                        settings.TELEGRAM_CHAT_ID,
+                        f"❌ Ошибка при обработке локальной покупки #{local_purchase_id}: {str(e)}",
+                        message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+                    )
+
+            # 4. ИНАЧЕ ПРОВЕРЯЕМ СТАРЫЕ КОЛБЭКИ (Регистрация)
             elif callback_data.startswith("approve_") or callback_data.startswith("reject_"):
                 # --- Это СТАРАЯ ЛОГИКА (оставляем ее) ---
                 user_id = int(callback_data.split("_")[1])

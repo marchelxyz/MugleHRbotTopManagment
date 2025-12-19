@@ -458,6 +458,10 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     # Проверяем, что товар не является совместным подарком
     if item.is_shared_gift:
         raise ValueError("Для совместных подарков используйте специальный API")
+    
+    # Проверяем, что товар не является локальной покупкой
+    if item.is_local_purchase:
+        raise ValueError("Для локальных покупок используйте специальный API")
 
     if item.is_auto_issuance:
         stmt = (
@@ -2655,3 +2659,196 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
     
     await db.commit()
     return len(expired_invitations)
+
+# --- ФУНКЦИИ ДЛЯ ЛОКАЛЬНЫХ ПОКУПОК ---
+
+async def create_local_purchase(db: AsyncSession, request: schemas.LocalPurchaseRequest):
+    """Создает локальную покупку с резервированием спасибок"""
+    item = await db.get(models.MarketItem, request.item_id)
+    result = await db.execute(
+        select(models.User).where(models.User.telegram_id == request.user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not item or not user:
+        raise ValueError("Товар или пользователь не найдены")
+    
+    if not item.is_local_purchase:
+        raise ValueError("Товар не является локальной покупкой")
+    
+    # Проверяем доступный баланс (баланс - зарезервированные)
+    available_balance = user.balance - (user.reserved_balance or 0)
+    if available_balance < item.price:
+        raise ValueError("Недостаточно средств (учитывая зарезервированные спасибки)")
+    
+    # Резервируем спасибки
+    user.reserved_balance = (user.reserved_balance or 0) + item.price
+    
+    # Создаем запись о локальной покупке
+    local_purchase = models.LocalPurchase(
+        user_id=user.id,
+        item_id=item.id,
+        city=request.city,
+        purchase_url=request.purchase_url,
+        status='pending'
+    )
+    db.add(local_purchase)
+    await db.flush()
+    
+    # Отправляем уведомление администраторам
+    try:
+        admin_message = (
+            f"🛍️ <b>Новая локальная покупка!</b>\n\n"
+            f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
+            f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
+            f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
+            f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Стоимость:</b> {item.price} спасибок\n\n"
+            f"📍 <b>Город:</b> {escape_html(request.city)}\n"
+            f"🔗 <b>Ссылка для покупки:</b> {escape_html(request.purchase_url)}\n\n"
+            f"💵 <b>Баланс:</b> {user.balance} спасибок\n"
+            f"🔒 <b>Зарезервировано:</b> {user.reserved_balance} спасибок"
+        )
+        
+        keyboard = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Принять", "callback_data": f"approve_local_{local_purchase.id}"},
+                    {"text": "❌ Отказать", "callback_data": f"reject_local_{local_purchase.id}"}
+                ]
+            ]
+        }
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=admin_message,
+            reply_markup=keyboard,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+    except Exception as e:
+        print(f"Could not send admin notification. Error: {e}")
+    
+    # Отправляем уведомление пользователю
+    try:
+        user_message = (
+            f"🛍️ <b>Запрос на локальную покупку создан!</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"📍 <b>Город:</b> {escape_html(request.city)}\n"
+            f"🔗 <b>Ссылка:</b> {escape_html(request.purchase_url)}\n\n"
+            f"💵 <b>Зарезервировано:</b> {item.price} спасибок\n"
+            f"⏳ Ожидайте решения администратора"
+        )
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
+    
+    await db.commit()
+    await db.refresh(local_purchase)
+    await db.refresh(user)
+    
+    return {
+        "new_balance": user.balance,
+        "reserved_balance": user.reserved_balance,
+        "local_purchase_id": local_purchase.id
+    }
+
+async def approve_local_purchase(db: AsyncSession, local_purchase_id: int):
+    """Одобряет локальную покупку и списывает зарезервированные спасибки"""
+    local_purchase = await db.get(models.LocalPurchase, local_purchase_id)
+    if not local_purchase:
+        raise ValueError("Локальная покупка не найдена")
+    
+    if local_purchase.status != 'pending':
+        raise ValueError(f"Покупка уже обработана (статус: {local_purchase.status})")
+    
+    user = await db.get(models.User, local_purchase.user_id)
+    item = await db.get(models.MarketItem, local_purchase.item_id)
+    
+    if not user or not item:
+        raise ValueError("Пользователь или товар не найдены")
+    
+    # Списываем зарезервированные спасибки
+    user.reserved_balance = (user.reserved_balance or 0) - item.price
+    user.balance -= item.price
+    
+    # Создаем запись о покупке
+    purchase = models.Purchase(user_id=user.id, item_id=item.id)
+    db.add(purchase)
+    await db.flush()
+    
+    # Обновляем статус локальной покупки
+    local_purchase.status = 'approved'
+    local_purchase.purchase_id = purchase.id
+    local_purchase.approved_at = datetime.utcnow()
+    
+    # Отправляем уведомление пользователю
+    try:
+        user_message = (
+            f"✅ <b>Покупка одобрена!</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Списано:</b> {item.price} спасибок\n"
+            f"💵 <b>Новый баланс:</b> {user.balance} спасибок"
+        )
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return {"new_balance": user.balance}
+
+async def reject_local_purchase(db: AsyncSession, local_purchase_id: int):
+    """Отклоняет локальную покупку и возвращает зарезервированные спасибки"""
+    local_purchase = await db.get(models.LocalPurchase, local_purchase_id)
+    if not local_purchase:
+        raise ValueError("Локальная покупка не найдена")
+    
+    if local_purchase.status != 'pending':
+        raise ValueError(f"Покупка уже обработана (статус: {local_purchase.status})")
+    
+    user = await db.get(models.User, local_purchase.user_id)
+    item = await db.get(models.MarketItem, local_purchase.item_id)
+    
+    if not user or not item:
+        raise ValueError("Пользователь или товар не найдены")
+    
+    # Возвращаем зарезервированные спасибки
+    user.reserved_balance = (user.reserved_balance or 0) - item.price
+    
+    # Обновляем статус локальной покупки
+    local_purchase.status = 'rejected'
+    local_purchase.rejected_at = datetime.utcnow()
+    
+    # Отправляем уведомление пользователю
+    try:
+        user_message = (
+            f"❌ <b>Покупка отклонена</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Возвращено:</b> {item.price} спасибок\n"
+            f"💵 <b>Баланс:</b> {user.balance} спасибок"
+        )
+        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    return {"new_balance": user.balance}
+
+async def get_local_purchases(db: AsyncSession, status: Optional[str] = None):
+    """Получает список локальных покупок, опционально фильтруя по статусу"""
+    query = (
+        select(models.LocalPurchase)
+        .options(
+            selectinload(models.LocalPurchase.user),
+            selectinload(models.LocalPurchase.item)
+        )
+        .order_by(models.LocalPurchase.created_at.desc())
+    )
+    if status:
+        query = query.where(models.LocalPurchase.status == status)
+    result = await db.execute(query)
+    return result.scalars().all()

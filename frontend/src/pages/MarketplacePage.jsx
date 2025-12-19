@@ -1,12 +1,13 @@
 // frontend/src/pages/MarketplacePage.jsx
 
 import React, { useState, useEffect } from 'react';
-import { getMarketItems, purchaseItem, createSharedGiftInvitation } from '../api';
+import { getMarketItems, purchaseItem, createSharedGiftInvitation, createLocalPurchase } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
 import PageLayout from '../components/PageLayout';
 import StatixBonusCard from '../components/StatixBonusCard';
 import ColleagueSelector from '../components/ColleagueSelector';
+import LocalPurchaseModal from '../components/LocalPurchaseModal';
 import styles from './MarketplacePage.module.css';
 import { FaStar, FaCopy, FaUsers } from 'react-icons/fa';
 import PurchaseSuccessModal from '../components/PurchaseSuccessModal';
@@ -16,6 +17,7 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseSuccessData, setPurchaseSuccessData] = useState(null);
   const [showColleagueSelector, setShowColleagueSelector] = useState(false);
+  const [showLocalPurchaseModal, setShowLocalPurchaseModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const { showAlert } = useModalAlert();
   const { confirm } = useConfirmation();
@@ -40,12 +42,56 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       // Для совместных подарков показываем диалог выбора коллеги
       setSelectedItem(item);
       setShowColleagueSelector(true);
+    } else if (item.is_local_purchase) {
+      // Для локальных покупок показываем модальное окно для ввода города и ссылки
+      setSelectedItem(item);
+      setShowLocalPurchaseModal(true);
     } else {
       // Обычная покупка
       const isConfirmed = await confirm(`Вы уверены, что хотите купить "${item.name}" за ${item.price} спасибок?`);
       if (isConfirmed) {
         await processPurchase(item);
       }
+    }
+  };
+
+  const handleLocalPurchaseConfirm = async (city, purchaseUrl) => {
+    if (!selectedItem) return;
+
+    try {
+      const response = await createLocalPurchase(
+        user.telegram_id,
+        selectedItem.id,
+        city,
+        purchaseUrl
+      );
+      
+      const { new_balance, reserved_balance } = response.data;
+      
+      // Обновляем пользователя с новым балансом и зарезервированным балансом
+      onPurchaseSuccess({ 
+        balance: new_balance,
+        reserved_balance: reserved_balance 
+      });
+      
+      showAlert(
+        'Запрос на локальную покупку создан! Ожидайте решения администратора.',
+        'success'
+      );
+      
+      setShowLocalPurchaseModal(false);
+      setSelectedItem(null);
+      
+      // Обновляем список товаров
+      const updatedItems = await getMarketItems();
+      setItems(updatedItems.data);
+      
+    } catch (error) {
+      console.error("Local purchase failed:", error);
+      showAlert(
+        error.response?.data?.detail || "Произошла ошибка при создании запроса на покупку.",
+        'error'
+      );
     }
   };
 
@@ -104,7 +150,14 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
 
   return (
     <PageLayout title="Кафетерий">
-      <p className={styles.balance}>Ваш баланс: <strong>{user?.balance}</strong> спасибок</p>
+      <p className={styles.balance}>
+        Ваш баланс: <strong>{user?.balance}</strong> спасибок
+        {user?.reserved_balance > 0 && (
+          <span className={styles.reservedBalance}>
+            {' '}(зарезервировано: {user.reserved_balance})
+          </span>
+        )}
+      </p>
       
       {/* Statix Bonus Card - показываем первым */}
       <StatixBonusCard user={user} onPurchaseSuccess={onPurchaseSuccess} />
@@ -159,6 +212,14 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
                       <FaUsers style={{ marginRight: '8px' }} />
                       {item.stock > 0 ? 'Совместный подарок' : 'Нет в наличии'}
                     </button>
+                  ) : item.is_local_purchase ? (
+                    <button 
+                      onClick={() => handlePurchase(item)}
+                      className={styles.purchaseButton}
+                      disabled={(user?.balance - (user?.reserved_balance || 0)) < currentPrice || item.stock <= 0} 
+                    >
+                      {item.stock > 0 ? 'Локальная покупка' : 'Нет в наличии'}
+                    </button>
                   ) : (
                     <button 
                       onClick={() => handlePurchase(item)}
@@ -190,6 +251,17 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
         }}
         onSelect={handleColleagueSelect}
         currentUserId={user?.id}
+      />
+
+      <LocalPurchaseModal
+        isOpen={showLocalPurchaseModal}
+        onClose={() => {
+          setShowLocalPurchaseModal(false);
+          setSelectedItem(null);
+        }}
+        onConfirm={handleLocalPurchaseConfirm}
+        item={selectedItem}
+        user={user}
       />
     </PageLayout>
   );
