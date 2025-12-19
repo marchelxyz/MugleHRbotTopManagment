@@ -456,6 +456,14 @@ async def get_active_items(db: AsyncSession):
             # Считаем только НЕвыданные коды
             available_codes = sum(1 for code in item.codes if not code.is_issued)
             item.stock = available_codes
+        elif item.is_local_purchase:
+            # Для локальных покупок остаток берем из базы данных (они не используют коды)
+            # Если остаток не установлен или равен 0, устанавливаем его в большое значение
+            # чтобы товар всегда был доступен для покупки
+            # Но если остаток установлен и больше 0, используем его
+            if item.stock is None or item.stock <= 0:
+                item.stock = 999999  # Неограниченный остаток для локальных покупок по умолчанию
+            # Иначе используем значение из базы данных
             
     return items
     
@@ -905,7 +913,8 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
         image_url=item.image_url,
         original_price=item.original_price,
         is_auto_issuance=item.is_auto_issuance,
-        is_shared_gift=item.is_shared_gift
+        is_shared_gift=item.is_shared_gift,
+        is_local_purchase=item.is_local_purchase
     )
     
     # Сначала добавляем основной товар в сессию, чтобы он получил ID
