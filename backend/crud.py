@@ -524,7 +524,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     if item.is_shared_gift:
         raise ValueError("Для совместных подарков используйте специальный API")
     
-    # Проверяем, что товар не является локальной покупкой
+    # Проверяем, что товар не является локальным подарком
     if item.is_local_purchase:
         raise ValueError("Для локальных покупок используйте специальный API")
 
@@ -607,8 +607,8 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     
     return {"new_balance": user.balance, "issued_code": issued_code_value}
 
-async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseRequest):
-    """Создает локальную покупку с резервированием спасибок"""
+async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
+    """Создает локальный подарок с резервированием спасибок"""
     item = await db.get(models.MarketItem, pr.item_id)
     result = await db.execute(
         select(models.User).where(models.User.telegram_id == pr.user_id)
@@ -619,7 +619,7 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
         raise ValueError("Товар или пользователь не найдены")
     
     if not item.is_local_purchase:
-        raise ValueError("Этот товар не является локальной покупкой")
+        raise ValueError("Этот товар не является локальным подарком")
     
     # Проверяем доступный баланс (баланс - зарезервированные средства)
     available_balance = user.balance - (user.reserved_balance or 0)
@@ -636,8 +636,8 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
     db.add(db_purchase)
     await db.flush()  # Получаем ID покупки
     
-    # Создаем запись о локальной покупке
-    local_purchase = models.LocalPurchase(
+    # Создаем запись о локальном подарке
+    local_purchase = models.LocalGift(
         user_id=user.id,
         item_id=pr.item_id,
         purchase_id=db_purchase.id,
@@ -652,7 +652,7 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
     # Отправляем уведомление администраторам
     try:
         admin_message = (
-            f"🛍️ <b>Новая локальная покупка!</b>\n\n"
+            f"🛍️ <b>Новый локальный подарок!</b>\n\n"
             f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
             f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
             f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
@@ -693,7 +693,7 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
     # Отправляем уведомление пользователю
     try:
         user_message = (
-            f"🛍️ <b>Ваша заявка на локальную покупку принята!</b>\n\n"
+            f"🛍️ <b>Ваша заявка на локальный подарок принята!</b>\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"🏙️ <b>Город:</b> {escape_html(pr.city)}\n"
             f"🔗 <b>Ссылка:</b> {escape_html(pr.website_url)}\n\n"
@@ -714,11 +714,11 @@ async def create_local_purchase(db: AsyncSession, pr: schemas.LocalPurchaseReque
         "local_purchase_id": local_purchase.id
     }
 
-async def process_local_purchase_approval(db: AsyncSession, local_purchase_id: int, action: str):
-    """Обрабатывает принятие или отказ в локальной покупке"""
-    local_purchase = await db.get(models.LocalPurchase, local_purchase_id)
+async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, action: str):
+    """Обрабатывает принятие или отказ в локальном подарке"""
+    local_purchase = await db.get(models.LocalGift, local_purchase_id)
     if not local_purchase:
-        raise ValueError("Локальная покупка не найдена")
+        raise ValueError("Локальный подарок не найден")
     
     if local_purchase.status != 'pending':
         return None  # Уже обработано
@@ -739,7 +739,7 @@ async def process_local_purchase_approval(db: AsyncSession, local_purchase_id: i
         
         # Уведомление пользователю
         user_message = (
-            f"✅ <b>Ваша локальная покупка одобрена!</b>\n\n"
+            f"✅ <b>Ваш локальный подарок одобрен!</b>\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Списано:</b> {local_purchase.reserved_amount} спасибок\n\n"
             f"📉 <b>Ваш баланс:</b> {user.balance} спасибок"
@@ -754,7 +754,7 @@ async def process_local_purchase_approval(db: AsyncSession, local_purchase_id: i
         
         # Уведомление пользователю
         user_message = (
-            f"❌ <b>Ваша локальная покупка отклонена</b>\n\n"
+            f"❌ <b>Ваш локальный подарок отклонен</b>\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Возвращено:</b> {local_purchase.reserved_amount} спасибок\n\n"
             f"📉 <b>Ваш баланс:</b> {user.balance} спасибок\n"

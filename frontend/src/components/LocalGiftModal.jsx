@@ -1,9 +1,9 @@
-// frontend/src/components/LocalPurchaseModal.jsx
+// frontend/src/components/LocalGiftModal.jsx
 
 import React, { useState } from 'react';
-import styles from './LocalPurchaseModal.module.css';
+import styles from './LocalGiftModal.module.css';
 
-function LocalPurchaseModal({ isOpen, onClose, item, onConfirm }) {
+function LocalGiftModal({ isOpen, onClose, item, onConfirm }) {
   const [city, setCity] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
 
@@ -28,7 +28,7 @@ function LocalPurchaseModal({ isOpen, onClose, item, onConfirm }) {
     <div className={styles.overlay} onClick={handleClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h2>Локальная покупка</h2>
+          <h2>Локальный подарок</h2>
           <button className={styles.closeButton} onClick={handleClose}>×</button>
         </div>
         
@@ -78,4 +78,4 @@ function LocalPurchaseModal({ isOpen, onClose, item, onConfirm }) {
   );
 }
 
-export default LocalPurchaseModal;
+export default LocalGiftModal;
