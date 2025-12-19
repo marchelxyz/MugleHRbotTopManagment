@@ -289,7 +289,15 @@ function App() {
       const telegramUser = tg?.initDataUnsafe?.user;
       if (!telegramUser) {
         // Для веб-браузера показываем страницу входа
-        return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+        if (showRegistration) {
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
+        }
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
       return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
