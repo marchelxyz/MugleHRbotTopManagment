@@ -145,6 +145,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         is_admin=is_admin,
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
+        email=user.email,
         date_of_birth=dob,
         last_login_date=date.today()
     )
@@ -903,7 +904,7 @@ async def _ensure_unique_login(db: AsyncSession, base_login: str, exclude_user_i
 async def update_user_status(db: AsyncSession, user_id: int, status: str):
     """
     Обновляет статус пользователя.
-    При одобрении веб-пользователей автоматически генерирует логин и пароль.
+    При одобрении веб-пользователей автоматически генерирует логин и пароль и отправляет email.
     """
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
@@ -948,6 +949,30 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
             user._generated_login = user.login
         if hasattr(user, '_password_was_generated') and user._password_was_generated:
             user._generated_password = generated_password
+    
+    # Отправляем email с учетными данными, если они были сгенерированы и у пользователя есть email
+    # Отправляем только если были сгенерированы новые учетные данные (чтобы не спамить повторными письмами)
+    if status == 'approved' and user.email:
+        # Определяем, были ли сгенерированы новые учетные данные
+        credentials_were_generated = (
+            hasattr(user, '_login_was_generated') and user._login_was_generated and
+            hasattr(user, '_password_was_generated') and user._password_was_generated
+        )
+        
+        if credentials_were_generated and generated_login and generated_password:
+            try:
+                from email_service import send_registration_approval_email
+                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+                await send_registration_approval_email(
+                    email=user.email,
+                    login=generated_login,
+                    password=generated_password,
+                    user_name=user_name
+                )
+            except Exception as e:
+                # Логируем ошибку, но не прерываем процесс одобрения
+                logger = logging.getLogger(__name__)
+                logger.error(f"Ошибка при отправке email пользователю {user.id}: {str(e)}")
     
     return user
 

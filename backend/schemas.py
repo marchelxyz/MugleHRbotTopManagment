@@ -49,6 +49,7 @@ class UserResponse(UserBase):
     has_interacted_with_bot: bool
     login: Optional[str] = None
     browser_auth_enabled: bool = False
+    email: Optional[str] = None
 
     @field_serializer('date_of_birth')
     def serialize_date(self, dob: Optional[date], _info):
@@ -93,6 +94,7 @@ class RegisterRequest(BaseModel):
     username: Optional[str] = None
     telegram_photo_url: Optional[str] = None
     phone_number: str
+    email: Optional[str] = None  # Email для отправки уведомлений
     date_of_birth: str
 
 class FeedItem(OrmBase):
