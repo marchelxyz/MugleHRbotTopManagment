@@ -112,8 +112,8 @@ async def lifespan(app: FastAPI):
         async with engine.connect() as conn:
             # Пытаемся получить блокировку (будет ждать, если другой процесс уже её держит)
             logger.info("🔒 Ожидание блокировки для применения миграций...")
-            await conn.execute(text(f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"))
-            await conn.commit()
+            async with conn.begin():
+                await conn.execute(text(f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"))
             logger.info("🔓 Блокировка получена, начинаем применение миграций")
             
             try:
@@ -131,18 +131,18 @@ async def lifespan(app: FastAPI):
                 """
                 
                 try:
-                    await conn.execute(text(create_table_sql))
-                    await conn.execute(text(create_index_sql))
-                    await conn.commit()
+                    async with conn.begin():
+                        await conn.execute(text(create_table_sql))
+                        await conn.execute(text(create_index_sql))
                     logger.info("✅ Таблица schema_migrations создана/проверена")
                 except Exception as e:
-                    await conn.rollback()
                     logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
                     raise  # Прерываем запуск, если не можем создать таблицу отслеживания
                 
                 # Получаем список уже примененных миграций
-                result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
-                applied_migrations = {row[0] for row in result.fetchall()}
+                async with conn.begin():
+                    result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
+                    applied_migrations = {row[0] for row in result.fetchall()}
                 logger.info(f"📋 Уже применено миграций: {len(applied_migrations)}")
                 
                 # Применяем миграции из папки migrations
@@ -193,8 +193,8 @@ async def lifespan(app: FastAPI):
                     logger.info("🎉 Применение миграций завершено")
             finally:
                 # Освобождаем блокировку
-                await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
-                await conn.commit()
+                async with conn.begin():
+                    await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
                 logger.info("🔓 Блокировка освобождена")
         
         # Инициализируем Redis
