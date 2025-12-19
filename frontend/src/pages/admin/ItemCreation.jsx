@@ -17,6 +17,7 @@ const initialItemState = {
   image_url: '',
   is_auto_issuance: false,
   is_shared_gift: false,
+  is_local_purchase: false,
   codes_text: '',
   added_stock: '',
   new_item_codes: ''
@@ -78,12 +79,21 @@ const ItemCreation = () => {
       setForm(prev => ({
         ...prev,
         [name]: checked,
-        is_auto_issuance: false
+        is_auto_issuance: false,
+        is_local_purchase: false
       }));
     } else if (name === 'is_auto_issuance' && checked) {
       setForm(prev => ({
         ...prev,
         [name]: checked,
+        is_shared_gift: false,
+        is_local_purchase: false
+      }));
+    } else if (name === 'is_local_purchase' && checked) {
+      setForm(prev => ({
+        ...prev,
+        [name]: checked,
+        is_auto_issuance: false,
         is_shared_gift: false
       }));
     } else {
@@ -112,6 +122,7 @@ const ItemCreation = () => {
           image_url: form.image_url,
           original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
           is_shared_gift: form.is_shared_gift,
+          is_local_purchase: form.is_local_purchase,
           added_stock: form.is_auto_issuance ? 0 : parseInt(form.added_stock, 10) || 0,
           new_item_codes: newCodes
         };
@@ -135,6 +146,7 @@ const ItemCreation = () => {
           original_price: calculatedOriginalPrice > 0 ? calculatedOriginalPrice : null,
           is_auto_issuance: form.is_auto_issuance,
           is_shared_gift: form.is_shared_gift,
+          is_local_purchase: form.is_local_purchase,
           item_codes: codes
         };
         await createMarketItem(itemDataToSend);
@@ -161,6 +173,7 @@ const ItemCreation = () => {
         image_url: item.image_url || '',
         is_auto_issuance: item.is_auto_issuance,
         is_shared_gift: item.is_shared_gift || false,
+        is_local_purchase: item.is_local_purchase || false,
         codes_text: item.codes ? item.codes.map(c => c.code_value).join('\n') : '',
         added_stock: '',
         new_item_codes: ''
@@ -285,7 +298,7 @@ const ItemCreation = () => {
               name="is_auto_issuance"
               checked={form.is_auto_issuance}
               onChange={handleFormChange}
-              disabled={!!editingItemId || form.is_shared_gift} 
+              disabled={!!editingItemId || form.is_shared_gift || form.is_local_purchase} 
             />
             <label htmlFor="is_auto_issuance">Автовыдача товара (сертификаты, коды)</label>
           </div>
@@ -297,9 +310,21 @@ const ItemCreation = () => {
               name="is_shared_gift"
               checked={form.is_shared_gift}
               onChange={handleFormChange}
-              disabled={!!editingItemId || form.is_auto_issuance} 
+              disabled={!!editingItemId || form.is_auto_issuance || form.is_local_purchase} 
             />
             <label htmlFor="is_shared_gift">Совместный подарок</label>
+          </div>
+
+          <div className={styles.checkboxContainer}>
+            <input
+              type="checkbox"
+              id="is_local_purchase"
+              name="is_local_purchase"
+              checked={form.is_local_purchase}
+              onChange={handleFormChange}
+              disabled={!!editingItemId || form.is_auto_issuance || form.is_shared_gift} 
+            />
+            <label htmlFor="is_local_purchase">Локальная покупка</label>
           </div>
 
           {form.is_auto_issuance ? (
@@ -360,6 +385,7 @@ const ItemCreation = () => {
                 <p><strong>{item.name}</strong></p>
                 {item.is_auto_issuance && <p style={{color: '#007bff', fontSize: '12px', fontWeight: 'bold'}}>Автовыдача</p>}
                 {item.is_shared_gift && <p style={{color: '#28a745', fontSize: '12px', fontWeight: 'bold'}}>Совместный подарок</p>}
+                {item.is_local_purchase && <p style={{color: '#ff9800', fontSize: '12px', fontWeight: 'bold'}}>Локальная покупка</p>}
                 {item.original_price && item.original_price > item.price ? (
                   <p>
                     Цена: {item.price} (было <s style={{color: '#999'}}>{item.original_price}</s>) спасибок

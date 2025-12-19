@@ -40,6 +40,7 @@ class PurchaseForMarketResponse(OrmBase):
 # Финальная схема для Пользователя, которая включает его покупки
 class UserResponse(UserBase):
     balance: int
+    reserved_balance: int = 0
     daily_transfer_count: int
     is_admin: bool
     status: Optional[str] = 'approved' 
@@ -82,6 +83,7 @@ class MarketItemResponse(OrmBase):
     original_price: Optional[int] = None # <-- Теперь это поле гарантированно будет в ответе
     is_auto_issuance: bool
     is_shared_gift: bool
+    is_local_purchase: bool
     codes: List[ItemCodeResponse] = []
 
 # --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
@@ -123,10 +125,17 @@ class PurchaseRequest(BaseModel):
     user_id: int
     item_id: int
     
+class LocalPurchaseRequest(BaseModel):
+    user_id: int
+    item_id: int
+    city: str
+    website_url: str
+    
 class PurchaseResponse(BaseModel):
     message: str
     new_balance: int
     issued_code: Optional[str] = None
+    reserved_balance: Optional[int] = None  # Для локальных покупок
     
 # --- ИЗМЕНЕНИЕ: Схема для СОЗДАНИЯ товара (принимаем только рубли) ---
 class MarketItemCreate(BaseModel):
@@ -138,6 +147,7 @@ class MarketItemCreate(BaseModel):
     original_price: Optional[int] = None
     is_auto_issuance: bool = False
     is_shared_gift: bool = False
+    is_local_purchase: bool = False
     codes_text: Optional[str] = None # Поле для вставки кодов (каждый с новой строки)
     item_codes: Optional[List[str]] = []
 
@@ -151,6 +161,7 @@ class MarketItemUpdate(BaseModel):
     original_price: Optional[int] = None # <-- И СЮДА
     is_auto_issuance: Optional[bool] = None
     is_shared_gift: Optional[bool] = None
+    is_local_purchase: Optional[bool] = None
     # --- НАШИ НОВЫЕ ПОЛЯ ---
     added_stock: Optional[int] = None # Для пополнения обычных товаров
     new_item_codes: Optional[List[str]] = [] # Для добавления новых кодов/ссылок
@@ -381,3 +392,22 @@ class BulkSendCredentialsResponse(BaseModel):
     credentials_generated: int
     messages_sent: int
     failed_users: List[int] = []
+
+# --- СХЕМЫ ДЛЯ ЛОКАЛЬНЫХ ПОКУПОК ---
+class LocalPurchaseResponse(OrmBase):
+    id: int
+    user_id: int
+    item_id: int
+    purchase_id: int
+    city: str
+    website_url: str
+    status: str
+    reserved_amount: int
+    created_at: datetime
+    updated_at: datetime
+    user: UserBase
+    item: MarketItemBase
+
+class LocalPurchaseApprovalRequest(BaseModel):
+    local_purchase_id: int
+    action: str  # 'approve' или 'reject'
