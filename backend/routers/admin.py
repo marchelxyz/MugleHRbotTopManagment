@@ -139,7 +139,7 @@ async def get_pending_users_route(db: AsyncSession = Depends(get_db)):
     )
     return result.scalars().all()
 
-@router.post("/users/{user_id}/approve", response_model=schemas.UserResponse)
+@router.post("/users/{user_id}/approve", response_model=schemas.ApproveUserRegistrationResponse)
 async def approve_user_registration_route(
     user_id: int,
     admin_user: models.User = Depends(get_current_admin_user),
@@ -148,7 +148,19 @@ async def approve_user_registration_route(
     updated_user = await crud.update_user_status(db, user_id, "approved")
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
-    return updated_user
+    
+    # Проверяем, были ли сгенерированы учетные данные
+    generated_login = getattr(updated_user, '_generated_login', None)
+    generated_password = getattr(updated_user, '_generated_password', None)
+    # Учетные данные считаются сгенерированными только если они действительно были созданы сейчас
+    credentials_generated = generated_login is not None and generated_password is not None
+    
+    return schemas.ApproveUserRegistrationResponse(
+        user=schemas.UserResponse.model_validate(updated_user),
+        login=generated_login,
+        password=generated_password,
+        credentials_generated=credentials_generated
+    )
 
 @router.post("/users/{user_id}/reject", response_model=schemas.UserResponse)
 async def reject_user_registration_route(

@@ -91,6 +91,212 @@
   cursor: not-allowed;
 }
 
+.credentialsBox {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+}
+
+.credentialsTitle {
+  margin: 0 0 15px 0;
+  color: #856404;
+  font-size: 14px;
+}
+
+.credentialItem {
+  margin-bottom: 12px;
+}
+
+.credentialItem:last-child {
+  margin-bottom: 0;
+}
+
+.credentialItem label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #856404;
+  font-size: 13px;
+}
+
+.credentialValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.credentialValue span {
+  flex: 1;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #333;
+}
+
+.copyButton,
+.eyeButton {
+  padding: 8px 10px;
+  background: #ffc107;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.copyButton:hover,
+.eyeButton:hover {
+  background: #ffb300;
+}
+
+.copyButton:active,
+.eyeButton:active {
+  background: #ffa000;
+}
+
+/* Модальное окно с учетными данными */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modalTitle {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 24px;
+  text-align: center;
+}
+
+.modalWarning {
+  margin: 0 0 20px 0;
+  color: #856404;
+  font-size: 14px;
+  text-align: center;
+}
+
+.modalCredentials {
+  margin-bottom: 25px;
+}
+
+.modalCredentialItem {
+  margin-bottom: 15px;
+}
+
+.modalCredentialItem:last-child {
+  margin-bottom: 0;
+}
+
+.modalCredentialItem label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+  font-size: 14px;
+}
+
+.modalCredentialValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalCredentialValue span {
+  flex: 1;
+  padding: 10px 14px;
+  background: #f5f5f5;
+  border: 2px solid #ffc107;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  color: #333;
+  font-weight: bold;
+}
+
+.modalCopyButton,
+.modalEyeButton {
+  padding: 10px 12px;
+  background: #ffc107;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  font-size: 16px;
+}
+
+.modalCopyButton:hover,
+.modalEyeButton:hover {
+  background: #ffb300;
+}
+
+.modalButtons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modalGoToLoginButton {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalGoToLoginButton:hover {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  transform: translateY(-1px);
+}
+
+.modalCloseButton {
+  padding: 12px 24px;
+  background: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalCloseButton:hover {
+  background: #e0e0e0;
+}
+
 @media (max-width: 768px) {
   .userCard {
     flex-direction: column;
@@ -104,5 +310,18 @@
   .approveButton,
   .rejectButton {
     flex: 1;
+  }
+  
+  .modalContent {
+    padding: 20px;
+  }
+  
+  .modalButtons {
+    flex-direction: column;
+  }
+  
+  .modalGoToLoginButton,
+  .modalCloseButton {
+    width: 100%;
   }
 }
