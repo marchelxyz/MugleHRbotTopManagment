@@ -18,7 +18,7 @@ const formatDateForApi = (date) => {
   return null;
 };
 
-function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = false }) {
+function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = false, onBackToLogin }) {
   const { showAlert } = useModalAlert();
   const [formData, setFormData] = useState({
     firstName: telegramUser?.first_name || '',
@@ -98,18 +98,68 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     }
   };
 
+  // Для веб-версии используем другой layout (без PageLayout)
+  if (isWebBrowser) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.registrationContainer}>
+          {onBackToLogin && (
+            <button onClick={onBackToLogin} className={styles.backButton}>
+              &larr; Назад к входу
+            </button>
+          )}
+          <p className={styles.subtitle}>
+            Для регистрации в приложении, пожалуйста, укажите вашу информацию. После регистрации ваша заявка будет рассмотрена администратором.
+          </p>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
+            {errors.firstName && <p className={styles.error}>{errors.firstName}</p>}
+
+            <input name="lastName" type="text" value={formData.lastName} onChange={handleChange} placeholder="Ваша фамилия" className={styles.input} />
+            {errors.lastName && <p className={styles.error}>{errors.lastName}</p>}
+
+            <input name="department" type="text" value={formData.department} onChange={handleChange} placeholder="Ваше подразделение" className={styles.input} />
+            {errors.department && <p className={styles.error}>{errors.department}</p>}
+            
+            <input name="position" type="text" value={formData.position} onChange={handleChange} placeholder="Ваша должность" className={styles.input} />
+            {errors.position && <p className={styles.error}>{errors.position}</p>}
+            
+            <InputMask
+              mask="+7 (999) 999-99-99"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              className={styles.input}
+            >
+              {(inputProps) => <input {...inputProps} type="tel" placeholder="Номер телефона" />}
+            </InputMask>
+            {errors.phoneNumber && <p className={styles.error}>{errors.phoneNumber}</p>}
+
+            <InputMask
+              mask="99.99.9999"
+              name="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleChange}
+              className={styles.input}
+            >
+              {(inputProps) => <input {...inputProps} type="text" placeholder="Дата рождения (ДД.ММ.ГГГГ)" />}
+            </InputMask>
+            {errors.dateOfBirth && <p className={styles.error}>{errors.dateOfBirth}</p>}
+
+            <button type="submit" disabled={isLoading} className={styles.submitButton}>
+              {isLoading ? 'Отправка...' : 'Отправить на рассмотрение'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Для Telegram версии используем PageLayout
   return (
     <PageLayout title="Регистрация">
-      {isWebBrowser && (
-        <button onClick={() => window.history.back()} className={styles.backButton}>
-          &larr; Назад к входу
-        </button>
-      )}
       <p className={styles.subtitle}>
-        {isWebBrowser 
-          ? 'Для регистрации в приложении, пожалуйста, укажите вашу информацию. После регистрации ваша заявка будет рассмотрена администратором.'
-          : `Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`
-        }
+        {`Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`}
       </p>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
@@ -135,7 +185,6 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
         </InputMask>
         {errors.phoneNumber && <p className={styles.error}>{errors.phoneNumber}</p>}
 
-        {/* --- ИЗМЕНЕНИЕ: Формат даты DD.MM.YYYY --- */}
         <InputMask
           mask="99.99.9999"
           name="dateOfBirth"

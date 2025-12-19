@@ -7,9 +7,10 @@
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background-color: #ffffff;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%);
   position: relative;
   overflow-x: hidden;
+  width: 100%;
 }
 
 .loginContainer {

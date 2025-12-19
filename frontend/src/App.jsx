@@ -272,7 +272,12 @@ function App() {
       // Если пользователь не авторизован, показываем страницу входа или регистрации
       if (!user) {
         if (showRegistration) {
-          return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
         }
         return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
@@ -533,6 +538,9 @@ function App() {
   const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
   const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
   
+  // Проверяем, показывается ли страница входа или регистрации (для веб-версии)
+  const isLoginOrRegistrationPage = !isTelegramWebApp && !user;
+  
   return (
     <div className="app-container">
       {/* Теперь меню показываются на основе новых, правильных переменных */}
@@ -540,10 +548,13 @@ function App() {
       {shouldShowBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
       {/* Логика для <main> остается такой же, как в прошлый раз */}
+      {/* Для страниц входа и регистрации не применяем классы wrapper, чтобы убрать белый контейнер */}
       <main className={
-        isDesktop 
-          ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
-          : 'mobile-wrapper'
+        isLoginOrRegistrationPage 
+          ? '' 
+          : (isDesktop 
+              ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
+              : 'mobile-wrapper')
       }>
         {showPendingBanner && (
             <div className="pending-update-banner">
