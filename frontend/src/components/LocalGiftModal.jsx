@@ -38,7 +38,7 @@ function LocalGiftModal({ isOpen, onClose, item, onConfirm }) {
           
           <form onSubmit={handleSubmit}>
             <div className={styles.formGroup}>
-              <label htmlFor="city">Город *</label>
+              <label htmlFor="city">Укажите город:</label>
               <input
                 id="city"
                 type="text"
@@ -51,7 +51,7 @@ function LocalGiftModal({ isOpen, onClose, item, onConfirm }) {
             </div>
             
             <div className={styles.formGroup}>
-              <label htmlFor="websiteUrl">Ссылка на сайт *</label>
+              <label htmlFor="websiteUrl">Поделитесь сайтом для покупки:</label>
               <input
                 id="websiteUrl"
                 type="url"
