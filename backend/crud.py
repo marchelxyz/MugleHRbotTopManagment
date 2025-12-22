@@ -1022,16 +1022,23 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         # Отправляем email только если были сгенерированы новые учетные данные
         if credentials_generated and user._generated_login and user._generated_password:
             try:
-                await unisender_client.send_credentials_email(
+                result = await unisender_client.send_credentials_email(
                     email=user.email,
                     first_name=user.first_name or '',
                     last_name=user.last_name or '',
                     login=user._generated_login,
                     password=user._generated_password
                 )
-                logger.info(f"Email с учетными данными отправлен на {user.email}")
+                if result.get("success"):
+                    logger.info(f"Email с учетными данными успешно отправлен на {user.email}")
+                else:
+                    error_msg = result.get("error", "Неизвестная ошибка")
+                    logger.warning(
+                        f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
+                        f"Пользователь может получить учетные данные через Telegram бота или администратора."
+                    )
             except Exception as e:
-                logger.error(f"Ошибка при отправке email с учетными данными на {user.email}: {e}")
+                logger.error(f"Исключение при отправке email с учетными данными на {user.email}: {e}")
     
     return user
 

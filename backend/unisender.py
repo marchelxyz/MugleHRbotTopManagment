@@ -118,7 +118,17 @@ class UnisenderClient:
                         error_text = str(error)
                     
                     error_msg = error_text + (f" (код: {error_code})" if error_code else "")
-                    logger.error(f"Ошибка отправки email на {email}: {error_msg}, полный ответ: {result}")
+                    
+                    # Специальная обработка ошибки о неподтвержденном email на бесплатном плане
+                    if error_code == "invalid_arg" and "free plan" in error_text.lower():
+                        logger.warning(
+                            f"Не удалось отправить email на {email}: "
+                            f"на бесплатном плане Unisender можно отправлять письма только на подтвержденные email адреса. "
+                            f"Полный ответ: {result}"
+                        )
+                    else:
+                        logger.error(f"Ошибка отправки email на {email}: {error_msg}, полный ответ: {result}")
+                    
                     return {"success": False, "error": error_msg}
                     
         except httpx.HTTPError as e:
