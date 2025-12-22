@@ -9,6 +9,9 @@ import { useConfirmation } from '../contexts/ConfirmationContext';
 import { changePassword } from '../api';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
+// Определяем, является ли это браузером (не Telegram WebApp)
+const isWebBrowser = !window.Telegram?.WebApp;
+
 function SettingsPage({ onBack, onNavigate, onRepeatOnboarding, user }) {
   const { showAlert } = useModalAlert();
   const { confirm } = useConfirmation();
@@ -111,10 +114,13 @@ function SettingsPage({ onBack, onNavigate, onRepeatOnboarding, user }) {
           </button>
         )}
 
-        <button onClick={handleLogout} className={styles.settingsItem}>
-          <FaSignOutAlt className={styles.icon} />
-          <span>Выйти из аккаунта</span>
-        </button>
+        {/* Кнопка выхода показывается только в браузере */}
+        {isWebBrowser && (
+          <button onClick={handleLogout} className={styles.settingsItem}>
+            <FaSignOutAlt className={styles.icon} />
+            <span>Выйти из аккаунта</span>
+          </button>
+        )}
 
         <div className={styles.settingsItemDisabled}>
           <FaFileContract className={styles.icon} />

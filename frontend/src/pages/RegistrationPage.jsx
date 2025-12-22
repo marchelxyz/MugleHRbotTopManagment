@@ -27,6 +27,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     position: '',
     phoneNumber: '',
     dateOfBirth: '',
+    email: '',  // Email только для веб-регистрации
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,18 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     if (!formData.position.trim()) newErrors.position = 'Должность обязательна';
     if (formData.phoneNumber.includes('_')) newErrors.phoneNumber = 'Введите телефон полностью';
     if (formData.dateOfBirth.includes('_')) newErrors.dateOfBirth = 'Введите дату полностью';
+    
+    // Проверка email для веб-регистрации
+    if (isWebBrowser) {
+      if (!formData.email.trim()) {
+        newErrors.email = 'Email обязателен';
+      } else {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email.trim())) {
+          newErrors.email = 'Введите корректный email';
+        }
+      }
+    }
     
     // Проверка формата даты
     const formattedDate = formatDateForApi(formData.dateOfBirth);
@@ -81,6 +94,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
         telegram_photo_url: telegramUser?.photo_url || null,
         phone_number: formData.phoneNumber,
         date_of_birth: apiDate,
+        email: isWebBrowser ? formData.email : null,  // Email только для веб-регистрации
       };
 
       await registerUser(telegramId || '', userData);
@@ -123,6 +137,16 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
             
             <input name="position" type="text" value={formData.position} onChange={handleChange} placeholder="Ваша должность" className={styles.input} />
             {errors.position && <p className={styles.error}>{errors.position}</p>}
+            
+            <input 
+              name="email" 
+              type="email" 
+              value={formData.email} 
+              onChange={handleChange} 
+              placeholder="Email" 
+              className={styles.input} 
+            />
+            {errors.email && <p className={styles.error}>{errors.email}</p>}
             
             <InputMask
               mask="+7 (999) 999-99-99"

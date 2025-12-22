@@ -48,6 +48,7 @@ class UserResponse(UserBase):
     has_seen_onboarding: bool
     has_interacted_with_bot: bool
     login: Optional[str] = None
+    email: Optional[str] = None
     browser_auth_enabled: bool = False
 
     @field_serializer('date_of_birth')
@@ -77,7 +78,7 @@ class MarketItemResponse(OrmBase):
     codes: List[ItemCodeResponse] = []
 
 class LoginRequest(BaseModel):
-    login: str
+    login: str  # Может быть email или логин
     password: str
 
 class ChangePasswordRequest(BaseModel):
@@ -94,6 +95,7 @@ class RegisterRequest(BaseModel):
     telegram_photo_url: Optional[str] = None
     phone_number: str
     date_of_birth: str
+    email: Optional[str] = None  # Email для веб-регистрации (обязателен только для браузера)
 
 class FeedItem(OrmBase):
     id: int
@@ -385,3 +387,6 @@ class LocalGiftResponse(OrmBase):
 class LocalGiftApprovalRequest(BaseModel):
     local_purchase_id: int  # Оставляем старое название поля для совместимости с БД
     action: str  # 'approve' или 'reject'
+
+class LinkAccountRequest(BaseModel):
+    email: str  # Email веб-аккаунта для связывания

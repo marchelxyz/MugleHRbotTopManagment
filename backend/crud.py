@@ -111,6 +111,15 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
             await db.refresh(user)
     return user
 
+async def get_user_by_email(db: AsyncSession, email: str):
+    """Получает пользователя по email."""
+    if not email or not email.strip():
+        return None
+    result = await db.execute(
+        select(models.User).where(models.User.email == email.strip().lower())
+    )
+    return result.scalar_one_or_none()
+
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     # Для веб-формата telegram_id может быть None
     user_telegram_id = None
@@ -130,6 +139,24 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             # Если telegram_id не число или None, оставляем его как None
             user_telegram_id = None
     
+    # Проверяем, есть ли уже аккаунт с таким email (для мультиплатформенности)
+    # Если пользователь регистрируется в Telegram и есть веб-аккаунт с таким email, связываем их
+    existing_user_by_email = None
+    if user.email and user.email.strip():
+        existing_user_by_email = await get_user_by_email(db, user.email)
+        # Если нашли существующий аккаунт с таким email и он не имеет telegram_id
+        if existing_user_by_email and not existing_user_by_email.telegram_id and user_telegram_id:
+            # Связываем Telegram ID с существующим аккаунтом
+            existing_user_by_email.telegram_id = user_telegram_id
+            existing_user_by_email.username = user.username or existing_user_by_email.username
+            existing_user_by_email.telegram_photo_url = user.telegram_photo_url or existing_user_by_email.telegram_photo_url
+            # Обновляем is_admin, если нужно
+            if is_admin:
+                existing_user_by_email.is_admin = True
+            await db.commit()
+            await db.refresh(existing_user_by_email)
+            return existing_user_by_email
+    
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():
         try: dob = date.fromisoformat(user.date_of_birth)
@@ -146,6 +173,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
         date_of_birth=dob,
+        email=user.email.strip().lower() if user.email and user.email.strip() else None,  # Сохраняем email в нижнем регистре
         last_login_date=date.today()
     )
     db.add(db_user)
@@ -1732,13 +1760,17 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
 # --- ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЛОГИНА И ПАРОЛЯ ---
 async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     """
-    Проверяет логин и пароль пользователя.
+    Проверяет логин/email и пароль пользователя.
     Возвращает пользователя, если учетные данные верны, иначе None.
+    Поддерживает вход как по логину, так и по email.
     """
-    # Ищем пользователя по логину
+    # Ищем пользователя по логину или email
     result = await db.execute(
         select(models.User).where(
-            models.User.login == login,
+            or_(
+                models.User.login == login,
+                models.User.email == login
+            ),
             models.User.browser_auth_enabled == True
         )
     )
@@ -1760,6 +1792,35 @@ async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     await db.refresh(user)
     
     return user
+
+async def link_telegram_to_web_account(db: AsyncSession, telegram_id: int, email: str):
+    """
+    Связывает Telegram-аккаунт с веб-аккаунтом по email.
+    Возвращает обновленного пользователя или None, если аккаунт не найден.
+    """
+    if not email or not email.strip():
+        raise ValueError("Email обязателен для связывания аккаунтов")
+    
+    # Проверяем, не занят ли уже telegram_id другим пользователем
+    existing_telegram_user = await get_user_by_telegram(db, telegram_id)
+    if existing_telegram_user:
+        raise ValueError("Этот Telegram-аккаунт уже связан с другим пользователем")
+    
+    # Ищем веб-аккаунт по email
+    web_user = await get_user_by_email(db, email)
+    if not web_user:
+        raise ValueError("Аккаунт с таким email не найден")
+    
+    # Проверяем, не связан ли уже веб-аккаунт с другим Telegram-аккаунтом
+    if web_user.telegram_id and web_user.telegram_id >= 0:
+        raise ValueError("Этот веб-аккаунт уже связан с другим Telegram-аккаунтом")
+    
+    # Связываем аккаунты
+    web_user.telegram_id = telegram_id
+    await db.commit()
+    await db.refresh(web_user)
+    
+    return web_user
 
 # --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ ЛОГИНА НА ОСНОВЕ ИМЕНИ И ФАМИЛИИ ---
 def generate_login_from_name(first_name: Optional[str], last_name: Optional[str], user_id: int) -> str:

@@ -6,6 +6,9 @@ import styles from './LoginPage.module.css';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
+// Определяем, является ли это браузером (не Telegram WebApp)
+const isWebBrowser = !window.Telegram?.WebApp;
+
 function LoginPage({ onLoginSuccess, onShowRegistration }) {
   const { showAlert } = useModalAlert();
   const [formData, setFormData] = useState({
@@ -80,7 +83,16 @@ function LoginPage({ onLoginSuccess, onShowRegistration }) {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.login.trim()) newErrors.login = 'Логин обязателен';
+    if (!formData.login.trim()) {
+      newErrors.login = isWebBrowser ? 'Email обязателен' : 'Логин обязателен';
+    }
+    // Валидация email для браузера
+    if (isWebBrowser && formData.login.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.login.trim())) {
+        newErrors.login = 'Введите корректный email';
+      }
+    }
     if (!formData.password.trim()) newErrors.password = 'Пароль обязателен';
 
     setErrors(newErrors);
@@ -127,17 +139,19 @@ function LoginPage({ onLoginSuccess, onShowRegistration }) {
     <div className={styles.page}>
       <div className={styles.loginContainer}>
         <p className={styles.subtitle}>
-          Войдите в систему, используя ваш логин и пароль
+          {isWebBrowser 
+            ? 'Войдите в систему, используя ваш email и пароль'
+            : 'Войдите в систему, используя ваш логин и пароль'}
         </p>
         <form onSubmit={handleSubmit} className={styles.form}>
           <input 
             name="login" 
-            type="text" 
+            type={isWebBrowser ? "email" : "text"}
             value={formData.login} 
             onChange={handleChange} 
-            placeholder="Логин" 
+            placeholder={isWebBrowser ? "Email" : "Логин"} 
             className={styles.input}
-            autoComplete="username"
+            autoComplete={isWebBrowser ? "email" : "username"}
           />
           {errors.login && <p className={styles.error}>{errors.login}</p>}
 
