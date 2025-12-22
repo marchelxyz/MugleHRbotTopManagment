@@ -77,11 +77,16 @@ class UnisenderClient:
                 response.raise_for_status()
                 result = response.json()
                 
+                # Проверяем, что result - это словарь
+                if not isinstance(result, dict):
+                    logger.error(f"Неожиданный формат ответа от API при отправке email на {email}: {type(result).__name__}")
+                    return {"success": False, "error": f"Неожиданный формат ответа: {type(result).__name__}"}
+                
                 # Проверяем успешность отправки
                 if result.get("result", {}).get("email_id"):
                     logger.info(f"Email успешно отправлен на {email}")
                     return {"success": True, "email_id": result["result"]["email_id"]}
-                elif result.get("result") and "email_id" in result.get("result", {}):
+                elif result.get("result") and isinstance(result.get("result"), dict) and "email_id" in result.get("result", {}):
                     logger.info(f"Email успешно отправлен на {email}")
                     return {"success": True, "email_id": result["result"]["email_id"]}
                 else:
@@ -94,6 +99,10 @@ class UnisenderClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP ошибка при отправке email на {email}: {e}")
             return {"success": False, "error": f"HTTP ошибка: {str(e)}"}
+        except ValueError as e:
+            # Ошибка парсинга JSON
+            logger.error(f"Ошибка парсинга JSON ответа при отправке email на {email}: {e}")
+            return {"success": False, "error": f"Ошибка парсинга ответа: {str(e)}"}
         except Exception as e:
             logger.error(f"Неожиданная ошибка при отправке email на {email}: {e}")
             return {"success": False, "error": f"Ошибка: {str(e)}"}
