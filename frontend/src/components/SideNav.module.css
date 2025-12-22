@@ -1,6 +1,7 @@
 /* frontend/src/components/SideNav.module.css (НОВЫЙ ФАЙЛ) */
 .nav {
-  width: 240px;
+  /* Плавное масштабирование ширины от 200px до 280px */
+  width: clamp(200px, 15vw, 280px);
   background: linear-gradient(180deg, #FFFFFF 0%, #F0F8FC 100%); /* Зимний бело-голубой градиент */
   border-right: 1px solid #BBDEFB; /* Зимняя голубая рамка */
   display: flex;
@@ -10,6 +11,7 @@
   top: 0;
   left: 0;
   box-shadow: 2px 0 10px rgba(33, 150, 243, 0.1);
+  transition: width 0.3s ease;
 }
 
 /* Скрываем SideNav на планшетах в портретной ориентации */
@@ -19,39 +21,45 @@
   }
 }
 .header {
-  padding: 20px;
+  /* Плавное масштабирование padding */
+  padding: clamp(15px, 1.5vw, 25px);
   display: flex;
   align-items: center;
   border-bottom: 1px solid #BBDEFB; /* Зимняя голубая рамка */
   background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); /* Зимний градиент */
+  transition: padding 0.3s ease;
 }
 .header img {
-  height: 32px;
-  margin-right: 10px;
+  height: clamp(28px, 2.5vw, 40px);
+  margin-right: clamp(8px, 1vw, 15px);
+  transition: height 0.3s ease;
 }
 .header span {
-  font-size: 18px;
+  font-size: clamp(16px, 1.5vw, 22px);
   font-weight: bold;
+  transition: font-size 0.3s ease;
 }
 .menu {
-  padding: 10px;
+  /* Плавное масштабирование padding */
+  padding: clamp(8px, 1vw, 15px);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: clamp(4px, 0.5vw, 8px);
+  transition: padding 0.3s ease;
 }
 .navButton {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 12px 15px;
+  gap: clamp(12px, 1.5vw, 20px);
+  padding: clamp(10px, 1.2vw, 16px) clamp(12px, 1.5vw, 20px);
   border: none;
   background: none;
   cursor: pointer;
   color: #1565C0; /* Зимний темно-синий */
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: clamp(6px, 0.8vw, 10px);
+  font-size: clamp(14px, 1.3vw, 18px);
   text-align: left;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color 0.2s, color 0.2s, padding 0.3s ease, font-size 0.3s ease;
 }
 .navButton.active {
   background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой градиент */
@@ -61,6 +69,14 @@
 .navButton:not(.active):hover {
   background-color: #E3F2FD; /* Зимний светло-голубой */
 }
+
+/* Плавное масштабирование иконок */
+.navButton svg {
+  width: clamp(16px, 1.8vw, 24px);
+  height: clamp(16px, 1.8vw, 24px);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
 .navLabel {
   font-weight: 500;
 }

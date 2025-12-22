@@ -8,24 +8,26 @@
   right: 0;
   
   margin: 0 auto;
-  max-width: 450px;
+  /* Плавное масштабирование ширины */
+  max-width: clamp(450px, 100%, 100%);
 
   display: flex;
   justify-content: space-around;
   background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой градиент */
   
-  height: 75px; /* Увеличена высота блока навигации */
-  padding-top: 6px; /* Уменьшен верхний padding на 2px для приближения верхней границы к иконкам */
+  /* Плавное масштабирование высоты */
+  height: clamp(70px, 8vw, 90px);
+  padding-top: clamp(4px, 0.6vw, 8px);
   /* padding-bottom теперь управляется динамически через inline стили в зависимости от видимости системных кнопок */
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+  border-top-left-radius: clamp(16px, 2vw, 24px);
+  border-top-right-radius: clamp(16px, 2vw, 24px);
   
   box-shadow: 0px -2px 10px rgba(33, 150, 243, 0.3); 
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   
-  /* Плавная анимация скрытия/показа */
+  /* Плавная анимация скрытия/показа и размеров */
   transform: translateY(0);
-  transition: transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out, height 0.3s ease, border-radius 0.3s ease, max-width 0.3s ease;
 }
 
 /* Скрытие меню при появлении клавиатуры */
@@ -36,9 +38,13 @@
 /* Адаптация для планшетов */
 @media (min-width: 768px) and (max-width: 1024px) {
   .nav {
-    max-width: 600px; /* Увеличиваем ширину для планшетов */
+    max-width: clamp(600px, 85%, 900px);
     left: 50%;
     transform: translateX(-50%);
+  }
+  
+  .nav.hidden {
+    transform: translateX(-50%) translateY(100%);
   }
 }
 
@@ -56,6 +62,14 @@
 
   /* --- ВОТ ИЗМЕНЕНИЕ: Убираем синее выделение при нажатии --- */
   -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease;
+}
+
+/* Плавное масштабирование иконок */
+.navButton svg {
+  width: clamp(18px, 2vw, 26px);
+  height: clamp(18px, 2vw, 26px);
+  transition: width 0.3s ease, height 0.3s ease;
 }
 
 .navButton.active {
@@ -64,8 +78,10 @@
 
 .navLabel {
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  margin-top: 4px;
+  /* Плавное масштабирование размера шрифта */
+  font-size: clamp(10px, 1vw, 14px);
+  margin-top: clamp(3px, 0.4vw, 6px);
+  transition: font-size 0.3s ease, margin-top 0.3s ease;
 }
 
 /* Убираем синюю разметку при фокусе и нажатии */
