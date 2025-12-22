@@ -46,8 +46,8 @@ body {
   min-height: 100vh;
 }
 
-/* На desktop root должен занимать весь экран */
-@media (min-width: 1025px) {
+/* На desktop root должен занимать весь экран (начиная с 768px) */
+@media (min-width: 768px) {
   #root {
     width: 100%;
     max-width: none;

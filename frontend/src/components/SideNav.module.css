@@ -12,10 +12,57 @@
   box-shadow: 2px 0 10px rgba(33, 150, 243, 0.1);
 }
 
-/* Скрываем SideNav на планшетах в портретной ориентации */
+/* Адаптируем SideNav для планшетов */
 @media (min-width: 768px) and (max-width: 1024px) {
   .nav {
-    display: none;
+    width: 200px; /* Уменьшаем ширину для планшетов */
+  }
+  
+  .header {
+    padding: 15px;
+  }
+  
+  .header img {
+    height: 28px;
+  }
+  
+  .header span {
+    font-size: 16px;
+  }
+  
+  .navButton {
+    padding: 10px 12px;
+    font-size: 14px;
+    gap: 12px;
+  }
+}
+
+/* Для очень маленьких планшетов (768px-900px) */
+@media (min-width: 768px) and (max-width: 900px) {
+  .nav {
+    width: 180px; /* Еще меньше для маленьких планшетов */
+  }
+  
+  .header {
+    padding: 12px;
+  }
+  
+  .header img {
+    height: 24px;
+  }
+  
+  .header span {
+    font-size: 15px;
+  }
+  
+  .navButton {
+    padding: 8px 10px;
+    font-size: 13px;
+    gap: 10px;
+  }
+  
+  .navLabel {
+    font-size: 13px;
   }
 }
 .header {
