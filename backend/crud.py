@@ -602,17 +602,22 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     user_username = user.username
     user_position = user.position
     user_phone_number = user.phone_number
+    user_email = user.email
     user_balance = user.balance
     item_price = item.price
 
     # --- ФИНАЛЬНАЯ ВЕРСИЯ УВЕДОМЛЕНИЙ ---
     # Отправляем уведомления ПОСЛЕ commit, чтобы не блокировать транзакцию
     try:
-        # Уведомление для администратора (без изменений)
+        # Уведомление для администратора
         admin_message = (
             f"🛍️ <b>Новая покупка в магазине!</b>\n\n"
             f"👤 <b>Пользователь:</b> {escape_html(user_first_name or '')} (@{escape_html(user_username or str(user_telegram_id))})\n"
             f"📞 <b>Телефон:</b> {escape_html(user_phone_number or 'не указан')}\n"
+        )
+        if user_email:
+            admin_message += f"📧 <b>Почта:</b> {escape_html(user_email)}\n"
+        admin_message += (
             f"💼 <b>Должность:</b> {escape_html(user_position or '')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item_name)}\n"
             f"💰 <b>Стоимость:</b> {item_price} спасибок"
@@ -692,6 +697,10 @@ async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
             f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
             f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
             f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
+        )
+        if user.email:
+            admin_message += f"📧 <b>Почта:</b> {escape_html(user.email)}\n"
+        admin_message += (
             f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
             f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
@@ -2609,6 +2618,30 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
             formatted_phone,
             bonus_amount,
         )
+        
+        # Отправляем уведомление администраторам
+        try:
+            admin_message = (
+                f"🎁 <b>Покупка бонусов Statix!</b>\n\n"
+                f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} (@{escape_html(user.username or str(user.telegram_id))})\n"
+                f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
+            )
+            if user.email:
+                admin_message += f"📧 <b>Почта:</b> {escape_html(user.email)}\n"
+            admin_message += (
+                f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n\n"
+                f"💰 <b>Куплено бонусов:</b> {bonus_amount}\n"
+                f"💸 <b>Потрачено спасибок:</b> {thanks_cost}\n"
+                f"📉 <b>Новый баланс:</b> {user.balance} спасибок"
+            )
+            
+            await send_telegram_message(
+                chat_id=settings.TELEGRAM_CHAT_ID,
+                text=admin_message,
+                message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+            )
+        except Exception as e:
+            print(f"Could not send admin notification for Statix purchase. Error: {e}")
     
     return {
         "new_balance": user.balance,
@@ -2876,9 +2909,17 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
             f"🎁 <b>Совместная покупка в магазине!</b>\n\n"
             f"👤 <b>Покупатель:</b> {escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')} (@{escape_html(buyer.username or str(buyer.telegram_id))})\n"
             f"📞 <b>Телефон покупателя:</b> {escape_html(buyer.phone_number or 'не указан')}\n"
+        )
+        if buyer.email:
+            admin_message += f"📧 <b>Почта покупателя:</b> {escape_html(buyer.email)}\n"
+        admin_message += (
             f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n"
-            f"📞 <b>Телефон приглашенного:</b> {escape_html(invitation.invited_user.phone_number or 'не указан')}\n\n"
-            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"📞 <b>Телефон приглашенного:</b> {escape_html(invitation.invited_user.phone_number or 'не указан')}\n"
+        )
+        if invitation.invited_user.email:
+            admin_message += f"📧 <b>Почта приглашенного:</b> {escape_html(invitation.invited_user.email)}\n"
+        admin_message += (
+            f"\n🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Стоимость:</b> {item.price} спасибок (оплачено покупателем)\n\n"
             f"📉 <b>Баланс покупателя:</b> {buyer.balance} спасибок"
         )
