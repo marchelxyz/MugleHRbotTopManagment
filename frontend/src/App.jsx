@@ -137,16 +137,33 @@ function App() {
       const savedUser = localStorage.getItem('user');
       
       if (savedUserId && savedUser) {
-        // Пытаемся проверить статус пользователя
+        // Сначала восстанавливаем пользователя из localStorage для мгновенного отображения
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+        } catch (err) {
+          console.error('Ошибка парсинга сохраненного пользователя:', err);
+        }
+        
+        // Затем проверяем статус пользователя на сервере
         const checkBrowserUser = async () => {
           try {
             const { checkUserStatusById } = await import('./api');
             const userResponse = await checkUserStatusById(savedUserId);
+            // Обновляем пользователя актуальными данными с сервера
             setUser(userResponse.data);
+            // Обновляем localStorage актуальными данными
+            localStorage.setItem('user', JSON.stringify(userResponse.data));
           } catch (err) {
-            // Если пользователь не найден или ошибка, очищаем localStorage
-            localStorage.removeItem('userId');
-            localStorage.removeItem('user');
+            // Если пользователь не найден или ошибка авторизации, очищаем localStorage
+            if (err.response && (err.response.status === 401 || err.response.status === 404)) {
+              localStorage.removeItem('userId');
+              localStorage.removeItem('user');
+              setUser(null);
+            } else {
+              // При других ошибках (сеть и т.д.) оставляем пользователя из localStorage
+              console.warn('Не удалось проверить статус пользователя, используем сохраненные данные:', err);
+            }
           } finally {
             setLoading(false);
           }

@@ -114,8 +114,8 @@ function SettingsPage({ onBack, onNavigate, onRepeatOnboarding, user }) {
           </button>
         )}
 
-        {/* Кнопка выхода показывается только в браузере */}
-        {isWebBrowser && (
+        {/* Кнопка выхода показывается только в браузере или для пользователей с браузерной авторизацией */}
+        {(isWebBrowser || (user && user.login)) && (
           <button onClick={handleLogout} className={styles.settingsItem}>
             <FaSignOutAlt className={styles.icon} />
             <span>Выйти из аккаунта</span>
