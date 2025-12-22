@@ -284,11 +284,21 @@ class UnisenderClient:
                     error_msg = error_text + (f" (код: {error_code})" if error_code else "")
                     
                     # Специальная обработка ошибки о неподтвержденном email на бесплатном плане
-                    if error_code == "invalid_arg" and "free plan" in error_text.lower():
+                    is_free_plan_error = (
+                        error_code == "invalid_arg" or
+                        "free plan" in error_text.lower() or
+                        "confirmed emails" in error_text.lower() or
+                        "подтвержденные email" in error_text.lower() or
+                        "подтвержденные адреса" in error_text.lower()
+                    )
+                    
+                    if is_free_plan_error:
                         logger.warning(
                             f"Не удалось отправить email на {email}: "
-                            f"на бесплатном плане Unisender можно отправлять письма только на подтвержденные email адреса. "
-                            f"Полный ответ: {result}"
+                            f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
+                            f"которые добавлены в вашу базу Unisender и подтверждены. "
+                            f"Убедитесь, что адрес {email} добавлен в список с ID {list_id} через метод subscribe. "
+                            f"Ошибка: {error_msg}"
                         )
                     else:
                         logger.error(f"Ошибка отправки email на {email}: {error_msg}, полный ответ: {result}")

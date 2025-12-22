@@ -1037,13 +1037,25 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                     is_free_plan_error = (
                         "invalid_arg" in error_codes or 
                         "free plan" in error_msg.lower() or
-                        "подтвержденные email" in error_msg.lower()
+                        "confirmed emails" in error_msg.lower() or
+                        "подтвержденные email" in error_msg.lower() or
+                        "подтвержденные адреса" in error_msg.lower() or
+                        "добавлены в вашу базу" in error_msg.lower()
                     )
                     
-                    logger.warning(
-                        f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
-                        f"Пользователь может получить учетные данные через Telegram бота или администратора."
-                    )
+                    # Для ошибок бесплатного тарифа используем WARNING, для остальных - тоже WARNING, но с разными сообщениями
+                    if is_free_plan_error:
+                        logger.warning(
+                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
+                            f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
+                            f"добавленные в базу и подтвержденные. Пользователь может получить учетные данные "
+                            f"через Telegram бота или администратора."
+                        )
+                    else:
+                        logger.warning(
+                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
+                            f"Пользователь может получить учетные данные через Telegram бота или администратора."
+                        )
                     
                     # Если ошибка связана с бесплатным тарифом, отправляем уведомление администратору в Telegram
                     if is_free_plan_error:
