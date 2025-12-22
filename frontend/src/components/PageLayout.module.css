@@ -4,6 +4,10 @@
   background-color: #F4F4F8;
   position: relative;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* --- НАЧАЛО ИЗМЕНЕНИЙ --- */
@@ -73,6 +77,60 @@
   padding: 20px;
   min-height: calc(100vh - 150px);
   padding-bottom: calc(110px + env(safe-area-inset-bottom)); /* Учитываем увеличенные кнопки навигации Android */
+  box-sizing: border-box;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .contentArea {
+    padding: 16px;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  
+  .header {
+    height: 100px;
+  }
+  
+  .headerTitle {
+    font-size: 13px;
+  }
+  
+  .headerLogo {
+    height: 28px;
+  }
+  
+  .headerLine {
+    height: 34px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .contentArea {
+    padding: 12px;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  
+  .header {
+    height: 90px;
+  }
+  
+  .headerTitle {
+    font-size: 12px;
+    margin-left: 5px;
+  }
+  
+  .headerLogo {
+    height: 24px;
+  }
+  
+  .headerLine {
+    height: 30px;
+    margin-left: 3px;
+  }
 }
 
 /* Адаптация для планшетов */
@@ -85,7 +143,40 @@
 /* Адаптация для ПК */
 @media (min-width: 1025px) {
   .contentArea {
-    padding: 30px;
+    padding: 40px;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .contentArea {
+    padding: 50px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .contentArea {
+    padding: 60px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .contentArea {
+    padding: 80px;
+  }
+  
+  .headerTitle {
+    font-size: 16px;
+  }
+  
+  .headerLogo {
+    height: 40px;
+  }
+  
+  .headerLine {
+    height: 46px;
   }
 }
 

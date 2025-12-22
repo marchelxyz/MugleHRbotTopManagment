@@ -1,0 +1,138 @@
+/* frontend/src/pages/admin/PurchasesManager.module.css */
+
+.container {
+  padding: 20px;
+}
+
+.container h2 {
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: #333;
+  font-size: 24px;
+}
+
+.loading, .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.emptyIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.purchasesList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.purchaseCard {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border: 1px solid #f0f0f0;
+}
+
+.purchaseHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.purchaseHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+  flex: 1;
+}
+
+.purchaseDate {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.purchaseInfo {
+  margin-bottom: 20px;
+}
+
+.purchaseInfo p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.purchaseInfo a {
+  color: #2196F3;
+  text-decoration: none;
+}
+
+.purchaseInfo a:hover {
+  text-decoration: underline;
+}
+
+.purchaseActions {
+  display: flex;
+  gap: 12px;
+}
+
+.approveButton, .rejectButton {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.approveButton {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+}
+
+.approveButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.rejectButton {
+  background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+  color: white;
+}
+
+.rejectButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.approveButton:disabled, .rejectButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

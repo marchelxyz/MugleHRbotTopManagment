@@ -2,7 +2,7 @@
 
 import React from 'react'; // Убрали неиспользуемый useEffect
 import styles from './ProfilePage.module.css';
-import { FaCog, FaCreditCard, FaPencilAlt } from 'react-icons/fa';
+import { FaCog, FaCreditCard, FaPencilAlt, FaBell } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
 import { formatDateForDisplay } from '../utils/dateFormatter';
 
@@ -62,13 +62,17 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
         <p className={styles.infoItem}><span className={styles.label}>Части билетов:</span> {user.ticket_parts} / 4</p>
       </div>
 
-      <div className={styles.actionsGrid}>
-        <button onClick={() => onNavigate('history')} className={styles.actionButton}>История транзакций</button>
-        <button onClick={() => onNavigate('bonus_card')} className={styles.actionButton}>
-          <FaCreditCard style={{ marginRight: '8px' }} />
-          Бонусная карта
-        </button>
-      </div>
+      <div className={styles.actionsGrid}>
+        <button onClick={() => onNavigate('history')} className={styles.actionButton}>История транзакций</button>
+        <button onClick={() => onNavigate('bonus_card')} className={styles.actionButton}>
+          <FaCreditCard style={{ marginRight: '8px' }} />
+          Бонусная карта
+        </button>
+        <button onClick={() => onNavigate('notifications')} className={styles.actionButton}>
+          <FaBell style={{ marginRight: '8px' }} />
+          Уведомления
+        </button>
+      </div>
     </PageLayout>
   );
 }

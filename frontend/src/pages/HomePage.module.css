@@ -5,6 +5,9 @@
   position: relative;
   padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .headerWrapper {
@@ -33,6 +36,10 @@
   z-index: 2;
   margin-top: -20px;
   padding-top: 30px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .userBlock {
@@ -41,6 +48,31 @@
   padding: 0 26px;
   margin-bottom: 30px;
   position: relative;
+}
+
+/* Адаптация блока пользователя для больших экранов */
+@media (min-width: 1025px) {
+  .userBlock {
+    padding: 0 40px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .userBlock {
+    padding: 0 50px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .userBlock {
+    padding: 0 60px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .userBlock {
+    padding: 0 80px;
+  }
 }
 
 .userAvatar {
@@ -94,6 +126,13 @@
   overflow: hidden; /* Прячем все слайды, кроме одного */
   position: relative;
   border-radius: 20px;
+}
+
+/* Адаптация слайдера для больших экранов */
+@media (min-width: 1025px) {
+  .sliderContainer {
+    margin: 0 auto 50px auto;
+  }
 }
 
 /* Стили для кнопок-стрелок переключения баннеров */
@@ -254,6 +293,31 @@
   overflow: hidden;
 }
 
+/* Адаптация секции ленты для больших экранов */
+@media (min-width: 1025px) {
+  .feedSection {
+    padding: 40px 40px 30px 40px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .feedSection {
+    padding: 50px 50px 40px 50px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .feedSection {
+    padding: 60px 60px 50px 60px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .feedSection {
+    padding: 80px 80px 60px 80px;
+  }
+}
+
 .feedTitle {
   color: #1976D2; /* Зимний синий */
   font-family: 'Arial', sans-serif;
@@ -371,7 +435,86 @@
 
   /* Увеличиваем отступы в контентной зоне на ПК */
   .contentArea {
-    padding: 30px;
+    padding: 40px;
+  }
+}
+
+/* Для больших экранов (1440px+) - 3 колонки */
+@media (min-width: 1440px) {
+  .feedGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .contentArea {
+    padding: 50px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) - 4 колонки */
+@media (min-width: 1920px) {
+  .feedGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .contentArea {
+    padding: 60px;
+  }
+  
+  .feedTitle {
+    font-size: 22px;
+  }
+  
+  .feedItem {
+    padding: 20px;
+  }
+  
+  .feedTransaction {
+    font-size: 16px;
+  }
+  
+  .feedMessage {
+    font-size: 14px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .feedGrid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+  }
+  
+  .contentArea {
+    padding: 80px;
+  }
+  
+  .userName {
+    font-size: 22px;
+  }
+  
+  .userAvatar {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .feedTitle {
+    font-size: 24px;
+  }
+  
+  .feedItem {
+    padding: 25px;
+  }
+  
+  .feedTransaction {
+    font-size: 18px;
+  }
+  
+  .feedMessage {
+    font-size: 16px;
+  }
+  
+  .feedTimestamp {
+    font-size: 1rem;
   }
 }
 /* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
@@ -426,8 +569,7 @@
   .sliderContainer {
     /* Контейнер должен обрезать всё лишнее */
     overflow: hidden; 
-    margin: 0 auto 50px auto; 
-    max-width: 1000px;
+    margin: 0 auto 50px auto;
   }
 
   .sliderArrowLeft,
@@ -457,10 +599,10 @@
   }
 
   .slide {
-    /* Каждый слайд занимает 80% ширины контейнера */
-    flex: 0 0 80%;
-    /* Добавляем отступы по 2% с каждой стороны */
-    margin: 0 2%;
+    /* Каждый слайд занимает 85% ширины контейнера */
+    flex: 0 0 85%;
+    /* Добавляем отступы по 1.5% с каждой стороны */
+    margin: 0 1.5%;
     box-sizing: border-box;
 
     /* Эффект глубины для неактивных слайдов */
@@ -476,6 +618,44 @@
 
   .sliderDots {
     bottom: 3px; 
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .slide {
+    flex: 0 0 90%;
+    margin: 0 1%;
+  }
+  
+  .sliderArrowLeft,
+  .sliderArrowRight {
+    width: 40px;
+    height: 40px;
+    font-size: 22px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .slide {
+    flex: 0 0 92%;
+    margin: 0 0.5%;
+  }
+  
+  .sliderArrowLeft,
+  .sliderArrowRight {
+    width: 45px;
+    height: 45px;
+    font-size: 24px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .slide {
+    flex: 0 0 95%;
+    margin: 0 0.25%;
   }
 }
 

@@ -1,4 +1,3 @@
-# backend/schemas.py
 from pydantic import BaseModel, ConfigDict, field_serializer
 from typing import Optional, List
 from datetime import datetime, date
@@ -6,16 +5,14 @@ from datetime import datetime, date
 class OrmBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-# --- ИЗМЕНЕНИЕ: Базовая схема для товара ---
 class MarketItemBase(OrmBase):
     id: int
     name: str
     description: Optional[str]
-    price: int # Цена в спасибках для отображения пользователю
+    price: int
     stock: int
-    original_price: Optional[int] = None # <-- ДОБАВЬ СЮДА
+    original_price: Optional[int] = None
 
-# Базовая схема для пользователя (без связей)
 class UserBase(OrmBase):
     id: int
     telegram_id: Optional[int] = None
@@ -25,21 +22,19 @@ class UserBase(OrmBase):
     department: str
     username: Optional[str] = None
 
-# Схема для Покупки, которая НЕ содержит обратно Товар
 class PurchaseForUserResponse(OrmBase):
     id: int
     timestamp: datetime
-    item: MarketItemBase # <-- Используем базовую схему товара
+    item: MarketItemBase
 
-# Схема для Покупки, которая НЕ содержит обратно Пользователя
 class PurchaseForMarketResponse(OrmBase):
     id: int
     timestamp: datetime
-    user: UserBase # <-- Используем базовую схему пользователя
+    user: UserBase
 
-# Финальная схема для Пользователя, которая включает его покупки
 class UserResponse(UserBase):
     balance: int
+    reserved_balance: int = 0
     daily_transfer_count: int
     is_admin: bool
     status: Optional[str] = 'approved' 
@@ -54,7 +49,6 @@ class UserResponse(UserBase):
     has_interacted_with_bot: bool
     login: Optional[str] = None
     browser_auth_enabled: bool = False
-    # purchases: List[PurchaseForUserResponse] = [] # Раскомментируйте, если понадобится
 
     @field_serializer('date_of_birth')
     def serialize_date(self, dob: Optional[date], _info):
@@ -62,14 +56,11 @@ class UserResponse(UserBase):
             return None
         return dob.isoformat()
 
-# --- 1. ДОБАВЬ ЭТУ НОВУЮ СХЕМУ ДЛЯ ОПИСАНИЯ КОДА ---
 class ItemCodeResponse(OrmBase):
     id: int
     code_value: str
     is_issued: bool
         
-# --- ИЗМЕНЕНИЕ: Финальная схема ответа для API ---
-# Она будет включать все поля для удобства
 class MarketItemResponse(OrmBase):
     id: int
     name: str
@@ -79,16 +70,23 @@ class MarketItemResponse(OrmBase):
     price_rub: int
     image_url: Optional[str] = None
     is_archived: bool
-    original_price: Optional[int] = None # <-- Теперь это поле гарантированно будет в ответе
+    original_price: Optional[int] = None
     is_auto_issuance: bool
     is_shared_gift: bool
+    is_local_purchase: bool
     codes: List[ItemCodeResponse] = []
 
-# --- ОСТАЛЬНЫЕ СХЕМЫ (адаптируем под новые базовые) ---
+class LoginRequest(BaseModel):
+    login: str  # Логин для входа
+    password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 class RegisterRequest(BaseModel):
-    telegram_id: str
-    first_name: str # Добавляем это поле
+    telegram_id: Optional[str] = None
+    first_name: str
     last_name: str
     position: str
     department: str
@@ -102,14 +100,13 @@ class FeedItem(OrmBase):
     amount: int
     message: Optional[str]
     timestamp: datetime
-    sender: UserBase    # <-- Используем базовую схему
-    receiver: UserBase # <-- Используем базовую схему
+    sender: UserBase
+    receiver: UserBase
 
 class LeaderboardItem(OrmBase):
-    user: UserResponse # <-- Используем полную схему пользователя
+    user: UserResponse
     total_received: int
 
-# ... (остальные схемы запросов остаются без изменений)
 class TransferRequest(BaseModel):
     sender_id: int
     receiver_id: int
@@ -119,12 +116,18 @@ class PurchaseRequest(BaseModel):
     user_id: int
     item_id: int
     
+class LocalGiftRequest(BaseModel):
+    user_id: int
+    item_id: int
+    city: str
+    website_url: str
+    
 class PurchaseResponse(BaseModel):
     message: str
     new_balance: int
     issued_code: Optional[str] = None
+    reserved_balance: Optional[int] = None
     
-# --- ИЗМЕНЕНИЕ: Схема для СОЗДАНИЯ товара (принимаем только рубли) ---
 class MarketItemCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -134,22 +137,22 @@ class MarketItemCreate(BaseModel):
     original_price: Optional[int] = None
     is_auto_issuance: bool = False
     is_shared_gift: bool = False
-    codes_text: Optional[str] = None # Поле для вставки кодов (каждый с новой строки)
+    is_local_purchase: bool = False
+    codes_text: Optional[str] = None
     item_codes: Optional[List[str]] = []
 
-# --- ИЗМЕНЕНИЕ: Схема для ОБНОВЛЕНИЯ товара (принимаем только рубли) ---
 class MarketItemUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     price_rub: Optional[int] = None
     stock: Optional[int] = None
     image_url: Optional[str] = None
-    original_price: Optional[int] = None # <-- И СЮДА
+    original_price: Optional[int] = None
     is_auto_issuance: Optional[bool] = None
     is_shared_gift: Optional[bool] = None
-    # --- НАШИ НОВЫЕ ПОЛЯ ---
-    added_stock: Optional[int] = None # Для пополнения обычных товаров
-    new_item_codes: Optional[List[str]] = [] # Для добавления новых кодов/ссылок
+    is_local_purchase: Optional[bool] = None
+    added_stock: Optional[int] = None
+    new_item_codes: Optional[List[str]] = []
 
 class UserUpdate(BaseModel):
     last_name: Optional[str] = None
@@ -165,31 +168,27 @@ class ProfileUpdateRequest(BaseModel):
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
 
-# --- НОВАЯ СХЕМА ДЛЯ РЕДАКТИРОВАНИЯ ПОЛЬЗОВАТЕЛЯ АДМИНОМ ---
 class AdminUserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     department: Optional[str] = None
     position: Optional[str] = None
-    # phone_number дублировался, я оставил один
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
     balance: Optional[int] = None
     tickets: Optional[int] = None
     ticket_parts: Optional[int] = None
-    status: Optional[str] = None # Позволяем менять статус ('approved', 'blocked')
+    status: Optional[str] = None
     is_admin: Optional[bool] = None
     login: Optional[str] = None
     password: Optional[str] = None
     browser_auth_enabled: Optional[bool] = None
 
 class BannerBase(OrmBase):
-# --- ИЗМЕНЕНИЕ: Сделай image_url опциональным ---
     image_url: Optional[str] = None
     link_url: Optional[str] = None
     is_active: bool
     position: str
-    # --- НОВЫЕ ПОЛЯ ---
     banner_type: str = 'image'
     data: Optional[dict] = None
 
@@ -206,30 +205,27 @@ class BannerUpdate(BaseModel):
 
 class BannerResponse(BannerBase):
     id: int
-    image_url: Optional[str] # Убедимся, что он Optional
+    image_url: Optional[str]
     
     class Config:
-        from_attributes = True # Было orm_mode = True
+        from_attributes = True
 
-# --- НОВЫЕ СХЕМЫ ДЛЯ РУЛЕТКИ ---
 class RouletteWinResponse(OrmBase):
     id: int
     amount: int
     timestamp: datetime
-    user: UserResponse # Используем полную схему данных
+    user: UserResponse
 
 class SpinResponse(BaseModel):
     prize_won: int
     new_balance: int
     new_tickets: int
 
-# --- НОВАЯ СХЕМА ДЛЯ ОТВЕТА О РАНГЕ ПОЛЬЗОВАТЕЛЯ ---
 class MyRankResponse(BaseModel):
     rank: Optional[int]
     total_received: int
     total_participants: int
 
-# --- СХЕМА ДЛЯ СТАТИСТИКИ ---
 class GeneralStatsResponse(BaseModel):
     new_users_count: int
     transactions_count: int
@@ -238,13 +234,11 @@ class GeneralStatsResponse(BaseModel):
     store_purchases_count: int
     total_store_spent: int
 
-# --- НАШИ НОВЫЕ СХЕМЫ ДЛЯ РАСШИРЕННОЙ СТАТИСТИКИ ---
-
 class HourlyActivityStats(BaseModel):
     hourly_stats: dict[int, int]
 
 class UserEngagement(OrmBase):
-    user: UserResponse  # Используем твою основную схему UserResponse
+    user: UserResponse
     count: int
 
 class UserEngagementStats(BaseModel):
@@ -252,23 +246,17 @@ class UserEngagementStats(BaseModel):
     top_receivers: List['UserEngagement']
     
 class PopularItem(OrmBase):
-    item: MarketItemResponse # Используем твою основную схему MarketItemResponse
+    item: MarketItemResponse
     purchase_count: int
     
 class PopularItemsStats(BaseModel):
     items: List['PopularItem']
 
 class InactiveUsersStats(BaseModel):
-    users: List[UserResponse] # Возвращаем список полных профилей
+    users: List[UserResponse]
 
 class TotalBalanceStats(BaseModel):
     total_balance: int
-
-# --- Обновление ссылок в конце файла ---
-# Важно! Pydantic v2 (который ты используешь) умнее и сам обрабатывает большинство 
-# forward references. Явный вызов .model_rebuild() часто не нужен, если структура
-# не слишком сложная (как у тебя). Я убрал эти вызовы, так как они, скорее всего,
-# и были источником последней ошибки. Код станет чище и должен работать.
 
 class LoginActivityStats(BaseModel):
     hourly_stats: dict[int, int]
@@ -276,8 +264,6 @@ class LoginActivityStats(BaseModel):
 class ActiveUserRatioStats(BaseModel):
     active_users: int
     inactive_users: int
-
-# --- НОВЫЕ СХЕМЫ ДЛЯ СЕССИЙ ---
 
 class SessionBase(OrmBase):
     user_id: int
@@ -290,7 +276,6 @@ class SessionResponse(SessionBase):
 class AverageSessionDurationStats(BaseModel):
     average_duration_minutes: float
 
-# --- НОВЫЕ СХЕМЫ ДЛЯ STATIX BONUS ---
 class StatixBonusItemResponse(OrmBase):
     id: int
     name: str
@@ -323,7 +308,6 @@ class StatixBonusPurchaseResponse(BaseModel):
     new_balance: int
     purchased_bonus_amount: int
 
-# --- СХЕМЫ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
 class SharedGiftInvitationResponse(OrmBase):
     id: int
     buyer_id: int
@@ -355,7 +339,6 @@ class SharedGiftInvitationActionResponse(BaseModel):
     message: str
     new_balance: Optional[int] = None
 
-# --- СХЕМЫ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
 class SetUserCredentialsRequest(BaseModel):
     login: str
     password: str
@@ -365,11 +348,18 @@ class SetUserCredentialsResponse(BaseModel):
     login: str
     user_id: int
 
+class ApproveUserRegistrationResponse(BaseModel):
+    """Ответ при одобрении регистрации пользователя"""
+    user: UserResponse
+    login: Optional[str] = None  # Логин, если был сгенерирован
+    password: Optional[str] = None  # Пароль, если был сгенерирован
+    credentials_generated: bool = False  # Флаг, были ли сгенерированы учетные данные
+
 class BulkSendCredentialsRequest(BaseModel):
-    message: Optional[str] = ""  # Текстовое сообщение для рассылки
-    include_active: bool = True  # Включить активных пользователей
-    include_blocked: bool = True  # Включить заблокированных пользователей
-    regenerate_existing: bool = False  # Перегенерировать для тех, у кого уже есть логин
+    message: Optional[str] = ""
+    include_active: bool = True
+    include_blocked: bool = True
+    regenerate_existing: bool = False
 
 class BulkSendCredentialsResponse(BaseModel):
     message: str
@@ -377,3 +367,22 @@ class BulkSendCredentialsResponse(BaseModel):
     credentials_generated: int
     messages_sent: int
     failed_users: List[int] = []
+
+class LocalGiftResponse(OrmBase):
+    id: int
+    user_id: int
+    item_id: int
+    purchase_id: int
+    city: str
+    website_url: str
+    status: str
+    reserved_amount: int
+    created_at: datetime
+    updated_at: datetime
+    user: UserBase
+    item: MarketItemBase
+
+class LocalGiftApprovalRequest(BaseModel):
+    local_purchase_id: int  # Оставляем старое название поля для совместимости с БД
+    action: str  # 'approve' или 'reject'
+

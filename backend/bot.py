@@ -1,10 +1,8 @@
-# backend/bot.py
 import httpx
 from database import settings
-import json # Добавляем импорт json
+import json
 import re
 
-# URL для отправки сообщений через API Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
@@ -22,7 +20,6 @@ def escape_markdown(text) -> str:
         text = str(text)
     if not text:
         return text
-    # Экранируем специальные символы Markdown
     special_chars = ['_', '*', '`', '[', ']', '(', ')', '~', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
     for char in special_chars:
         text = text.replace(char, f'\\{char}')
@@ -40,13 +37,11 @@ def escape_html(text) -> str:
         text = str(text)
     if not text:
         return text
-    # Экранируем только HTML-специальные символы
     text = text.replace('&', '&amp;')
     text = text.replace('<', '&lt;')
     text = text.replace('>', '&gt;')
     return text
 
-# --- ИЗМЕНЕНИЕ: Функция теперь может принимать кнопки и ID темы ---
 async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None, parse_mode: str = 'HTML'):
     """
     Асинхронно отправляет сообщение в указанный чат Telegram.
@@ -90,7 +85,6 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
             print(f"An unexpected error occurred while sending message to {chat_id}: {e}")
             raise
 
-# --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем новую функцию ---
 async def answer_callback_query(callback_query_id: str):
     """Отправляет ответ на нажатие inline-кнопки, чтобы убрать 'часики'."""
     payload = {'callback_query_id': callback_query_id}
@@ -99,9 +93,7 @@ async def answer_callback_query(callback_query_id: str):
             await client.post(ANSWER_CALLBACK_URL, json=payload)
         except Exception as e:
             print(f"Could not answer callback query. Error: {e}")
-# --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
-# --- ФУНКЦИИ ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
 async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name: str, item_name: str, invitation_id: int):
     """Отправить уведомление о приглашении на совместный подарок"""
     text = (

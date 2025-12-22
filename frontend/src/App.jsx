@@ -8,6 +8,7 @@ import { initializeCache, clearCache, setCachedData } from './storage';
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
 import RegistrationPage from './pages/RegistrationPage';
+import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MarketplacePage from './pages/MarketplacePage';
@@ -23,6 +24,7 @@ import BonusCardPage from './pages/BonusCardPage';
 import EditProfilePage from './pages/EditProfilePage';
 import BlockedPage from './pages/BlockedPage';
 import TransferPage from './pages/TransferPage'; // Страница отправки спасибок
+import NotificationsPage from './pages/NotificationsPage';
 import { startSession, pingSession } from './api';
 import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
 import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
@@ -45,20 +47,67 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  // Инициализация windowWidth с проверкой доступности window
+  const [windowWidth, setWindowWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth;
+    }
+    return 1024; // Значение по умолчанию для SSR
+  });
+  // Состояние для переключения между страницами входа и регистрации в браузере
+  const [showRegistration, setShowRegistration] = useState(false);
   
   // Определяем, является ли устройство десктопом
-  // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
-  const isDesktop = tg ? (['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024) : (windowWidth > 1024);
+  // Пороговые значения:
+  // - Mobile: < 768px (мобильный интерфейс)
+  // - Tablet/Desktop: >= 768px (desktop интерфейс с боковым меню)
+  // В браузере определяем desktop только по ширине окна
+  // В Telegram WebApp также учитываем платформу
+  const DESKTOP_BREAKPOINT = 768; // Порог для переключения на desktop интерфейс
   
-  // Отслеживаем изменение размера окна
+  const isDesktop = !isTelegramWebApp 
+    ? (windowWidth >= DESKTOP_BREAKPOINT) 
+    : (['tdesktop', 'macos', 'web'].includes(tg?.platform) && windowWidth >= DESKTOP_BREAKPOINT) || 
+      (windowWidth >= DESKTOP_BREAKPOINT);
+  
+  // Отладочная информация для разработки
   useEffect(() => {
+    if (!isTelegramWebApp) {
+      console.log('Browser mode - windowWidth:', windowWidth, 'isDesktop:', isDesktop, 'breakpoint:', DESKTOP_BREAKPOINT);
+    }
+  }, [windowWidth, isDesktop, isTelegramWebApp]);
+  
+  // Отслеживаем изменение размера окна с debounce для оптимизации
+  useEffect(() => {
+    let resizeTimer;
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
+      // Debounce для оптимизации производительности
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          setWindowWidth(window.innerWidth);
+        }
+      }, 100); // Задержка 100ms для плавности
     };
     
+    // Убеждаемся, что windowWidth актуален при первой загрузке
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+    }
+    
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // Также отслеживаем изменения через visualViewport для мобильных устройств
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
+    
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -126,9 +175,50 @@ function App() {
       
     const telegramUser = tg?.initDataUnsafe?.user;
     
-    // Если не в Telegram WebApp, показываем страницу входа/регистрации
+    // Если не в Telegram WebApp, проверяем браузерную авторизацию
     if (!isTelegramWebApp || !telegramUser) {
-      setLoading(false);
+      // Проверяем, есть ли сохраненный пользователь в localStorage
+      const savedUserId = localStorage.getItem('userId');
+      const savedUser = localStorage.getItem('user');
+      
+      if (savedUserId && savedUser) {
+        // Сначала восстанавливаем пользователя из localStorage для мгновенного отображения
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+        } catch (err) {
+          console.error('Ошибка парсинга сохраненного пользователя:', err);
+        }
+        
+        // Затем проверяем статус пользователя на сервере
+        const checkBrowserUser = async () => {
+          try {
+            const { checkUserStatusById } = await import('./api');
+            const userResponse = await checkUserStatusById(savedUserId);
+            // Обновляем пользователя актуальными данными с сервера
+            setUser(userResponse.data);
+            // Обновляем localStorage актуальными данными
+            localStorage.setItem('user', JSON.stringify(userResponse.data));
+          } catch (err) {
+            // Если пользователь не найден или ошибка авторизации, очищаем localStorage
+            if (err.response && (err.response.status === 401 || err.response.status === 404)) {
+              localStorage.removeItem('userId');
+              localStorage.removeItem('user');
+              setUser(null);
+            } else {
+              // При других ошибках (сеть и т.д.) оставляем пользователя из localStorage
+              console.warn('Не удалось проверить статус пользователя, используем сохраненные данные:', err);
+            }
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        checkBrowserUser();
+      } else {
+        setLoading(false);
+      }
+      
       // Возвращаем функцию очистки даже при раннем выходе
       return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -189,6 +279,13 @@ function App() {
   
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    // Сохраняем пользователя в localStorage
+    localStorage.setItem('userId', userData.id.toString());
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+  
   const navigate = (targetPage) => {
     setShowPendingBanner(false);
     setPage(targetPage);
@@ -232,15 +329,37 @@ function App() {
       return <LoadingScreen />;
     }
   
-    // Если не в Telegram WebApp, показываем страницу входа
+    // Если не в Telegram WebApp, показываем страницу входа или регистрации
     if (!isTelegramWebApp) {
-      return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+      // Если пользователь не авторизован, показываем страницу входа или регистрации
+      if (!user) {
+        if (showRegistration) {
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
+        }
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
+      }
+      // Если пользователь авторизован, но статус pending, показываем соответствующую страницу
+      // (остальная логика будет обработана ниже)
     }
   
     if (!user) {
       const telegramUser = tg?.initDataUnsafe?.user;
       if (!telegramUser) {
-        return <RegistrationPage telegramUser={null} onRegistrationSuccess={handleRegistrationSuccess} isWebBrowser={true} />;
+        // Для веб-браузера показываем страницу входа
+        if (showRegistration) {
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
+        }
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
       return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
@@ -270,12 +389,14 @@ function App() {
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
+        case 'notifications': return <NotificationsPage user={user} onBack={() => navigate('profile')} />;
   case 'settings': 
     return (
       <SettingsPage 
         onBack={() => navigate('profile')} 
         onNavigate={navigate} 
         onRepeatOnboarding={() => setShowOnboarding(true)}
+        user={user}
       />
     );
         case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
@@ -487,17 +608,26 @@ function App() {
   const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
   const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
   
+  // Проверяем, показывается ли страница входа или регистрации (для веб-версии)
+  const isLoginOrRegistrationPage = !isTelegramWebApp && !user;
+  
   return (
     <div className="app-container">
       {/* Теперь меню показываются на основе новых, правильных переменных */}
       {shouldShowSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
       {shouldShowBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
-      {/* Логика для <main> остается такой же, как в прошлый раз */}
+      {/* Логика для <main>: 
+          - Для страниц входа/регистрации не применяем классы wrapper
+          - Для desktop всегда применяем desktop-wrapper (даже если меню не показывается)
+          - Добавляем класс with-sidebar только когда боковое меню показывается
+          - Для mobile применяем mobile-wrapper */}
       <main className={
-        isDesktop 
-          ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
-          : 'mobile-wrapper'
+        isLoginOrRegistrationPage 
+          ? '' 
+          : (isDesktop 
+              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''}` 
+              : 'mobile-wrapper')
       }>
         {showPendingBanner && (
             <div className="pending-update-banner">

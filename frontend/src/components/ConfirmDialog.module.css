@@ -21,6 +21,62 @@
   box-shadow: 0 5px 25px rgba(0,0,0,0.2);
   text-align: center;
   animation: fadeIn 0.2s ease-out;
+  box-sizing: border-box;
+  margin: 20px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .modal {
+    width: calc(100% - 32px);
+    max-width: none;
+    padding: 20px;
+    margin: 16px;
+  }
+  
+  .title {
+    font-size: 20px;
+  }
+  
+  .message {
+    font-size: 14px;
+  }
+  
+  .button {
+    padding: 10px;
+    font-size: 15px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .modal {
+    width: calc(100% - 24px);
+    padding: 16px;
+    margin: 12px;
+    border-radius: 16px;
+  }
+  
+  .title {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  
+  .message {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  
+  .button {
+    padding: 10px;
+    font-size: 14px;
+  }
+  
+  .buttonGroup {
+    gap: 8px;
+  }
 }
 
 .title {

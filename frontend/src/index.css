@@ -1,12 +1,82 @@
 /* frontend/src/index.css */
+html {
+  overflow-x: hidden;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%);
+}
+
 body {
   margin: 0;
+  padding: 0;
   font-family: 'Inter', sans-serif; /* Устанавливаем Inter как основной шрифт */
-  background: linear-gradient(180deg, #E8F4F8 0%, #D4E8F0 50%, #C0DCE8 100%); /* Зимний градиентный фон */
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний градиентный фон */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   position: relative;
   overflow-x: hidden;
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Предотвращаем горизонтальный скролл на мобильных устройствах */
+* {
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* На desktop root должен занимать весь экран (начиная с 768px) */
+@media (min-width: 768px) {
+  #root {
+    width: 100%;
+    max-width: none;
+  }
+  
+  body {
+    font-size: 16px;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  body {
+    font-size: 17px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  body {
+    font-size: 18px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  body {
+    font-size: 20px;
+  }
 }
 
 /* Глобальные стили для кнопок - убираем синее подсвечивание и делаем прозрачными при нажатии */

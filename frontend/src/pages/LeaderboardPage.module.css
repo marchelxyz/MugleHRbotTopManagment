@@ -1,7 +1,11 @@
 /* frontend/src/pages/LeaderboardPage.module.css */
 
 .page {
-  padding: 0; 
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* --- НАЧАЛО НОВЫХ СТИЛЕЙ ДЛЯ ВКЛАДОК --- */
@@ -172,6 +176,230 @@
   width: 20px;
   height: 20px;
   margin-left: 5px;
+}
+
+/* Адаптация для больших экранов */
+@media (min-width: 1025px) {
+  .page {
+    padding: 0 40px;
+  }
+  
+  .tabsContainer {
+    max-width: 800px;
+    margin: 0 auto 30px auto;
+  }
+  
+  .myRankCard {
+    max-width: 600px;
+    margin: 0 auto 30px auto;
+    padding: 20px 30px;
+  }
+  
+  .podium {
+    max-width: 800px;
+    margin: 0 auto 30px auto;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .page {
+    padding: 0 50px;
+  }
+  
+  .myRankCard p {
+    font-size: 18px;
+  }
+  
+  .myRankCard strong {
+    font-size: 28px;
+  }
+  
+  .podiumAvatar {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .podiumName {
+    font-size: 16px;
+  }
+  
+  .podiumPoints {
+    font-size: 15px;
+  }
+  
+  .listItem {
+    padding: 15px 20px;
+  }
+  
+  .listItemAvatar {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .listItem .userName {
+    font-size: 18px;
+  }
+  
+  .points {
+    font-size: 18px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .page {
+    padding: 0 60px;
+  }
+  
+  .tabsContainer {
+    max-width: 1000px;
+    height: 60px;
+  }
+  
+  .tabIcon {
+    font-size: 20px;
+  }
+  
+  .tabLabel {
+    font-size: 16px;
+  }
+  
+  .myRankCard {
+    max-width: 700px;
+    padding: 25px 40px;
+  }
+  
+  .myRankCard p {
+    font-size: 20px;
+  }
+  
+  .myRankCard strong {
+    font-size: 32px;
+  }
+  
+  .podium {
+    max-width: 1000px;
+    gap: 15px;
+  }
+  
+  .podiumAvatar {
+    width: 90px;
+    height: 90px;
+  }
+  
+  .podiumName {
+    font-size: 18px;
+  }
+  
+  .podiumPoints {
+    font-size: 16px;
+  }
+  
+  .listItem {
+    padding: 18px 25px;
+  }
+  
+  .listItemAvatar {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .listItem .rank {
+    font-size: 18px;
+    width: 35px;
+  }
+  
+  .listItem .userName {
+    font-size: 20px;
+  }
+  
+  .points {
+    font-size: 20px;
+  }
+  
+  .pointsLogo {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .page {
+    padding: 0 80px;
+  }
+  
+  .tabsContainer {
+    max-width: 1200px;
+    height: 70px;
+  }
+  
+  .tabIcon {
+    font-size: 24px;
+  }
+  
+  .tabLabel {
+    font-size: 18px;
+  }
+  
+  .myRankCard {
+    max-width: 800px;
+    padding: 30px 50px;
+  }
+  
+  .myRankCard p {
+    font-size: 22px;
+  }
+  
+  .myRankCard strong {
+    font-size: 36px;
+  }
+  
+  .podium {
+    max-width: 1200px;
+    gap: 20px;
+  }
+  
+  .podiumAvatar {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .podiumName {
+    font-size: 20px;
+  }
+  
+  .podiumPoints {
+    font-size: 18px;
+  }
+  
+  .listItem {
+    padding: 20px 30px;
+  }
+  
+  .listItemAvatar {
+    width: 55px;
+    height: 55px;
+  }
+  
+  .listItem .rank {
+    font-size: 20px;
+    width: 40px;
+  }
+  
+  .listItem .userName {
+    font-size: 22px;
+  }
+  
+  .points {
+    font-size: 22px;
+  }
+  
+  .pointsLogo {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 /* Убираем синюю разметку при фокусе и нажатии */

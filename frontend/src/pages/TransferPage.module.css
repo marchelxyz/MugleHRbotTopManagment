@@ -218,6 +218,292 @@
   color: #888;
 }
 
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .formGroup {
+    margin-bottom: 12px;
+  }
+  
+  .label {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  
+  .input,
+  .textarea {
+    padding: 12px;
+    font-size: 16px; /* Предотвращаем зум на iOS */
+    border-radius: 10px;
+  }
+  
+  .textarea {
+    min-height: 80px;
+    padding-bottom: 30px;
+  }
+  
+  .submitButton {
+    padding: 14px;
+    font-size: 16px;
+    margin-top: 8px;
+  }
+  
+  .backButton {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .balanceInfo {
+    padding: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .balanceInfo p {
+    font-size: 14px;
+  }
+  
+  .searchResults {
+    max-height: 300px;
+  }
+  
+  .searchResultItem {
+    padding: 10px 12px;
+  }
+  
+  .userName {
+    font-size: 14px;
+  }
+  
+  .userPosition {
+    font-size: 12px;
+  }
+  
+  .charCounter {
+    font-size: 11px;
+    bottom: 6px;
+    right: 10px;
+  }
+  
+  .messageHint {
+    padding: 8px 10px;
+  }
+  
+  .messageHintText {
+    font-size: 13px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .input,
+  .textarea {
+    padding: 10px;
+    font-size: 16px;
+  }
+  
+  .textarea {
+    min-height: 70px;
+  }
+  
+  .submitButton {
+    padding: 12px;
+  }
+  
+  .balanceInfo {
+    padding: 6px;
+  }
+  
+  .balanceInfo p {
+    font-size: 13px;
+  }
+  
+  .searchResults {
+    max-height: 250px;
+  }
+  
+  .searchResultItem {
+    padding: 8px 10px;
+  }
+}
+
+/* Адаптация для больших экранов */
+@media (min-width: 1025px) {
+  .page {
+    padding: 0 40px;
+  }
+  
+  .formGroup {
+    max-width: 600px;
+    margin: 0 auto 20px auto;
+  }
+  
+  .balanceInfo {
+    max-width: 500px;
+    margin: 0 auto 30px auto;
+    padding: 15px;
+  }
+  
+  .submitButton {
+    max-width: 500px;
+    margin: 20px auto 0 auto;
+    display: block;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .page {
+    padding: 0 50px;
+  }
+  
+  .formGroup {
+    max-width: 700px;
+  }
+  
+  .label {
+    font-size: 18px;
+  }
+  
+  .input,
+  .select,
+  .textarea {
+    font-size: 18px;
+    padding: 18px;
+  }
+  
+  .textarea {
+    min-height: 120px;
+  }
+  
+  .balanceInfo {
+    max-width: 600px;
+    padding: 20px;
+  }
+  
+  .balanceInfo p {
+    font-size: 18px;
+  }
+  
+  .submitButton {
+    max-width: 600px;
+    font-size: 18px;
+    padding: 18px;
+  }
+  
+  .userName {
+    font-size: 18px;
+  }
+  
+  .userPosition {
+    font-size: 16px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .page {
+    padding: 0 60px;
+  }
+  
+  .formGroup {
+    max-width: 800px;
+  }
+  
+  .label {
+    font-size: 20px;
+  }
+  
+  .input,
+  .select,
+  .textarea {
+    font-size: 20px;
+    padding: 20px;
+  }
+  
+  .textarea {
+    min-height: 140px;
+  }
+  
+  .balanceInfo {
+    max-width: 700px;
+    padding: 25px;
+  }
+  
+  .balanceInfo p {
+    font-size: 20px;
+  }
+  
+  .submitButton {
+    max-width: 700px;
+    font-size: 20px;
+    padding: 20px;
+  }
+  
+  .userName {
+    font-size: 20px;
+  }
+  
+  .userPosition {
+    font-size: 18px;
+  }
+  
+  .messageHintText {
+    font-size: 16px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .page {
+    padding: 0 80px;
+  }
+  
+  .formGroup {
+    max-width: 900px;
+  }
+  
+  .label {
+    font-size: 22px;
+  }
+  
+  .input,
+  .select,
+  .textarea {
+    font-size: 22px;
+    padding: 22px;
+  }
+  
+  .textarea {
+    min-height: 160px;
+  }
+  
+  .balanceInfo {
+    max-width: 800px;
+    padding: 30px;
+  }
+  
+  .balanceInfo p {
+    font-size: 22px;
+  }
+  
+  .submitButton {
+    max-width: 800px;
+    font-size: 22px;
+    padding: 22px;
+  }
+  
+  .userName {
+    font-size: 22px;
+  }
+  
+  .userPosition {
+    font-size: 20px;
+  }
+  
+  .messageHintText {
+    font-size: 18px;
+  }
+}
+
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
 button:focus,

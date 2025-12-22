@@ -5,7 +5,6 @@ import crud, schemas, models
 from database import get_db
 from dependencies import get_current_user
 
-# --- ИСПРАВЛЕНИЕ: Убрана дублирующаяся строка ---
 router = APIRouter(prefix="/roulette", tags=["roulette"])
 
 @router.post("/assemble", response_model=schemas.UserResponse)

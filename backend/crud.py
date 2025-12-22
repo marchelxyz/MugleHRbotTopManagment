@@ -1,4 +1,3 @@
-# backend/crud.py 
 import io
 import zipfile
 import json
@@ -30,6 +29,54 @@ from sqlalchemy import text
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
+
+# --- УТИЛИТЫ ДЛЯ РАБОТЫ С ПАРОЛЯМИ ---
+def _get_password_context():
+    """Создает и возвращает контекст для работы с паролями."""
+    from passlib.context import CryptContext
+    return CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password: str) -> str:
+    """
+    Создает хеш пароля с обрезкой до 72 байт (ограничение bcrypt).
+    
+    Args:
+        password: Пароль для хеширования
+        
+    Returns:
+        Хеш пароля
+    """
+    # Bcrypt имеет ограничение на длину пароля в 72 байта
+    # Обрезаем пароль до 72 байт перед хешированием
+    if isinstance(password, str):
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
+    
+    pwd_context = _get_password_context()
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Проверяет пароль с обрезкой до 72 байт (ограничение bcrypt).
+    
+    Args:
+        plain_password: Пароль в открытом виде
+        hashed_password: Хеш пароля для проверки
+        
+    Returns:
+        True если пароль верный, False в противном случае
+    """
+    # Обрезаем пароль до 72 байт перед проверкой
+    if isinstance(plain_password, str):
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            plain_password = password_bytes.decode('utf-8', errors='ignore')
+    
+    pwd_context = _get_password_context()
+    return pwd_context.verify(plain_password, hashed_password)
 
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
@@ -65,15 +112,23 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     return user
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
-    user_telegram_id = int(user.telegram_id)
+    # Для веб-формата telegram_id может быть None
+    user_telegram_id = None
+    is_admin = False
     
-    # Проверяем, что telegram_id не отрицательный (зарезервировано для анонимизированных пользователей)
-    if user_telegram_id < 0:
-        raise ValueError("telegram_id не может быть отрицательным (зарезервировано для анонимизированных пользователей)")
-    
-    admin_ids_str = settings.TELEGRAM_ADMIN_IDS
-    admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
-    is_admin = user_telegram_id in admin_ids
+    if user.telegram_id:
+        try:
+            user_telegram_id = int(user.telegram_id)
+            # Проверяем, что telegram_id не отрицательный (зарезервировано для анонимизированных пользователей)
+            if user_telegram_id < 0:
+                raise ValueError("telegram_id не может быть отрицательным (зарезервировано для анонимизированных пользователей)")
+            
+            admin_ids_str = settings.TELEGRAM_ADMIN_IDS
+            admin_ids = [int(id.strip()) for id in admin_ids_str.split(',')]
+            is_admin = user_telegram_id in admin_ids
+        except (ValueError, TypeError):
+            # Если telegram_id не число или None, оставляем его как None
+            user_telegram_id = None
     
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():
@@ -97,34 +152,36 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     await db.commit()
     await db.refresh(db_user)
     
+    # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
     try:
-        user_info = (
-            f"Новая заявка на регистрацию:\n\n"
-            f"👤 Имя: {db_user.first_name or ''} {db_user.last_name or ''}\n"
-            f"🏢 Подразделение: {db_user.department or ''}\n"
-            f"💼 Должность: {db_user.position or ''}\n"
-            f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
-            f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
-            f"🆔 Telegram ID: {db_user.telegram_id}"
-        )
+        if settings.TELEGRAM_CHAT_ID:
+            user_info = (
+                f"Новая заявка на регистрацию:\n\n"
+                f"👤 Имя: {db_user.first_name or ''} {db_user.last_name or ''}\n"
+                f"🏢 Подразделение: {db_user.department or ''}\n"
+                f"💼 Должность: {db_user.position or ''}\n"
+                f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
+                f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
+                f"🆔 Telegram ID: {db_user.telegram_id or 'не указан (веб-регистрация)'}"
+            )
 
-        # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
-        keyboard = {
-            "inline_keyboard": [
-                [
-                    {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
-                    {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
+            # --- ИСПРАВЛЕННАЯ СТРУКТУРА КНОПОК ---
+            keyboard = {
+                "inline_keyboard": [
+                    [
+                        {"text": "✅ Принять", "callback_data": f"approve_{db_user.id}"},
+                        {"text": "❌ Отказать", "callback_data": f"reject_{db_user.id}"}
+                    ]
                 ]
-            ]
-        }
-        
-        await send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID,
-            text=user_info,
-            reply_markup=keyboard,
-            message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
-            parse_mode=None
-        )
+            }
+            
+            await send_telegram_message(
+                chat_id=settings.TELEGRAM_CHAT_ID,
+                text=user_info,
+                reply_markup=keyboard,
+                message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
+                parse_mode=None
+            )
     except Exception as e:
         print(f"FAILED to send admin notification. Error: {e}")
     
@@ -225,6 +282,10 @@ async def get_feed(db: AsyncSession):
         select(models.Transaction)
         .join(Sender, models.Transaction.sender_id == Sender.id)
         .join(Receiver, models.Transaction.receiver_id == Receiver.id)
+        .options(
+            selectinload(models.Transaction.sender),
+            selectinload(models.Transaction.receiver)
+        )
         .order_by(models.Transaction.timestamp.desc())
     )
     result = await db.execute(stmt)
@@ -241,6 +302,10 @@ async def get_user_transactions(db: AsyncSession, user_id: int):
         select(models.Transaction)
         .join(Sender, models.Transaction.sender_id == Sender.id)
         .join(Receiver, models.Transaction.receiver_id == Receiver.id)
+        .options(
+            selectinload(models.Transaction.sender),
+            selectinload(models.Transaction.receiver)
+        )
         .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
         .order_by(models.Transaction.timestamp.desc())
     )
@@ -399,6 +464,14 @@ async def get_active_items(db: AsyncSession):
             # Считаем только НЕвыданные коды
             available_codes = sum(1 for code in item.codes if not code.is_issued)
             item.stock = available_codes
+        elif item.is_local_purchase:
+            # Для локальных покупок остаток берем из базы данных (они не используют коды)
+            # Если остаток не установлен или равен 0, устанавливаем его в большое значение
+            # чтобы товар всегда был доступен для покупки
+            # Но если остаток установлен и больше 0, используем его
+            if item.stock is None or item.stock <= 0:
+                item.stock = 999999  # Неограниченный остаток для локальных покупок по умолчанию
+            # Иначе используем значение из базы данных
             
     return items
     
@@ -458,13 +531,18 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     # Проверяем, что товар не является совместным подарком
     if item.is_shared_gift:
         raise ValueError("Для совместных подарков используйте специальный API")
+    
+    # Проверяем, что товар не является локальным подарком
+    if item.is_local_purchase:
+        raise ValueError("Для локальных покупок используйте специальный API")
 
     if item.is_auto_issuance:
+        # Используем with_for_update(skip_locked=True) для предотвращения блокировок
         stmt = (
             select(models.ItemCode)
             .where(models.ItemCode.market_item_id == item.id, models.ItemCode.is_issued == False)
             .limit(1)
-            .with_for_update()
+            .with_for_update(skip_locked=True)
         )
         result = await db.execute(stmt)
         code_to_issue = result.scalars().first()
@@ -486,22 +564,39 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         await db.flush()
         code_to_issue.purchase_id = db_purchase.id
 
+    # Сохраняем данные перед отправкой уведомлений
+    await db.commit()
+    
+    # Сохраняем данные для уведомлений перед отправкой
+    item_name = item.name
+    user_telegram_id = user.telegram_id
+    user_first_name = user.first_name
+    user_username = user.username
+    user_position = user.position
+    user_phone_number = user.phone_number
+    user_balance = user.balance
+    item_price = item.price
+
     # --- ФИНАЛЬНАЯ ВЕРСИЯ УВЕДОМЛЕНИЙ ---
+    # Отправляем уведомления ПОСЛЕ commit, чтобы не блокировать транзакцию
     try:
-        # Уведомление для администратора (без изменений)
+        # Уведомление для администратора
         admin_message = (
             f"🛍️ <b>Новая покупка в магазине!</b>\n\n"
-            f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} (@{escape_html(user.username or str(user.telegram_id))})\n"
-            f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n\n"
-            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
-            f"💰 <b>Стоимость:</b> {item.price} спасибок"
+            f"👤 <b>Пользователь:</b> {escape_html(user_first_name or '')} (@{escape_html(user_username or str(user_telegram_id))})\n"
+            f"📞 <b>Телефон:</b> {escape_html(user_phone_number or 'не указан')}\n"
+        )
+        admin_message += (
+            f"💼 <b>Должность:</b> {escape_html(user_position or '')}\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item_name)}\n"
+            f"💰 <b>Стоимость:</b> {item_price} спасибок"
         )
         if issued_code_value:
             admin_message += (
                 f"\n\n✨ <b>Товар с автовыдачей</b>\n"
                 f"🔑 <b>Выданный код:</b> <code>{escape_html(issued_code_value)}</code>"
             )
-        admin_message += f"\n\n📉 <b>Новый баланс пользователя:</b> {user.balance} спасибок"
+        admin_message += f"\n\n📉 <b>Новый баланс пользователя:</b> {user_balance} спасибок"
         
         await send_telegram_message(
             chat_id=settings.TELEGRAM_CHAT_ID,
@@ -510,19 +605,187 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
         )
 
         # Уведомление для пользователя (теперь для всех покупок)
-        user_message = f"🎉 Поздравляем с покупкой \"{escape_html(item.name)}\"!"
+        user_message = f"🎉 Поздравляем с покупкой \"{escape_html(item_name)}\"!"
         if issued_code_value:
             # Для товаров с кодом добавляем сам код
             user_message += f"\n\nВаш уникальный код/ссылка:\n<code>{escape_html(issued_code_value)}</code>"
         
-        await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+        await send_telegram_message(chat_id=user_telegram_id, text=user_message)
 
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
+    
+    return {"new_balance": user.balance, "issued_code": issued_code_value}
+
+async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
+    """Создает локальный подарок с резервированием спасибок"""
+    item = await db.get(models.MarketItem, pr.item_id)
+    result = await db.execute(
+        select(models.User).where(models.User.telegram_id == pr.user_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not item or not user:
+        raise ValueError("Товар или пользователь не найдены")
+    
+    if not item.is_local_purchase:
+        raise ValueError("Этот товар не является локальным подарком")
+    
+    # Проверяем доступный баланс (баланс - зарезервированные средства)
+    available_balance = user.balance - (user.reserved_balance or 0)
+    if available_balance < item.price:
+        raise ValueError("Недостаточно средств")
+    
+    # Резервируем спасибки
+    if user.reserved_balance is None:
+        user.reserved_balance = 0
+    user.reserved_balance += item.price
+    
+    # Создаем запись о покупке
+    db_purchase = models.Purchase(user_id=user.id, item_id=pr.item_id)
+    db.add(db_purchase)
+    await db.flush()  # Получаем ID покупки
+    
+    # Создаем запись о локальном подарке
+    local_purchase = models.LocalGift(
+        user_id=user.id,
+        item_id=pr.item_id,
+        purchase_id=db_purchase.id,
+        city=pr.city,
+        website_url=pr.website_url,
+        status='pending',
+        reserved_amount=item.price
+    )
+    db.add(local_purchase)
+    await db.flush()
+    
+    # Отправляем уведомление администраторам
+    try:
+        admin_message = (
+            f"🛍️ <b>Новый локальный подарок!</b>\n\n"
+            f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
+            f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
+            f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
+        )
+        admin_message += (
+            f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
+            f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Стоимость:</b> {item.price} спасибок\n"
+            f"🏙️ <b>Город:</b> {escape_html(pr.city)}\n"
+            f"🔗 <b>Ссылка:</b> {escape_html(pr.website_url)}\n\n"
+            f"📉 <b>Баланс пользователя:</b> {user.balance} спасибок\n"
+            f"🔒 <b>Зарезервировано:</b> {user.reserved_balance} спасибок"
+        )
+        
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {
+                        "text": "✅ Принять",
+                        "callback_data": f"approve_local_purchase_{local_purchase.id}"
+                    },
+                    {
+                        "text": "❌ Отказать",
+                        "callback_data": f"reject_local_purchase_{local_purchase.id}"
+                    }
+                ]
+            ]
+        }
+        
+        await send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=admin_message,
+            reply_markup=reply_markup,
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+        )
+    except Exception as e:
+        print(f"Could not send admin notification. Error: {e}")
+    
+    # Отправляем уведомление пользователю
+    try:
+        user_message = (
+            f"🛍️ <b>Ваша заявка на локальный подарок принята!</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"🏙️ <b>Город:</b> {escape_html(pr.city)}\n"
+            f"🔗 <b>Ссылка:</b> {escape_html(pr.website_url)}\n\n"
+            f"💰 <b>Зарезервировано:</b> {item.price} спасибок\n\n"
+            f"⏳ Ожидайте решения администратора"
+        )
+        
+        if user.telegram_id and user.telegram_id >= 0:
+            await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
 
     await db.commit()
     
-    return {"new_balance": user.balance, "issued_code": issued_code_value}
+    return {
+        "new_balance": user.balance,
+        "reserved_balance": user.reserved_balance,
+        "local_purchase_id": local_purchase.id
+    }
+
+async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, action: str):
+    """Обрабатывает принятие или отказ в локальном подарке"""
+    local_purchase = await db.get(models.LocalGift, local_purchase_id)
+    if not local_purchase:
+        raise ValueError("Локальный подарок не найден")
+    
+    if local_purchase.status != 'pending':
+        return None  # Уже обработано
+    
+    user = await db.get(models.User, local_purchase.user_id)
+    item = await db.get(models.MarketItem, local_purchase.item_id)
+    
+    if not user or not item:
+        raise ValueError("Пользователь или товар не найдены")
+    
+    if action == 'approve':
+        # Списываем зарезервированные спасибки
+        if user.reserved_balance is None:
+            user.reserved_balance = 0
+        user.reserved_balance -= local_purchase.reserved_amount
+        user.balance -= local_purchase.reserved_amount
+        local_purchase.status = 'approved'
+        
+        # Уведомление пользователю
+        user_message = (
+            f"✅ <b>Ваш локальный подарок одобрен!</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Списано:</b> {local_purchase.reserved_amount} спасибок\n\n"
+            f"📉 <b>Ваш баланс:</b> {user.balance} спасибок"
+        )
+        
+    elif action == 'reject':
+        # Возвращаем зарезервированные спасибки (не списываем баланс)
+        if user.reserved_balance is None:
+            user.reserved_balance = 0
+        user.reserved_balance -= local_purchase.reserved_amount
+        local_purchase.status = 'rejected'
+        
+        # Уведомление пользователю
+        user_message = (
+            f"❌ <b>Ваш локальный подарок отклонен</b>\n\n"
+            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"💰 <b>Возвращено:</b> {local_purchase.reserved_amount} спасибок\n\n"
+            f"📉 <b>Ваш баланс:</b> {user.balance} спасибок\n"
+            f"🔒 <b>Зарезервировано:</b> {user.reserved_balance} спасибок"
+        )
+    else:
+        raise ValueError("Неверное действие")
+    
+    local_purchase.updated_at = datetime.utcnow()
+    await db.commit()
+    
+    # Отправляем уведомление пользователю
+    try:
+        if user.telegram_id and user.telegram_id >= 0:
+            await send_telegram_message(chat_id=user.telegram_id, text=user_message)
+    except Exception as e:
+        print(f"Could not send user notification. Error: {e}")
+    
+    return {"status": local_purchase.status, "user_balance": user.balance, "reserved_balance": user.reserved_balance}
     
 # Админ
 async def add_points_to_all_users(db: AsyncSession, amount: int):
@@ -626,14 +889,78 @@ async def process_birthday_bonuses(db: AsyncSession):
     return len(users)
 
 # --- ДОБАВЬТЕ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
+async def _ensure_unique_login(db: AsyncSession, base_login: str, exclude_user_id: int) -> str:
+    """
+    Проверяет уникальность логина и добавляет суффикс, если логин уже занят.
+    """
+    login = base_login
+    counter = 1
+    
+    while True:
+        result = await db.execute(
+            select(models.User).where(
+                models.User.login == login,
+                models.User.id != exclude_user_id
+            )
+        )
+        existing_user = result.scalar_one_or_none()
+        
+        if not existing_user:
+            return login
+        
+        # Если логин занят, добавляем суффикс
+        login = f"{base_login}{counter}"
+        counter += 1
+
 async def update_user_status(db: AsyncSession, user_id: int, status: str):
-    """Обновляет статус пользователя."""
+    """
+    Обновляет статус пользователя.
+    При одобрении веб-пользователей автоматически генерирует логин и пароль.
+    """
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
-    if user:
-        user.status = status
-        await db.commit()
-        await db.refresh(user)
+    if not user:
+        return None
+    
+    generated_login = None
+    generated_password = None
+    
+    # Если статус меняется на 'approved' и это веб-пользователь (нет telegram_id или telegram_id < 0)
+    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0):
+        # Генерируем логин, если его еще нет
+        login_was_generated = False
+        if not user.login:
+            base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+            generated_login = await _ensure_unique_login(db, base_login, user.id)
+            user.login = generated_login
+            login_was_generated = True
+        
+        # Генерируем пароль, если его еще нет
+        password_was_generated = False
+        if not user.password_hash:
+            generated_password = generate_random_password(12)
+            user.password_hash = get_password_hash(generated_password)
+            password_was_generated = True
+        
+        # Включаем возможность входа через браузер
+        user.browser_auth_enabled = True
+        
+        # Сохраняем флаги генерации для возврата в ответе
+        user._login_was_generated = login_was_generated
+        user._password_was_generated = password_was_generated
+    
+    user.status = status
+    await db.commit()
+    await db.refresh(user)
+    
+    # Если были сгенерированы новые учетные данные, сохраняем их в объекте пользователя
+    # для возврата в ответе (временное поле, не сохраняется в БД)
+    if hasattr(user, '_login_was_generated') or hasattr(user, '_password_was_generated'):
+        if hasattr(user, '_login_was_generated') and user._login_was_generated:
+            user._generated_login = user.login
+        if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
+            user._generated_password = generated_password
+    
     return user
 
 # --- ИЗМЕНЕНИЕ: Новая, простая формула расчета цены ---
@@ -677,7 +1004,8 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
         image_url=item.image_url,
         original_price=item.original_price,
         is_auto_issuance=item.is_auto_issuance,
-        is_shared_gift=item.is_shared_gift
+        is_shared_gift=item.is_shared_gift,
+        is_local_purchase=item.is_local_purchase
     )
     
     # Сначала добавляем основной товар в сессию, чтобы он получил ID
@@ -785,6 +1113,7 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
         raise # Пробрасываем ошибку дальше, чтобы роутер ее поймал
 
     # Перечитываем объект из базы с кодами для корректного ответа
+    # Используем новую сессию для чтения, чтобы не блокировать транзакцию
     print(f"--- [UPDATE ITEM {item_id}] Перечитываем товар из БД с кодами... ---") # <-- Лог 8
     result = await db.execute(
         select(models.MarketItem)
@@ -1272,10 +1601,6 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
                 setattr(user, key, None)
         elif key == 'password' and new_value:
             # Хешируем пароль перед сохранением
-            from passlib.context import CryptContext
-            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-            def get_password_hash(password: str) -> str:
-                return pwd_context.hash(password)
             user.password_hash = get_password_hash(new_value)
             # Не сохраняем сам пароль в поле password (его там нет в модели)
         elif key == 'login':
@@ -1407,15 +1732,6 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     Устанавливает логин и пароль для пользователя.
     Включает browser_auth_enabled для возможности входа через браузер.
     """
-    from passlib.context import CryptContext
-    
-    # Контекст для хеширования паролей
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
-    def get_password_hash(password: str) -> str:
-        """Создает хеш пароля."""
-        return pwd_context.hash(password)
-    
     # Получаем пользователя
     user = await get_user(db, user_id)
     if not user:
@@ -1450,6 +1766,39 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     await db.refresh(user)
     
     return user
+
+# --- ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЛОГИНА И ПАРОЛЯ ---
+async def verify_user_credentials(db: AsyncSession, login: str, password: str):
+    """
+    Проверяет логин и пароль пользователя.
+    Возвращает пользователя, если учетные данные верны, иначе None.
+    """
+    # Ищем пользователя по логину
+    result = await db.execute(
+        select(models.User).where(
+            models.User.login == login,
+            models.User.browser_auth_enabled == True
+        )
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return None
+    
+    # Проверяем пароль
+    if not user.password_hash:
+        return None
+    
+    if not verify_password(password, user.password_hash):
+        return None
+    
+    # Обновляем время последнего входа
+    user.last_login_date = datetime.utcnow()
+    await db.commit()
+    await db.refresh(user)
+    
+    return user
+
 
 # --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ ЛОГИНА НА ОСНОВЕ ИМЕНИ И ФАМИЛИИ ---
 def generate_login_from_name(first_name: Optional[str], last_name: Optional[str], user_id: int) -> str:
@@ -1531,15 +1880,6 @@ async def bulk_send_credentials(
     Returns:
         dict со статистикой: total_users, credentials_generated, messages_sent, failed_users
     """
-    from passlib.context import CryptContext
-    
-    # Контекст для хеширования паролей
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    
-    def get_password_hash(password: str) -> str:
-        """Создает хеш пароля."""
-        return pwd_context.hash(password)
-    
     # Формируем условия для выборки пользователей
     status_conditions = []
     if include_active:
@@ -2239,6 +2579,28 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
             formatted_phone,
             bonus_amount,
         )
+        
+        # Отправляем уведомление администраторам
+        try:
+            admin_message = (
+                f"🎁 <b>Покупка бонусов Statix!</b>\n\n"
+                f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} (@{escape_html(user.username or str(user.telegram_id))})\n"
+                f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
+            )
+            admin_message += (
+                f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n\n"
+                f"💰 <b>Куплено бонусов:</b> {bonus_amount}\n"
+                f"💸 <b>Потрачено спасибок:</b> {thanks_cost}\n"
+                f"📉 <b>Новый баланс:</b> {user.balance} спасибок"
+            )
+            
+            await send_telegram_message(
+                chat_id=settings.TELEGRAM_CHAT_ID,
+                text=admin_message,
+                message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+            )
+        except Exception as e:
+            print(f"Could not send admin notification for Statix purchase. Error: {e}")
     
     return {
         "new_balance": user.balance,
@@ -2505,8 +2867,14 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         admin_message = (
             f"🎁 <b>Совместная покупка в магазине!</b>\n\n"
             f"👤 <b>Покупатель:</b> {escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')} (@{escape_html(buyer.username or str(buyer.telegram_id))})\n"
-            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n\n"
-            f"🎁 <b>Товар:</b> {escape_html(item.name)}\n"
+            f"📞 <b>Телефон покупателя:</b> {escape_html(buyer.phone_number or 'не указан')}\n"
+        )
+        admin_message += (
+            f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n"
+            f"📞 <b>Телефон приглашенного:</b> {escape_html(invitation.invited_user.phone_number or 'не указан')}\n"
+        )
+        admin_message += (
+            f"\n🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Стоимость:</b> {item.price} спасибок (оплачено покупателем)\n\n"
             f"📉 <b>Баланс покупателя:</b> {buyer.balance} спасибок"
         )
