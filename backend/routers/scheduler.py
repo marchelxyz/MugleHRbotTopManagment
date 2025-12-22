@@ -14,7 +14,25 @@ async def run_daily_tasks(db: AsyncSession = Depends(get_db)):
     birthdays_processed = await crud.process_birthday_bonuses(db)
     await crud.reset_tickets(db)
     await crud.reset_daily_transfer_limits(db)
-    return {"status": "ok", "birthdays_processed": birthdays_processed}
+    # Проверяем и отправляем отложенные учетные данные
+    credentials_result = await crud.send_pending_credentials_emails(db)
+    return {
+        "status": "ok",
+        "birthdays_processed": birthdays_processed,
+        "pending_credentials": credentials_result
+    }
+
+@router.post("/scheduler/send-pending-credentials", dependencies=[Depends(verify_cron_secret)])
+async def send_pending_credentials(db: AsyncSession = Depends(get_db)):
+    """
+    Проверяет и отправляет отложенные учетные данные пользователям, чьи email были подтверждены.
+    Можно вызывать отдельно или как часть ежедневных задач.
+    """
+    try:
+        result = await crud.send_pending_credentials_emails(db)
+        return {"status": "ok", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error sending pending credentials: {str(e)}")
 
 @router.post("/run-monthly-tasks")
 async def run_monthly_tasks(

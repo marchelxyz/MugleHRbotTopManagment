@@ -681,5 +681,62 @@ Email: {user_email}
         return await self.send_email(self.admin_email, subject, body, body_html)
 
 
+    async def check_email_status(
+        self,
+        email: str,
+        list_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Проверяет статус email в базе Unisender (подтвержден ли email).
+        
+        Примечание: Unisender может не предоставлять прямой API для проверки статуса.
+        Этот метод можно использовать для попытки отправки тестового письма или проверки через другие методы.
+        
+        Args:
+            email: Email адрес для проверки
+            list_id: ID списка рассылки
+        
+        Returns:
+            Результат проверки с полями:
+            - success: bool - успешность проверки
+            - is_confirmed: bool - подтвержден ли email (если удалось определить)
+            - error: str - описание ошибки (при неудаче)
+        """
+        # Unisender не предоставляет прямой API для проверки статуса подтверждения email
+        # Вместо этого можно попробовать отправить тестовое письмо минимального размера
+        # или использовать другие методы проверки
+        
+        # Для проверки статуса можно попробовать отправить очень короткое тестовое письмо
+        # Если получим ошибку о неподтвержденном email - значит не подтвержден
+        # Если письмо отправится - значит подтвержден
+        
+        logger.info(f"Проверка статуса email {email} в Unisender")
+        
+        # Пробуем отправить минимальное тестовое письмо для проверки статуса
+        test_result = await self.send_email(
+            email=email,
+            subject="Test",
+            body="Test"
+        )
+        
+        if test_result.get("success"):
+            return {"success": True, "is_confirmed": True}
+        else:
+            error_msg = test_result.get("error", "")
+            error_codes = test_result.get("error_codes", [])
+            is_unconfirmed = (
+                "invalid_arg" in error_codes or
+                "free plan" in error_msg.lower() or
+                "confirmed emails" in error_msg.lower() or
+                "own confirmed emails" in error_msg.lower()
+            )
+            
+            if is_unconfirmed:
+                return {"success": True, "is_confirmed": False, "error": error_msg}
+            else:
+                # Другая ошибка - не можем определить статус
+                return {"success": False, "is_confirmed": None, "error": error_msg}
+
+
 # Глобальный экземпляр клиента
 unisender_client = UnisenderClient()

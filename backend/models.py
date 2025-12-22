@@ -39,6 +39,12 @@ class User(Base):
     password_hash = Column(String(255), nullable=True) # Хеш пароля для входа в браузере (может быть NULL)
     browser_auth_enabled = Column(Boolean, default=False, nullable=False) # Флаг, что пользователь может входить через браузер
 
+    # Поля для отложенной отправки учетных данных по email
+    pending_credentials_email = Column(Boolean, default=False, nullable=False) # Флаг, что учетные данные ожидают отправки по email
+    credentials_email_sent_at = Column(DateTime, nullable=True) # Время последней попытки отправки учетных данных
+    credentials_email_attempts = Column(Integer, default=0, nullable=False) # Количество попыток отправки
+    pending_password_plain = Column(String(255), nullable=True) # Временное хранение пароля в открытом виде до отправки (очищается после отправки)
+
     has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
     has_interacted_with_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
     sent_transactions = relationship(
