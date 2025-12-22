@@ -12,8 +12,7 @@
 }
 
 .header {
-  /* Плавное масштабирование высоты */
-  height: clamp(200px, 20vw, 350px);
+  height: 250px;
   background-image: url('https://i.postimg.cc/7PFGNvRb/Gemini-Generated-Image-8bd3bh8bd3bh8bd3.webp');
   background-size: cover;
   background-position: center;
@@ -24,18 +23,16 @@
   right: 0;
   z-index: 1;
   box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
-  transition: height 0.3s ease;
 }
 
 .contentArea {
   background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
-  border-top-left-radius: clamp(16px, 2vw, 24px);
-  border-top-right-radius: clamp(16px, 2vw, 24px);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
   position: relative;
   z-index: 2;
-  margin-top: clamp(-16px, -2vw, -24px);
-  padding-top: clamp(24px, 3vw, 40px);
-  transition: border-radius 0.3s ease, margin-top 0.3s ease, padding-top 0.3s ease;
+  margin-top: -20px;
+  padding-top: 30px;
 }
 
 .userBlock {
@@ -46,29 +43,43 @@
   position: relative;
 }
 
-/* Адаптация блока пользователя для больших экранов - плавное масштабирование */
+/* Адаптация блока пользователя для больших экранов */
 @media (min-width: 1025px) {
   .userBlock {
-    padding: 0 clamp(30px, 3vw, 80px);
-    transition: padding 0.3s ease;
+    padding: 0 40px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .userBlock {
+    padding: 0 50px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .userBlock {
+    padding: 0 60px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .userBlock {
+    padding: 0 80px;
   }
 }
 
 .userAvatar {
-  /* Плавное масштабирование аватара */
-  width: clamp(56px, 5vw, 96px);
-  height: clamp(56px, 5vw, 96px);
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   object-fit: cover;
-  transition: width 0.3s ease, height 0.3s ease;
 }
 
 .userName {
   font-family: 'Arial', sans-serif;
-  /* Плавное масштабирование размера шрифта */
-  font-size: clamp(16px, 1.5vw, 24px);
+  font-size: 18px;
   color: #1565C0; /* Зимний темно-синий */
-  margin-left: clamp(12px, 1.5vw, 24px);
+  margin-left: 16px;
   flex-grow: 1;
    /* 1. Запрещаем имени переноситься на новую строку */
   white-space: nowrap;
@@ -83,8 +94,6 @@
   
   /* 4. То же самое для поддержки Safari (webkit) */
   -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
-
-  transition: font-size 0.3s ease, margin-left 0.3s ease;
 
   /* Примечание: так как .userName является flex-item, 
     этих свойств достаточно, чтобы он не "выталкивал" 
@@ -101,17 +110,15 @@
 }
 
 .banner {
-  padding: 0 clamp(20px, 2.5vw, 40px);
-  margin-bottom: clamp(24px, 3vw, 40px);
-  transition: padding 0.3s ease, margin-bottom 0.3s ease;
+  padding: 0 26px;
+  margin-bottom: 30px;
 }
 
 .sliderContainer {
-  margin: 0 clamp(20px, 2.5vw, 40px) clamp(24px, 3vw, 40px) clamp(20px, 2.5vw, 40px);
+  margin: 0 26px 30px 26px;
   overflow: hidden; /* Прячем все слайды, кроме одного */
   position: relative;
-  border-radius: clamp(16px, 2vw, 24px);
-  transition: margin 0.3s ease, border-radius 0.3s ease;
+  border-radius: 20px;
 }
 
 /* Адаптация слайдера для больших экранов */
@@ -279,11 +286,28 @@
   overflow: hidden;
 }
 
-/* Адаптация секции ленты для больших экранов - плавное масштабирование */
+/* Адаптация секции ленты для больших экранов */
 @media (min-width: 1025px) {
   .feedSection {
-    padding: clamp(30px, 3vw, 80px) clamp(30px, 3vw, 80px) clamp(25px, 2.5vw, 60px) clamp(30px, 3vw, 80px);
-    transition: padding 0.3s ease;
+    padding: 40px 40px 30px 40px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .feedSection {
+    padding: 50px 50px 40px 50px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .feedSection {
+    padding: 60px 60px 50px 60px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .feedSection {
+    padding: 80px 80px 60px 80px;
   }
 }
 
@@ -291,19 +315,15 @@
   color: #1976D2; /* Зимний синий */
   font-family: 'Arial', sans-serif;
   font-weight: bold;
-  /* Плавное масштабирование размера шрифта */
-  font-size: clamp(17px, 1.6vw, 28px);
-  margin: 0 0 clamp(20px, 2vw, 32px) clamp(4px, 0.5vw, 8px);
-  transition: font-size 0.3s ease, margin 0.3s ease;
+  font-size: 19px;
+  margin: 0 0 24px 5px;
 }
 
 .feedGrid {
   display: grid; /* Используем grid layout */
   grid-template-columns: 1fr; /* По умолчанию одна колонка для мобильных */
-  /* Плавное масштабирование gap */
-  gap: clamp(12px, 1.5vw, 25px);
+  gap: 15px;
   position: relative;
-  transition: gap 0.3s ease;
 }
 
 .dateHeader {
@@ -325,25 +345,21 @@
 .feedItem {
   width: 100%;
   background-color: #FFFFFF;
-  border-radius: clamp(16px, 2vw, 24px);
+  border-radius: 20px;
   box-shadow: 0px 4px 27px rgba(0, 0, 0, 0.2);
-  /* Плавное масштабирование padding */
-  padding: clamp(12px, 1.5vw, 25px);
+  padding: 15px;
   display: flex;
   align-items: center;
   box-sizing: border-box;
   position: relative;
-  padding-bottom: clamp(20px, 2vw, 30px);
-  transition: padding 0.3s ease, border-radius 0.3s ease;
+  padding-bottom: 25px;
 }
 
 .feedItemLogo {
-  /* Плавное масштабирование логотипа */
-  width: clamp(50px, 5vw, 80px);
-  height: clamp(50px, 5vw, 80px);
-  margin-right: clamp(12px, 1.5vw, 20px);
+  width: 60px;
+  height: 60px;
+  margin-right: 15px;
   flex-shrink: 0;
-  transition: width 0.3s ease, height 0.3s ease, margin-right 0.3s ease;
 }
 
 .feedItemContent {
@@ -353,13 +369,11 @@
 }
 
 .feedTransaction {
-  /* Плавное масштабирование размера шрифта */
-  font-size: clamp(13px, 1.2vw, 18px);
+  font-size: 14px;
   color: #1976D2; /* Зимний синий */
   margin: 0;
   white-space: normal;
   word-break: break-word;
-  transition: font-size 0.3s ease;
 }
 
 .arrow {
@@ -367,22 +381,19 @@
 }
 
 .feedMessage {
-  /* Плавное масштабирование размера шрифта */
-  font-size: clamp(11px, 1vw, 16px);
+  font-size: 12px;
   color: #6E7A85;
-  margin-top: clamp(4px, 0.5vw, 8px);
+  margin-top: 6px;
   white-space: normal;
   word-break: break-word;
-  transition: font-size 0.3s ease, margin-top 0.3s ease;
 }
 
 .feedTimestamp {
   position: absolute;
-  bottom: clamp(6px, 0.8vw, 12px);
-  right: clamp(10px, 1.2vw, 16px);
-  font-size: clamp(0.7rem, 0.9vw, 1rem);
+  bottom: 8px;
+  right: 12px;
+  font-size: 0.8rem;
   color: #6E7A85;
-  transition: font-size 0.3s ease, bottom 0.3s ease, right 0.3s ease;
 }
 
 /* --- СТИЛИ ДЛЯ ПЛАНШЕТОВ И ПК --- */
@@ -403,11 +414,11 @@
   }
 }
 
-/* --- СТИЛИ ДЛЯ ПК - ПЛАВНОЕ МАСШТАБИРОВАНИЕ --- */
+/* --- СТИЛИ ДЛЯ ПК --- */
 @media (min-width: 1025px) {
   .feedGrid {
-    /* Плавное изменение количества колонок: от 2 до 4 */
-    grid-template-columns: repeat(auto-fit, minmax(clamp(300px, 30vw, 500px), 1fr));
+    /* Делаем две колонки для ПК */
+    grid-template-columns: 1fr 1fr; 
   }
 
   .dateHeader {
@@ -415,52 +426,88 @@
     grid-column: 1 / -1; 
   }
 
-  /* Плавное увеличение отступов в контентной зоне на ПК */
+  /* Увеличиваем отступы в контентной зоне на ПК */
   .contentArea {
-    padding: clamp(30px, 3vw, 80px);
-    transition: padding 0.3s ease;
+    padding: 40px;
   }
 }
 
-/* Для больших экранов (1440px+) - больше колонок */
+/* Для больших экранов (1440px+) - 3 колонки */
 @media (min-width: 1440px) {
   .feedGrid {
-    grid-template-columns: repeat(auto-fit, minmax(clamp(350px, 25vw, 450px), 1fr));
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .contentArea {
+    padding: 50px;
   }
 }
 
-/* Для ультрашироких экранов (1920px+) */
+/* Для ультрашироких экранов (1920px+) - 4 колонки */
 @media (min-width: 1920px) {
   .feedGrid {
-    grid-template-columns: repeat(auto-fit, minmax(clamp(400px, 22vw, 500px), 1fr));
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .contentArea {
+    padding: 60px;
+  }
+  
+  .feedTitle {
+    font-size: 22px;
   }
   
   .feedItem {
-    padding: clamp(15px, 1.5vw, 25px);
-    transition: padding 0.3s ease;
+    padding: 20px;
   }
   
   .feedTransaction {
-    font-size: clamp(14px, 1.2vw, 18px);
-    transition: font-size 0.3s ease;
+    font-size: 16px;
   }
   
   .feedMessage {
-    font-size: clamp(12px, 1vw, 16px);
-    transition: font-size 0.3s ease;
+    font-size: 14px;
   }
 }
 
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
   .feedGrid {
-    grid-template-columns: repeat(auto-fit, minmax(clamp(450px, 20vw, 600px), 1fr));
-    gap: clamp(20px, 2vw, 35px);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 25px;
+  }
+  
+  .contentArea {
+    padding: 80px;
+  }
+  
+  .userName {
+    font-size: 22px;
+  }
+  
+  .userAvatar {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .feedTitle {
+    font-size: 24px;
+  }
+  
+  .feedItem {
+    padding: 25px;
+  }
+  
+  .feedTransaction {
+    font-size: 18px;
+  }
+  
+  .feedMessage {
+    font-size: 16px;
   }
   
   .feedTimestamp {
-    font-size: clamp(0.8rem, 1vw, 1.2rem);
-    transition: font-size 0.3s ease;
+    font-size: 1rem;
   }
 }
 /* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
