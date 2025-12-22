@@ -31,7 +31,18 @@ class UnisenderClient:
         body_html: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Отправляет email через Unisender API.
+        Отправляет email через Unisender API используя метод sendEmail.
+        
+        Документация: https://www.unisender.com/ru/support/api/messages/sendemail/
+        
+        Примечания:
+        - Сообщения через sendEmail не подвергаются цензуре, но имеют ограничения:
+          * Для новых пользователей: до 1000 писем в сутки
+          * Максимальный размер письма: 1 МБ
+          * Ограничение по вызовам: 60 в минуту
+          * Минимальный интервал между отправкой одному адресату: 60 секунд
+        - На бесплатном тарифе можно отправлять только на подтвержденные email адреса
+        - Для транзакционных писем без ограничений рекомендуется использовать Unisender Go
         
         Args:
             email: Email получателя
@@ -40,7 +51,11 @@ class UnisenderClient:
             body_html: HTML версия письма (опционально)
         
         Returns:
-            Результат отправки от API
+            Результат отправки от API с полями:
+            - success: bool - успешность отправки
+            - email_id: str - ID отправленного письма (при успехе)
+            - error: str - описание ошибки (при неудаче)
+            - error_codes: list - коды ошибок (при использовании error_checking=1)
         """
         if not self.is_configured():
             logger.warning("Unisender не настроен. Пропускаем отправку email.")
@@ -52,6 +67,7 @@ class UnisenderClient:
         
         try:
             # Используем метод sendEmail из Unisender API
+            # Согласно документации: https://www.unisender.com/ru/support/api/messages/sendemail/
             # Unisender использует GET запросы с параметрами в URL или POST с form-data
             params = {
                 "format": "json",
@@ -61,12 +77,19 @@ class UnisenderClient:
                 "sender_email": self.sender_email,
                 "subject": subject,
                 "body": body_html if body_html else body,
+                "error_checking": "1",  # Рекомендуется использовать для получения детальной информации об ошибках
             }
             
-            # Добавляем list_id если указан
+            # Добавляем list_id если указан (обязательный параметр согласно документации)
             list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
             if list_id:
                 params["list_id"] = list_id
+            else:
+                logger.warning(
+                    "UNISENDER_LIST_ID не указан в настройках. "
+                    "Согласно документации Unisender, параметр list_id является обязательным. "
+                    "Отправка может завершиться ошибкой."
+                )
             
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # Согласно документации UniSender, метод sendEmail поддерживает как GET, так и POST
@@ -98,14 +121,54 @@ class UnisenderClient:
                 # Безопасно получаем поле result из ответа
                 result_data = result.get("result")
                 
-                # Проверяем успешность отправки
-                # Согласно документации UniSender, при успехе возвращается {"result": {"email_id": "..."}}
-                if isinstance(result_data, dict) and result_data.get("email_id"):
+                # При использовании error_checking=1 формат ответа меняется:
+                # возвращается массив объектов с полями index, email, id, errors
+                if isinstance(result_data, list) and len(result_data) > 0:
+                    # Новый формат ответа с error_checking=1
+                    email_result = result_data[0]  # Берем первый результат
+                    email_address = email_result.get("email", email)
+                    email_id = email_result.get("id")
+                    errors = email_result.get("errors", [])
+                    
+                    if errors:
+                        # Есть ошибки
+                        error_messages = []
+                        error_codes = []
+                        for err in errors:
+                            error_code = err.get("code", "")
+                            error_message = err.get("message", "")
+                            error_messages.append(f"{error_message} (код: {error_code})" if error_code else error_message)
+                            error_codes.append(error_code)
+                        
+                        error_msg = "; ".join(error_messages)
+                        error_code_str = ", ".join(error_codes) if error_codes else ""
+                        
+                        # Специальная обработка ошибки о неподтвержденном email на бесплатном плане
+                        if "invalid_arg" in error_codes or any("free plan" in msg.lower() for msg in error_messages):
+                            logger.warning(
+                                f"Не удалось отправить email на {email_address}: "
+                                f"на бесплатном плане Unisender можно отправлять письма только на подтвержденные email адреса. "
+                                f"Ошибки: {error_msg}"
+                            )
+                        else:
+                            logger.error(f"Ошибка отправки email на {email_address}: {error_msg}, полный ответ: {result}")
+                        
+                        return {"success": False, "error": error_msg, "error_codes": error_codes}
+                    elif email_id:
+                        # Успешная отправка
+                        logger.info(f"Email успешно отправлен на {email_address}, email_id: {email_id}")
+                        return {"success": True, "email_id": email_id}
+                    else:
+                        # Неожиданный формат
+                        logger.warning(f"Неожиданный формат ответа для email {email_address}: {email_result}")
+                        return {"success": False, "error": "Неожиданный формат ответа от API"}
+                elif isinstance(result_data, dict) and result_data.get("email_id"):
+                    # Старый формат ответа (без error_checking=1 или при успехе)
                     email_id = result_data.get("email_id")
                     logger.info(f"Email успешно отправлен на {email}, email_id: {email_id}")
                     return {"success": True, "email_id": email_id}
                 else:
-                    # Обрабатываем ошибки API
+                    # Обрабатываем ошибки API в старом формате
                     error = result.get("error", "Неизвестная ошибка")
                     error_code = result.get("code", "")
                     
