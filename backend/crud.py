@@ -144,18 +144,26 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     existing_user_by_email = None
     if user.email and user.email.strip():
         existing_user_by_email = await get_user_by_email(db, user.email)
-        # Если нашли существующий аккаунт с таким email и он не имеет telegram_id
-        if existing_user_by_email and not existing_user_by_email.telegram_id and user_telegram_id:
-            # Связываем Telegram ID с существующим аккаунтом
-            existing_user_by_email.telegram_id = user_telegram_id
-            existing_user_by_email.username = user.username or existing_user_by_email.username
-            existing_user_by_email.telegram_photo_url = user.telegram_photo_url or existing_user_by_email.telegram_photo_url
-            # Обновляем is_admin, если нужно
-            if is_admin:
-                existing_user_by_email.is_admin = True
-            await db.commit()
-            await db.refresh(existing_user_by_email)
-            return existing_user_by_email
+        if existing_user_by_email:
+            # Если нашли существующий аккаунт с таким email
+            if user_telegram_id:
+                # Если пользователь регистрируется из Telegram
+                if existing_user_by_email.telegram_id and existing_user_by_email.telegram_id >= 0:
+                    # Аккаунт уже связан с другим Telegram ID
+                    raise ValueError(f"Аккаунт с email {user.email} уже связан с другим Telegram-аккаунтом")
+                # Связываем Telegram ID с существующим веб-аккаунтом
+                existing_user_by_email.telegram_id = user_telegram_id
+                existing_user_by_email.username = user.username or existing_user_by_email.username
+                existing_user_by_email.telegram_photo_url = user.telegram_photo_url or existing_user_by_email.telegram_photo_url
+                # Обновляем is_admin, если нужно
+                if is_admin:
+                    existing_user_by_email.is_admin = True
+                await db.commit()
+                await db.refresh(existing_user_by_email)
+                return existing_user_by_email
+            else:
+                # Если пользователь регистрируется из веб, но email уже занят
+                raise ValueError(f"Аккаунт с email {user.email} уже существует")
     
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():

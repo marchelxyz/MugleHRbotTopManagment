@@ -53,6 +53,9 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
     try:
         new_user = await crud.create_user(db, request)
         return schemas.UserResponse.model_validate(new_user)
+    except ValueError as e:
+        # Обрабатываем ошибки валидации (например, email уже занят)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         print(f"An error occurred during user creation process: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete registration process.")

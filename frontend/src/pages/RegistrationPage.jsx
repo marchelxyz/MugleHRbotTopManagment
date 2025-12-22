@@ -47,11 +47,19 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     if (formData.phoneNumber.includes('_')) newErrors.phoneNumber = 'Введите телефон полностью';
     if (formData.dateOfBirth.includes('_')) newErrors.dateOfBirth = 'Введите дату полностью';
     
-    // Проверка email для веб-регистрации
+    // Проверка email для веб-регистрации (обязательно) и Telegram (опционально)
     if (isWebBrowser) {
       if (!formData.email.trim()) {
         newErrors.email = 'Email обязателен';
       } else {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email.trim())) {
+          newErrors.email = 'Введите корректный email';
+        }
+      }
+    } else {
+      // Для Telegram email опционален, но если указан - проверяем формат
+      if (formData.email.trim()) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email.trim())) {
           newErrors.email = 'Введите корректный email';
@@ -94,7 +102,7 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
         telegram_photo_url: telegramUser?.photo_url || null,
         phone_number: formData.phoneNumber,
         date_of_birth: apiDate,
-        email: isWebBrowser ? formData.email : null,  // Email только для веб-регистрации
+        email: formData.email.trim() || null,  // Email опционален для Telegram, обязателен для веб
       };
 
       await registerUser(telegramId || '', userData);
@@ -182,9 +190,12 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
   // Для Telegram версии используем PageLayout
   return (
     <PageLayout title="Регистрация">
-      <p className={styles.subtitle}>
-        {`Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`}
-      </p>
+      <div className={styles.subtitle}>
+        <p>{`Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`}</p>
+        <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
+          Если у вас уже есть аккаунт в веб-версии, укажите ваш email для автоматического связывания аккаунтов.
+        </p>
+      </div>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />
         {errors.firstName && <p className={styles.error}>{errors.firstName}</p>}
@@ -198,16 +209,15 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
         <input name="position" type="text" value={formData.position} onChange={handleChange} placeholder="Ваша должность" className={styles.input} />
         {errors.position && <p className={styles.error}>{errors.position}</p>}
         
-        <InputMask
-          mask="+7 (999) 999-99-99"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleChange}
-          className={styles.input}
-        >
-          {(inputProps) => <input {...inputProps} type="tel" placeholder="Номер телефона" />}
-        </InputMask>
-        {errors.phoneNumber && <p className={styles.error}>{errors.phoneNumber}</p>}
+        <input 
+          name="email" 
+          type="email" 
+          value={formData.email} 
+          onChange={handleChange} 
+          placeholder="Email (опционально, если есть веб-аккаунт)" 
+          className={styles.input} 
+        />
+        {errors.email && <p className={styles.error}>{errors.email}</p>
 
         <InputMask
           mask="99.99.9999"
