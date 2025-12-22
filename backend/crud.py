@@ -196,7 +196,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
             subscribe_result = await unisender_client.subscribe_email(
                 email=db_user.email,
-                double_optin=3  # Добавить без отправки письма подтверждения (для транзакционных писем)
+                double_optin=0  # Автоматическое подтверждение без отправки письма (для транзакционных писем)
             )
             if subscribe_result.get("success"):
                 logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
@@ -355,6 +355,10 @@ async def get_feed(db: AsyncSession):
         select(models.Transaction)
         .join(Sender, models.Transaction.sender_id == Sender.id)
         .join(Receiver, models.Transaction.receiver_id == Receiver.id)
+        .options(
+            selectinload(models.Transaction.sender),
+            selectinload(models.Transaction.receiver)
+        )
         .order_by(models.Transaction.timestamp.desc())
     )
     result = await db.execute(stmt)
@@ -371,6 +375,10 @@ async def get_user_transactions(db: AsyncSession, user_id: int):
         select(models.Transaction)
         .join(Sender, models.Transaction.sender_id == Sender.id)
         .join(Receiver, models.Transaction.receiver_id == Receiver.id)
+        .options(
+            selectinload(models.Transaction.sender),
+            selectinload(models.Transaction.receiver)
+        )
         .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
         .order_by(models.Transaction.timestamp.desc())
     )
