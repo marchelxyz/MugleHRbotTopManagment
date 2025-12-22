@@ -90,7 +90,7 @@ class UnisenderClient:
                     logger.error(f"Не удалось распарсить JSON ответ от UniSender API subscribe: {json_error}, ответ: {response_text}")
                     return {"success": False, "error": f"Неверный формат ответа от API: {str(json_error)}"}
                 
-                logger.debug(f"Ответ от UniSender API subscribe (parsed): {result}")
+                logger.info(f"Ответ от UniSender API subscribe (parsed): {result}")
                 
                 if not isinstance(result, dict):
                     logger.error(f"Неожиданный формат ответа от API subscribe для {email}: {type(result).__name__}, ответ: {result}")
@@ -103,18 +103,51 @@ class UnisenderClient:
                     if isinstance(result_data, dict):
                         person_id = result_data.get("person_id")
                         is_new = result_data.get("is_new", True)
+                        status = result_data.get("status", "unknown")
+                        
                         if is_new:
-                            logger.info(f"Email {email} успешно добавлен в базу Unisender (новый контакт, person_id: {person_id})")
+                            logger.info(
+                                f"Email {email} успешно добавлен в базу Unisender "
+                                f"(новый контакт, person_id: {person_id}, статус: {status}, double_optin: {double_optin})"
+                            )
                         else:
-                            logger.info(f"Email {email} уже был в базе Unisender, обновлен (person_id: {person_id})")
+                            logger.info(
+                                f"Email {email} уже был в базе Unisender, обновлен "
+                                f"(person_id: {person_id}, статус: {status}, double_optin: {double_optin})"
+                            )
+                        
+                        # Сохраняем статус в результате для дальнейшего анализа
+                        return {
+                            "success": True, 
+                            "result": result_data,
+                            "person_id": person_id,
+                            "is_new": is_new,
+                            "status": status
+                        }
                     else:
-                        logger.info(f"Email {email} успешно добавлен в базу Unisender")
+                        logger.info(
+                            f"Email {email} успешно добавлен в базу Unisender "
+                            f"(double_optin: {double_optin}), результат: {result_data}"
+                        )
                     return {"success": True, "result": result_data}
                 else:
                     error = result.get("error", "Неизвестная ошибка")
                     error_code = result.get("code", "")
-                    error_msg = (error if isinstance(error, str) else str(error)) + (f" (код: {error_code})" if error_code else "")
-                    logger.warning(f"Не удалось добавить email {email} в базу Unisender: {error_msg}")
+                    
+                    # Обрабатываем разные форматы ошибок
+                    if isinstance(error, dict):
+                        error_text = error.get("text", str(error))
+                    elif isinstance(error, str):
+                        error_text = error
+                    else:
+                        error_text = str(error)
+                    
+                    error_msg = error_text + (f" (код: {error_code})" if error_code else "")
+                    logger.warning(
+                        f"Не удалось добавить email {email} в базу Unisender "
+                        f"(double_optin: {double_optin}, список ID: {list_id}): {error_msg}. "
+                        f"Полный ответ API: {result}"
+                    )
                     return {"success": False, "error": error_msg, "error_code": error_code}
                     
         except httpx.HTTPError as e:
@@ -122,6 +155,91 @@ class UnisenderClient:
             return {"success": False, "error": f"HTTP ошибка: {str(e)}"}
         except Exception as e:
             logger.error(f"Неожиданная ошибка при добавлении email {email} в базу Unisender: {e}")
+            return {"success": False, "error": f"Ошибка: {str(e)}"}
+    
+    async def exclude_email(
+        self,
+        email: str,
+        list_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Исключает email адрес из списка Unisender.
+        Может быть полезно перед повторной подпиской с другим статусом.
+        
+        Args:
+            email: Email адрес для исключения
+            list_id: ID списка (если не указан, используется из настроек)
+        
+        Returns:
+            Результат исключения от API
+        """
+        if not self.is_configured():
+            logger.warning("Unisender не настроен. Пропускаем исключение email из списка.")
+            return {"success": False, "error": "Unisender не настроен"}
+        
+        if not email or not email.strip():
+            logger.warning(f"Не указан email для исключения из списка. Пропускаем.")
+            return {"success": False, "error": "Email не указан"}
+        
+        try:
+            if not list_id:
+                list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
+            
+            if not list_id:
+                logger.warning("UNISENDER_LIST_ID не указан. Невозможно исключить email из списка.")
+                return {"success": False, "error": "UNISENDER_LIST_ID не указан"}
+            
+            email_to_exclude = email.strip()
+            logger.info(f"Исключение email {email_to_exclude} из списка Unisender (список ID: {list_id})")
+            params = {
+                "format": "json",
+                "api_key": self.api_key,
+                "list_ids": list_id,
+                "contact_type": "email",
+                "contact": email_to_exclude
+            }
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self.api_url}/exclude",
+                    data=params
+                )
+                response.raise_for_status()
+                
+                response_text = response.text
+                logger.debug(f"Ответ от UniSender API exclude (raw): {response_text}")
+                
+                try:
+                    result = response.json()
+                except ValueError as json_error:
+                    logger.error(f"Не удалось распарсить JSON ответ от UniSender API exclude: {json_error}, ответ: {response_text}")
+                    return {"success": False, "error": f"Неверный формат ответа от API: {str(json_error)}"}
+                
+                logger.info(f"Ответ от UniSender API exclude (parsed): {result}")
+                
+                if not isinstance(result, dict):
+                    logger.error(f"Неожиданный формат ответа от API exclude для {email}: {type(result).__name__}, ответ: {result}")
+                    return {"success": False, "error": f"Неожиданный формат ответа: {type(result).__name__}"}
+                
+                if result.get("result"):
+                    logger.info(f"Email {email} успешно исключен из списка Unisender")
+                    return {"success": True, "result": result.get("result")}
+                else:
+                    error = result.get("error", "Неизвестная ошибка")
+                    error_code = result.get("code", "")
+                    error_msg = (error if isinstance(error, str) else str(error)) + (f" (код: {error_code})" if error_code else "")
+                    # Игнорируем ошибку, если контакт не был в списке
+                    if "not found" in error_msg.lower() or "не найден" in error_msg.lower():
+                        logger.info(f"Email {email} не был в списке Unisender, пропускаем исключение")
+                        return {"success": True, "result": "not_in_list"}
+                    logger.warning(f"Не удалось исключить email {email} из списка Unisender: {error_msg}")
+                    return {"success": False, "error": error_msg, "error_code": error_code}
+                    
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP ошибка при исключении email {email} из списка Unisender: {e}")
+            return {"success": False, "error": f"HTTP ошибка: {str(e)}"}
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при исключении email {email} из списка Unisender: {e}")
             return {"success": False, "error": f"Ошибка: {str(e)}"}
     
     async def send_email(
@@ -173,27 +291,88 @@ class UnisenderClient:
         # Пытаемся добавить адрес в базу перед отправкой (если еще не добавлен)
         # Для транзакционных писем используем double_optin=0 (без подтверждения), чтобы адрес был сразу подтвержден
         if list_id:
-            logger.info(f"Попытка добавить email {email} в базу Unisender перед отправкой письма")
+            logger.info(f"Попытка добавить email {email} в базу Unisender перед отправкой письма (список ID: {list_id})")
             # Сначала пробуем с double_optin=0 (без подтверждения) для транзакционных писем
+            # Это должно автоматически подтвердить email для отправки транзакционных писем
             subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=0)
-            if not subscribe_result.get("success"):
-                # Если не удалось с double_optin=0, пробуем с double_optin=3 (может быть уже добавлен ранее)
-                logger.warning(
-                    f"Не удалось добавить {email} в базу Unisender с double_optin=0: {subscribe_result.get('error')}. "
-                    f"Пробуем с double_optin=3..."
+            
+            if subscribe_result.get("success"):
+                status = subscribe_result.get("status", "unknown")
+                logger.info(
+                    f"Email {email} успешно добавлен/обновлен в базу Unisender с double_optin=0 "
+                    f"(автоматическое подтверждение для транзакционных писем). "
+                    f"Статус: {status}, результат: {subscribe_result.get('result')}"
                 )
-                subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
-                if not subscribe_result.get("success"):
-                    logger.warning(
-                        f"Не удалось добавить {email} в базу Unisender перед отправкой: {subscribe_result.get('error')}. "
-                        f"Продолжаем попытку отправки письма."
-                    )
-                else:
-                    logger.info(f"Email {email} успешно добавлен в базу Unisender (double_optin=3), продолжаем отправку письма")
+                # Увеличиваем задержку после успешного добавления с double_optin=0, 
+                # чтобы API успел обработать запрос и подтвердить адрес
+                await asyncio.sleep(1.0)
             else:
-                logger.info(f"Email {email} успешно добавлен в базу Unisender (double_optin=0), продолжаем отправку письма")
-                # Небольшая задержка после успешного добавления с double_optin=0, чтобы API успел обработать запрос
-                await asyncio.sleep(0.5)
+                error_msg = subscribe_result.get("error", "Неизвестная ошибка")
+                error_code = subscribe_result.get("error_code", "")
+                logger.warning(
+                    f"Не удалось добавить {email} в базу Unisender с double_optin=0: {error_msg} "
+                    f"(код: {error_code}). Пробуем исключить и добавить заново..."
+                )
+                
+                # Если не удалось с double_optin=0, возможно email уже был добавлен с другим статусом
+                # Пробуем исключить из списка и добавить заново с double_optin=0
+                exclude_result = await self.exclude_email(email, list_id=list_id)
+                if exclude_result.get("success"):
+                    logger.info(f"Email {email} исключен из списка, добавляем заново с double_optin=0")
+                    await asyncio.sleep(0.5)  # Небольшая задержка перед повторным добавлением
+                    subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=0)
+                    
+                    if subscribe_result.get("success"):
+                        status = subscribe_result.get("status", "unknown")
+                        logger.info(
+                            f"Email {email} успешно добавлен в базу Unisender после исключения с double_optin=0. "
+                            f"Статус: {status}"
+                        )
+                        await asyncio.sleep(1.0)
+                    else:
+                        error_msg_retry = subscribe_result.get("error", "Неизвестная ошибка")
+                        error_code_retry = subscribe_result.get("error_code", "")
+                        logger.warning(
+                            f"Не удалось добавить {email} после исключения: {error_msg_retry} "
+                            f"(код: {error_code_retry}). Пробуем с double_optin=3..."
+                        )
+                        # Последняя попытка с double_optin=3
+                        subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
+                        if subscribe_result.get("success"):
+                            logger.info(
+                                f"Email {email} успешно добавлен/обновлен в базу Unisender с double_optin=3. "
+                                f"ВНИМАНИЕ: Email может быть неподтвержденным для транзакционных писем."
+                            )
+                            await asyncio.sleep(0.5)
+                        else:
+                            error_msg_final = subscribe_result.get("error", "Неизвестная ошибка")
+                            error_code_final = subscribe_result.get("error_code", "")
+                            logger.error(
+                                f"Не удалось добавить {email} в базу Unisender перед отправкой: {error_msg_final} "
+                                f"(код: {error_code_final}). "
+                                f"Продолжаем попытку отправки письма, но она может завершиться ошибкой на бесплатном плане."
+                            )
+                else:
+                    # Если не удалось исключить, пробуем просто добавить с double_optin=3
+                    logger.warning(
+                        f"Не удалось исключить {email} из списка: {exclude_result.get('error')}. "
+                        f"Пробуем добавить с double_optin=3..."
+                    )
+                    subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
+                    if subscribe_result.get("success"):
+                        logger.info(
+                            f"Email {email} успешно добавлен/обновлен в базу Unisender с double_optin=3. "
+                            f"ВНИМАНИЕ: Email может быть неподтвержденным для транзакционных писем."
+                        )
+                        await asyncio.sleep(0.5)
+                    else:
+                        error_msg_final = subscribe_result.get("error", "Неизвестная ошибка")
+                        error_code_final = subscribe_result.get("error_code", "")
+                        logger.error(
+                            f"Не удалось добавить {email} в базу Unisender перед отправкой: {error_msg_final} "
+                            f"(код: {error_code_final}). "
+                            f"Продолжаем попытку отправки письма, но она может завершиться ошибкой на бесплатном плане."
+                        )
         else:
             logger.warning("UNISENDER_LIST_ID не указан, пропускаем добавление email в базу перед отправкой")
         
