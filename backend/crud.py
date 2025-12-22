@@ -1022,6 +1022,7 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         # Отправляем email только если были сгенерированы новые учетные данные
         if credentials_generated and user._generated_login and user._generated_password:
             try:
+                logger.info(f"Отправка email с учетными данными пользователю. Email из БД: {user.email}, ID пользователя: {user.id}")
                 result = await unisender_client.send_credentials_email(
                     email=user.email,
                     first_name=user.first_name or '',
