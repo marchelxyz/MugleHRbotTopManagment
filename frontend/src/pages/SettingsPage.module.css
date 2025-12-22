@@ -188,3 +188,126 @@ button:active {
   background-color: #f5f5f5;
   color: #333;
 }
+
+/* Адаптация для больших экранов */
+@media (min-width: 1025px) {
+  .settingsList {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .passwordModalContent {
+    max-width: 600px;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .settingsList {
+    max-width: 900px;
+  }
+  
+  .settingsItem,
+  .settingsItemDisabled {
+    padding: 20px 18px;
+    font-size: 18px;
+  }
+  
+  .icon {
+    font-size: 22px;
+  }
+  
+  .passwordModalContent {
+    max-width: 700px;
+    padding: 40px;
+  }
+  
+  .passwordModalContent h2 {
+    font-size: 28px;
+  }
+  
+  .passwordInputContainer .input {
+    font-size: 18px;
+    padding: 16px 18px;
+  }
+  
+  .passwordModalButtons .submitButton,
+  .passwordModalButtons .cancelButton {
+    font-size: 18px;
+    padding: 18px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .settingsList {
+    max-width: 1000px;
+  }
+  
+  .settingsItem,
+  .settingsItemDisabled {
+    padding: 25px 20px;
+    font-size: 20px;
+  }
+  
+  .icon {
+    font-size: 24px;
+  }
+  
+  .passwordModalContent {
+    max-width: 800px;
+    padding: 50px;
+  }
+  
+  .passwordModalContent h2 {
+    font-size: 32px;
+  }
+  
+  .passwordInputContainer .input {
+    font-size: 20px;
+    padding: 18px 20px;
+  }
+  
+  .passwordModalButtons .submitButton,
+  .passwordModalButtons .cancelButton {
+    font-size: 20px;
+    padding: 20px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .settingsList {
+    max-width: 1200px;
+  }
+  
+  .settingsItem,
+  .settingsItemDisabled {
+    padding: 30px 25px;
+    font-size: 22px;
+  }
+  
+  .icon {
+    font-size: 26px;
+  }
+  
+  .passwordModalContent {
+    max-width: 900px;
+    padding: 60px;
+  }
+  
+  .passwordModalContent h2 {
+    font-size: 36px;
+  }
+  
+  .passwordInputContainer .input {
+    font-size: 22px;
+    padding: 20px 22px;
+  }
+  
+  .passwordModalButtons .submitButton,
+  .passwordModalButtons .cancelButton {
+    font-size: 22px;
+    padding: 22px;
+  }
+}

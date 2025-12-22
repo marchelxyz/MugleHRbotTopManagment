@@ -232,10 +232,210 @@
     }
 
     .historySection {
-        padding: 35px;
+        padding: 40px;
         margin-left: 0;
         margin-right: 0;
         margin-bottom: 0;
+        max-width: 1400px;
+        margin: 30px auto 0 auto;
+    }
+    
+    .userBalance {
+        max-width: 600px;
+        margin: 0 auto 40px auto;
+        padding: 15px;
+    }
+    
+    .rouletteContainer {
+        max-width: 800px;
+        margin: 0 auto 30px auto;
+        height: 70px;
+    }
+    
+    .prizeItem {
+        width: 90px;
+        font-size: 22px;
+    }
+    
+    .spinButton {
+        max-width: 500px;
+        margin: 0 auto 40px auto;
+    }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+    .historySection {
+        max-width: 1600px;
+        padding: 50px;
+    }
+    
+    .historyGrid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .userBalance {
+        max-width: 700px;
+        padding: 20px;
+    }
+    
+    .balanceBox span {
+        font-size: 16px;
+    }
+    
+    .balanceBox strong {
+        font-size: 28px;
+    }
+    
+    .rouletteContainer {
+        max-width: 900px;
+        height: 80px;
+    }
+    
+    .prizeItem {
+        width: 100px;
+        font-size: 24px;
+    }
+    
+    .spinButton {
+        max-width: 600px;
+        font-size: 1.2rem;
+        padding: 18px;
+    }
+    
+    .historySection h3 {
+        font-size: 22px;
+    }
+    
+    .winnerTransaction {
+        font-size: 16px;
+    }
+    
+    .winMessage {
+        font-size: 14px;
+    }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+    .historySection {
+        max-width: 1920px;
+        padding: 60px;
+    }
+    
+    .historyGrid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+    
+    .userBalance {
+        max-width: 800px;
+        padding: 25px;
+    }
+    
+    .balanceBox span {
+        font-size: 18px;
+    }
+    
+    .balanceBox strong {
+        font-size: 32px;
+    }
+    
+    .rouletteContainer {
+        max-width: 1000px;
+        height: 90px;
+    }
+    
+    .prizeItem {
+        width: 110px;
+        font-size: 26px;
+    }
+    
+    .spinButton {
+        max-width: 700px;
+        font-size: 1.3rem;
+        padding: 20px;
+    }
+    
+    .historySection h3 {
+        font-size: 24px;
+    }
+    
+    .historyItem {
+        padding: 20px;
+    }
+    
+    .winnerTransaction {
+        font-size: 18px;
+    }
+    
+    .winMessage {
+        font-size: 16px;
+    }
+    
+    .historyTimestamp {
+        font-size: 1rem;
+    }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+    .historySection {
+        max-width: 2240px;
+        padding: 80px;
+    }
+    
+    .historyGrid {
+        gap: 25px;
+    }
+    
+    .userBalance {
+        max-width: 900px;
+        padding: 30px;
+    }
+    
+    .balanceBox span {
+        font-size: 20px;
+    }
+    
+    .balanceBox strong {
+        font-size: 36px;
+    }
+    
+    .rouletteContainer {
+        max-width: 1200px;
+        height: 100px;
+    }
+    
+    .prizeItem {
+        width: 120px;
+        font-size: 28px;
+    }
+    
+    .spinButton {
+        max-width: 800px;
+        font-size: 1.4rem;
+        padding: 22px;
+    }
+    
+    .historySection h3 {
+        font-size: 26px;
+    }
+    
+    .historyItem {
+        padding: 25px;
+    }
+    
+    .winnerTransaction {
+        font-size: 20px;
+    }
+    
+    .winMessage {
+        font-size: 18px;
+    }
+    
+    .historyTimestamp {
+        font-size: 1.1rem;
     }
 }
 

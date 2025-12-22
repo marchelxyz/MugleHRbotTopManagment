@@ -138,7 +138,40 @@
 /* Адаптация для ПК */
 @media (min-width: 1025px) {
   .contentArea {
-    padding: 30px;
+    padding: 40px;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .contentArea {
+    padding: 50px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .contentArea {
+    padding: 60px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .contentArea {
+    padding: 80px;
+  }
+  
+  .headerTitle {
+    font-size: 16px;
+  }
+  
+  .headerLogo {
+    height: 40px;
+  }
+  
+  .headerLine {
+    height: 46px;
   }
 }
 

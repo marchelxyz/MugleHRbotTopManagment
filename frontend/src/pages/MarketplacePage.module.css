@@ -20,6 +20,101 @@
   .itemsGrid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 25px;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .itemCard {
+    max-width: 350px;
+    margin: 0 auto;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .itemsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+    max-width: 1600px;
+  }
+  
+  .itemCard {
+    max-width: 380px;
+  }
+  
+  .itemName {
+    font-size: 20px;
+  }
+  
+  .itemDescription {
+    font-size: 15px;
+  }
+  
+  .itemPrice {
+    font-size: 20px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .itemsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 35px;
+    max-width: 1920px;
+  }
+  
+  .itemCard {
+    max-width: 400px;
+  }
+  
+  .itemName {
+    font-size: 22px;
+  }
+  
+  .itemDescription {
+    font-size: 16px;
+  }
+  
+  .itemPrice {
+    font-size: 22px;
+  }
+  
+  .purchaseButton,
+  .sharedGiftButton {
+    font-size: 18px;
+    padding: 14px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .itemsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 40px;
+    max-width: 2240px;
+  }
+  
+  .itemCard {
+    max-width: 450px;
+  }
+  
+  .itemName {
+    font-size: 24px;
+  }
+  
+  .itemDescription {
+    font-size: 18px;
+  }
+  
+  .itemPrice {
+    font-size: 24px;
+  }
+  
+  .purchaseButton,
+  .sharedGiftButton {
+    font-size: 20px;
+    padding: 16px;
   }
 }
 
