@@ -23,6 +23,93 @@ class UnisenderClient:
         """Проверяет, настроен ли Unisender."""
         return bool(self.api_key and self.sender_email)
     
+    async def subscribe_email(
+        self,
+        email: str,
+        list_id: Optional[str] = None,
+        double_optin: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Добавляет email адрес в базу Unisender перед отправкой письма.
+        Необходимо для бесплатного тарифа - можно отправлять только на подтвержденные адреса.
+        
+        Документация: https://www.unisender.com/ru/support/api/contacts/subscribe/
+        
+        Args:
+            email: Email адрес для добавления
+            list_id: ID списка для добавления (если не указан, используется из настроек)
+            double_optin: 0 - подтверждение не требуется, 1 - требуется подтверждение, 
+                         3 - добавить без отправки письма (рекомендуется для транзакционных писем)
+        
+        Returns:
+            Результат подписки от API
+        """
+        if not self.is_configured():
+            logger.warning("Unisender не настроен. Пропускаем добавление email в базу.")
+            return {"success": False, "error": "Unisender не настроен"}
+        
+        if not email or not email.strip():
+            logger.warning(f"Не указан email для добавления в базу. Пропускаем.")
+            return {"success": False, "error": "Email не указан"}
+        
+        try:
+            # Используем list_id из настроек, если не передан явно
+            if not list_id:
+                list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
+            
+            if not list_id:
+                logger.warning("UNISENDER_LIST_ID не указан. Невозможно добавить email в базу.")
+                return {"success": False, "error": "UNISENDER_LIST_ID не указан"}
+            
+            params = {
+                "format": "json",
+                "api_key": self.api_key,
+                "list_ids": list_id,
+                "fields[email]": email.strip(),
+                "double_optin": str(double_optin),  # 3 = добавить без отправки письма подтверждения
+                "overwrite": "1"  # Перезаписать существующие данные
+            }
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self.api_url}/subscribe",
+                    data=params
+                )
+                response.raise_for_status()
+                
+                response_text = response.text
+                logger.debug(f"Ответ от UniSender API subscribe (raw): {response_text}")
+                
+                try:
+                    result = response.json()
+                except ValueError as json_error:
+                    logger.error(f"Не удалось распарсить JSON ответ от UniSender API subscribe: {json_error}, ответ: {response_text}")
+                    return {"success": False, "error": f"Неверный формат ответа от API: {str(json_error)}"}
+                
+                logger.debug(f"Ответ от UniSender API subscribe (parsed): {result}")
+                
+                if not isinstance(result, dict):
+                    logger.error(f"Неожиданный формат ответа от API subscribe для {email}: {type(result).__name__}, ответ: {result}")
+                    return {"success": False, "error": f"Неожиданный формат ответа: {type(result).__name__}"}
+                
+                # Проверяем успешность добавления
+                if result.get("result"):
+                    logger.info(f"Email {email} успешно добавлен в базу Unisender")
+                    return {"success": True}
+                else:
+                    error = result.get("error", "Неизвестная ошибка")
+                    error_code = result.get("code", "")
+                    error_msg = (error if isinstance(error, str) else str(error)) + (f" (код: {error_code})" if error_code else "")
+                    logger.warning(f"Не удалось добавить email {email} в базу Unisender: {error_msg}")
+                    return {"success": False, "error": error_msg}
+                    
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP ошибка при добавлении email {email} в базу Unisender: {e}")
+            return {"success": False, "error": f"HTTP ошибка: {str(e)}"}
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при добавлении email {email} в базу Unisender: {e}")
+            return {"success": False, "error": f"Ошибка: {str(e)}"}
+    
     async def send_email(
         self,
         email: str,
@@ -31,7 +118,18 @@ class UnisenderClient:
         body_html: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Отправляет email через Unisender API.
+        Отправляет email через Unisender API используя метод sendEmail.
+        
+        Документация: https://www.unisender.com/ru/support/api/messages/sendemail/
+        
+        Примечания:
+        - Сообщения через sendEmail не подвергаются цензуре, но имеют ограничения:
+          * Для новых пользователей: до 1000 писем в сутки
+          * Максимальный размер письма: 1 МБ
+          * Ограничение по вызовам: 60 в минуту
+          * Минимальный интервал между отправкой одному адресату: 60 секунд
+        - На бесплатном тарифе можно отправлять только на подтвержденные email адреса
+        - Для транзакционных писем без ограничений рекомендуется использовать Unisender Go
         
         Args:
             email: Email получателя
@@ -40,7 +138,11 @@ class UnisenderClient:
             body_html: HTML версия письма (опционально)
         
         Returns:
-            Результат отправки от API
+            Результат отправки от API с полями:
+            - success: bool - успешность отправки
+            - email_id: str - ID отправленного письма (при успехе)
+            - error: str - описание ошибки (при неудаче)
+            - error_codes: list - коды ошибок (при использовании error_checking=1)
         """
         if not self.is_configured():
             logger.warning("Unisender не настроен. Пропускаем отправку email.")
@@ -50,8 +152,22 @@ class UnisenderClient:
             logger.warning(f"Не указан email получателя. Пропускаем отправку.")
             return {"success": False, "error": "Email получателя не указан"}
         
+        # Получаем list_id из настроек (используется и для subscribe, и для sendEmail)
+        list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
+        
+        # На бесплатном тарифе Unisender можно отправлять только на адреса, добавленные в базу
+        # Пытаемся добавить адрес в базу перед отправкой (если еще не добавлен)
+        if list_id:
+            subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
+            if not subscribe_result.get("success"):
+                logger.warning(
+                    f"Не удалось добавить {email} в базу Unisender перед отправкой: {subscribe_result.get('error')}. "
+                    f"Продолжаем попытку отправки письма."
+                )
+        
         try:
             # Используем метод sendEmail из Unisender API
+            # Согласно документации: https://www.unisender.com/ru/support/api/messages/sendemail/
             # Unisender использует GET запросы с параметрами в URL или POST с form-data
             params = {
                 "format": "json",
@@ -61,12 +177,18 @@ class UnisenderClient:
                 "sender_email": self.sender_email,
                 "subject": subject,
                 "body": body_html if body_html else body,
+                "error_checking": "1",  # Рекомендуется использовать для получения детальной информации об ошибках
             }
             
-            # Добавляем list_id если указан
-            list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
+            # Добавляем list_id если указан (обязательный параметр согласно документации)
             if list_id:
                 params["list_id"] = list_id
+            else:
+                logger.warning(
+                    "UNISENDER_LIST_ID не указан в настройках. "
+                    "Согласно документации Unisender, параметр list_id является обязательным. "
+                    "Отправка может завершиться ошибкой."
+                )
             
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # Согласно документации UniSender, метод sendEmail поддерживает как GET, так и POST
@@ -98,14 +220,56 @@ class UnisenderClient:
                 # Безопасно получаем поле result из ответа
                 result_data = result.get("result")
                 
-                # Проверяем успешность отправки
-                # Согласно документации UniSender, при успехе возвращается {"result": {"email_id": "..."}}
-                if isinstance(result_data, dict) and result_data.get("email_id"):
+                # При использовании error_checking=1 формат ответа меняется:
+                # возвращается массив объектов с полями index, email, id, errors
+                if isinstance(result_data, list) and len(result_data) > 0:
+                    # Новый формат ответа с error_checking=1
+                    email_result = result_data[0]  # Берем первый результат
+                    email_address = email_result.get("email", email)
+                    email_id = email_result.get("id")
+                    errors = email_result.get("errors", [])
+                    
+                    if errors:
+                        # Есть ошибки
+                        error_messages = []
+                        error_codes = []
+                        for err in errors:
+                            error_code = err.get("code", "")
+                            error_message = err.get("message", "")
+                            error_messages.append(f"{error_message} (код: {error_code})" if error_code else error_message)
+                            error_codes.append(error_code)
+                        
+                        error_msg = "; ".join(error_messages)
+                        error_code_str = ", ".join(error_codes) if error_codes else ""
+                        
+                        # Специальная обработка ошибки о неподтвержденном email на бесплатном плане
+                        if "invalid_arg" in error_codes or any("free plan" in msg.lower() or "confirmed emails" in msg.lower() for msg in error_messages):
+                            logger.warning(
+                                f"Не удалось отправить email на {email_address}: "
+                                f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
+                                f"которые добавлены в вашу базу Unisender и подтверждены. "
+                                f"Убедитесь, что адрес {email_address} добавлен в список с ID {list_id} через метод subscribe. "
+                                f"Ошибки: {error_msg}"
+                            )
+                        else:
+                            logger.error(f"Ошибка отправки email на {email_address}: {error_msg}, полный ответ: {result}")
+                        
+                        return {"success": False, "error": error_msg, "error_codes": error_codes}
+                    elif email_id:
+                        # Успешная отправка
+                        logger.info(f"Email успешно отправлен на {email_address}, email_id: {email_id}")
+                        return {"success": True, "email_id": email_id}
+                    else:
+                        # Неожиданный формат
+                        logger.warning(f"Неожиданный формат ответа для email {email_address}: {email_result}")
+                        return {"success": False, "error": "Неожиданный формат ответа от API"}
+                elif isinstance(result_data, dict) and result_data.get("email_id"):
+                    # Старый формат ответа (без error_checking=1 или при успехе)
                     email_id = result_data.get("email_id")
                     logger.info(f"Email успешно отправлен на {email}, email_id: {email_id}")
                     return {"success": True, "email_id": email_id}
                 else:
-                    # Обрабатываем ошибки API
+                    # Обрабатываем ошибки API в старом формате
                     error = result.get("error", "Неизвестная ошибка")
                     error_code = result.get("code", "")
                     
@@ -118,7 +282,27 @@ class UnisenderClient:
                         error_text = str(error)
                     
                     error_msg = error_text + (f" (код: {error_code})" if error_code else "")
-                    logger.error(f"Ошибка отправки email на {email}: {error_msg}, полный ответ: {result}")
+                    
+                    # Специальная обработка ошибки о неподтвержденном email на бесплатном плане
+                    is_free_plan_error = (
+                        error_code == "invalid_arg" or
+                        "free plan" in error_text.lower() or
+                        "confirmed emails" in error_text.lower() or
+                        "подтвержденные email" in error_text.lower() or
+                        "подтвержденные адреса" in error_text.lower()
+                    )
+                    
+                    if is_free_plan_error:
+                        logger.warning(
+                            f"Не удалось отправить email на {email}: "
+                            f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
+                            f"которые добавлены в вашу базу Unisender и подтверждены. "
+                            f"Убедитесь, что адрес {email} добавлен в список с ID {list_id} через метод subscribe. "
+                            f"Ошибка: {error_msg}"
+                        )
+                    else:
+                        logger.error(f"Ошибка отправки email на {email}: {error_msg}, полный ответ: {result}")
+                    
                     return {"success": False, "error": error_msg}
                     
         except httpx.HTTPError as e:

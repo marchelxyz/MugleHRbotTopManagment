@@ -1022,16 +1022,65 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         # Отправляем email только если были сгенерированы новые учетные данные
         if credentials_generated and user._generated_login and user._generated_password:
             try:
-                await unisender_client.send_credentials_email(
+                result = await unisender_client.send_credentials_email(
                     email=user.email,
                     first_name=user.first_name or '',
                     last_name=user.last_name or '',
                     login=user._generated_login,
                     password=user._generated_password
                 )
-                logger.info(f"Email с учетными данными отправлен на {user.email}")
+                if result.get("success"):
+                    logger.info(f"Email с учетными данными успешно отправлен на {user.email}")
+                else:
+                    error_msg = result.get("error", "Неизвестная ошибка")
+                    error_codes = result.get("error_codes", [])
+                    is_free_plan_error = (
+                        "invalid_arg" in error_codes or 
+                        "free plan" in error_msg.lower() or
+                        "confirmed emails" in error_msg.lower() or
+                        "подтвержденные email" in error_msg.lower() or
+                        "подтвержденные адреса" in error_msg.lower() or
+                        "добавлены в вашу базу" in error_msg.lower()
+                    )
+                    
+                    # Для ошибок бесплатного тарифа используем WARNING, для остальных - тоже WARNING, но с разными сообщениями
+                    if is_free_plan_error:
+                        logger.warning(
+                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
+                            f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
+                            f"добавленные в базу и подтвержденные. Пользователь может получить учетные данные "
+                            f"через Telegram бота или администратора."
+                        )
+                    else:
+                        logger.warning(
+                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
+                            f"Пользователь может получить учетные данные через Telegram бота или администратора."
+                        )
+                    
+                    # Если ошибка связана с бесплатным тарифом, отправляем уведомление администратору в Telegram
+                    if is_free_plan_error:
+                        try:
+                            admin_message = (
+                                f"⚠️ <b>Не удалось отправить email с учетными данными</b>\n\n"
+                                f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
+                                f"📧 <b>Email:</b> {escape_html(user.email)}\n"
+                                f"❌ <b>Причина:</b> {escape_html(error_msg)}\n\n"
+                                f"🔑 <b>Учетные данные для передачи пользователю:</b>\n"
+                                f"<b>Логин:</b> <code>{escape_html(user._generated_login)}</code>\n"
+                                f"<b>Пароль:</b> <code>{escape_html(user._generated_password)}</code>\n\n"
+                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса. "
+                                f"Передайте учетные данные пользователю вручную.</i>"
+                            )
+                            await send_telegram_message(
+                                chat_id=settings.TELEGRAM_CHAT_ID,
+                                text=admin_message,
+                                message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
+                            )
+                            logger.info(f"Уведомление администратору в Telegram отправлено с учетными данными для {user.email}")
+                        except Exception as telegram_error:
+                            logger.error(f"Не удалось отправить уведомление администратору в Telegram: {telegram_error}")
             except Exception as e:
-                logger.error(f"Ошибка при отправке email с учетными данными на {user.email}: {e}")
+                logger.error(f"Исключение при отправке email с учетными данными на {user.email}: {e}")
     
     return user
 
