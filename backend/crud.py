@@ -22,7 +22,7 @@ import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
 from database import settings
-from unisender import unisender_client
+from email_client import get_email_client
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
@@ -193,36 +193,42 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     # Это необходимо для бесплатного тарифа - можно отправлять только на подтвержденные адреса
     if db_user.email:
         try:
-            logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
-            # Используем настройку из конфига (по умолчанию 3, но можно изменить на 1 для подтверждения)
-            subscribe_result = await unisender_client.subscribe_email(
-                email=db_user.email
-                # double_optin будет взят из настроек UNISENDER_DOUBLE_OPTIN
-            )
+            # Добавляем email в базу провайдера (только для Unisender, Resend не требует этого)
+            email_client = get_email_client()
+            if email_client and hasattr(email_client, 'subscribe_email'):
+                logger.info(f"Добавление email пользователя {db_user.email} в базу провайдера при регистрации")
+                subscribe_result = await email_client.subscribe_email(
+                    email=db_user.email
+                    # double_optin будет взят из настроек UNISENDER_DOUBLE_OPTIN
+                )
+            else:
+                subscribe_result = {"success": True}  # Resend не требует подписки
             if subscribe_result.get("success"):
-                logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
+                logger.info(f"Email пользователя {db_user.email} успешно обработан при регистрации")
             else:
                 error_msg = subscribe_result.get("error", "Неизвестная ошибка")
                 logger.warning(
-                    f"Не удалось добавить email пользователя {db_user.email} в базу Unisender при регистрации: {error_msg}. "
-                    f"Это может привести к проблемам при отправке email позже."
+                    f"Не удалось добавить email пользователя {db_user.email} в базу провайдера при регистрации: {error_msg}. "
+                    f"Это может привести к проблемам при отправке email позже (для Unisender)."
                 )
         except Exception as e:
-            logger.error(f"Ошибка при добавлении email пользователя {db_user.email} в базу Unisender при регистрации: {e}")
+            logger.error(f"Ошибка при обработке email пользователя {db_user.email} при регистрации: {e}")
     
     # Отправляем email уведомление администраторам при регистрации через веб
     if not user_telegram_id and db_user.email:
         try:
             registration_date_str = db_user.registration_date.strftime('%Y-%m-%d %H:%M') if db_user.registration_date else 'не указана'
-            await unisender_client.send_registration_notification(
-                user_email=db_user.email,
-                first_name=db_user.first_name or '',
-                last_name=db_user.last_name or '',
-                position=db_user.position or '',
-                department=db_user.department or '',
-                phone_number=db_user.phone_number or '',
-                registration_date=registration_date_str
-            )
+            email_client = get_email_client()
+            if email_client and hasattr(email_client, 'send_registration_notification'):
+                await email_client.send_registration_notification(
+                    user_email=db_user.email,
+                    first_name=db_user.first_name or '',
+                    last_name=db_user.last_name or '',
+                    position=db_user.position or '',
+                    department=db_user.department or '',
+                    phone_number=db_user.phone_number or '',
+                    registration_date=registration_date_str
+                )
         except Exception as e:
             logger.error(f"Ошибка при отправке email уведомления о регистрации: {e}")
     
@@ -1044,7 +1050,12 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         if credentials_generated and user._generated_login and user._generated_password:
             try:
                 logger.info(f"Отправка email с учетными данными пользователю. Email из БД: {user.email}, ID пользователя: {user.id}")
-                result = await unisender_client.send_credentials_email(
+                email_client = get_email_client()
+                if not email_client:
+                    logger.error("Email провайдер не настроен. Невозможно отправить учетные данные.")
+                    return user
+                
+                result = await email_client.send_credentials_email(
                     email=user.email,
                     first_name=user.first_name or '',
                     last_name=user.last_name or '',
@@ -1056,6 +1067,8 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                 else:
                     error_msg = result.get("error", "Неизвестная ошибка")
                     error_codes = result.get("error_codes", [])
+                    # Проверяем ошибки, связанные с неподтвержденным email (только для Unisender)
+                    # Resend не требует подтверждения email
                     is_free_plan_error = (
                         "invalid_arg" in error_codes or 
                         "free plan" in error_msg.lower() or
@@ -1066,8 +1079,13 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                         "добавлены в вашу базу" in error_msg.lower()
                     )
                     
-                    # Для ошибок бесплатного тарифа используем WARNING, для остальных - тоже WARNING, но с разными сообщениями
-                    if is_free_plan_error:
+                    # Для Resend не требуется отложенная отправка, так как подтверждение не нужно
+                    email_provider = getattr(settings, 'EMAIL_PROVIDER', 'resend').lower()
+                    is_resend = email_provider == 'resend'
+                    
+                    # Для ошибок бесплатного тарифа Unisender используем отложенную отправку
+                    # Для Resend это не требуется, так как подтверждение email не нужно
+                    if is_free_plan_error and not is_resend:
                         logger.warning(
                             f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
                             f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
@@ -1085,14 +1103,20 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                             f"Установлен флаг pending_credentials_email для пользователя {user.id}. "
                             f"Учетные данные будут отправлены автоматически после подтверждения email пользователем."
                         )
+                    elif is_resend:
+                        # Для Resend ошибки отправки - это другие проблемы (не подтверждение email)
+                        logger.error(
+                            f"Не удалось отправить email с учетными данными на {user.email} через Resend: {error_msg}. "
+                            f"Проверьте настройки Resend и верификацию домена."
+                        )
                     else:
                         logger.warning(
                             f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
                             f"Пользователь может получить учетные данные через Telegram бота или администратора."
                         )
                     
-                    # Если ошибка связана с бесплатным тарифом, отправляем уведомление администратору в Telegram
-                    if is_free_plan_error:
+                    # Если ошибка связана с бесплатным тарифом Unisender, отправляем уведомление администратору в Telegram
+                    if is_free_plan_error and not is_resend:
                         try:
                             admin_message = (
                                 f"⚠️ <b>Не удалось отправить email с учетными данными</b>\n\n"
@@ -1177,7 +1201,15 @@ async def send_pending_credentials_emails(db: AsyncSession) -> Dict[str, Any]:
                 continue
             
             # Пробуем отправить учетные данные
-            result = await unisender_client.send_credentials_email(
+            email_client = get_email_client()
+            if not email_client:
+                logger.error("Email провайдер не настроен. Невозможно отправить отложенные учетные данные.")
+                user.pending_credentials_email = False
+                user.pending_password_plain = None
+                await db.commit()
+                continue
+            
+            result = await email_client.send_credentials_email(
                 email=user.email,
                 first_name=user.first_name or '',
                 last_name=user.last_name or '',
