@@ -492,6 +492,7 @@ class UnisenderClient:
             logger.warning("Email администратора не настроен. Пропускаем отправку уведомления.")
             return {"success": False, "error": "Email администратора не настроен"}
         
+        logger.info(f"Отправка уведомления о регистрации администратору на email: {self.admin_email}")
         subject = f"Новая регистрация через веб: {first_name} {last_name}"
         
         # HTML версия письма
@@ -617,6 +618,10 @@ Email: {user_email}
 Это автоматическое уведомление.
         """
         
+        # Важно: перед отправкой уведомления администратору нужно убедиться,
+        # что его email добавлен в базу Unisender (для бесплатного тарифа)
+        # Функция send_email уже делает это автоматически, но добавим явное логирование
+        logger.info(f"Отправка уведомления о регистрации администратору на {self.admin_email}")
         return await self.send_email(self.admin_email, subject, body, body_html)
 
 
