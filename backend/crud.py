@@ -22,7 +22,6 @@ import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
 from database import settings
-from unisender import unisender_client
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
@@ -112,15 +111,6 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
             await db.refresh(user)
     return user
 
-async def get_user_by_email(db: AsyncSession, email: str):
-    """Получает пользователя по email."""
-    if not email or not email.strip():
-        return None
-    result = await db.execute(
-        select(models.User).where(models.User.email == email.strip().lower())
-    )
-    return result.scalar_one_or_none()
-
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     # Для веб-формата telegram_id может быть None
     user_telegram_id = None
@@ -140,32 +130,6 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             # Если telegram_id не число или None, оставляем его как None
             user_telegram_id = None
     
-    # Проверяем, есть ли уже аккаунт с таким email (для мультиплатформенности)
-    # Если пользователь регистрируется в Telegram и есть веб-аккаунт с таким email, связываем их
-    existing_user_by_email = None
-    if user.email and user.email.strip():
-        existing_user_by_email = await get_user_by_email(db, user.email)
-        if existing_user_by_email:
-            # Если нашли существующий аккаунт с таким email
-            if user_telegram_id:
-                # Если пользователь регистрируется из Telegram
-                if existing_user_by_email.telegram_id and existing_user_by_email.telegram_id >= 0:
-                    # Аккаунт уже связан с другим Telegram ID
-                    raise ValueError(f"Аккаунт с email {user.email} уже связан с другим Telegram-аккаунтом")
-                # Связываем Telegram ID с существующим веб-аккаунтом
-                existing_user_by_email.telegram_id = user_telegram_id
-                existing_user_by_email.username = user.username or existing_user_by_email.username
-                existing_user_by_email.telegram_photo_url = user.telegram_photo_url or existing_user_by_email.telegram_photo_url
-                # Обновляем is_admin, если нужно
-                if is_admin:
-                    existing_user_by_email.is_admin = True
-                await db.commit()
-                await db.refresh(existing_user_by_email)
-                return existing_user_by_email
-            else:
-                # Если пользователь регистрируется из веб, но email уже занят
-                raise ValueError(f"Аккаунт с email {user.email} уже существует")
-    
     dob = None
     if user.date_of_birth and user.date_of_birth.strip():
         try: dob = date.fromisoformat(user.date_of_birth)
@@ -182,48 +146,11 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
         date_of_birth=dob,
-        email=user.email.strip().lower() if user.email and user.email.strip() else None,  # Сохраняем email в нижнем регистре
         last_login_date=date.today()
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
-    
-    # Добавляем email пользователя в базу Unisender сразу после регистрации
-    # Это необходимо для бесплатного тарифа - можно отправлять только на подтвержденные адреса
-    if db_user.email:
-        try:
-            logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
-            subscribe_result = await unisender_client.subscribe_email(
-                email=db_user.email,
-                double_optin=0  # Автоматическое подтверждение без отправки письма (для транзакционных писем)
-            )
-            if subscribe_result.get("success"):
-                logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
-            else:
-                error_msg = subscribe_result.get("error", "Неизвестная ошибка")
-                logger.warning(
-                    f"Не удалось добавить email пользователя {db_user.email} в базу Unisender при регистрации: {error_msg}. "
-                    f"Это может привести к проблемам при отправке email позже."
-                )
-        except Exception as e:
-            logger.error(f"Ошибка при добавлении email пользователя {db_user.email} в базу Unisender при регистрации: {e}")
-    
-    # Отправляем email уведомление администраторам при регистрации через веб
-    if not user_telegram_id and db_user.email:
-        try:
-            registration_date_str = db_user.registration_date.strftime('%Y-%m-%d %H:%M') if db_user.registration_date else 'не указана'
-            await unisender_client.send_registration_notification(
-                user_email=db_user.email,
-                first_name=db_user.first_name or '',
-                last_name=db_user.last_name or '',
-                position=db_user.position or '',
-                department=db_user.department or '',
-                phone_number=db_user.phone_number or '',
-                registration_date=registration_date_str
-            )
-        except Exception as e:
-            logger.error(f"Ошибка при отправке email уведомления о регистрации: {e}")
     
     # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
     try:
@@ -647,7 +574,6 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     user_username = user.username
     user_position = user.position
     user_phone_number = user.phone_number
-    user_email = user.email
     user_balance = user.balance
     item_price = item.price
 
@@ -660,8 +586,6 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
             f"👤 <b>Пользователь:</b> {escape_html(user_first_name or '')} (@{escape_html(user_username or str(user_telegram_id))})\n"
             f"📞 <b>Телефон:</b> {escape_html(user_phone_number or 'не указан')}\n"
         )
-        if user_email:
-            admin_message += f"📧 <b>Почта:</b> {escape_html(user_email)}\n"
         admin_message += (
             f"💼 <b>Должность:</b> {escape_html(user_position or '')}\n\n"
             f"🎁 <b>Товар:</b> {escape_html(item_name)}\n"
@@ -743,8 +667,6 @@ async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
             f"📱 <b>Telegram:</b> @{escape_html(user.username or str(user.telegram_id))}\n"
             f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
         )
-        if user.email:
-            admin_message += f"📧 <b>Почта:</b> {escape_html(user.email)}\n"
         admin_message += (
             f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n"
             f"🏢 <b>Подразделение:</b> {escape_html(user.department or '')}\n\n"
@@ -1038,78 +960,6 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
             user._generated_login = user.login
         if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
             user._generated_password = generated_password
-    
-    # Отправляем email с учетными данными при одобрении веб-пользователя
-    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0) and user.email:
-        # Проверяем, были ли сгенерированы учетные данные
-        credentials_generated = (
-            hasattr(user, '_login_was_generated') and user._login_was_generated and
-            hasattr(user, '_password_was_generated') and user._password_was_generated
-        )
-        
-        # Отправляем email только если были сгенерированы новые учетные данные
-        if credentials_generated and user._generated_login and user._generated_password:
-            try:
-                logger.info(f"Отправка email с учетными данными пользователю. Email из БД: {user.email}, ID пользователя: {user.id}")
-                result = await unisender_client.send_credentials_email(
-                    email=user.email,
-                    first_name=user.first_name or '',
-                    last_name=user.last_name or '',
-                    login=user._generated_login,
-                    password=user._generated_password
-                )
-                if result.get("success"):
-                    logger.info(f"Email с учетными данными успешно отправлен на {user.email}")
-                else:
-                    error_msg = result.get("error", "Неизвестная ошибка")
-                    error_codes = result.get("error_codes", [])
-                    is_free_plan_error = (
-                        "invalid_arg" in error_codes or 
-                        "free plan" in error_msg.lower() or
-                        "confirmed emails" in error_msg.lower() or
-                        "подтвержденные email" in error_msg.lower() or
-                        "подтвержденные адреса" in error_msg.lower() or
-                        "добавлены в вашу базу" in error_msg.lower()
-                    )
-                    
-                    # Для ошибок бесплатного тарифа используем WARNING, для остальных - тоже WARNING, но с разными сообщениями
-                    if is_free_plan_error:
-                        logger.warning(
-                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
-                            f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
-                            f"добавленные в базу и подтвержденные. Пользователь может получить учетные данные "
-                            f"через Telegram бота или администратора."
-                        )
-                    else:
-                        logger.warning(
-                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
-                            f"Пользователь может получить учетные данные через Telegram бота или администратора."
-                        )
-                    
-                    # Если ошибка связана с бесплатным тарифом, отправляем уведомление администратору в Telegram
-                    if is_free_plan_error:
-                        try:
-                            admin_message = (
-                                f"⚠️ <b>Не удалось отправить email с учетными данными</b>\n\n"
-                                f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
-                                f"📧 <b>Email:</b> {escape_html(user.email)}\n"
-                                f"❌ <b>Причина:</b> {escape_html(error_msg)}\n\n"
-                                f"🔑 <b>Учетные данные для передачи пользователю:</b>\n"
-                                f"<b>Логин:</b> <code>{escape_html(user._generated_login)}</code>\n"
-                                f"<b>Пароль:</b> <code>{escape_html(user._generated_password)}</code>\n\n"
-                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса. "
-                                f"Передайте учетные данные пользователю вручную.</i>"
-                            )
-                            await send_telegram_message(
-                                chat_id=settings.TELEGRAM_CHAT_ID,
-                                text=admin_message,
-                                message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
-                            )
-                            logger.info(f"Уведомление администратору в Telegram отправлено с учетными данными для {user.email}")
-                        except Exception as telegram_error:
-                            logger.error(f"Не удалось отправить уведомление администратору в Telegram: {telegram_error}")
-            except Exception as e:
-                logger.error(f"Исключение при отправке email с учетными данными на {user.email}: {e}")
     
     return user
 
@@ -1894,17 +1744,13 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
 # --- ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЛОГИНА И ПАРОЛЯ ---
 async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     """
-    Проверяет логин/email и пароль пользователя.
+    Проверяет логин и пароль пользователя.
     Возвращает пользователя, если учетные данные верны, иначе None.
-    Поддерживает вход как по логину, так и по email.
     """
-    # Ищем пользователя по логину или email
+    # Ищем пользователя по логину
     result = await db.execute(
         select(models.User).where(
-            or_(
-                models.User.login == login,
-                models.User.email == login
-            ),
+            models.User.login == login,
             models.User.browser_auth_enabled == True
         )
     )
@@ -1927,34 +1773,6 @@ async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     
     return user
 
-async def link_telegram_to_web_account(db: AsyncSession, telegram_id: int, email: str):
-    """
-    Связывает Telegram-аккаунт с веб-аккаунтом по email.
-    Возвращает обновленного пользователя или None, если аккаунт не найден.
-    """
-    if not email or not email.strip():
-        raise ValueError("Email обязателен для связывания аккаунтов")
-    
-    # Проверяем, не занят ли уже telegram_id другим пользователем
-    existing_telegram_user = await get_user_by_telegram(db, telegram_id)
-    if existing_telegram_user:
-        raise ValueError("Этот Telegram-аккаунт уже связан с другим пользователем")
-    
-    # Ищем веб-аккаунт по email
-    web_user = await get_user_by_email(db, email)
-    if not web_user:
-        raise ValueError("Аккаунт с таким email не найден")
-    
-    # Проверяем, не связан ли уже веб-аккаунт с другим Telegram-аккаунтом
-    if web_user.telegram_id and web_user.telegram_id >= 0:
-        raise ValueError("Этот веб-аккаунт уже связан с другим Telegram-аккаунтом")
-    
-    # Связываем аккаунты
-    web_user.telegram_id = telegram_id
-    await db.commit()
-    await db.refresh(web_user)
-    
-    return web_user
 
 # --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ ЛОГИНА НА ОСНОВЕ ИМЕНИ И ФАМИЛИИ ---
 def generate_login_from_name(first_name: Optional[str], last_name: Optional[str], user_id: int) -> str:
@@ -2743,8 +2561,6 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
                 f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} (@{escape_html(user.username or str(user.telegram_id))})\n"
                 f"📞 <b>Телефон:</b> {escape_html(user.phone_number or 'не указан')}\n"
             )
-            if user.email:
-                admin_message += f"📧 <b>Почта:</b> {escape_html(user.email)}\n"
             admin_message += (
                 f"💼 <b>Должность:</b> {escape_html(user.position or '')}\n\n"
                 f"💰 <b>Куплено бонусов:</b> {bonus_amount}\n"
@@ -3027,14 +2843,10 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
             f"👤 <b>Покупатель:</b> {escape_html(buyer.first_name or '')} {escape_html(buyer.last_name or '')} (@{escape_html(buyer.username or str(buyer.telegram_id))})\n"
             f"📞 <b>Телефон покупателя:</b> {escape_html(buyer.phone_number or 'не указан')}\n"
         )
-        if buyer.email:
-            admin_message += f"📧 <b>Почта покупателя:</b> {escape_html(buyer.email)}\n"
         admin_message += (
             f"👥 <b>Приглашенный:</b> {escape_html(invitation.invited_user.first_name or '')} {escape_html(invitation.invited_user.last_name or '')} (@{escape_html(invitation.invited_user.username or str(invitation.invited_user.telegram_id))})\n"
             f"📞 <b>Телефон приглашенного:</b> {escape_html(invitation.invited_user.phone_number or 'не указан')}\n"
         )
-        if invitation.invited_user.email:
-            admin_message += f"📧 <b>Почта приглашенного:</b> {escape_html(invitation.invited_user.email)}\n"
         admin_message += (
             f"\n🎁 <b>Товар:</b> {escape_html(item.name)}\n"
             f"💰 <b>Стоимость:</b> {item.price} спасибок (оплачено покупателем)\n\n"

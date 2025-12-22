@@ -54,7 +54,7 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
         new_user = await crud.create_user(db, request)
         return schemas.UserResponse.model_validate(new_user)
     except ValueError as e:
-        # Обрабатываем ошибки валидации (например, email уже занят)
+        # Обрабатываем ошибки валидации
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         print(f"An error occurred during user creation process: {e}")
@@ -157,34 +157,3 @@ async def change_password_route(
     
     return schemas.UserResponse.model_validate(user)
 
-@router.post("/me/link-account", response_model=schemas.UserResponse)
-async def link_account_route(
-    link_data: schemas.LinkAccountRequest,
-    telegram_id: str = Header(alias="X-Telegram-Id"),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Связывает Telegram-аккаунт с веб-аккаунтом по email.
-    Доступно только для пользователей, заходящих через Telegram.
-    """
-    if not telegram_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Этот эндпоинт доступен только для Telegram-пользователей"
-        )
-    
-    try:
-        telegram_id_int = int(telegram_id)
-        linked_user = await crud.link_telegram_to_web_account(db, telegram_id_int, link_data.email)
-        return schemas.UserResponse.model_validate(linked_user)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        print(f"Ошибка при связывании аккаунтов: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Не удалось связать аккаунты"
-        )

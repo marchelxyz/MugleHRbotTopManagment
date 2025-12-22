@@ -33,8 +33,7 @@ class User(Base):
     registration_date = Column(DateTime, default=func.now())
     
     # Поля для аутентификации через браузер
-    # Поля login, email и password_hash могут быть NULL, так как не все пользователи используют вход через браузер
-    email = Column(String(255), nullable=True, unique=True) # Email для входа в браузере (может быть NULL, уникальный)
+    # Поля login и password_hash могут быть NULL, так как не все пользователи используют вход через браузер
     login = Column(String(255), nullable=True, unique=True) # Уникальный логин для входа в браузере (может быть NULL)
     password_hash = Column(String(255), nullable=True) # Хеш пароля для входа в браузере (может быть NULL)
     browser_auth_enabled = Column(Boolean, default=False, nullable=False) # Флаг, что пользователь может входить через браузер
