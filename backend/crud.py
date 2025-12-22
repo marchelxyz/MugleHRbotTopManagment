@@ -23,7 +23,6 @@ from config import settings
 from bot import send_telegram_message, escape_html
 from database import settings
 from unisender import unisender_client
-from vk_client import vk_client
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
@@ -210,42 +209,21 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         except Exception as e:
             logger.error(f"Ошибка при добавлении email пользователя {db_user.email} в базу Unisender при регистрации: {e}")
     
-    # Отправляем уведомление администраторам при регистрации через веб
-    # Приоритет: VK > Email
-    if not user_telegram_id:
-        registration_date_str = db_user.registration_date.strftime('%Y-%m-%d %H:%M') if db_user.registration_date else 'не указана'
-        
-        # Пытаемся отправить через VK, если указан VK ID администратора
-        admin_vk_id = getattr(settings, 'VK_ADMIN_ID', 0)
-        if admin_vk_id and admin_vk_id > 0:
-            try:
-                await vk_client.send_registration_notification(
-                    admin_vk_id=admin_vk_id,
-                    user_email=db_user.email or 'не указан',
-                    first_name=db_user.first_name or '',
-                    last_name=db_user.last_name or '',
-                    position=db_user.position or '',
-                    department=db_user.department or '',
-                    phone_number=db_user.phone_number or '',
-                    registration_date=registration_date_str
-                )
-            except Exception as e:
-                logger.error(f"Ошибка при отправке VK уведомления о регистрации: {e}")
-        
-        # Fallback на email, если VK не настроен или не удалось отправить
-        elif db_user.email:
-            try:
-                await unisender_client.send_registration_notification(
-                    user_email=db_user.email,
-                    first_name=db_user.first_name or '',
-                    last_name=db_user.last_name or '',
-                    position=db_user.position or '',
-                    department=db_user.department or '',
-                    phone_number=db_user.phone_number or '',
-                    registration_date=registration_date_str
-                )
-            except Exception as e:
-                logger.error(f"Ошибка при отправке email уведомления о регистрации: {e}")
+    # Отправляем email уведомление администраторам при регистрации через веб
+    if not user_telegram_id and db_user.email:
+        try:
+            registration_date_str = db_user.registration_date.strftime('%Y-%m-%d %H:%M') if db_user.registration_date else 'не указана'
+            await unisender_client.send_registration_notification(
+                user_email=db_user.email,
+                first_name=db_user.first_name or '',
+                last_name=db_user.last_name or '',
+                position=db_user.position or '',
+                department=db_user.department or '',
+                phone_number=db_user.phone_number or '',
+                registration_date=registration_date_str
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при отправке email уведомления о регистрации: {e}")
     
     # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
     try:
@@ -1053,111 +1031,77 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
             user._generated_password = generated_password
     
-    # Отправляем учетные данные при одобрении веб-пользователя
-    # Приоритет: VK > Email
-    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0):
+    # Отправляем email с учетными данными при одобрении веб-пользователя
+    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0) and user.email:
         # Проверяем, были ли сгенерированы учетные данные
         credentials_generated = (
             hasattr(user, '_login_was_generated') and user._login_was_generated and
             hasattr(user, '_password_was_generated') and user._password_was_generated
         )
         
-        # Отправляем только если были сгенерированы новые учетные данные
+        # Отправляем email только если были сгенерированы новые учетные данные
         if credentials_generated and user._generated_login and user._generated_password:
-            # Пытаемся отправить через VK, если указан VK ID пользователя
-            if user.vk_id and user.vk_id > 0:
-                try:
-                    logger.info(f"Отправка VK сообщения с учетными данными пользователю. VK ID: {user.vk_id}, ID пользователя: {user.id}")
-                    result = await vk_client.send_credentials_message(
-                        user_id=user.vk_id,
-                        first_name=user.first_name or '',
-                        last_name=user.last_name or '',
-                        login=user._generated_login,
-                        password=user._generated_password
+            try:
+                logger.info(f"Отправка email с учетными данными пользователю. Email из БД: {user.email}, ID пользователя: {user.id}")
+                result = await unisender_client.send_credentials_email(
+                    email=user.email,
+                    first_name=user.first_name or '',
+                    last_name=user.last_name or '',
+                    login=user._generated_login,
+                    password=user._generated_password
+                )
+                if result.get("success"):
+                    logger.info(f"Email с учетными данными успешно отправлен на {user.email}")
+                else:
+                    error_msg = result.get("error", "Неизвестная ошибка")
+                    error_codes = result.get("error_codes", [])
+                    is_free_plan_error = (
+                        "invalid_arg" in error_codes or 
+                        "free plan" in error_msg.lower() or
+                        "confirmed emails" in error_msg.lower() or
+                        "подтвержденные email" in error_msg.lower() or
+                        "подтвержденные адреса" in error_msg.lower() or
+                        "добавлены в вашу базу" in error_msg.lower()
                     )
-                    if result.get("success"):
-                        logger.info(f"VK сообщение с учетными данными успешно отправлено пользователю с VK ID: {user.vk_id}")
-                    else:
-                        error_msg = result.get("error", "Неизвестная ошибка")
+                    
+                    # Для ошибок бесплатного тарифа используем WARNING, для остальных - тоже WARNING, но с разными сообщениями
+                    if is_free_plan_error:
                         logger.warning(
-                            f"Не удалось отправить VK сообщение с учетными данными пользователю {user.vk_id}: {error_msg}. "
+                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
+                            f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
+                            f"добавленные в базу и подтвержденные. Пользователь может получить учетные данные "
+                            f"через Telegram бота или администратора."
+                        )
+                    else:
+                        logger.warning(
+                            f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
                             f"Пользователь может получить учетные данные через Telegram бота или администратора."
                         )
-                        # Fallback на email, если VK не удалось отправить
-                        if user.email:
-                            await _send_credentials_via_email_fallback(user, logger)
-                except Exception as e:
-                    logger.error(f"Исключение при отправке VK сообщения с учетными данными пользователю {user.vk_id}: {e}")
-                    # Fallback на email при ошибке VK
-                    if user.email:
-                        await _send_credentials_via_email_fallback(user, logger)
-            # Fallback на email, если VK ID не указан
-            elif user.email:
-                await _send_credentials_via_email_fallback(user, logger)
-
-
-async def _send_credentials_via_email_fallback(user, logger):
-    """Вспомогательная функция для отправки учетных данных через email (fallback)."""
-    try:
-        logger.info(f"Отправка email с учетными данными пользователю. Email из БД: {user.email}, ID пользователя: {user.id}")
-        result = await unisender_client.send_credentials_email(
-            email=user.email,
-            first_name=user.first_name or '',
-            last_name=user.last_name or '',
-            login=user._generated_login,
-            password=user._generated_password
-        )
-        if result.get("success"):
-            logger.info(f"Email с учетными данными успешно отправлен на {user.email}")
-        else:
-            error_msg = result.get("error", "Неизвестная ошибка")
-            error_codes = result.get("error_codes", [])
-            is_free_plan_error = (
-                "invalid_arg" in error_codes or 
-                "free plan" in error_msg.lower() or
-                "confirmed emails" in error_msg.lower() or
-                "подтвержденные email" in error_msg.lower() or
-                "подтвержденные адреса" in error_msg.lower() or
-                "добавлены в вашу базу" in error_msg.lower()
-            )
-            
-            if is_free_plan_error:
-                logger.warning(
-                    f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
-                    f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
-                    f"добавленные в базу и подтвержденные. Пользователь может получить учетные данные "
-                    f"через Telegram бота или администратора."
-                )
-            else:
-                logger.warning(
-                    f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
-                    f"Пользователь может получить учетные данные через Telegram бота или администратора."
-                )
-            
-            # Если ошибка связана с бесплатным тарифом, отправляем уведомление администратору в Telegram
-            if is_free_plan_error:
-                try:
-                    admin_message = (
-                        f"⚠️ <b>Не удалось отправить email с учетными данными</b>\n\n"
-                        f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
-                        f"📧 <b>Email:</b> {escape_html(user.email)}\n"
-                        f"❌ <b>Причина:</b> {escape_html(error_msg)}\n\n"
-                        f"🔑 <b>Учетные данные для передачи пользователю:</b>\n"
-                        f"<b>Логин:</b> <code>{escape_html(user._generated_login)}</code>\n"
-                        f"<b>Пароль:</b> <code>{escape_html(user._generated_password)}</code>\n\n"
-                        f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса. "
-                        f"Передайте учетные данные пользователю вручную.</i>"
-                    )
-                    await send_telegram_message(
-                        chat_id=settings.TELEGRAM_CHAT_ID,
-                        text=admin_message,
-                        message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
-                    )
-                    logger.info(f"Уведомление администратору в Telegram отправлено с учетными данными для {user.email}")
-                except Exception as telegram_error:
-                    logger.error(f"Не удалось отправить уведомление администратору в Telegram: {telegram_error}")
-    except Exception as e:
-        logger.error(f"Исключение при отправке email с учетными данными на {user.email}: {e}")
+                    
+                    # Если ошибка связана с бесплатным тарифом, отправляем уведомление администратору в Telegram
+                    if is_free_plan_error:
+                        try:
+                            admin_message = (
+                                f"⚠️ <b>Не удалось отправить email с учетными данными</b>\n\n"
+                                f"👤 <b>Пользователь:</b> {escape_html(user.first_name or '')} {escape_html(user.last_name or '')}\n"
+                                f"📧 <b>Email:</b> {escape_html(user.email)}\n"
+                                f"❌ <b>Причина:</b> {escape_html(error_msg)}\n\n"
+                                f"🔑 <b>Учетные данные для передачи пользователю:</b>\n"
+                                f"<b>Логин:</b> <code>{escape_html(user._generated_login)}</code>\n"
+                                f"<b>Пароль:</b> <code>{escape_html(user._generated_password)}</code>\n\n"
+                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса. "
+                                f"Передайте учетные данные пользователю вручную.</i>"
+                            )
+                            await send_telegram_message(
+                                chat_id=settings.TELEGRAM_CHAT_ID,
+                                text=admin_message,
+                                message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID
+                            )
+                            logger.info(f"Уведомление администратору в Telegram отправлено с учетными данными для {user.email}")
+                        except Exception as telegram_error:
+                            logger.error(f"Не удалось отправить уведомление администратору в Telegram: {telegram_error}")
+            except Exception as e:
+                logger.error(f"Исключение при отправке email с учетными данными на {user.email}: {e}")
     
     return user
 
