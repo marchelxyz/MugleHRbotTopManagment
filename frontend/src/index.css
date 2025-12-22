@@ -52,6 +52,31 @@ body {
     width: 100%;
     max-width: none;
   }
+  
+  body {
+    font-size: 16px;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  body {
+    font-size: 17px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  body {
+    font-size: 18px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  body {
+    font-size: 20px;
+  }
 }
 
 /* Глобальные стили для кнопок - убираем синее подсвечивание и делаем прозрачными при нажатии */

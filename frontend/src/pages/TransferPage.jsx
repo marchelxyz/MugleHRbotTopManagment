@@ -42,11 +42,10 @@ function UserSearch({ currentUser, onUserSelect }) {
   const loadAllUsers = async () => {
     setIsLoading(true);
     try {
-      const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-      if (!telegramId) {
-        setIsLoading(false);
-        return;
-      }
+      // Получаем telegramId из Telegram WebApp (если доступен)
+      // Если нет, функция getAllUsers сама использует userId из localStorage
+      const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
+      
       const response = await getAllUsers(telegramId);
       // Фильтруем текущего пользователя и пользователей со статусом rejected, сортируем по имени в алфавитном порядке
       const users = response.data

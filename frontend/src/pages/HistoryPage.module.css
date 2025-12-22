@@ -62,6 +62,75 @@
     text-align: right;
 }
 
+/* Адаптация для больших экранов */
+@media (min-width: 1025px) {
+  .transactionItem {
+    max-width: 1000px;
+    margin: 0 auto 15px auto;
+    padding: 18px;
+  }
+}
+
+/* Для больших экранов (1440px+) */
+@media (min-width: 1440px) {
+  .transactionItem {
+    max-width: 1200px;
+    padding: 20px;
+  }
+  
+  .transactionItem p {
+    font-size: 17px;
+  }
+  
+  .message {
+    font-size: 16px;
+  }
+  
+  .timestamp {
+    font-size: 14px;
+  }
+}
+
+/* Для ультрашироких экранов (1920px+) */
+@media (min-width: 1920px) {
+  .transactionItem {
+    max-width: 1400px;
+    padding: 25px;
+  }
+  
+  .transactionItem p {
+    font-size: 18px;
+  }
+  
+  .message {
+    font-size: 17px;
+  }
+  
+  .timestamp {
+    font-size: 15px;
+  }
+}
+
+/* Для 4K экранов (2560px+) */
+@media (min-width: 2560px) {
+  .transactionItem {
+    max-width: 1600px;
+    padding: 30px;
+  }
+  
+  .transactionItem p {
+    font-size: 20px;
+  }
+  
+  .message {
+    font-size: 18px;
+  }
+  
+  .timestamp {
+    font-size: 16px;
+  }
+}
+
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
 button:focus,

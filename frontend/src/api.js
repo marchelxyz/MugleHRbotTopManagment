@@ -58,8 +58,19 @@ export const registerUser = (telegramId, userData) => {
 };
 
 export const getAllUsers = (telegramId) => {
+  const headers = {};
+  if (telegramId) {
+    // Если передан telegramId, используем его
+    headers['X-Telegram-Id'] = telegramId;
+  } else {
+    // Иначе используем userId из localStorage (для браузерной авторизации)
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      headers['X-User-Id'] = userId;
+    }
+  }
   return apiClient.get('/users/', {
-    headers: { 'X-Telegram-Id': telegramId },
+    headers,
   });
 };
 
