@@ -53,6 +53,7 @@ function App() {
   
   // Определяем, является ли устройство десктопом
   // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
+  // В браузере определяем desktop только по ширине окна
   const isDesktop = tg ? (['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024) : (windowWidth > 1024);
   
   // Отслеживаем изменение размера окна
@@ -572,13 +573,16 @@ function App() {
       {shouldShowSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
       {shouldShowBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
-      {/* Логика для <main> остается такой же, как в прошлый раз */}
-      {/* Для страниц входа и регистрации не применяем классы wrapper, чтобы убрать белый контейнер */}
+      {/* Логика для <main>: 
+          - Для страниц входа/регистрации не применяем классы wrapper
+          - Для desktop всегда применяем desktop-wrapper (даже если меню не показывается)
+          - Добавляем класс with-sidebar только когда боковое меню показывается
+          - Для mobile применяем mobile-wrapper */}
       <main className={
         isLoginOrRegistrationPage 
           ? '' 
           : (isDesktop 
-              ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
+              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''}` 
               : 'mobile-wrapper')
       }>
         {showPendingBanner && (
