@@ -9,7 +9,8 @@
 /* --- НАЧАЛО ИЗМЕНЕНИЙ --- */
 
 .header {
-  height: 110px;
+  /* Плавное масштабирование высоты */
+  height: clamp(90px, 10vw, 140px);
   background-image: url('https://i.postimg.cc/6psSrhnR/sapka-ost-razdelov-sinaa.webp');
   background-size: cover;
   background-position: center;
@@ -22,6 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: height 0.3s ease;
 }
 
 /* Внутренний контейнер для всех трех элементов */
@@ -31,27 +33,29 @@
   justify-content: center;
 }
 
-/* Стили для логотипа "С" */
+/* Стили для логотипа "С" - плавное масштабирование */
 .headerLogo {
-  height: 32px; /* Подбираем высоту для гармонии */
+  height: clamp(24px, 2.5vw, 48px);
   width: auto;
+  transition: height 0.3s ease;
 }
 
-/* Стили для волнистой линии */
+/* Стили для волнистой линии - плавное масштабирование */
 .headerLine {
-  height: 38px; /* Высота линии */
+  height: clamp(28px, 3vw, 56px);
   width: auto;
-  margin-left: 5px; /* Небольшой отступ от "C" */
+  margin-left: clamp(4px, 0.5vw, 10px);
+  transition: height 0.3s ease, margin-left 0.3s ease;
 }
 
-/* Стили для заголовка */
+/* Стили для заголовка - плавное масштабирование */
 .headerTitle {
   color: white;
   font-family: 'Inter', sans-serif;
   
-  /* ВАШИ ТРЕБОВАНИЯ: */
-  font-size: 14px; /* Размер шрифта 14 */
-  margin-left: 7px; /* Отступ в 7px от линии */
+  /* Плавное масштабирование размера шрифта */
+  font-size: clamp(12px, 1.2vw, 20px);
+  margin-left: clamp(5px, 0.7vw, 12px);
   
   font-weight: 500;
   margin-top: 0;
@@ -59,121 +63,30 @@
   margin-right: 0;
   white-space: nowrap; /* Запрещаем перенос названия раздела */
   text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  transition: font-size 0.3s ease, margin-left 0.3s ease;
 }
 
 /* --- КОНЕЦ ИЗМЕНЕНИЙ --- */
 
 .contentArea {
   background-color: #F4F4F8;
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+  border-top-left-radius: clamp(16px, 2vw, 24px);
+  border-top-right-radius: clamp(16px, 2vw, 24px);
   position: relative;
   z-index: 2;
-  margin-top: -20px;
-  padding: 20px;
+  margin-top: clamp(-16px, -2vw, -24px);
+  /* Плавное масштабирование padding */
+  padding: clamp(16px, 2vw, 80px);
   min-height: calc(100vh - 150px);
-  padding-bottom: calc(110px + env(safe-area-inset-bottom)); /* Учитываем увеличенные кнопки навигации Android */
+  padding-bottom: calc(clamp(90px, 10vw, 140px) + env(safe-area-inset-bottom)); /* Учитываем увеличенные кнопки навигации Android */
   box-sizing: border-box;
   overflow-x: hidden;
   width: 100%;
+  transition: padding 0.3s ease, border-radius 0.3s ease, margin-top 0.3s ease;
 }
 
-/* Адаптация для мобильных устройств */
-@media (max-width: 767px) {
-  .contentArea {
-    padding: 16px;
-    padding-bottom: calc(110px + env(safe-area-inset-bottom));
-  }
-  
-  .header {
-    height: 100px;
-  }
-  
-  .headerTitle {
-    font-size: 13px;
-  }
-  
-  .headerLogo {
-    height: 28px;
-  }
-  
-  .headerLine {
-    height: 34px;
-  }
-}
-
-/* Адаптация для очень маленьких экранов */
-@media (max-width: 480px) {
-  .contentArea {
-    padding: 12px;
-    padding-bottom: calc(110px + env(safe-area-inset-bottom));
-  }
-  
-  .header {
-    height: 90px;
-  }
-  
-  .headerTitle {
-    font-size: 12px;
-    margin-left: 5px;
-  }
-  
-  .headerLogo {
-    height: 24px;
-  }
-  
-  .headerLine {
-    height: 30px;
-    margin-left: 3px;
-  }
-}
-
-/* Адаптация для планшетов */
-@media (min-width: 768px) and (max-width: 1024px) {
-  .contentArea {
-    padding: 30px;
-  }
-}
-
-/* Адаптация для ПК */
-@media (min-width: 1025px) {
-  .contentArea {
-    padding: 40px;
-  }
-}
-
-/* Для больших экранов (1440px+) */
-@media (min-width: 1440px) {
-  .contentArea {
-    padding: 50px;
-  }
-}
-
-/* Для ультрашироких экранов (1920px+) */
-@media (min-width: 1920px) {
-  .contentArea {
-    padding: 60px;
-  }
-}
-
-/* Для 4K экранов (2560px+) */
-@media (min-width: 2560px) {
-  .contentArea {
-    padding: 80px;
-  }
-  
-  .headerTitle {
-    font-size: 16px;
-  }
-  
-  .headerLogo {
-    height: 40px;
-  }
-  
-  .headerLine {
-    height: 46px;
-  }
-}
+/* Все адаптивные изменения теперь обрабатываются через clamp() в основных стилях */
+/* Дополнительные медиа-запросы используются только для специфических случаев */
 
 /* Убираем синюю разметку при фокусе и нажатии */
 button,

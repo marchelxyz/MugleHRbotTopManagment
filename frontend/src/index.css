@@ -54,28 +54,29 @@ body {
   }
   
   body {
-    font-size: 16px;
+    /* Плавное масштабирование шрифта от 16px до 20px */
+    font-size: clamp(16px, 1.2vw, 20px);
   }
 }
 
 /* Для больших экранов (1440px+) */
 @media (min-width: 1440px) {
   body {
-    font-size: 17px;
+    font-size: clamp(17px, 1.3vw, 22px);
   }
 }
 
 /* Для ультрашироких экранов (1920px+) */
 @media (min-width: 1920px) {
   body {
-    font-size: 18px;
+    font-size: clamp(18px, 1.4vw, 24px);
   }
 }
 
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
   body {
-    font-size: 20px;
+    font-size: clamp(20px, 1.6vw, 28px);
   }
 }
 
