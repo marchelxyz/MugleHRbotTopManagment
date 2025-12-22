@@ -1,5 +1,16 @@
 """
 Модуль для работы с Unisender API для отправки email уведомлений.
+
+ВАЖНО: На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса.
+
+Настройка подтверждения email:
+- В файле .env установите UNISENDER_DOUBLE_OPTIN:
+  * 0 - подтверждение не требуется (может не работать на бесплатном тарифе)
+  * 1 - требуется подтверждение (отправляется письмо пользователю) - РЕКОМЕНДУЕТСЯ для бесплатного тарифа
+  * 3 - добавить без отправки письма (для транзакционных писем, но на бесплатном тарифе все равно требуется подтверждение)
+
+Альтернативы Unisender:
+См. файл UNISENDER_EMAIL_SOLUTIONS.md для списка бесплатных альтернатив (Resend, Brevo, SendGrid и др.)
 """
 import httpx
 from typing import Optional, Dict, Any
@@ -27,7 +38,7 @@ class UnisenderClient:
         self,
         email: str,
         list_id: Optional[str] = None,
-        double_optin: int = 3
+        double_optin: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Добавляет email адрес в базу Unisender перед отправкой письма.
@@ -61,14 +72,27 @@ class UnisenderClient:
                 logger.warning("UNISENDER_LIST_ID не указан. Невозможно добавить email в базу.")
                 return {"success": False, "error": "UNISENDER_LIST_ID не указан"}
             
+            # Используем значение из настроек, если не передано явно
+            if double_optin is None:
+                double_optin = getattr(settings, 'UNISENDER_DOUBLE_OPTIN', 3)
+            
             email_to_subscribe = email.strip()
-            logger.info(f"Добавление email {email_to_subscribe} в базу Unisender (список ID: {list_id})")
+            optin_mode_desc = {
+                0: "без подтверждения",
+                1: "с отправкой письма подтверждения",
+                3: "добавить без отправки письма (для транзакционных)"
+            }.get(double_optin, f"режим {double_optin}")
+            
+            logger.info(
+                f"Добавление email {email_to_subscribe} в базу Unisender (список ID: {list_id}, "
+                f"double_optin={double_optin} - {optin_mode_desc})"
+            )
             params = {
                 "format": "json",
                 "api_key": self.api_key,
                 "list_ids": list_id,
                 "fields[email]": email_to_subscribe,
-                "double_optin": str(double_optin),  # 3 = добавить без отправки письма подтверждения
+                "double_optin": str(double_optin),
                 "overwrite": "1"  # Перезаписать существующие данные
             }
             
@@ -96,10 +120,19 @@ class UnisenderClient:
                 
                 # Проверяем успешность добавления
                 if result.get("result"):
+                    optin_note = ""
+                    if double_optin == 1:
+                        optin_note = "Пользователю отправлено письмо подтверждения. Email будет доступен для отправки после подтверждения."
+                    elif double_optin == 3:
+                        optin_note = (
+                            "Примечание: на бесплатном тарифе Unisender может потребоваться подтверждение email пользователем "
+                            "перед отправкой писем, даже при использовании double_optin=3. "
+                            "Для гарантированной доставки используйте double_optin=1."
+                        )
+                    
                     logger.info(
-                        f"Email {email} успешно добавлен в базу Unisender (список ID: {list_id}). "
-                        f"Примечание: на бесплатном тарифе Unisender может потребоваться подтверждение email пользователем "
-                        f"перед отправкой писем, даже при использовании double_optin=3."
+                        f"Email {email} успешно добавлен в базу Unisender (список ID: {list_id}, double_optin={double_optin}). "
+                        f"{optin_note}"
                     )
                     return {"success": True}
                 else:
@@ -168,8 +201,10 @@ class UnisenderClient:
         # Пытаемся добавить адрес в базу перед отправкой (если еще не добавлен)
         email_added_to_base = False
         if list_id:
+            # Используем настройку из конфига для double_optin
+            double_optin = getattr(settings, 'UNISENDER_DOUBLE_OPTIN', 3)
             logger.info(f"Попытка добавить email {email} в базу Unisender перед отправкой письма")
-            subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
+            subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=double_optin)
             if subscribe_result.get("success"):
                 email_added_to_base = True
                 logger.info(f"Email {email} успешно добавлен в базу Unisender, продолжаем отправку письма")

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     UNISENDER_SENDER_EMAIL: str = ""
     UNISENDER_ADMIN_EMAIL: str = ""  # Email для уведомлений администраторам
     UNISENDER_LIST_ID: str = ""  # Опционально: ID списка рассылки
+    UNISENDER_DOUBLE_OPTIN: int = 3  # 0 - без подтверждения, 1 - с подтверждением, 3 - добавить без письма (для транзакционных)
 
     class Config:
         env_file = ".env"
