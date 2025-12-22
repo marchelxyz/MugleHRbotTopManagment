@@ -1,7 +1,11 @@
 /* frontend/src/pages/LeaderboardPage.module.css */
 
 .page {
-  padding: 0; 
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* --- НАЧАЛО НОВЫХ СТИЛЕЙ ДЛЯ ВКЛАДОК --- */

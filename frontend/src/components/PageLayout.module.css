@@ -4,6 +4,10 @@
   background-color: #F4F4F8;
   position: relative;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* --- НАЧАЛО ИЗМЕНЕНИЙ --- */
@@ -76,6 +80,7 @@
   box-sizing: border-box;
   overflow-x: hidden;
   width: 100%;
+  max-width: 100%;
 }
 
 /* Адаптация для мобильных устройств */
