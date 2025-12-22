@@ -27,14 +27,6 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = ""
 
-    # Настройки Unisender для отправки email
-    UNISENDER_API_KEY: str = ""
-    UNISENDER_API_URL: str = "https://api.unisender.com/ru/api"
-    UNISENDER_SENDER_NAME: str = ""
-    UNISENDER_SENDER_EMAIL: str = ""
-    UNISENDER_ADMIN_EMAIL: str = ""  # Email для уведомлений администраторам
-    UNISENDER_LIST_ID: str = ""  # Опционально: ID списка рассылки
-
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
