@@ -218,6 +218,113 @@
   color: #888;
 }
 
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .formGroup {
+    margin-bottom: 12px;
+  }
+  
+  .label {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  
+  .input,
+  .textarea {
+    padding: 12px;
+    font-size: 16px; /* Предотвращаем зум на iOS */
+    border-radius: 10px;
+  }
+  
+  .textarea {
+    min-height: 80px;
+    padding-bottom: 30px;
+  }
+  
+  .submitButton {
+    padding: 14px;
+    font-size: 16px;
+    margin-top: 8px;
+  }
+  
+  .backButton {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  
+  .balanceInfo {
+    padding: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .balanceInfo p {
+    font-size: 14px;
+  }
+  
+  .searchResults {
+    max-height: 300px;
+  }
+  
+  .searchResultItem {
+    padding: 10px 12px;
+  }
+  
+  .userName {
+    font-size: 14px;
+  }
+  
+  .userPosition {
+    font-size: 12px;
+  }
+  
+  .charCounter {
+    font-size: 11px;
+    bottom: 6px;
+    right: 10px;
+  }
+  
+  .messageHint {
+    padding: 8px 10px;
+  }
+  
+  .messageHintText {
+    font-size: 13px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .input,
+  .textarea {
+    padding: 10px;
+    font-size: 16px;
+  }
+  
+  .textarea {
+    min-height: 70px;
+  }
+  
+  .submitButton {
+    padding: 12px;
+  }
+  
+  .balanceInfo {
+    padding: 6px;
+  }
+  
+  .balanceInfo p {
+    font-size: 13px;
+  }
+  
+  .searchResults {
+    max-height: 250px;
+  }
+  
+  .searchResultItem {
+    padding: 8px 10px;
+  }
+}
+
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
 button:focus,

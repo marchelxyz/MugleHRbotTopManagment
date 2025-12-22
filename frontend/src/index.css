@@ -19,6 +19,26 @@ body {
   min-height: 100%;
   height: 100%;
   width: 100%;
+  box-sizing: border-box;
+}
+
+/* Предотвращаем горизонтальный скролл на мобильных устройствах */
+* {
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
 }
 
 #root {

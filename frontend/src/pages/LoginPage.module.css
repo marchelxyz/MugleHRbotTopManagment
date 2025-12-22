@@ -198,6 +198,8 @@
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .forgotPasswordContent {
@@ -209,6 +211,7 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
 }
 
 .forgotPasswordContent h2 {
@@ -252,13 +255,88 @@
 /* Адаптация для мобильных устройств */
 @media (max-width: 767px) {
   .loginContainer {
-    padding: 30px 24px;
+    padding: 24px 16px;
     border-radius: 20px;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
   }
   
   .page {
     min-height: auto;
-    padding: 20px 16px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .input {
+    padding: 12px 14px;
+    font-size: 16px; /* Предотвращаем зум на iOS */
+    margin-bottom: 12px;
+  }
+  
+  .submitButton {
+    padding: 14px;
+    font-size: 16px;
+    margin-top: 16px;
+  }
+  
+  .forgotPasswordContent {
+    padding: 24px 16px;
+    max-width: 100%;
+    margin: 0 16px;
+  }
+  
+  .forgotPasswordContent h2 {
+    font-size: 20px;
+  }
+  
+  .forgotPasswordText {
+    font-size: 13px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .loginContainer {
+    padding: 20px 12px;
+    border-radius: 16px;
+  }
+  
+  .page {
+    padding: 12px;
+  }
+  
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  
+  .input {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  
+  .submitButton {
+    padding: 12px;
+    margin-top: 12px;
+  }
+  
+  .forgotPasswordContent {
+    padding: 20px 12px;
+    margin: 0 12px;
+  }
+  
+  .forgotPasswordContent h2 {
+    font-size: 18px;
+  }
+  
+  .forgotPasswordText {
+    font-size: 12px;
   }
 }
 

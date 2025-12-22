@@ -73,6 +73,59 @@
   padding: 20px;
   min-height: calc(100vh - 150px);
   padding-bottom: calc(110px + env(safe-area-inset-bottom)); /* Учитываем увеличенные кнопки навигации Android */
+  box-sizing: border-box;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 767px) {
+  .contentArea {
+    padding: 16px;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  
+  .header {
+    height: 100px;
+  }
+  
+  .headerTitle {
+    font-size: 13px;
+  }
+  
+  .headerLogo {
+    height: 28px;
+  }
+  
+  .headerLine {
+    height: 34px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .contentArea {
+    padding: 12px;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  
+  .header {
+    height: 90px;
+  }
+  
+  .headerTitle {
+    font-size: 12px;
+    margin-left: 5px;
+  }
+  
+  .headerLogo {
+    height: 24px;
+  }
+  
+  .headerLine {
+    height: 30px;
+    margin-left: 3px;
+  }
 }
 
 /* Адаптация для планшетов */
