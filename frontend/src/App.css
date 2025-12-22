@@ -47,6 +47,15 @@
 /* Общий контейнер, который теперь может быть мобильным или десктопным */
 .app-container {
   min-height: 100vh;
+  width: 100%;
+}
+
+/* На desktop контейнер должен занимать весь экран */
+@media (min-width: 1025px) {
+  .app-container {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 /* Мобильный вид (узкий, по центру) */
@@ -57,6 +66,21 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
   background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
+}
+
+/* Десктопный вид (широкий, на весь экран) */
+.desktop-wrapper {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100vh;
+  position: relative;
+  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
+  margin: 0 !important;
+  box-shadow: none;
+}
+
+.desktop-wrapper.with-sidebar {
+  margin-left: 240px !important; /* Отступ, равный ширине бокового меню */
 }
 
 /* Планшетный вид (средняя ширина, по центру) */
@@ -75,13 +99,7 @@
     margin-left: 0; /* Убираем отступ для планшетов */
     max-width: 600px;
     width: 100%;
-  }
-}
-
-/* Десктопный вид (широкий, с отступом слева) */
-@media (min-width: 1025px) {
-  .desktop-wrapper {
-    margin-left: 240px; /* Отступ, равный ширине бокового меню */
+    margin: 0 auto; /* Центрируем на планшетах */
   }
 }
 

@@ -18,6 +18,20 @@ body {
   overflow-x: hidden;
   min-height: 100%;
   height: 100%;
+  width: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* На desktop root должен занимать весь экран */
+@media (min-width: 1025px) {
+  #root {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 /* Глобальные стили для кнопок - убираем синее подсвечивание и делаем прозрачными при нажатии */

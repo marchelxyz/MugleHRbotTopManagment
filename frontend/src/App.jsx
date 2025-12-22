@@ -53,13 +53,27 @@ function App() {
   
   // Определяем, является ли устройство десктопом
   // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
-  const isDesktop = tg ? (['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024) : (windowWidth > 1024);
+  // В браузере определяем desktop только по ширине окна
+  // В браузере tg будет null, поэтому используем только проверку ширины
+  const isDesktop = !isTelegramWebApp 
+    ? (windowWidth > 1024) 
+    : (['tdesktop', 'macos', 'web'].includes(tg?.platform) && windowWidth > 1024);
+  
+  // Отладочная информация (можно удалить после проверки)
+  useEffect(() => {
+    if (!isTelegramWebApp) {
+      console.log('Browser mode - windowWidth:', windowWidth, 'isDesktop:', isDesktop);
+    }
+  }, [windowWidth, isDesktop, isTelegramWebApp]);
   
   // Отслеживаем изменение размера окна
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
+    
+    // Убеждаемся, что windowWidth актуален при первой загрузке
+    setWindowWidth(window.innerWidth);
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -572,13 +586,16 @@ function App() {
       {shouldShowSideNav && <SideNav user={user} activePage={page} onNavigate={navigate} />}
       {shouldShowBottomNav && <BottomNav user={user} activePage={page} onNavigate={navigate} />}
       
-      {/* Логика для <main> остается такой же, как в прошлый раз */}
-      {/* Для страниц входа и регистрации не применяем классы wrapper, чтобы убрать белый контейнер */}
+      {/* Логика для <main>: 
+          - Для страниц входа/регистрации не применяем классы wrapper
+          - Для desktop всегда применяем desktop-wrapper (даже если меню не показывается)
+          - Добавляем класс with-sidebar только когда боковое меню показывается
+          - Для mobile применяем mobile-wrapper */}
       <main className={
         isLoginOrRegistrationPage 
           ? '' 
           : (isDesktop 
-              ? (shouldShowSideNav ? 'desktop-wrapper' : '') 
+              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''}` 
               : 'mobile-wrapper')
       }>
         {showPendingBanner && (
