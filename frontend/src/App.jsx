@@ -54,13 +54,26 @@ function App() {
   // Определяем, является ли устройство десктопом
   // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
   // В браузере определяем desktop только по ширине окна
-  const isDesktop = tg ? (['tdesktop', 'macos', 'web'].includes(tg.platform) && windowWidth > 1024) : (windowWidth > 1024);
+  // В браузере tg будет null, поэтому используем только проверку ширины
+  const isDesktop = !isTelegramWebApp 
+    ? (windowWidth > 1024) 
+    : (['tdesktop', 'macos', 'web'].includes(tg?.platform) && windowWidth > 1024);
+  
+  // Отладочная информация (можно удалить после проверки)
+  useEffect(() => {
+    if (!isTelegramWebApp) {
+      console.log('Browser mode - windowWidth:', windowWidth, 'isDesktop:', isDesktop);
+    }
+  }, [windowWidth, isDesktop, isTelegramWebApp]);
   
   // Отслеживаем изменение размера окна
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
+    
+    // Убеждаемся, что windowWidth актуален при первой загрузке
+    setWindowWidth(window.innerWidth);
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
