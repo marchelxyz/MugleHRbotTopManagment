@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     UNISENDER_ADMIN_EMAIL: str = ""  # Email для уведомлений администраторам
     UNISENDER_LIST_ID: str = ""  # Опционально: ID списка рассылки
 
+    # Настройки VK API для отправки сообщений
+    VK_API_KEY: str = ""  # Access token приложения VK
+    VK_API_VERSION: str = "5.131"  # Версия VK API
+    VK_ADMIN_ID: int = 0  # VK ID администратора для уведомлений
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
