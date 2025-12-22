@@ -217,7 +217,18 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
           placeholder="Email (опционально, если есть веб-аккаунт)" 
           className={styles.input} 
         />
-        {errors.email && <p className={styles.error}>{errors.email}</p>
+        {errors.email && <p className={styles.error}>{errors.email}</p>}
+        
+        <InputMask
+          mask="+7 (999) 999-99-99"
+          name="phoneNumber"
+          value={formData.phoneNumber}
+          onChange={handleChange}
+          className={styles.input}
+        >
+          {(inputProps) => <input {...inputProps} type="tel" placeholder="Номер телефона" />}
+        </InputMask>
+        {errors.phoneNumber && <p className={styles.error}>{errors.phoneNumber}</p>}
 
         <InputMask
           mask="99.99.9999"
