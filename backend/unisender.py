@@ -10,7 +10,7 @@
   * 3 - добавить без отправки письма (для транзакционных писем, но на бесплатном тарифе все равно требуется подтверждение)
 
 Альтернативы Unisender:
-См. файл UNISENDER_EMAIL_SOLUTIONS.md для списка бесплатных альтернатив (Resend, Brevo, SendGrid и др.)
+См. файл UNISENDER_EMAIL_SOLUTIONS.md для списка бесплатных альтернатив (Brevo, SendGrid и др.)
 """
 import httpx
 from typing import Optional, Dict, Any

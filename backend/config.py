@@ -27,16 +27,7 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = ""
 
-    # Настройки для отправки email (можно использовать Resend или Unisender)
-    EMAIL_PROVIDER: str = "resend"  # "resend" или "unisender"
-    
-    # Настройки Resend (рекомендуется - проще и надежнее)
-    RESEND_API_KEY: str = ""
-    RESEND_SENDER_EMAIL: str = ""  # Должен быть верифицированный домен в Resend
-    RESEND_SENDER_NAME: str = ""  # Опционально: имя отправителя
-    RESEND_ADMIN_EMAIL: str = ""  # Email для уведомлений администраторам
-    
-    # Настройки Unisender для отправки email (альтернатива)
+    # Настройки Unisender для отправки email
     UNISENDER_API_KEY: str = ""
     UNISENDER_API_URL: str = "https://api.unisender.com/ru/api"
     UNISENDER_SENDER_NAME: str = ""
