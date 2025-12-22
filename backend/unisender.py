@@ -69,31 +69,56 @@ class UnisenderClient:
                 params["list_id"] = list_id
             
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Unisender обычно использует GET запросы
-                response = await client.get(
+                # Согласно документации UniSender, метод sendEmail поддерживает как GET, так и POST
+                # Используем POST для большей надежности, особенно при передаче HTML контента
+                response = await client.post(
                     f"{self.api_url}/sendEmail",
-                    params=params
+                    data=params
                 )
                 response.raise_for_status()
-                result = response.json()
+                
+                # Получаем текст ответа для логирования
+                response_text = response.text
+                logger.debug(f"Ответ от UniSender API (raw): {response_text}")
+                
+                try:
+                    result = response.json()
+                except ValueError as json_error:
+                    logger.error(f"Не удалось распарсить JSON ответ от UniSender API: {json_error}, ответ: {response_text}")
+                    return {"success": False, "error": f"Неверный формат ответа от API: {str(json_error)}"}
+                
+                # Логируем распарсенный ответ для отладки
+                logger.debug(f"Ответ от UniSender API (parsed): {result}")
                 
                 # Проверяем, что result - это словарь
                 if not isinstance(result, dict):
-                    logger.error(f"Неожиданный формат ответа от API при отправке email на {email}: {type(result).__name__}")
+                    logger.error(f"Неожиданный формат ответа от API при отправке email на {email}: {type(result).__name__}, ответ: {result}")
                     return {"success": False, "error": f"Неожиданный формат ответа: {type(result).__name__}"}
                 
+                # Безопасно получаем поле result из ответа
+                result_data = result.get("result")
+                
                 # Проверяем успешность отправки
-                if result.get("result", {}).get("email_id"):
-                    logger.info(f"Email успешно отправлен на {email}")
-                    return {"success": True, "email_id": result["result"]["email_id"]}
-                elif result.get("result") and isinstance(result.get("result"), dict) and "email_id" in result.get("result", {}):
-                    logger.info(f"Email успешно отправлен на {email}")
-                    return {"success": True, "email_id": result["result"]["email_id"]}
+                # Согласно документации UniSender, при успехе возвращается {"result": {"email_id": "..."}}
+                if isinstance(result_data, dict) and result_data.get("email_id"):
+                    email_id = result_data.get("email_id")
+                    logger.info(f"Email успешно отправлен на {email}, email_id: {email_id}")
+                    return {"success": True, "email_id": email_id}
                 else:
+                    # Обрабатываем ошибки API
                     error = result.get("error", "Неизвестная ошибка")
                     error_code = result.get("code", "")
-                    error_msg = f"{error}" + (f" (код: {error_code})" if error_code else "")
-                    logger.error(f"Ошибка отправки email на {email}: {error_msg}")
+                    
+                    # Если error - это словарь, извлекаем текст ошибки
+                    if isinstance(error, dict):
+                        error_text = error.get("text", str(error))
+                    elif isinstance(error, str):
+                        error_text = error
+                    else:
+                        error_text = str(error)
+                    
+                    error_msg = error_text + (f" (код: {error_code})" if error_code else "")
+                    logger.error(f"Ошибка отправки email на {email}: {error_msg}, полный ответ: {result}")
                     return {"success": False, "error": error_msg}
                     
         except httpx.HTTPError as e:
