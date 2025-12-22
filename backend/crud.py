@@ -22,6 +22,7 @@ import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
 from database import settings
+from unisender import unisender_client
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
@@ -187,6 +188,22 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+    
+    # Отправляем email уведомление администраторам при регистрации через веб
+    if not user_telegram_id and db_user.email:
+        try:
+            registration_date_str = db_user.registration_date.strftime('%Y-%m-%d %H:%M') if db_user.registration_date else 'не указана'
+            await unisender_client.send_registration_notification(
+                user_email=db_user.email,
+                first_name=db_user.first_name or '',
+                last_name=db_user.last_name or '',
+                position=db_user.position or '',
+                department=db_user.department or '',
+                phone_number=db_user.phone_number or '',
+                registration_date=registration_date_str
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при отправке email уведомления о регистрации: {e}")
     
     # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
     try:
@@ -991,8 +1008,30 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
     if hasattr(user, '_login_was_generated') or hasattr(user, '_password_was_generated'):
         if hasattr(user, '_login_was_generated') and user._login_was_generated:
             user._generated_login = user.login
-        if hasattr(user, '_password_was_generated') and user._password_was_generated:
+        if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
             user._generated_password = generated_password
+    
+    # Отправляем email с учетными данными при одобрении веб-пользователя
+    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0) and user.email:
+        # Проверяем, были ли сгенерированы учетные данные
+        credentials_generated = (
+            hasattr(user, '_login_was_generated') and user._login_was_generated and
+            hasattr(user, '_password_was_generated') and user._password_was_generated
+        )
+        
+        # Отправляем email только если были сгенерированы новые учетные данные
+        if credentials_generated and user._generated_login and user._generated_password:
+            try:
+                await unisender_client.send_credentials_email(
+                    email=user.email,
+                    first_name=user.first_name or '',
+                    last_name=user.last_name or '',
+                    login=user._generated_login,
+                    password=user._generated_password
+                )
+                logger.info(f"Email с учетными данными отправлен на {user.email}")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке email с учетными данными на {user.email}: {e}")
     
     return user
 
