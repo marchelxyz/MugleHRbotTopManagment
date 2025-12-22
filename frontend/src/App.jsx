@@ -47,36 +47,67 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  // Инициализация windowWidth с проверкой доступности window
+  const [windowWidth, setWindowWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth;
+    }
+    return 1024; // Значение по умолчанию для SSR
+  });
   // Состояние для переключения между страницами входа и регистрации в браузере
   const [showRegistration, setShowRegistration] = useState(false);
   
   // Определяем, является ли устройство десктопом
-  // Для планшетов (768px-1024px) будем использовать мобильный интерфейс
+  // Пороговые значения:
+  // - Mobile: < 768px (мобильный интерфейс)
+  // - Tablet/Desktop: >= 768px (desktop интерфейс с боковым меню)
   // В браузере определяем desktop только по ширине окна
-  // В браузере tg будет null, поэтому используем только проверку ширины
-  const isDesktop = !isTelegramWebApp 
-    ? (windowWidth > 1024) 
-    : (['tdesktop', 'macos', 'web'].includes(tg?.platform) && windowWidth > 1024);
+  // В Telegram WebApp также учитываем платформу
+  const DESKTOP_BREAKPOINT = 768; // Порог для переключения на desktop интерфейс
   
-  // Отладочная информация (можно удалить после проверки)
+  const isDesktop = !isTelegramWebApp 
+    ? (windowWidth >= DESKTOP_BREAKPOINT) 
+    : (['tdesktop', 'macos', 'web'].includes(tg?.platform) && windowWidth >= DESKTOP_BREAKPOINT) || 
+      (windowWidth >= DESKTOP_BREAKPOINT);
+  
+  // Отладочная информация для разработки
   useEffect(() => {
     if (!isTelegramWebApp) {
-      console.log('Browser mode - windowWidth:', windowWidth, 'isDesktop:', isDesktop);
+      console.log('Browser mode - windowWidth:', windowWidth, 'isDesktop:', isDesktop, 'breakpoint:', DESKTOP_BREAKPOINT);
     }
   }, [windowWidth, isDesktop, isTelegramWebApp]);
   
-  // Отслеживаем изменение размера окна
+  // Отслеживаем изменение размера окна с debounce для оптимизации
   useEffect(() => {
+    let resizeTimer;
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
+      // Debounce для оптимизации производительности
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          setWindowWidth(window.innerWidth);
+        }
+      }, 100); // Задержка 100ms для плавности
     };
     
     // Убеждаемся, что windowWidth актуален при первой загрузке
-    setWindowWidth(window.innerWidth);
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+    }
     
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // Также отслеживаем изменения через visualViewport для мобильных устройств
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
+    
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      }
+    };
   }, []);
 
   useEffect(() => {
