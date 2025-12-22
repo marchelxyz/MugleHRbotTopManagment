@@ -122,13 +122,66 @@
 /* Адаптация для мобильных устройств */
 @media (max-width: 767px) {
   .registrationContainer {
-    padding: 30px 24px;
+    padding: 24px 16px;
     border-radius: 20px;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
   }
   
   .page {
     min-height: auto;
-    padding: 20px 16px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .input {
+    padding: 12px 14px;
+    font-size: 16px; /* Предотвращаем зум на iOS */
+    margin-bottom: 12px;
+  }
+  
+  .submitButton {
+    padding: 14px;
+    font-size: 16px;
+    margin-top: 16px;
+  }
+  
+  .backButton {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+}
+
+/* Адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .registrationContainer {
+    padding: 20px 12px;
+    border-radius: 16px;
+  }
+  
+  .page {
+    padding: 12px;
+  }
+  
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  
+  .input {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  
+  .submitButton {
+    padding: 12px;
+    margin-top: 12px;
   }
 }
 
