@@ -2,6 +2,7 @@
 Модуль для работы с Unisender API для отправки email уведомлений.
 """
 import httpx
+import asyncio
 from typing import Optional, Dict, Any
 from config import settings
 import logging
@@ -38,8 +39,9 @@ class UnisenderClient:
         Args:
             email: Email адрес для добавления
             list_id: ID списка для добавления (если не указан, используется из настроек)
-            double_optin: 0 - подтверждение не требуется, 1 - требуется подтверждение, 
-                         3 - добавить без отправки письма (рекомендуется для транзакционных писем)
+            double_optin: 0 - подтверждение не требуется (адрес сразу подтвержден, рекомендуется для транзакционных писем),
+                         1 - требуется подтверждение (отправляется письмо подтверждения),
+                         3 - добавить без отправки письма (адрес может быть неподтвержденным)
         
         Returns:
             Результат подписки от API
@@ -96,14 +98,24 @@ class UnisenderClient:
                 
                 # Проверяем успешность добавления
                 if result.get("result"):
-                    logger.info(f"Email {email} успешно добавлен в базу Unisender")
-                    return {"success": True}
+                    # Проверяем, был ли email уже в базе
+                    result_data = result.get("result")
+                    if isinstance(result_data, dict):
+                        person_id = result_data.get("person_id")
+                        is_new = result_data.get("is_new", True)
+                        if is_new:
+                            logger.info(f"Email {email} успешно добавлен в базу Unisender (новый контакт, person_id: {person_id})")
+                        else:
+                            logger.info(f"Email {email} уже был в базе Unisender, обновлен (person_id: {person_id})")
+                    else:
+                        logger.info(f"Email {email} успешно добавлен в базу Unisender")
+                    return {"success": True, "result": result_data}
                 else:
                     error = result.get("error", "Неизвестная ошибка")
                     error_code = result.get("code", "")
                     error_msg = (error if isinstance(error, str) else str(error)) + (f" (код: {error_code})" if error_code else "")
                     logger.warning(f"Не удалось добавить email {email} в базу Unisender: {error_msg}")
-                    return {"success": False, "error": error_msg}
+                    return {"success": False, "error": error_msg, "error_code": error_code}
                     
         except httpx.HTTPError as e:
             logger.error(f"HTTP ошибка при добавлении email {email} в базу Unisender: {e}")
@@ -157,18 +169,31 @@ class UnisenderClient:
         # Получаем list_id из настроек (используется и для subscribe, и для sendEmail)
         list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
         
-        # На бесплатном тарифе Unisender можно отправлять только на адреса, добавленные в базу
+        # На бесплатном тарифе Unisender можно отправлять только на адреса, добавленные в базу и подтвержденные
         # Пытаемся добавить адрес в базу перед отправкой (если еще не добавлен)
+        # Для транзакционных писем используем double_optin=0 (без подтверждения), чтобы адрес был сразу подтвержден
         if list_id:
             logger.info(f"Попытка добавить email {email} в базу Unisender перед отправкой письма")
-            subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
+            # Сначала пробуем с double_optin=0 (без подтверждения) для транзакционных писем
+            subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=0)
             if not subscribe_result.get("success"):
+                # Если не удалось с double_optin=0, пробуем с double_optin=3 (может быть уже добавлен ранее)
                 logger.warning(
-                    f"Не удалось добавить {email} в базу Unisender перед отправкой: {subscribe_result.get('error')}. "
-                    f"Продолжаем попытку отправки письма."
+                    f"Не удалось добавить {email} в базу Unisender с double_optin=0: {subscribe_result.get('error')}. "
+                    f"Пробуем с double_optin=3..."
                 )
+                subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
+                if not subscribe_result.get("success"):
+                    logger.warning(
+                        f"Не удалось добавить {email} в базу Unisender перед отправкой: {subscribe_result.get('error')}. "
+                        f"Продолжаем попытку отправки письма."
+                    )
+                else:
+                    logger.info(f"Email {email} успешно добавлен в базу Unisender (double_optin=3), продолжаем отправку письма")
             else:
-                logger.info(f"Email {email} успешно добавлен в базу Unisender, продолжаем отправку письма")
+                logger.info(f"Email {email} успешно добавлен в базу Unisender (double_optin=0), продолжаем отправку письма")
+                # Небольшая задержка после успешного добавления с double_optin=0, чтобы API успел обработать запрос
+                await asyncio.sleep(0.5)
         else:
             logger.warning("UNISENDER_LIST_ID не указан, пропускаем добавление email в базу перед отправкой")
         
@@ -259,7 +284,8 @@ class UnisenderClient:
                                 f"Не удалось отправить email на {email_address}: "
                                 f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
                                 f"которые добавлены в вашу базу Unisender и подтверждены. "
-                                f"Убедитесь, что адрес {email_address} добавлен в список с ID {list_id} через метод subscribe. "
+                                f"Убедитесь, что адрес {email_address} добавлен в список с ID {list_id} через метод subscribe "
+                                f"с параметром double_optin=0 (для автоматического подтверждения) или подтвержден вручную в панели Unisender. "
                                 f"Ошибки: {error_msg}"
                             )
                         else:
@@ -308,7 +334,8 @@ class UnisenderClient:
                             f"Не удалось отправить email на {email}: "
                             f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
                             f"которые добавлены в вашу базу Unisender и подтверждены. "
-                            f"Убедитесь, что адрес {email} добавлен в список с ID {list_id} через метод subscribe. "
+                            f"Убедитесь, что адрес {email} добавлен в список с ID {list_id} через метод subscribe "
+                            f"с параметром double_optin=0 (для автоматического подтверждения) или подтвержден вручную в панели Unisender. "
                             f"Ошибка: {error_msg}"
                         )
                     else:
