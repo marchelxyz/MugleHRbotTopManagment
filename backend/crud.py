@@ -189,6 +189,26 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     await db.commit()
     await db.refresh(db_user)
     
+    # Добавляем email пользователя в базу Unisender сразу после регистрации
+    # Это необходимо для бесплатного тарифа - можно отправлять только на подтвержденные адреса
+    if db_user.email:
+        try:
+            logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
+            subscribe_result = await unisender_client.subscribe_email(
+                email=db_user.email,
+                double_optin=3  # Добавить без отправки письма подтверждения (для транзакционных писем)
+            )
+            if subscribe_result.get("success"):
+                logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
+            else:
+                error_msg = subscribe_result.get("error", "Неизвестная ошибка")
+                logger.warning(
+                    f"Не удалось добавить email пользователя {db_user.email} в базу Unisender при регистрации: {error_msg}. "
+                    f"Это может привести к проблемам при отправке email позже."
+                )
+        except Exception as e:
+            logger.error(f"Ошибка при добавлении email пользователя {db_user.email} в базу Unisender при регистрации: {e}")
+    
     # Отправляем email уведомление администраторам при регистрации через веб
     if not user_telegram_id and db_user.email:
         try:
