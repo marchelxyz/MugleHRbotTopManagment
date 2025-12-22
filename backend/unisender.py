@@ -61,11 +61,13 @@ class UnisenderClient:
                 logger.warning("UNISENDER_LIST_ID не указан. Невозможно добавить email в базу.")
                 return {"success": False, "error": "UNISENDER_LIST_ID не указан"}
             
+            email_to_subscribe = email.strip()
+            logger.info(f"Добавление email {email_to_subscribe} в базу Unisender (список ID: {list_id})")
             params = {
                 "format": "json",
                 "api_key": self.api_key,
                 "list_ids": list_id,
-                "fields[email]": email.strip(),
+                "fields[email]": email_to_subscribe,
                 "double_optin": str(double_optin),  # 3 = добавить без отправки письма подтверждения
                 "overwrite": "1"  # Перезаписать существующие данные
             }
@@ -158,21 +160,28 @@ class UnisenderClient:
         # На бесплатном тарифе Unisender можно отправлять только на адреса, добавленные в базу
         # Пытаемся добавить адрес в базу перед отправкой (если еще не добавлен)
         if list_id:
+            logger.info(f"Попытка добавить email {email} в базу Unisender перед отправкой письма")
             subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
             if not subscribe_result.get("success"):
                 logger.warning(
                     f"Не удалось добавить {email} в базу Unisender перед отправкой: {subscribe_result.get('error')}. "
                     f"Продолжаем попытку отправки письма."
                 )
+            else:
+                logger.info(f"Email {email} успешно добавлен в базу Unisender, продолжаем отправку письма")
+        else:
+            logger.warning("UNISENDER_LIST_ID не указан, пропускаем добавление email в базу перед отправкой")
         
         try:
             # Используем метод sendEmail из Unisender API
             # Согласно документации: https://www.unisender.com/ru/support/api/messages/sendemail/
             # Unisender использует GET запросы с параметрами в URL или POST с form-data
+            email_to_send = email.strip()
+            logger.info(f"Отправка email через Unisender на адрес: {email_to_send}")
             params = {
                 "format": "json",
                 "api_key": self.api_key,
-                "email": email.strip(),
+                "email": email_to_send,
                 "sender_name": self.sender_name,
                 "sender_email": self.sender_email,
                 "subject": subject,
@@ -225,7 +234,9 @@ class UnisenderClient:
                 if isinstance(result_data, list) and len(result_data) > 0:
                     # Новый формат ответа с error_checking=1
                     email_result = result_data[0]  # Берем первый результат
-                    email_address = email_result.get("email", email)
+                    email_from_response = email_result.get("email")
+                    email_address = email_from_response if email_from_response else email
+                    logger.debug(f"Email из ответа API: {email_from_response}, исходный email: {email}, используемый email: {email_address}")
                     email_id = email_result.get("id")
                     errors = email_result.get("errors", [])
                     
@@ -334,6 +345,7 @@ class UnisenderClient:
             login: Логин пользователя
             password: Пароль пользователя
         """
+        logger.info(f"send_credentials_email вызван с email: {email} (длина: {len(email)})")
         subject = "Ваша заявка одобрена - учетные данные для входа"
         
         # HTML версия письма
@@ -480,6 +492,7 @@ class UnisenderClient:
             logger.warning("Email администратора не настроен. Пропускаем отправку уведомления.")
             return {"success": False, "error": "Email администратора не настроен"}
         
+        logger.info(f"Отправка уведомления о регистрации администратору на email: {self.admin_email}")
         subject = f"Новая регистрация через веб: {first_name} {last_name}"
         
         # HTML версия письма
@@ -605,6 +618,10 @@ Email: {user_email}
 Это автоматическое уведомление.
         """
         
+        # Важно: перед отправкой уведомления администратору нужно убедиться,
+        # что его email добавлен в базу Unisender (для бесплатного тарифа)
+        # Функция send_email уже делает это автоматически, но добавим явное логирование
+        logger.info(f"Отправка уведомления о регистрации администратору на {self.admin_email}")
         return await self.send_email(self.admin_email, subject, body, body_html)
 
 

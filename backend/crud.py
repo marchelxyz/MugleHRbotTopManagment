@@ -189,6 +189,26 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     await db.commit()
     await db.refresh(db_user)
     
+    # Добавляем email пользователя в базу Unisender сразу после регистрации
+    # Это необходимо для бесплатного тарифа - можно отправлять только на подтвержденные адреса
+    if db_user.email:
+        try:
+            logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
+            subscribe_result = await unisender_client.subscribe_email(
+                email=db_user.email,
+                double_optin=3  # Добавить без отправки письма подтверждения (для транзакционных писем)
+            )
+            if subscribe_result.get("success"):
+                logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
+            else:
+                error_msg = subscribe_result.get("error", "Неизвестная ошибка")
+                logger.warning(
+                    f"Не удалось добавить email пользователя {db_user.email} в базу Unisender при регистрации: {error_msg}. "
+                    f"Это может привести к проблемам при отправке email позже."
+                )
+        except Exception as e:
+            logger.error(f"Ошибка при добавлении email пользователя {db_user.email} в базу Unisender при регистрации: {e}")
+    
     # Отправляем email уведомление администраторам при регистрации через веб
     if not user_telegram_id and db_user.email:
         try:
@@ -1022,6 +1042,7 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         # Отправляем email только если были сгенерированы новые учетные данные
         if credentials_generated and user._generated_login and user._generated_password:
             try:
+                logger.info(f"Отправка email с учетными данными пользователю. Email из БД: {user.email}, ID пользователя: {user.id}")
                 result = await unisender_client.send_credentials_email(
                     email=user.email,
                     first_name=user.first_name or '',
