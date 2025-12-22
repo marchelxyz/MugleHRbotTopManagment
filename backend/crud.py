@@ -196,7 +196,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
             logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
             subscribe_result = await unisender_client.subscribe_email(
                 email=db_user.email,
-                double_optin=3  # Добавить без отправки письма подтверждения (для транзакционных писем)
+                double_optin=0  # Автоматическое подтверждение без отправки письма (для транзакционных писем)
             )
             if subscribe_result.get("success"):
                 logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
