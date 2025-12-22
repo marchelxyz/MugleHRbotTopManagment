@@ -177,8 +177,6 @@
 /* Адаптация для больших экранов */
 @media (min-width: 1025px) {
   .page {
-    max-width: 1400px;
-    margin: 0 auto;
     padding: 0 40px;
   }
   
@@ -197,17 +195,11 @@
     max-width: 800px;
     margin: 0 auto 30px auto;
   }
-  
-  .list {
-    max-width: 1000px;
-    margin: 0 auto;
-  }
 }
 
 /* Для больших экранов (1440px+) */
 @media (min-width: 1440px) {
   .page {
-    max-width: 1600px;
     padding: 0 50px;
   }
   
@@ -253,7 +245,6 @@
 /* Для ультрашироких экранов (1920px+) */
 @media (min-width: 1920px) {
   .page {
-    max-width: 1920px;
     padding: 0 60px;
   }
   
@@ -301,10 +292,6 @@
     font-size: 16px;
   }
   
-  .list {
-    max-width: 1200px;
-  }
-  
   .listItem {
     padding: 18px 25px;
   }
@@ -336,7 +323,6 @@
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
   .page {
-    max-width: 2240px;
     padding: 0 80px;
   }
   
@@ -382,10 +368,6 @@
   
   .podiumPoints {
     font-size: 18px;
-  }
-  
-  .list {
-    max-width: 1400px;
   }
   
   .listItem {

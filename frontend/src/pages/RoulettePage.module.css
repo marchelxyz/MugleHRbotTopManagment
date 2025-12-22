@@ -236,8 +236,6 @@
         margin-left: 0;
         margin-right: 0;
         margin-bottom: 0;
-        max-width: 1400px;
-        margin: 30px auto 0 auto;
     }
     
     .userBalance {
@@ -266,7 +264,6 @@
 /* Для больших экранов (1440px+) */
 @media (min-width: 1440px) {
     .historySection {
-        max-width: 1600px;
         padding: 50px;
     }
     
@@ -319,7 +316,6 @@
 /* Для ультрашироких экранов (1920px+) */
 @media (min-width: 1920px) {
     .historySection {
-        max-width: 1920px;
         padding: 60px;
     }
     
@@ -381,7 +377,6 @@
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
     .historySection {
-        max-width: 2240px;
         padding: 80px;
     }
     

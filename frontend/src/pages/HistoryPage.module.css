@@ -64,11 +64,6 @@
 
 /* Адаптация для больших экранов */
 @media (min-width: 1025px) {
-  .list {
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  
   .transactionItem {
     max-width: 1000px;
     margin: 0 auto 15px auto;
@@ -78,10 +73,6 @@
 
 /* Для больших экранов (1440px+) */
 @media (min-width: 1440px) {
-  .list {
-    max-width: 1600px;
-  }
-  
   .transactionItem {
     max-width: 1200px;
     padding: 20px;
@@ -102,10 +93,6 @@
 
 /* Для ультрашироких экранов (1920px+) */
 @media (min-width: 1920px) {
-  .list {
-    max-width: 1920px;
-  }
-  
   .transactionItem {
     max-width: 1400px;
     padding: 25px;
@@ -126,10 +113,6 @@
 
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
-  .list {
-    max-width: 2240px;
-  }
-  
   .transactionItem {
     max-width: 1600px;
     padding: 30px;

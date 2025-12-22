@@ -328,8 +328,6 @@
 /* Адаптация для больших экранов */
 @media (min-width: 1025px) {
   .page {
-    max-width: 800px;
-    margin: 0 auto;
     padding: 0 40px;
   }
   
@@ -354,7 +352,6 @@
 /* Для больших экранов (1440px+) */
 @media (min-width: 1440px) {
   .page {
-    max-width: 900px;
     padding: 0 50px;
   }
   
@@ -404,7 +401,6 @@
 /* Для ультрашироких экранов (1920px+) */
 @media (min-width: 1920px) {
   .page {
-    max-width: 1000px;
     padding: 0 60px;
   }
   
@@ -458,7 +454,6 @@
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
   .page {
-    max-width: 1200px;
     padding: 0 80px;
   }
   

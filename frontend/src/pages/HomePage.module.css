@@ -46,30 +46,24 @@
 /* Адаптация блока пользователя для больших экранов */
 @media (min-width: 1025px) {
   .userBlock {
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
     padding: 0 40px;
   }
 }
 
 @media (min-width: 1440px) {
   .userBlock {
-    max-width: 1400px;
     padding: 0 50px;
   }
 }
 
 @media (min-width: 1920px) {
   .userBlock {
-    max-width: 1600px;
     padding: 0 60px;
   }
 }
 
 @media (min-width: 2560px) {
   .userBlock {
-    max-width: 1920px;
     padding: 0 80px;
   }
 }
@@ -295,29 +289,24 @@
 /* Адаптация секции ленты для больших экранов */
 @media (min-width: 1025px) {
   .feedSection {
-    max-width: 1400px;
-    margin: 0 auto;
     padding: 40px 40px 30px 40px;
   }
 }
 
 @media (min-width: 1440px) {
   .feedSection {
-    max-width: 1600px;
     padding: 50px 50px 40px 50px;
   }
 }
 
 @media (min-width: 1920px) {
   .feedSection {
-    max-width: 1920px;
     padding: 60px 60px 50px 60px;
   }
 }
 
 @media (min-width: 2560px) {
   .feedSection {
-    max-width: 2240px;
     padding: 80px 80px 60px 80px;
   }
 }
@@ -452,12 +441,6 @@
   .contentArea {
     padding: 50px;
   }
-  
-  .userBlock {
-    max-width: 1400px;
-    margin-left: auto;
-    margin-right: auto;
-  }
 }
 
 /* Для ультрашироких экранов (1920px+) - 4 колонки */
@@ -468,10 +451,6 @@
   
   .contentArea {
     padding: 60px;
-  }
-  
-  .userBlock {
-    max-width: 1600px;
   }
   
   .feedTitle {
@@ -500,10 +479,6 @@
   
   .contentArea {
     padding: 80px;
-  }
-  
-  .userBlock {
-    max-width: 1920px;
   }
   
   .userName {
@@ -587,8 +562,7 @@
   .sliderContainer {
     /* Контейнер должен обрезать всё лишнее */
     overflow: hidden; 
-    margin: 0 auto 50px auto; 
-    max-width: 1200px;
+    margin: 0 auto 50px auto;
   }
 
   .sliderArrowLeft,
@@ -642,10 +616,6 @@
 
 /* Для больших экранов (1440px+) */
 @media (min-width: 1440px) {
-  .sliderContainer {
-    max-width: 1400px;
-  }
-  
   .slide {
     flex: 0 0 90%;
     margin: 0 1%;
@@ -661,10 +631,6 @@
 
 /* Для ультрашироких экранов (1920px+) */
 @media (min-width: 1920px) {
-  .sliderContainer {
-    max-width: 1600px;
-  }
-  
   .slide {
     flex: 0 0 92%;
     margin: 0 0.5%;
@@ -680,10 +646,6 @@
 
 /* Для 4K экранов (2560px+) */
 @media (min-width: 2560px) {
-  .sliderContainer {
-    max-width: 1920px;
-  }
-  
   .slide {
     flex: 0 0 95%;
     margin: 0 0.25%;
