@@ -1059,6 +1059,7 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                         "invalid_arg" in error_codes or 
                         "free plan" in error_msg.lower() or
                         "confirmed emails" in error_msg.lower() or
+                        "own confirmed emails" in error_msg.lower() or
                         "подтвержденные email" in error_msg.lower() or
                         "подтвержденные адреса" in error_msg.lower() or
                         "добавлены в вашу базу" in error_msg.lower()
@@ -1089,8 +1090,9 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                                 f"🔑 <b>Учетные данные для передачи пользователю:</b>\n"
                                 f"<b>Логин:</b> <code>{escape_html(user._generated_login)}</code>\n"
                                 f"<b>Пароль:</b> <code>{escape_html(user._generated_password)}</code>\n\n"
-                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса. "
-                                f"Передайте учетные данные пользователю вручную.</i>"
+                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса, "
+                                f"которые добавлены в базу Unisender. Email был добавлен при регистрации, но требуется подтверждение "
+                                f"пользователем. Передайте учетные данные пользователю вручную через Telegram или другим способом.</i>"
                             )
                             await send_telegram_message(
                                 chat_id=settings.TELEGRAM_CHAT_ID,

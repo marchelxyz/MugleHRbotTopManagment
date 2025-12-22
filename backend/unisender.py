@@ -96,13 +96,20 @@ class UnisenderClient:
                 
                 # Проверяем успешность добавления
                 if result.get("result"):
-                    logger.info(f"Email {email} успешно добавлен в базу Unisender")
+                    logger.info(
+                        f"Email {email} успешно добавлен в базу Unisender (список ID: {list_id}). "
+                        f"Примечание: на бесплатном тарифе Unisender может потребоваться подтверждение email пользователем "
+                        f"перед отправкой писем, даже при использовании double_optin=3."
+                    )
                     return {"success": True}
                 else:
                     error = result.get("error", "Неизвестная ошибка")
                     error_code = result.get("code", "")
                     error_msg = (error if isinstance(error, str) else str(error)) + (f" (код: {error_code})" if error_code else "")
-                    logger.warning(f"Не удалось добавить email {email} в базу Unisender: {error_msg}")
+                    logger.warning(
+                        f"Не удалось добавить email {email} в базу Unisender (список ID: {list_id}): {error_msg}. "
+                        f"Это может привести к ошибкам при отправке писем на бесплатном тарифе."
+                    )
                     return {"success": False, "error": error_msg}
                     
         except httpx.HTTPError as e:
@@ -157,18 +164,21 @@ class UnisenderClient:
         # Получаем list_id из настроек (используется и для subscribe, и для sendEmail)
         list_id = getattr(settings, 'UNISENDER_LIST_ID', None)
         
-        # На бесплатном тарифе Unisender можно отправлять только на адреса, добавленные в базу
+        # На бесплатном тарифе Unisender можно отправлять только на адреса, добавленные в базу и подтвержденные
         # Пытаемся добавить адрес в базу перед отправкой (если еще не добавлен)
+        email_added_to_base = False
         if list_id:
             logger.info(f"Попытка добавить email {email} в базу Unisender перед отправкой письма")
             subscribe_result = await self.subscribe_email(email, list_id=list_id, double_optin=3)
-            if not subscribe_result.get("success"):
-                logger.warning(
-                    f"Не удалось добавить {email} в базу Unisender перед отправкой: {subscribe_result.get('error')}. "
-                    f"Продолжаем попытку отправки письма."
-                )
-            else:
+            if subscribe_result.get("success"):
+                email_added_to_base = True
                 logger.info(f"Email {email} успешно добавлен в базу Unisender, продолжаем отправку письма")
+            else:
+                error_msg = subscribe_result.get('error', 'Неизвестная ошибка')
+                logger.warning(
+                    f"Не удалось добавить {email} в базу Unisender перед отправкой: {error_msg}. "
+                    f"Продолжаем попытку отправки письма. На бесплатном тарифе Unisender требуется подтверждение email адресов."
+                )
         else:
             logger.warning("UNISENDER_LIST_ID не указан, пропускаем добавление email в базу перед отправкой")
         
@@ -254,12 +264,19 @@ class UnisenderClient:
                         error_code_str = ", ".join(error_codes) if error_codes else ""
                         
                         # Специальная обработка ошибки о неподтвержденном email на бесплатном плане
-                        if "invalid_arg" in error_codes or any("free plan" in msg.lower() or "confirmed emails" in msg.lower() for msg in error_messages):
+                        is_free_plan_error = (
+                            "invalid_arg" in error_codes or 
+                            any("free plan" in msg.lower() or "confirmed emails" in msg.lower() or "own confirmed emails" in msg.lower() for msg in error_messages)
+                        )
+                        if is_free_plan_error:
+                            status_info = "был добавлен в базу" if email_added_to_base else "не был добавлен в базу"
                             logger.warning(
                                 f"Не удалось отправить email на {email_address}: "
                                 f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
                                 f"которые добавлены в вашу базу Unisender и подтверждены. "
-                                f"Убедитесь, что адрес {email_address} добавлен в список с ID {list_id} через метод subscribe. "
+                                f"Email {status_info} перед отправкой. "
+                                f"Убедитесь, что адрес {email_address} добавлен в список с ID {list_id} через метод subscribe "
+                                f"и подтвержден пользователем (на бесплатном тарифе требуется подтверждение даже с double_optin=3). "
                                 f"Ошибки: {error_msg}"
                             )
                         else:
@@ -299,16 +316,20 @@ class UnisenderClient:
                         error_code == "invalid_arg" or
                         "free plan" in error_text.lower() or
                         "confirmed emails" in error_text.lower() or
+                        "own confirmed emails" in error_text.lower() or
                         "подтвержденные email" in error_text.lower() or
                         "подтвержденные адреса" in error_text.lower()
                     )
                     
                     if is_free_plan_error:
+                        status_info = "был добавлен в базу" if email_added_to_base else "не был добавлен в базу"
                         logger.warning(
                             f"Не удалось отправить email на {email}: "
                             f"на бесплатном плане Unisender можно отправлять письма только на email адреса, "
                             f"которые добавлены в вашу базу Unisender и подтверждены. "
-                            f"Убедитесь, что адрес {email} добавлен в список с ID {list_id} через метод subscribe. "
+                            f"Email {status_info} перед отправкой. "
+                            f"Убедитесь, что адрес {email} добавлен в список с ID {list_id} через метод subscribe "
+                            f"и подтвержден пользователем (на бесплатном тарифе требуется подтверждение даже с double_optin=3). "
                             f"Ошибка: {error_msg}"
                         )
                     else:
