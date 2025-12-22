@@ -7,7 +7,7 @@ import logging
 import traceback
 
 import httpx
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
@@ -195,8 +195,8 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         try:
             logger.info(f"Добавление email пользователя {db_user.email} в базу Unisender при регистрации")
             subscribe_result = await unisender_client.subscribe_email(
-                email=db_user.email,
-                double_optin=3  # Добавить без отправки письма подтверждения (для транзакционных писем)
+                email=db_user.email
+                # double_optin будет взят из настроек UNISENDER_DOUBLE_OPTIN
             )
             if subscribe_result.get("success"):
                 logger.info(f"Email пользователя {db_user.email} успешно добавлен в базу Unisender при регистрации")
@@ -1059,6 +1059,7 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                         "invalid_arg" in error_codes or 
                         "free plan" in error_msg.lower() or
                         "confirmed emails" in error_msg.lower() or
+                        "own confirmed emails" in error_msg.lower() or
                         "подтвержденные email" in error_msg.lower() or
                         "подтвержденные адреса" in error_msg.lower() or
                         "добавлены в вашу базу" in error_msg.lower()
@@ -1069,8 +1070,19 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                         logger.warning(
                             f"Не удалось отправить email с учетными данными на {user.email}: {error_msg}. "
                             f"Это ограничение бесплатного тарифа Unisender - можно отправлять только на адреса, "
-                            f"добавленные в базу и подтвержденные. Пользователь может получить учетные данные "
-                            f"через Telegram бота или администратора."
+                            f"добавленные в базу и подтвержденные. Учетные данные будут отправлены автоматически "
+                            f"после подтверждения email пользователем."
+                        )
+                        # Сохраняем флаг для отложенной отправки и временно сохраняем пароль в открытом виде
+                        user.pending_credentials_email = True
+                        user.credentials_email_sent_at = datetime.utcnow()
+                        user.credentials_email_attempts = 1
+                        user.pending_password_plain = user._generated_password  # Временно сохраняем пароль для последующей отправки
+                        await db.commit()
+                        await db.refresh(user)
+                        logger.info(
+                            f"Установлен флаг pending_credentials_email для пользователя {user.id}. "
+                            f"Учетные данные будут отправлены автоматически после подтверждения email пользователем."
                         )
                     else:
                         logger.warning(
@@ -1089,8 +1101,9 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                                 f"🔑 <b>Учетные данные для передачи пользователю:</b>\n"
                                 f"<b>Логин:</b> <code>{escape_html(user._generated_login)}</code>\n"
                                 f"<b>Пароль:</b> <code>{escape_html(user._generated_password)}</code>\n\n"
-                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса. "
-                                f"Передайте учетные данные пользователю вручную.</i>"
+                                f"💡 <i>На бесплатном тарифе Unisender можно отправлять письма только на подтвержденные email адреса, "
+                                f"которые добавлены в базу Unisender. Email был добавлен при регистрации, но требуется подтверждение "
+                                f"пользователем. Передайте учетные данные пользователю вручную через Telegram или другим способом.</i>"
                             )
                             await send_telegram_message(
                                 chat_id=settings.TELEGRAM_CHAT_ID,
@@ -1104,6 +1117,129 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
                 logger.error(f"Исключение при отправке email с учетными данными на {user.email}: {e}")
     
     return user
+
+
+async def send_pending_credentials_emails(db: AsyncSession) -> Dict[str, Any]:
+    """
+    Проверяет и отправляет отложенные учетные данные пользователям, чьи email были подтверждены.
+    
+    Эта функция должна вызываться периодически (например, через cron или планировщик задач)
+    для проверки пользователей с флагом pending_credentials_email и отправки учетных данных
+    после подтверждения их email адресов.
+    
+    Returns:
+        dict со статистикой: total_checked, emails_sent, still_pending, errors
+    """
+    logger.info("Запуск проверки отложенных учетных данных для отправки по email")
+    
+    # Находим всех пользователей с флагом pending_credentials_email
+    result = await db.execute(
+        select(models.User).where(
+            models.User.pending_credentials_email == True,
+            models.User.status == 'approved',
+            models.User.email.isnot(None),
+            models.User.login.isnot(None),
+            models.User.password_hash.isnot(None)
+        )
+    )
+    pending_users = result.scalars().all()
+    
+    total_checked = len(pending_users)
+    emails_sent = 0
+    still_pending = 0
+    errors = []
+    
+    for user in pending_users:
+        try:
+            # Ограничиваем количество попыток (максимум 10 попыток)
+            if user.credentials_email_attempts >= 10:
+                logger.warning(
+                    f"Пользователь {user.id} ({user.email}) достиг лимита попыток отправки ({user.credentials_email_attempts}). "
+                    f"Снимаем флаг pending_credentials_email."
+                )
+                user.pending_credentials_email = False
+                await db.commit()
+                continue
+            
+            # Проверяем статус email через попытку отправки
+            # (Unisender не предоставляет прямой API для проверки статуса)
+            logger.info(f"Проверка статуса email для пользователя {user.id} ({user.email}), попытка {user.credentials_email_attempts + 1}")
+            
+            # Проверяем, есть ли сохраненный пароль для отправки
+            if not user.pending_password_plain:
+                logger.warning(
+                    f"У пользователя {user.id} ({user.email}) нет сохраненного пароля для отправки. "
+                    f"Снимаем флаг pending_credentials_email."
+                )
+                user.pending_credentials_email = False
+                await db.commit()
+                continue
+            
+            # Пробуем отправить учетные данные
+            result = await unisender_client.send_credentials_email(
+                email=user.email,
+                first_name=user.first_name or '',
+                last_name=user.last_name or '',
+                login=user.login,
+                password=user.pending_password_plain
+            )
+            
+            user.credentials_email_attempts += 1
+            user.credentials_email_sent_at = datetime.utcnow()
+            
+            if result.get("success"):
+                # Успешно отправлено!
+                logger.info(f"Email с учетными данными успешно отправлен на {user.email} (пользователь {user.id})")
+                user.pending_credentials_email = False
+                user.pending_password_plain = None  # Очищаем пароль после успешной отправки
+                emails_sent += 1
+                await db.commit()
+            else:
+                error_msg = result.get("error", "Неизвестная ошибка")
+                error_codes = result.get("error_codes", [])
+                is_free_plan_error = (
+                    "invalid_arg" in error_codes or 
+                    "free plan" in error_msg.lower() or
+                    "confirmed emails" in error_msg.lower() or
+                    "own confirmed emails" in error_msg.lower()
+                )
+                
+                if is_free_plan_error:
+                    # Email еще не подтвержден, оставляем флаг
+                    still_pending += 1
+                    logger.info(
+                        f"Email {user.email} еще не подтвержден. Оставляем флаг pending_credentials_email. "
+                        f"Попытка {user.credentials_email_attempts}/10"
+                    )
+                    await db.commit()
+                else:
+                    # Другая ошибка - снимаем флаг и логируем
+                    logger.error(
+                        f"Ошибка отправки email на {user.email} (пользователь {user.id}): {error_msg}. "
+                        f"Снимаем флаг pending_credentials_email."
+                    )
+                    user.pending_credentials_email = False
+                    user.pending_password_plain = None  # Очищаем пароль при снятии флага
+                    errors.append(f"Пользователь {user.id} ({user.email}): {error_msg}")
+                    await db.commit()
+                    
+        except Exception as e:
+            logger.error(f"Ошибка при обработке пользователя {user.id} ({user.email}): {e}")
+            errors.append(f"Пользователь {user.id} ({user.email}): {str(e)}")
+            user.credentials_email_attempts += 1
+            await db.commit()
+    
+    logger.info(
+        f"Завершена проверка отложенных учетных данных: проверено {total_checked}, "
+        f"отправлено {emails_sent}, все еще ожидают {still_pending}, ошибок {len(errors)}"
+    )
+    
+    return {
+        "total_checked": total_checked,
+        "emails_sent": emails_sent,
+        "still_pending": still_pending,
+        "errors": errors
+    }
 
 # --- ИЗМЕНЕНИЕ: Новая, простая формула расчета цены ---
 def calculate_spasibki_price(price_rub: int) -> int:
