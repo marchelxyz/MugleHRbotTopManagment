@@ -1,6 +1,11 @@
 /* frontend/src/pages/ProfilePage.module.css */
 
-.page {}
+.page {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
 
 /* --- Стили шапки профиля --- */
 .profileHeader {

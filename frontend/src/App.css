@@ -68,22 +68,30 @@
   background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
   margin: 0 !important;
   box-shadow: none;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .desktop-wrapper.with-sidebar {
   margin-left: 240px !important; /* Отступ, равный ширине бокового меню по умолчанию */
+  width: calc(100% - 240px) !important; /* Учитываем ширину бокового меню */
+  max-width: calc(100% - 240px) !important;
 }
 
 /* Адаптируем отступ для планшетов */
 @media (min-width: 768px) and (max-width: 1024px) {
   .desktop-wrapper.with-sidebar {
     margin-left: 200px !important; /* Соответствует ширине SideNav на планшетах */
+    width: calc(100% - 200px) !important;
+    max-width: calc(100% - 200px) !important;
   }
 }
 
 @media (min-width: 768px) and (max-width: 900px) {
   .desktop-wrapper.with-sidebar {
     margin-left: 180px !important; /* Соответствует ширине SideNav на маленьких планшетах */
+    width: calc(100% - 180px) !important;
+    max-width: calc(100% - 180px) !important;
   }
 }
 
@@ -92,6 +100,8 @@
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 40px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* Для ультрашироких экранов (2560px+) */
@@ -99,6 +109,8 @@
   .desktop-wrapper .content-container {
     max-width: 1920px;
     padding: 0 60px;
+    box-sizing: border-box;
+    width: 100%;
   }
 }
 
@@ -106,12 +118,15 @@
 @media (min-width: 768px) and (max-width: 1024px) {
   .desktop-wrapper.with-sidebar {
     margin-left: 200px !important; /* Немного уменьшаем отступ для планшетов */
+    width: calc(100% - 200px) !important;
+    max-width: calc(100% - 200px) !important;
   }
   
   /* Уменьшаем ширину бокового меню на планшетах */
   .desktop-wrapper .content-container {
     max-width: 100%;
     padding: 0 20px;
+    box-sizing: border-box;
   }
 }
 
@@ -119,10 +134,13 @@
 @media (min-width: 768px) and (max-width: 900px) {
   .desktop-wrapper.with-sidebar {
     margin-left: 180px !important;
+    width: calc(100% - 180px) !important;
+    max-width: calc(100% - 180px) !important;
   }
   
   .desktop-wrapper .content-container {
     padding: 0 15px;
+    box-sizing: border-box;
   }
 }
 

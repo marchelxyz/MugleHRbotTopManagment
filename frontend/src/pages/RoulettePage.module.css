@@ -1,5 +1,12 @@
 /* frontend/src/pages/RoulettePage.module.css */
 
+.page {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
 .infoIcon {
     position: absolute;
     top: 20px;
