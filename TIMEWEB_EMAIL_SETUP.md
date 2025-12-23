@@ -15,7 +15,7 @@
 
 Согласно [документации Timeweb](https://timeweb.cloud/docs/mail/email-clients-configuration), для отправки email через SMTP используются следующие параметры:
 
-- **SMTP сервер:** `smtp.timeweb.com`
+- **SMTP сервер:** `smtp.timeweb.ru` (⚠️ **Важно:** используйте `.ru`, а не `.com`)
 - **Порт:** `465` (SSL) или `587` (TLS)
 - **Логин:** полный email адрес (например, `user@yourdomain.com`)
 - **Пароль:** пароль от почтового ящика
@@ -26,7 +26,7 @@
 
 ```env
 # Настройки SMTP Timeweb
-SMTP_HOST=smtp.timeweb.com
+SMTP_HOST=smtp.timeweb.ru
 SMTP_PORT=465
 SMTP_USERNAME=your-email@yourdomain.com
 SMTP_PASSWORD=your_email_password
@@ -46,7 +46,7 @@ WEB_APP_LOGIN_URL=https://your-app.com
 
 ### Описание переменных
 
-- **SMTP_HOST** - SMTP сервер Timeweb (по умолчанию: `smtp.timeweb.com`)
+- **SMTP_HOST** - SMTP сервер Timeweb (по умолчанию: `smtp.timeweb.ru`)
 - **SMTP_PORT** - Порт SMTP (465 для SSL, 587 для TLS)
 - **SMTP_USERNAME** - Полный email адрес от Timeweb
 - **SMTP_PASSWORD** - Пароль от почтового ящика
@@ -148,7 +148,8 @@ asyncio.run(test_email())
    - Проверьте, что пароль указан правильно
 
 4. **Проверьте firewall/безопасность:**
-   - Убедитесь, что сервер может подключаться к `smtp.timeweb.com` на портах 465 или 587
+   - Убедитесь, что сервер может подключаться к `smtp.timeweb.ru` на портах 465 или 587
+   - ⚠️ **Важно:** Используйте `smtp.timeweb.ru` (с `.ru`), а не `smtp.timeweb.com` (`.com` не разрешается DNS)
 
 ### Письма попадают в спам
 

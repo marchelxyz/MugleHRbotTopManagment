@@ -33,11 +33,18 @@ async def send_email(
     """
     try:
         # Получаем настройки SMTP из конфигурации
-        smtp_host = getattr(settings, 'SMTP_HOST', 'smtp.timeweb.com')
+        smtp_host = getattr(settings, 'SMTP_HOST', 'smtp.timeweb.ru')
         smtp_port = getattr(settings, 'SMTP_PORT', 465)
         smtp_username = getattr(settings, 'SMTP_USERNAME', None)
         smtp_password = getattr(settings, 'SMTP_PASSWORD', None)
         smtp_use_tls = getattr(settings, 'SMTP_USE_TLS', False)
+        
+        # Альтернативные хосты для fallback (если основной не работает)
+        smtp_hosts = [smtp_host]
+        if smtp_host == 'smtp.timeweb.com':
+            smtp_hosts.append('smtp.timeweb.ru')  # Правильный хост для Timeweb
+        elif smtp_host == 'smtp.timeweb.ru':
+            smtp_hosts.append('smtp.timeweb.com')  # Fallback на .com если .ru не работает
         
         if not smtp_username or not smtp_password:
             logger.error("SMTP настройки не заданы. Проверьте SMTP_USERNAME и SMTP_PASSWORD в .env")
@@ -60,38 +67,62 @@ async def send_email(
         html_part = MIMEText(body_html, 'html', 'utf-8')
         message.attach(html_part)
         
-        # Отправляем через SMTP
-        if smtp_port == 465:
-            # SSL соединение (порт 465) - используем SMTP_SSL
-            async with aiosmtplib.SMTP(
-                hostname=smtp_host,
-                port=smtp_port,
-                use_tls=True  # SSL через TLS
-            ) as smtp:
-                await smtp.login(smtp_username, smtp_password)
-                await smtp.send_message(message)
-        elif smtp_port == 587:
-            # TLS соединение (порт 587) - сначала обычное соединение, потом STARTTLS
-            async with aiosmtplib.SMTP(
-                hostname=smtp_host,
-                port=smtp_port,
-                start_tls=True
-            ) as smtp:
-                await smtp.login(smtp_username, smtp_password)
-                await smtp.send_message(message)
-        else:
-            # Другие порты - используем настройки из конфига
-            async with aiosmtplib.SMTP(
-                hostname=smtp_host,
-                port=smtp_port,
-                use_tls=smtp_use_tls,
-                start_tls=not smtp_use_tls if not smtp_use_tls else False
-            ) as smtp:
-                await smtp.login(smtp_username, smtp_password)
-                await smtp.send_message(message)
+        # Пробуем отправить через каждый хост из списка (fallback механизм)
+        last_error = None
+        for host_to_try in smtp_hosts:
+            try:
+                logger.info(f"Попытка отправки email через {host_to_try}:{smtp_port}")
+                
+                # Отправляем через SMTP
+                if smtp_port == 465:
+                    # SSL соединение (порт 465) - используем SMTP_SSL
+                    async with aiosmtplib.SMTP(
+                        hostname=host_to_try,
+                        port=smtp_port,
+                        use_tls=True  # SSL через TLS
+                    ) as smtp:
+                        await smtp.login(smtp_username, smtp_password)
+                        await smtp.send_message(message)
+                elif smtp_port == 587:
+                    # TLS соединение (порт 587) - сначала обычное соединение, потом STARTTLS
+                    async with aiosmtplib.SMTP(
+                        hostname=host_to_try,
+                        port=smtp_port,
+                        start_tls=True
+                    ) as smtp:
+                        await smtp.login(smtp_username, smtp_password)
+                        await smtp.send_message(message)
+                else:
+                    # Другие порты - используем настройки из конфига
+                    async with aiosmtplib.SMTP(
+                        hostname=host_to_try,
+                        port=smtp_port,
+                        use_tls=smtp_use_tls,
+                        start_tls=not smtp_use_tls if not smtp_use_tls else False
+                    ) as smtp:
+                        await smtp.login(smtp_username, smtp_password)
+                        await smtp.send_message(message)
+                
+                logger.info(f"Email успешно отправлен на {to_email} через {host_to_try}")
+                return True
+                
+            except Exception as host_error:
+                last_error = host_error
+                error_msg = str(host_error)
+                logger.warning(f"Не удалось отправить через {host_to_try}: {error_msg}")
+                
+                # Если это ошибка DNS и есть еще хосты для попытки, продолжаем
+                if "Name or service not known" in error_msg or "NXDOMAIN" in error_msg:
+                    if host_to_try != smtp_hosts[-1]:  # Если это не последний хост
+                        logger.info(f"Пробуем альтернативный хост...")
+                        continue
+                
+                # Для других ошибок тоже пробуем следующий хост, если есть
+                if host_to_try != smtp_hosts[-1]:
+                    continue
         
-        logger.info(f"Email успешно отправлен на {to_email}")
-        return True
+        # Если все хосты не сработали, выбрасываем последнюю ошибку
+        raise last_error if last_error else Exception("Не удалось отправить email через все доступные хосты")
         
     except Exception as e:
         logger.error(f"Ошибка при отправке email на {to_email}: {e}")

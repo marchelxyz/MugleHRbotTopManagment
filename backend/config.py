@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""
 
     # Настройки SMTP для отправки email через Timeweb
-    SMTP_HOST: str = "smtp.timeweb.com"
+    SMTP_HOST: str = "smtp.timeweb.ru"  # Исправлено: правильный хост smtp.timeweb.ru
     SMTP_PORT: int = 465  # 465 для SSL, 587 для TLS
     SMTP_USERNAME: str = ""  # Полный email адрес от Timeweb
     SMTP_PASSWORD: str = ""  # Пароль от почтового ящика
