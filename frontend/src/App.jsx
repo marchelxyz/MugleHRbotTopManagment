@@ -7,7 +7,7 @@ import { initializeCache, clearCache, setCachedData } from './storage';
 // Компоненты навигации (загружаются сразу, так как всегда видны)
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
-// LoadingScreen не импортируем синхронно, так как он использует Lottie
+import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
 import { startSession, pingSession } from './api';
 
 // Lazy loading для всех страниц - уменьшает начальный бандл на 60-70%
@@ -31,32 +31,8 @@ const TransferPage = React.lazy(() => import('./pages/TransferPage'));
 const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage'));
 const OnboardingStories = React.lazy(() => import('./components/OnboardingStories'));
 
-// Простой fallback компонент для Suspense (без Lottie для быстрой загрузки)
-const PageLoader = () => (
-  <div style={{
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    width: '100%',
-    background: 'linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%)'
-  }}>
-    <div style={{
-      width: '40px',
-      height: '40px',
-      border: '4px solid #E8F4F8',
-      borderTop: '4px solid #2196F3',
-      borderRadius: '50%',
-      animation: 'spin 1s linear infinite'
-    }} />
-    <style>{`
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    `}</style>
-  </div>
-);
+// Fallback компонент для Suspense
+const PageLoader = () => <LoadingScreen />;
 
 // Стили
 import './App.css';
@@ -65,16 +41,8 @@ const PING_INTERVAL = 60000; // Пингуем каждую минуту (60 000
 const STATUS_CHECK_INTERVAL = 5000; // Проверяем статус каждые 5 секунд (5000 миллисекунд)
 
 // Безопасная инициализация Telegram WebApp
-// Используем функцию для безопасного доступа
-const getTelegramWebApp = () => {
-  if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    return window.Telegram.WebApp;
-  }
-  return null;
-};
-
-const tg = getTelegramWebApp();
-const isTelegramWebApp = !!tg;
+const tg = window.Telegram?.WebApp || null;
+const isTelegramWebApp = !!window.Telegram?.WebApp;
 
 function App() {
   const [user, setUser] = useState(null);
@@ -208,11 +176,7 @@ function App() {
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Инициализируем кеш с обработкой ошибок
-    initializeCache().catch(err => {
-      console.error('Ошибка при инициализации кеша:', err);
-      // Продолжаем работу даже если кеш не инициализировался
-    });  
+    initializeCache();  
       
     const telegramUser = tg?.initDataUnsafe?.user;
     
@@ -397,8 +361,7 @@ function App() {
   
   const renderPage = () => {
     if (loading) {
-      // Используем простой loader вместо LoadingScreen с Lottie для быстрой загрузки
-      return <PageLoader />;
+      return <LoadingScreen />;
     }
   
     // Если не в Telegram WebApp, показываем страницу входа или регистрации
