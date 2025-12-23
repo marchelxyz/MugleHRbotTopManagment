@@ -1774,6 +1774,25 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     await db.commit()
     await db.refresh(user)
     
+    # Отправляем учетные данные пользователю в Telegram
+    if user.telegram_id and user.telegram_id >= 0:
+        message_text = (
+            f"🔐 <b>Ваши учетные данные для входа в систему</b>\n\n"
+            f"👤 <b>Логин:</b> <code>{escape_html(user.login)}</code>\n"
+            f"🔑 <b>Пароль:</b> <code>{escape_html(password)}</code>\n\n"
+            f"⚠️ <i>Сохраните эти данные в безопасном месте. Пароль больше не будет показан.</i>"
+        )
+        
+        try:
+            await send_telegram_message(
+                chat_id=user.telegram_id,
+                text=message_text,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.error(f"Не удалось отправить учетные данные пользователю {user.id} ({user.telegram_id}) в Telegram: {e}")
+            # Не прерываем выполнение функции, так как учетные данные уже установлены
+    
     return user
 
 # --- ФУНКЦИЯ ДЛЯ ПРОВЕРКИ ЛОГИНА И ПАРОЛЯ ---
