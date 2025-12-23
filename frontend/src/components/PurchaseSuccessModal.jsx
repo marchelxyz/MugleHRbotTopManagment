@@ -1,11 +1,13 @@
 // frontend/src/components/PurchaseSuccessModal.jsx
 
-import React, { useState } from 'react'; // <-- 1. Импортируем useState
-import Lottie from 'react-lottie-player';
+import React, { useState, lazy, Suspense } from 'react'; // <-- 1. Импортируем useState
 import styles from './PurchaseSuccessModal.module.css';
 // --- 2. Импортируем нужные иконки ---
 import { FaTimes, FaCopy, FaCheck } from 'react-icons/fa'; 
 import animationData from '../assets/AnimatedSticker4.json';
+
+// Lazy loading для Lottie - загружается только когда модалка открыта
+const Lottie = lazy(() => import('react-lottie-player'));
 
 function PurchaseSuccessModal({ item, onClose }) {
   const { name, image_url, issued_code, purchased_bonus_amount } = item;
@@ -26,12 +28,14 @@ function PurchaseSuccessModal({ item, onClose }) {
         </button>
 
         <div className={styles.iconContainer}>
-          <Lottie
-            animationData={animationData}
-            loop={true}
-            play={true}
-            style={{ width: 120, height: 120, margin: '0 auto' }}
-          />
+          <Suspense fallback={<div style={{ width: 120, height: 120, margin: '0 auto' }} />}>
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              play={true}
+              style={{ width: 120, height: 120, margin: '0 auto' }}
+            />
+          </Suspense>
         </div>
 
         <h2 className={styles.title}>Покупка совершена!</h2>
