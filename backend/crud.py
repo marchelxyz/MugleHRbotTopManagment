@@ -146,13 +146,14 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
         date_of_birth=dob,
+        email=user.email.strip() if user.email and user.email.strip() else None,
         last_login_date=date.today()
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     
-    # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
+    # Отправляем уведомление администраторам через Telegram (если настроено)
     try:
         if settings.TELEGRAM_CHAT_ID:
             user_info = (
@@ -161,6 +162,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
                 f"🏢 Подразделение: {db_user.department or ''}\n"
                 f"💼 Должность: {db_user.position or ''}\n"
                 f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
+                f"📧 Email: {db_user.email or 'не указан'}\n"
                 f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
                 f"🆔 Telegram ID: {db_user.telegram_id or 'не указан (веб-регистрация)'}"
             )
@@ -183,7 +185,23 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
                 parse_mode=None
             )
     except Exception as e:
-        print(f"FAILED to send admin notification. Error: {e}")
+        print(f"FAILED to send Telegram admin notification. Error: {e}")
+    
+    # Отправляем уведомление администраторам через Email (если настроено)
+    try:
+        from email_service import send_registration_notification_to_admins
+        is_web_registration = db_user.telegram_id is None or db_user.telegram_id < 0
+        await send_registration_notification_to_admins(
+            user_email=db_user.email,
+            user_name=f"{db_user.first_name or ''} {db_user.last_name or ''}".strip(),
+            user_department=db_user.department or '',
+            user_position=db_user.position or '',
+            user_phone=db_user.phone_number or '',
+            user_dob=str(db_user.date_of_birth) if db_user.date_of_birth else None,
+            is_web_registration=is_web_registration
+        )
+    except Exception as e:
+        print(f"FAILED to send email admin notification. Error: {e}")
     
     return db_user
 
@@ -960,6 +978,23 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
             user._generated_login = user.login
         if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
             user._generated_password = generated_password
+        
+        # Отправляем email с учетными данными пользователю, если был одобрен и есть email
+        if status == 'approved' and user.email and generated_login and generated_password:
+            try:
+                from email_service import send_credentials_to_user
+                login_url = getattr(settings, 'WEB_APP_LOGIN_URL', None)
+                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+                await send_credentials_to_user(
+                    user_email=user.email,
+                    user_name=user_name,
+                    login=generated_login,
+                    password=generated_password,
+                    login_url=login_url
+                )
+            except Exception as e:
+                logger.error(f"Ошибка при отправке учетных данных на email {user.email}: {e}")
+                # Не прерываем выполнение, если не удалось отправить email
     
     return user
 
