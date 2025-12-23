@@ -95,8 +95,17 @@ async def request_profile_update_route(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to submit update request.")
 
 @router.get("/{user_id}/transactions", response_model=list[schemas.FeedItem])
-async def get_user_transactions_route(user_id: int, db: AsyncSession = Depends(get_db)):
-    return await crud.get_user_transactions(db, user_id=user_id)
+async def get_user_transactions_route(
+    user_id: int,
+    days: int = 7,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Получает транзакции пользователя.
+    Параметры:
+    - days: количество дней для выборки (по умолчанию 7)
+    """
+    return await crud.get_user_transactions(db, user_id=user_id, days=days)
 
 @router.delete("/me/card", response_model=schemas.UserResponse)
 async def delete_card(
