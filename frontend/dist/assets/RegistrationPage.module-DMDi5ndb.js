@@ -1,0 +1,1 @@
+const t="_page_18txf_4",o="_registrationContainer_18txf_17",n="_subtitle_18txf_30",_="_form_18txf_38",r="_input_18txf_42",s="_submitButton_18txf_60",i="_error_18txf_91",e="_backButton_18txf_101",u={page:t,registrationContainer:o,subtitle:n,form:_,input:r,submitButton:s,error:i,backButton:e};export{u as s};
