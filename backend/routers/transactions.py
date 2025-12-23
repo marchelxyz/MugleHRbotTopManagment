@@ -18,8 +18,18 @@ async def create_new_transaction(tr: schemas.TransferRequest, db: AsyncSession =
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/transactions/feed", response_model=list[schemas.FeedItem])
-async def get_feed(db: AsyncSession = Depends(get_db)):
-    return await crud.get_feed(db)
+async def get_feed(
+    days: int = 7,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Получает ленту транзакций.
+    Параметры:
+    - days: количество дней для выборки (по умолчанию 7)
+    - limit: максимальное количество записей (по умолчанию 100)
+    """
+    return await crud.get_feed(db, days=days, limit=limit)
 
 @router.get("/leaderboard/", response_model=list[schemas.LeaderboardItem])
 async def get_leaderboard(
