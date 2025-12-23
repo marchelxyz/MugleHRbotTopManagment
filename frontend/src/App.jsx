@@ -1,38 +1,33 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect, useRef, Suspense, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { checkUserStatus, getFeed, getBanners } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
-// Компоненты навигации (загружаются сразу, так как всегда видны)
+// Компоненты и страницы
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
-import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
+import RegistrationPage from './pages/RegistrationPage';
+import LoginPage from './pages/LoginPage';
+import HomePage from './pages/HomePage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import MarketplacePage from './pages/MarketplacePage';
+import ProfilePage from './pages/ProfilePage';
+import HistoryPage from './pages/HistoryPage';
+import AdminPage from './pages/AdminPage';
+import SettingsPage from './pages/SettingsPage';
+import FaqPage from './pages/FaqPage';
+import PendingPage from './pages/PendingPage';
+import RejectedPage from './pages/RejectedPage';
+import RoulettePage from './pages/RoulettePage';
+import BonusCardPage from './pages/BonusCardPage';
+import EditProfilePage from './pages/EditProfilePage';
+import BlockedPage from './pages/BlockedPage';
+import TransferPage from './pages/TransferPage'; // Страница отправки спасибок
+import NotificationsPage from './pages/NotificationsPage';
 import { startSession, pingSession } from './api';
-
-// Lazy loading для всех страниц - уменьшает начальный бандл на 60-70%
-const RegistrationPage = React.lazy(() => import('./pages/RegistrationPage'));
-const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const HomePage = React.lazy(() => import('./pages/HomePage'));
-const LeaderboardPage = React.lazy(() => import('./pages/LeaderboardPage'));
-const MarketplacePage = React.lazy(() => import('./pages/MarketplacePage'));
-const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
-const HistoryPage = React.lazy(() => import('./pages/HistoryPage'));
-const AdminPage = React.lazy(() => import('./pages/AdminPage'));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
-const FaqPage = React.lazy(() => import('./pages/FaqPage'));
-const PendingPage = React.lazy(() => import('./pages/PendingPage'));
-const RejectedPage = React.lazy(() => import('./pages/RejectedPage'));
-const RoulettePage = React.lazy(() => import('./pages/RoulettePage'));
-const BonusCardPage = React.lazy(() => import('./pages/BonusCardPage'));
-const EditProfilePage = React.lazy(() => import('./pages/EditProfilePage'));
-const BlockedPage = React.lazy(() => import('./pages/BlockedPage'));
-const TransferPage = React.lazy(() => import('./pages/TransferPage'));
-const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage'));
-const OnboardingStories = React.lazy(() => import('./components/OnboardingStories'));
-
-// Fallback компонент для Suspense
-const PageLoader = () => <LoadingScreen />;
+import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
+import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
 
 // Стили
 import './App.css';
@@ -282,82 +277,52 @@ function App() {
     };
   }, []);
   
-  // Мемоизируем обработчики для предотвращения лишних ререндеров
-  const handleRegistrationSuccess = useCallback(() => { 
-    window.location.reload(); 
-  }, []);
+  const handleRegistrationSuccess = () => { window.location.reload(); };
   
-  const handleLoginSuccess = useCallback((userData) => {
+  const handleLoginSuccess = (userData) => {
     setUser(userData);
     // Сохраняем пользователя в localStorage
     localStorage.setItem('userId', userData.id.toString());
     localStorage.setItem('user', JSON.stringify(userData));
-  }, []);
+  };
   
-  const navigate = useCallback((targetPage) => {
+  const navigate = (targetPage) => {
     setShowPendingBanner(false);
     setPage(targetPage);
-  }, []);
+  };
   
-  const updateUser = useCallback((newUserData) => {
-    setUser(prev => ({ ...prev, ...newUserData }));
-  }, []);
+  const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
 
-  const handlePurchaseAndUpdate = useCallback((newUserData) => {
+  const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
     clearCache('market');
-  }, [updateUser]);
+  };
 
-  const handleTransferSuccess = useCallback((updatedSenderData) => {
-    updateUser(updatedSenderData);
+  // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
+  const handleTransferSuccess = (updatedSenderData) => {
+    updateUser(updatedSenderData); // Обновляем состояние user новыми данными
     clearCache('feed');
     navigate('home');
-  }, [updateUser, navigate]);
+  };
   
-  const handleProfileSaveSuccess = useCallback(() => {
-    setShowPendingBanner(true);
-    setPage('profile');
-  }, []);
+  const handleProfileSaveSuccess = () => {
+      setShowPendingBanner(true);
+      setPage('profile');
+  };
 
-  const handleOnboardingComplete = useCallback(() => {
+  // 3. Создаем функцию-обработчик для завершения обучения
+  const handleOnboardingComplete = () => {
+    // Обновляем состояние пользователя локально, чтобы не перезагружать все приложение
     if (user) {
       setUser(prevUser => ({ ...prevUser, has_seen_onboarding: true }));
     }
+    // Отключаем принудительный показ
     setShowOnboarding(false);
-  }, [user]);
+  };
 
-  const handleShowRegistration = useCallback(() => {
-    setShowRegistration(true);
-  }, []);
-
-  const handleBackToLogin = useCallback(() => {
-    setShowRegistration(false);
-  }, []);
-
-  const handleRepeatOnboarding = useCallback(() => {
-    setShowOnboarding(true);
-  }, []);
-
-  // Мемоизируем вычисляемые значения
-  const isOnboardingVisible = useMemo(() => {
-    return (user && !user.has_seen_onboarding) || showOnboarding;
-  }, [user, showOnboarding]);
-
-  const isUserApproved = useMemo(() => {
-    return user && user.status === 'approved';
-  }, [user]);
-
-  const shouldShowSideNav = useMemo(() => {
-    return isDesktop && isUserApproved && !isOnboardingVisible;
-  }, [isDesktop, isUserApproved, isOnboardingVisible]);
-
-  const shouldShowBottomNav = useMemo(() => {
-    return !isDesktop && isUserApproved && !isOnboardingVisible;
-  }, [isDesktop, isUserApproved, isOnboardingVisible]);
-
-  const isLoginOrRegistrationPage = useMemo(() => {
-    return !isTelegramWebApp && !user;
-  }, [isTelegramWebApp, user]);
+  // --- 1. НОВАЯ ПЕРЕМЕННАЯ ДЛЯ УДОБСТВА ---
+  // Эта переменная будет true, если нужно показать обучение, и false в противном случае.
+  const isOnboardingVisible = (user && !user.has_seen_onboarding) || showOnboarding;
   
   const renderPage = () => {
     if (loading) {
@@ -366,177 +331,92 @@ function App() {
   
     // Если не в Telegram WebApp, показываем страницу входа или регистрации
     if (!isTelegramWebApp) {
+      // Если пользователь не авторизован, показываем страницу входа или регистрации
       if (!user) {
         if (showRegistration) {
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <RegistrationPage 
-                telegramUser={null} 
-                onRegistrationSuccess={handleRegistrationSuccess} 
-                isWebBrowser={true}
-                onBackToLogin={handleBackToLogin}
-              />
-            </Suspense>
-          );
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
         }
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={handleShowRegistration} />
-          </Suspense>
-        );
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
+      // Если пользователь авторизован, но статус pending, показываем соответствующую страницу
+      // (остальная логика будет обработана ниже)
     }
   
     if (!user) {
       const telegramUser = tg?.initDataUnsafe?.user;
       if (!telegramUser) {
+        // Для веб-браузера показываем страницу входа
         if (showRegistration) {
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <RegistrationPage 
-                telegramUser={null} 
-                onRegistrationSuccess={handleRegistrationSuccess} 
-                isWebBrowser={true}
-                onBackToLogin={handleBackToLogin}
-              />
-            </Suspense>
-          );
+          return <RegistrationPage 
+            telegramUser={null} 
+            onRegistrationSuccess={handleRegistrationSuccess} 
+            isWebBrowser={true}
+            onBackToLogin={() => setShowRegistration(false)}
+          />;
         }
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={handleShowRegistration} />
-          </Suspense>
-        );
+        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />
-        </Suspense>
-      );
+      return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
     }
 
+    // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
+    // Условие: (флаг в базе false ИЛИ мы включили принудительный показ)
     if (user.status === 'pending') {
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <PendingPage />
-        </Suspense>
-      );
+      return <PendingPage />;
     }
     if (user.status === 'blocked') {
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <BlockedPage />
-        </Suspense>
-      );
+      return <BlockedPage />;
     }
     if (user.status === 'rejected') {
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <RejectedPage />
-        </Suspense>
-      );
+      return <RejectedPage />;
     }
 
+    // 2. Только если пользователь одобрен, проверяем, видел ли он обучение.
     if (user.status === 'approved' && (!user.has_seen_onboarding || showOnboarding)) {
-      return (
-        <Suspense fallback={<PageLoader />}>
-          <OnboardingStories onComplete={handleOnboardingComplete} />
-        </Suspense>
-      );
+        return <OnboardingStories onComplete={handleOnboardingComplete} />;
     }
     
     if (user.status === 'approved') {
       switch (page) {
-        case 'leaderboard': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <LeaderboardPage user={user} />
-            </Suspense>
-          );
-        case 'roulette': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <RoulettePage user={user} onUpdateUser={updateUser} />
-            </Suspense>
-          );
-        case 'marketplace': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />
-            </Suspense>
-          );
-        case 'profile': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />
-            </Suspense>
-          );
-        case 'bonus_card': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />
-            </Suspense>
-          );
-        case 'edit_profile': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />
-            </Suspense>
-          );
-        case 'notifications': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <NotificationsPage user={user} onBack={() => navigate('profile')} />
-            </Suspense>
-          );
-        case 'settings': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <SettingsPage 
-                onBack={() => navigate('profile')} 
-                onNavigate={navigate} 
-                onRepeatOnboarding={handleRepeatOnboarding}
-                user={user}
-              />
-            </Suspense>
-          );
-        case 'faq': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <FaqPage onBack={() => navigate('settings')} />
-            </Suspense>
-          );
-        case 'history': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <HistoryPage user={user} onBack={() => navigate('profile')} />
-            </Suspense>
-          );
-        case 'transfer': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />
-            </Suspense>
-          );
-        case 'admin': 
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <AdminPage />
-            </Suspense>
-          );
+        case 'leaderboard': return <LeaderboardPage user={user} />;
+        case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
+        case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
+        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+        case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
+        case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
+        case 'notifications': return <NotificationsPage user={user} onBack={() => navigate('profile')} />;
+  case 'settings': 
+    return (
+      <SettingsPage 
+        onBack={() => navigate('profile')} 
+        onNavigate={navigate} 
+        onRepeatOnboarding={() => setShowOnboarding(true)}
+        user={user}
+      />
+    );
+        case 'faq': return <FaqPage onBack={() => navigate('settings')} />;
+        case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
+        // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
+        case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
+        case 'admin': return <AdminPage />;
         case 'home':
         default:
-          return (
-            <Suspense fallback={<PageLoader />}>
-              <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} />
-            </Suspense>
-          );
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} />;
       }
     }
     
     return <div>Неизвестный статус пользователя.</div>;
   };
 
+  // 1. Создаем четкие флаги для отображения навигации
+  const isUserApproved = user && user.status === 'approved';
+  const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
+  const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
   
     // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
   useEffect(() => {
@@ -724,6 +604,12 @@ function App() {
     };
   }, [user]); // Зависимость от user, чтобы перезапускать при изменении пользователя
 
+  // Создаем переменные, которые четко определяют, когда показывать меню
+  const shouldShowSideNav = user && user.status === 'approved' && isDesktop && !isOnboardingVisible;
+  const shouldShowBottomNav = user && user.status === 'approved' && !isDesktop && !isOnboardingVisible;
+  
+  // Проверяем, показывается ли страница входа или регистрации (для веб-версии)
+  const isLoginOrRegistrationPage = !isTelegramWebApp && !user;
   
   return (
     <div className="app-container">
