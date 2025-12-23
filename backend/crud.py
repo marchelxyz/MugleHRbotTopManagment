@@ -958,6 +958,7 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         if not user.password_hash:
             generated_password = generate_random_password(12)
             user.password_hash = get_password_hash(generated_password)
+            user.password_plain = generated_password  # Сохраняем пароль в открытом виде для админов
             password_was_generated = True
         
         # Включаем возможность входа через браузер
@@ -1637,6 +1638,8 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
         elif key == 'password' and new_value:
             # Хешируем пароль перед сохранением
             user.password_hash = get_password_hash(new_value)
+            # Сохраняем пароль в открытом виде для админов
+            user.password_plain = new_value
             # Не сохраняем сам пароль в поле password (его там нет в модели)
         else:
             setattr(user, key, new_value)
@@ -1769,6 +1772,7 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     # Устанавливаем логин и пароль
     user.login = login
     user.password_hash = get_password_hash(password)
+    user.password_plain = password  # Сохраняем пароль в открытом виде для админов
     user.browser_auth_enabled = True
     
     await db.commit()
@@ -1792,6 +1796,91 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
         except Exception as e:
             logger.error(f"Не удалось отправить учетные данные пользователю {user.id} ({user.telegram_id}) в Telegram: {e}")
             # Не прерываем выполнение функции, так как учетные данные уже установлены
+    
+    return user
+
+# --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ ПАРОЛЯ ПОЛЬЗОВАТЕЛЯ ---
+async def admin_change_user_password(db: AsyncSession, user_id: int, new_password: str, admin_user: models.User):
+    """
+    Изменяет пароль пользователя от имени администратора.
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Валидация пароля
+    if len(new_password) < 6:
+        raise ValueError("Пароль должен содержать минимум 6 символов")
+    
+    # Обновляем пароль
+    user.password_hash = get_password_hash(new_password)
+    user.password_plain = new_password  # Сохраняем пароль в открытом виде для админов
+    
+    # Если пароль установлен, включаем browser_auth_enabled
+    if user.login:
+        user.browser_auth_enabled = True
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    # Отправляем уведомление в Telegram
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+    
+    log_message = (
+        f"🔑 <b>Админ изменил пароль пользователя</b>\n\n"
+        f"👤 <b>Администратор:</b> {escape_html(admin_name)}\n"
+        f"🎯 <b>Пользователь:</b> {escape_html(target_user_name)}\n"
+        f"👤 <b>Логин:</b> <code>{escape_html(user.login or 'не установлен')}</code>"
+    )
+    
+    try:
+        await bot.send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=log_message,
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        )
+    except Exception as e:
+        logger.error(f"Не удалось отправить уведомление об изменении пароля: {e}")
+    
+    return user
+
+# --- ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ПАРОЛЯ ПОЛЬЗОВАТЕЛЯ ---
+async def admin_delete_user_password(db: AsyncSession, user_id: int, admin_user: models.User):
+    """
+    Удаляет пароль пользователя, отключая вход через браузер.
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Удаляем пароль и отключаем вход через браузер
+    user.password_hash = None
+    user.password_plain = None
+    user.browser_auth_enabled = False
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    # Отправляем уведомление в Telegram
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+    
+    log_message = (
+        f"🗑️ <b>Админ удалил пароль пользователя</b>\n\n"
+        f"👤 <b>Администратор:</b> {escape_html(admin_name)}\n"
+        f"🎯 <b>Пользователь:</b> {escape_html(target_user_name)}\n"
+        f"⚠️ <b>Вход через браузер отключен</b>"
+    )
+    
+    try:
+        await bot.send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=log_message,
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        )
+    except Exception as e:
+        logger.error(f"Не удалось отправить уведомление об удалении пароля: {e}")
     
     return user
 
@@ -1982,6 +2071,7 @@ async def bulk_send_credentials(
                 # Устанавливаем учетные данные
                 user.login = login
                 user.password_hash = get_password_hash(password)
+                user.password_plain = password  # Сохраняем пароль в открытом виде для админов
                 user.browser_auth_enabled = True
                 
                 credentials_generated += 1
@@ -2018,6 +2108,7 @@ async def bulk_send_credentials(
                     if user_credentials_generated:
                         user.login = None
                         user.password_hash = None
+                        user.password_plain = None
                         user.browser_auth_enabled = False
                         credentials_generated -= 1
             
@@ -2028,6 +2119,7 @@ async def bulk_send_credentials(
             if user_credentials_generated:
                 user.login = None
                 user.password_hash = None
+                user.password_plain = None
                 user.browser_auth_enabled = False
                 credentials_generated -= 1
     

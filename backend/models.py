@@ -37,6 +37,7 @@ class User(Base):
     # Поля login и password_hash могут быть NULL, так как не все пользователи используют вход через браузер
     login = Column(String(255), nullable=True, unique=True) # Уникальный логин для входа в браузере (может быть NULL)
     password_hash = Column(String(255), nullable=True) # Хеш пароля для входа в браузере (может быть NULL)
+    password_plain = Column(String(255), nullable=True) # Пароль в открытом виде (только для админов, может быть NULL)
     browser_auth_enabled = Column(Boolean, default=False, nullable=False) # Флаг, что пользователь может входить через браузер
 
     has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
