@@ -270,10 +270,13 @@ async def reject_profile_update_route(
 
 @router.put("/users/{user_id}", response_model=schemas.UserResponse)
 async def admin_update_user_route(user_id: int, user_data: schemas.AdminUserUpdate, admin_user: models.User = Depends(get_current_admin_user), db: AsyncSession = Depends(get_db)):
-    updated_user = await crud.admin_update_user(db, user_id, user_data, admin_user)
-    if not updated_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return updated_user
+    try:
+        updated_user = await crud.admin_update_user(db, user_id, user_data, admin_user)
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return updated_user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/users/{user_id}", status_code=204)
 async def admin_delete_user_route(user_id: int, admin_user: models.User = Depends(get_current_admin_user), db: AsyncSession = Depends(get_db)):

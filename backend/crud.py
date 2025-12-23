@@ -1599,30 +1599,42 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
     for key, new_value in update_data.items():
         old_value = getattr(user, key, None)
         
+        # Нормализуем значение login: пустая строка = None
+        if key == 'login':
+            # Для сравнения нормализуем значения (пустая строка = None)
+            normalized_old = None if (old_value is None or old_value == '') else old_value
+            normalized_new = None if (new_value is None or new_value == '') else new_value
+            # Используем нормализованные значения для сравнения
+            old_value_for_compare = normalized_old
+            new_value_for_compare = normalized_new
+        else:
+            old_value_for_compare = old_value
+            new_value_for_compare = new_value
+        
         # --- НАЧАЛО НОВОЙ, УМНОЙ ЛОГИКИ СРАВНЕНИЯ ---
         is_changed = False
         
         # 1. Отдельно обрабатываем дату, т.к. сравниваем объект date и строку
-        if isinstance(old_value, date):
-            old_value_str = old_value.isoformat()
-            if old_value_str != new_value:
+        if isinstance(old_value_for_compare, date):
+            old_value_str = old_value_for_compare.isoformat()
+            if old_value_str != new_value_for_compare:
                 is_changed = True
         # 2. Отдельно обрабатываем None и пустые строки для текстовых полей
-        elif (old_value is None and new_value != "") or \
-             (new_value is None and old_value != ""):
+        elif (old_value_for_compare is None and new_value_for_compare != "") or \
+             (new_value_for_compare is None and old_value_for_compare != ""):
             # Считаем изменением, если было "ничего", а стала пустая строка (и наоборот)
             # Это можно закомментировать, если такое поведение не нужно
-            if str(old_value) != str(new_value):
+            if str(old_value_for_compare) != str(new_value_for_compare):
                  is_changed = True
         # 3. Сравниваем все остальные типы (числа, строки, булевы) напрямую
-        elif type(old_value) != type(new_value) and old_value is not None:
+        elif type(old_value_for_compare) != type(new_value_for_compare) and old_value_for_compare is not None:
              # Если типы разные (например, int и str), пытаемся привести к типу из БД
              try:
-                 if old_value != type(old_value)(new_value):
+                 if old_value_for_compare != type(old_value_for_compare)(new_value_for_compare):
                      is_changed = True
              except (ValueError, TypeError):
                  is_changed = True # Не смогли привести типы - точно изменение
-        elif old_value != new_value:
+        elif old_value_for_compare != new_value_for_compare:
             is_changed = True
         # --- КОНЕЦ НОВОЙ ЛОГИКИ СРАВНЕНИЯ ---
 
@@ -1641,6 +1653,25 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             # Сохраняем пароль в открытом виде для админов
             user.password_plain = new_value
             # Не сохраняем сам пароль в поле password (его там нет в модели)
+        elif key == 'login':
+            # Специальная обработка для поля login:
+            # 1. Преобразуем пустую строку в None (чтобы избежать нарушения уникального ограничения)
+            # 2. Проверяем уникальность перед установкой
+            if new_value is None or new_value == '':
+                # Пустая строка или None - устанавливаем None
+                user.login = None
+            else:
+                # Проверяем уникальность логина перед установкой
+                result = await db.execute(
+                    select(models.User).where(
+                        models.User.login == new_value,
+                        models.User.id != user_id
+                    )
+                )
+                existing_user = result.scalar_one_or_none()
+                if existing_user:
+                    raise ValueError(f"Логин '{new_value}' уже занят другим пользователем")
+                user.login = new_value
         else:
             setattr(user, key, new_value)
     
