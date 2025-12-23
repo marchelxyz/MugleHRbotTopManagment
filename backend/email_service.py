@@ -64,16 +64,38 @@ async def send_email(
             logger.error("SMTP_PASSWORD пустой или содержит только пробелы. Проверьте настройки в .env")
             return False
         
+        # Дополнительная проверка: если пароль выглядит как неправильно экранированный (содержит \Y вместо \\Y)
+        # Это может произойти, если в .env файле пароль записан без кавычек или с одинарным обратным слэшем
+        # Но мы не можем автоматически исправлять, так как это может быть правильный пароль
+        # Просто логируем предупреждение
+        if '\\Y' in smtp_password and '\\\\Y' not in smtp_password:
+            logger.warning(
+                "В пароле обнаружен одинарный обратный слэш перед Y. "
+                "Если пароль содержит обратный слэш, убедитесь, что в .env файле он правильно экранирован: "
+                "SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\" (с удвоенным обратным слэшем в кавычках)"
+            )
+        
         # Проверяем, что SMTP_USERNAME является валидным email адресом
         smtp_username = smtp_username.strip()
         if not is_valid_email(smtp_username):
             logger.error(f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. Укажите полный email (например: support@teleagentnn.ru)")
             return False
         
-        # Логируем диагностическую информацию (без пароля)
+        # Логируем диагностическую информацию (без полного пароля)
         password_length = len(smtp_password)
-        password_preview = f"{smtp_password[0]}***" if password_length > 0 else "пустой"
-        logger.debug(f"SMTP диагностика: username='{smtp_username}', password_length={password_length}, password_preview='{password_preview}'")
+        # Показываем первые 2 и последние 2 символа пароля для диагностики
+        if password_length > 4:
+            password_preview = f"{smtp_password[:2]}...{smtp_password[-2:]}"
+        elif password_length > 0:
+            password_preview = f"{smtp_password[0]}***"
+        else:
+            password_preview = "пустой"
+        
+        # Проверяем наличие специальных символов
+        special_chars = [c for c in smtp_password if c in ['\\', '-', '.', '#', '$', '%', '&', '@']]
+        special_chars_info = f", содержит спецсимволы: {special_chars}" if special_chars else ""
+        
+        logger.info(f"SMTP диагностика: username='{smtp_username}', password_length={password_length}, password_preview='{password_preview}'{special_chars_info}")
         
         # Для Timeweb SMTP адрес отправителя должен совпадать с SMTP_USERNAME
         # Это критично для успешной аутентификации
@@ -126,13 +148,21 @@ async def send_email(
                         tls_context=None,  # Используем контекст по умолчанию
                         timeout=30
                     ) as smtp:
-                        logger.debug(f"Подключение к {host_to_try}:{smtp_port} установлено, выполняется аутентификация...")
+                        logger.info(f"Подключение к {host_to_try}:{smtp_port} установлено, выполняется аутентификация...")
+                        logger.debug(f"Аутентификация: username='{smtp_username}', password_length={len(smtp_password)}, password_repr={repr(smtp_password[:5])}...")
                         try:
                             await smtp.login(smtp_username, smtp_password)
-                            logger.debug(f"Аутентификация успешна, отправка сообщения...")
+                            logger.info(f"Аутентификация успешна, отправка сообщения...")
                         except Exception as auth_error:
-                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {auth_error}")
+                            error_msg = str(auth_error)
+                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {error_msg}")
                             logger.error(f"Проверяемые данные: username='{smtp_username}', password_length={len(smtp_password)}")
+                            # Показываем первые и последние символы пароля для диагностики
+                            if len(smtp_password) > 4:
+                                logger.error(f"Password preview: '{smtp_password[:2]}...{smtp_password[-2:]}'")
+                            # Проверяем наличие невидимых символов
+                            if any(ord(c) < 32 and c not in ['\n', '\r', '\t'] for c in smtp_password):
+                                logger.warning("В пароле обнаружены невидимые символы (коды < 32)")
                             raise
                         await smtp.send_message(message)
                 elif smtp_port == 587:
@@ -145,8 +175,11 @@ async def send_email(
                         try:
                             await smtp.login(smtp_username, smtp_password)
                         except Exception as auth_error:
-                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {auth_error}")
+                            error_msg = str(auth_error)
+                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {error_msg}")
                             logger.error(f"Проверяемые данные: username='{smtp_username}', password_length={len(smtp_password)}")
+                            if len(smtp_password) > 4:
+                                logger.error(f"Password preview: '{smtp_password[:2]}...{smtp_password[-2:]}'")
                             raise
                         await smtp.send_message(message)
                 else:
@@ -160,8 +193,11 @@ async def send_email(
                         try:
                             await smtp.login(smtp_username, smtp_password)
                         except Exception as auth_error:
-                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {auth_error}")
+                            error_msg = str(auth_error)
+                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {error_msg}")
                             logger.error(f"Проверяемые данные: username='{smtp_username}', password_length={len(smtp_password)}")
+                            if len(smtp_password) > 4:
+                                logger.error(f"Password preview: '{smtp_password[:2]}...{smtp_password[-2:]}'")
                             raise
                         await smtp.send_message(message)
                 
@@ -178,6 +214,7 @@ async def send_email(
                 
                 # Специальная обработка ошибок аутентификации
                 if "535" in error_msg or "Incorrect authentication data" in error_msg or "SMTPAuthenticationError" in error_type or "authentication" in error_msg.lower():
+                    password_preview = f"{smtp_password[:2]}...{smtp_password[-2:]}" if len(smtp_password) > 4 else "***"
                     logger.error(
                         f"Ошибка аутентификации SMTP на {host_to_try}. "
                         f"Проверьте:\n"
@@ -185,14 +222,22 @@ async def send_email(
                         f"     Текущее значение: '{smtp_username}'\n"
                         f"  2. SMTP_PASSWORD должен быть правильным паролем от почтового ящика\n"
                         f"     Длина пароля: {len(smtp_password)} символов\n"
+                        f"     Preview: '{password_preview}'\n"
                         f"  3. Убедитесь, что пароль правильно экранирован в .env файле:\n"
-                        f"     - Если пароль содержит спецсимволы (#, $, %, &, и т.д.), заключите его в кавычки\n"
-                        f"     - Пример: SMTP_PASSWORD=\"пароль#123\" или SMTP_PASSWORD='пароль#123'\n"
-                        f"     - Или экранируйте спецсимволы: SMTP_PASSWORD=пароль\\#123\n"
+                        f"     - Если пароль содержит обратный слэш (\\), удвойте его в .env файле\n"
+                        f"     - Пример для пароля 'j.IIaq-\\Ydpm14': SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\"\n"
+                        f"     - Или используйте одинарные кавычки: SMTP_PASSWORD='j.IIaq-\\Ydpm14'\n"
+                        f"     - Если пароль содержит другие спецсимволы (#, $, %, &), заключите его в кавычки\n"
                         f"  4. Для Timeweb адрес From должен совпадать с SMTP_USERNAME\n"
                         f"     From адрес: '{sender_email}'\n"
-                        f"  5. Убедитесь, что почтовый ящик существует и пароль правильный\n"
-                        f"  6. Проверьте, что в панели Timeweb включена возможность отправки через SMTP"
+                        f"  5. Убедитесь, что:\n"
+                        f"     - Почтовый ящик существует и активен\n"
+                        f"     - Пароль правильный (попробуйте войти через веб-интерфейс Timeweb)\n"
+                        f"     - В панели Timeweb включена возможность отправки через SMTP\n"
+                        f"     - Не используется двухфакторная аутентификация (или используйте пароль приложения)\n"
+                        f"  6. Проверьте правильность пароля:\n"
+                        f"     - Запустите скрипт проверки: python backend/check_smtp.py\n"
+                        f"     - Или проверьте пароль вручную, войдя в почтовый ящик через веб-интерфейс"
                     )
                     # Для ошибок аутентификации не пробуем другие хосты
                     break

@@ -1599,30 +1599,42 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
     for key, new_value in update_data.items():
         old_value = getattr(user, key, None)
         
+        # Нормализуем значение login: пустая строка = None
+        if key == 'login':
+            # Для сравнения нормализуем значения (пустая строка = None)
+            normalized_old = None if (old_value is None or old_value == '') else old_value
+            normalized_new = None if (new_value is None or new_value == '') else new_value
+            # Используем нормализованные значения для сравнения
+            old_value_for_compare = normalized_old
+            new_value_for_compare = normalized_new
+        else:
+            old_value_for_compare = old_value
+            new_value_for_compare = new_value
+        
         # --- НАЧАЛО НОВОЙ, УМНОЙ ЛОГИКИ СРАВНЕНИЯ ---
         is_changed = False
         
         # 1. Отдельно обрабатываем дату, т.к. сравниваем объект date и строку
-        if isinstance(old_value, date):
-            old_value_str = old_value.isoformat()
-            if old_value_str != new_value:
+        if isinstance(old_value_for_compare, date):
+            old_value_str = old_value_for_compare.isoformat()
+            if old_value_str != new_value_for_compare:
                 is_changed = True
         # 2. Отдельно обрабатываем None и пустые строки для текстовых полей
-        elif (old_value is None and new_value != "") or \
-             (new_value is None and old_value != ""):
+        elif (old_value_for_compare is None and new_value_for_compare != "") or \
+             (new_value_for_compare is None and old_value_for_compare != ""):
             # Считаем изменением, если было "ничего", а стала пустая строка (и наоборот)
             # Это можно закомментировать, если такое поведение не нужно
-            if str(old_value) != str(new_value):
+            if str(old_value_for_compare) != str(new_value_for_compare):
                  is_changed = True
         # 3. Сравниваем все остальные типы (числа, строки, булевы) напрямую
-        elif type(old_value) != type(new_value) and old_value is not None:
+        elif type(old_value_for_compare) != type(new_value_for_compare) and old_value_for_compare is not None:
              # Если типы разные (например, int и str), пытаемся привести к типу из БД
              try:
-                 if old_value != type(old_value)(new_value):
+                 if old_value_for_compare != type(old_value_for_compare)(new_value_for_compare):
                      is_changed = True
              except (ValueError, TypeError):
                  is_changed = True # Не смогли привести типы - точно изменение
-        elif old_value != new_value:
+        elif old_value_for_compare != new_value_for_compare:
             is_changed = True
         # --- КОНЕЦ НОВОЙ ЛОГИКИ СРАВНЕНИЯ ---
 
@@ -1641,8 +1653,31 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             # Сохраняем пароль в открытом виде для админов
             user.password_plain = new_value
             # Не сохраняем сам пароль в поле password (его там нет в модели)
+        elif key == 'login':
+            # Специальная обработка для поля login:
+            # 1. Преобразуем пустую строку в None (чтобы избежать нарушения уникального ограничения)
+            # 2. Проверяем уникальность перед установкой
+            if new_value is None or new_value == '':
+                # Пустая строка или None - устанавливаем None
+                user.login = None
+            else:
+                # Проверяем уникальность логина перед установкой
+                result = await db.execute(
+                    select(models.User).where(
+                        models.User.login == new_value,
+                        models.User.id != user_id
+                    )
+                )
+                existing_user = result.scalar_one_or_none()
+                if existing_user:
+                    raise ValueError(f"Логин '{new_value}' уже занят другим пользователем")
+                user.login = new_value
         else:
             setattr(user, key, new_value)
+    
+    # Отслеживаем, были ли установлены логин и пароль для отправки email
+    login_was_set = 'login' in update_data and (update_data.get('login') is not None and update_data.get('login') != '')
+    password_was_set = 'password' in update_data and update_data.get('password') is not None
     
     # Автоматически включаем browser_auth_enabled, если есть логин и пароль
     if user.login and user.password_hash:
@@ -1670,6 +1705,26 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             text=log_message,
             message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
         )
+        
+        # Отправляем email с учетными данными, если были установлены логин и пароль
+        if (login_was_set or password_was_set) and user.email and user.login and user.password_plain:
+            try:
+                from email_service import send_credentials_to_user
+                login_url = getattr(settings, 'WEB_APP_LOGIN_URL', None)
+                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+                await send_credentials_to_user(
+                    user_email=user.email,
+                    user_name=user_name,
+                    login=user.login,
+                    password=user.password_plain,
+                    login_url=login_url
+                )
+                logger.info(f"Email с учетными данными отправлен пользователю {user.email} (ID: {user.id})")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке учетных данных на email {user.email}: {e}")
+                import traceback
+                traceback.print_exc()
+                # Не прерываем выполнение, если не удалось отправить email
     else:
         # Если изменений не было, ничего не сохраняем и не отправляем
         pass
