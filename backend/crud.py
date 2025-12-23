@@ -1812,41 +1812,51 @@ async def verify_user_credentials(db: AsyncSession, login: str, password: str):
 # --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ ЛОГИНА НА ОСНОВЕ ИМЕНИ И ФАМИЛИИ ---
 def generate_login_from_name(first_name: Optional[str], last_name: Optional[str], user_id: int) -> str:
     """
-    Генерирует логин на основе имени и фамилии пользователя.
+    Генерирует логин на основе имени и фамилии пользователя с транслитерацией.
+    Транслитерирует русские символы в латиницу (например, "Роман Мазов" -> "roman.mazov").
     Если имя/фамилия отсутствуют, использует user_id.
     """
     import re
     
-    if first_name and last_name:
-        # Транслитерация кириллицы в латиницу (базовая)
-        translit_map = {
-            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
-            'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-            'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-            'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-            'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-        }
-        
-        def transliterate(text: str) -> str:
-            result = ''
-            for char in text.lower():
-                if char in translit_map:
-                    result += translit_map[char]
-                elif char.isalnum():
-                    result += char
-            return result
-        
-        first_translit = transliterate(first_name)
-        last_translit = transliterate(last_name)
-        
-        if first_translit and last_translit:
-            base_login = f"{first_translit}.{last_translit}"
-        elif first_translit:
-            base_login = first_translit
-        elif last_translit:
-            base_login = last_translit
-        else:
-            base_login = f"user{user_id}"
+    # Транслитерация кириллицы в латиницу
+    translit_map = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+        # Заглавные буквы
+        'А': 'a', 'Б': 'b', 'В': 'v', 'Г': 'g', 'Д': 'd', 'Е': 'e', 'Ё': 'yo',
+        'Ж': 'zh', 'З': 'z', 'И': 'i', 'Й': 'y', 'К': 'k', 'Л': 'l', 'М': 'm',
+        'Н': 'n', 'О': 'o', 'П': 'p', 'Р': 'r', 'С': 's', 'Т': 't', 'У': 'u',
+        'Ф': 'f', 'Х': 'h', 'Ц': 'ts', 'Ч': 'ch', 'Ш': 'sh', 'Щ': 'sch',
+        'Ъ': '', 'Ы': 'y', 'Ь': '', 'Э': 'e', 'Ю': 'yu', 'Я': 'ya'
+    }
+    
+    def transliterate(text: str) -> str:
+        """Транслитерирует текст с кириллицы на латиницу."""
+        if not text:
+            return ''
+        result = ''
+        for char in text:
+            char_lower = char.lower()
+            if char_lower in translit_map:
+                result += translit_map[char_lower]
+            elif char.isalnum():
+                result += char_lower
+        return result
+    
+    # Транслитерируем имя и фамилию
+    first_translit = transliterate(first_name) if first_name else ''
+    last_translit = transliterate(last_name) if last_name else ''
+    
+    # Формируем логин
+    if first_translit and last_translit:
+        base_login = f"{first_translit}.{last_translit}"
+    elif first_translit:
+        base_login = first_translit
+    elif last_translit:
+        base_login = last_translit
     else:
         base_login = f"user{user_id}"
     

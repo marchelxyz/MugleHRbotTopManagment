@@ -6,6 +6,7 @@ import { setUserCredentials, searchUsers, bulkSendCredentials } from '../../api'
 import styles from '../AdminPage.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
+import { generateLoginFromName } from '../../utils/transliteration';
 
 function CredentialsGenerator() {
   const { showAlert } = useModalAlert();
@@ -83,12 +84,12 @@ function CredentialsGenerator() {
     setShowSearchResults(false);
     setSearchResults([]);
     
-    // Автоматически генерируем логин на основе имени и фамилии
-    if (user.first_name && user.last_name) {
-      const firstName = user.first_name.toLowerCase().replace(/[^a-zа-яё]/g, '');
-      const lastName = user.last_name.toLowerCase().replace(/[^a-zа-яё]/g, '');
-      const baseLogin = `${firstName}.${lastName}`;
-      setLogin(baseLogin);
+    // Автоматически генерируем логин на основе имени и фамилии с транслитерацией
+    if (user.first_name || user.last_name) {
+      const generatedLogin = generateLoginFromName(user.first_name || '', user.last_name || '');
+      if (generatedLogin) {
+        setLogin(generatedLogin);
+      }
     }
   };
 
