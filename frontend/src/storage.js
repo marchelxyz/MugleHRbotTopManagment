@@ -1,7 +1,7 @@
 // frontend/src/storage.js
 
 // --- ИЗМЕНЯЕМ ИМПОРТЫ: используем Redis API вместо CloudStorage ---
-import { getFeed, getMarketItems, getLeaderboard, getUserTransactions, getCache, setCache as setCacheAPI, deleteCache as deleteCacheAPI } from './api';
+import { getFeed, getMarketItems, getLeaderboard, getCache, setCache as setCacheAPI, deleteCache as deleteCacheAPI } from './api';
 
 // Получаем Telegram ID для работы с кешем
 const getTelegramId = () => {
@@ -71,26 +71,40 @@ const getStoredValue = async (key) => {
 /**
  * Инициализирует кэш при запуске приложения.
  * Загружает данные из локального хранилища в память для быстрого доступа.
+ * Оптимизировано для параллельной загрузки и неблокирующего UI.
  */
 export const initializeCache = async () => {
-  console.log('Initializing local storage cache...');
+  console.log('Initializing cache...');
   
-  const [feed, market, leaderboard, banners] = await Promise.all([
-    getStoredValue('feed'),
-    getStoredValue('market'),
-    getStoredValue('leaderboard'),
-    getStoredValue('banners')
-  ]);
-  
-  memoryCache.feed = feed;
-  memoryCache.market = market;
-  memoryCache.leaderboard = leaderboard;
-  memoryCache.banners = banners;
+  try {
+    // 1. Параллельная загрузка всех данных из кеша (быстро, не блокирует UI)
+    const [feed, market, leaderboard, banners] = await Promise.all([
+      getStoredValue('feed').catch(() => null),
+      getStoredValue('market').catch(() => null),
+      getStoredValue('leaderboard').catch(() => null),
+      getStoredValue('banners').catch(() => null)
+    ]);
+    
+    // 2. Заполняем memory cache синхронно (мгновенный доступ)
+    memoryCache.feed = feed;
+    memoryCache.market = market;
+    memoryCache.leaderboard = leaderboard;
+    memoryCache.banners = banners;
 
-  console.log('Cache initialized from local storage:', memoryCache);
-  
-  // После инициализации, асинхронно обновляем данные с сервера
-  refreshAllData();
+    console.log('Cache initialized from storage');
+    
+    // 3. Обновляем данные в фоне (не блокирует UI)
+    // Используем setTimeout для отложенного запуска, чтобы не мешать первоначальной загрузке
+    setTimeout(() => {
+      refreshAllData().catch(err => {
+        console.warn('Background cache refresh failed:', err);
+      });
+    }, 100); // Небольшая задержка для приоритизации критических запросов
+    
+  } catch (error) {
+    console.error('Cache initialization failed:', error);
+    // Продолжаем работу даже при ошибке инициализации кеша
+  }
 };
 
 /**
@@ -130,34 +144,51 @@ export const setCachedData = async (key, data) => {
 /**
  * Полностью обновляет все кэшируемые данные, запрашивая их с сервера
  * и сохраняя как в локальное хранилище, так и в память.
+ * Оптимизировано для параллельной загрузки и обработки ошибок.
  */
 export const refreshAllData = async () => {
   console.log('Refreshing all data from API...');
   try {
-    // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Заменяем вызов функции ---
-    const [feedRes, marketRes, leaderboardRes] = await Promise.all([
+    // Параллельная загрузка всех данных с сервера
+    const [feedRes, marketRes, leaderboardRes] = await Promise.allSettled([
       getFeed(),
       getMarketItems(),
-      // Было: getLastMonthLeaderboard()
-      // Стало:
       getLeaderboard({ period: 'current_month', type: 'received' })
     ]);
     
-    // Обновляем ленту
-    if (feedRes.data) {
-      memoryCache.feed = feedRes.data;
-      await setCachedData('feed', feedRes.data);
+    // Обрабатываем результаты независимо (если один запрос упал, остальные сохраняются)
+    const updatePromises = [];
+    
+    if (feedRes.status === 'fulfilled' && feedRes.value?.data) {
+      memoryCache.feed = feedRes.value.data;
+      updatePromises.push(setCachedData('feed', feedRes.value.data).catch(err => 
+        console.warn('Failed to cache feed:', err)
+      ));
+    } else if (feedRes.status === 'rejected') {
+      console.warn('Failed to refresh feed:', feedRes.reason);
     }
-    // Обновляем товары
-    if (marketRes.data) {
-        memoryCache.market = marketRes.data;
-        await setCachedData('market', marketRes.data);
+    
+    if (marketRes.status === 'fulfilled' && marketRes.value?.data) {
+      memoryCache.market = marketRes.value.data;
+      updatePromises.push(setCachedData('market', marketRes.value.data).catch(err => 
+        console.warn('Failed to cache market:', err)
+      ));
+    } else if (marketRes.status === 'rejected') {
+      console.warn('Failed to refresh market:', marketRes.reason);
     }
-    // Обновляем лидерборд
-    if (leaderboardRes.data) {
-        memoryCache.leaderboard = leaderboardRes.data;
-        await setCachedData('leaderboard', leaderboardRes.data);
+    
+    if (leaderboardRes.status === 'fulfilled' && leaderboardRes.value?.data) {
+      memoryCache.leaderboard = leaderboardRes.value.data;
+      updatePromises.push(setCachedData('leaderboard', leaderboardRes.value.data).catch(err => 
+        console.warn('Failed to cache leaderboard:', err)
+      ));
+    } else if (leaderboardRes.status === 'rejected') {
+      console.warn('Failed to refresh leaderboard:', leaderboardRes.reason);
     }
+    
+    // Сохраняем кеш параллельно
+    await Promise.all(updatePromises);
+    
     console.log('All data refreshed and saved to storage.');
 
   } catch (error) {

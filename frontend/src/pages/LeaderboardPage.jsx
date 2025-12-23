@@ -53,11 +53,17 @@ function LeaderboardPage({ user }) {
     setIsLoading(true);
     try {
       const tabConfig = ALL_TABS.find(t => t.id === activeTabId);
-      if (!tabConfig) { setIsLoading(false); return; }
+      if (!tabConfig) { 
+        setIsLoading(false); 
+        return; 
+      }
+      
+      // Параллельная загрузка данных для активной вкладки
       const [leaderboardRes, myRankRes] = await Promise.all([
         getLeaderboard(tabConfig.params),
         getMyRank(tabConfig.params)
       ]);
+      
       setLeaderboard(leaderboardRes.data);
       setMyRank(myRankRes.data);
     } catch (error) {
@@ -65,14 +71,16 @@ function LeaderboardPage({ user }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTabId]);
+  }, [activeTabId]); // Только activeTabId как зависимость - правильно
 
   useEffect(() => {
-    // Убедимся, что fetchData вызывается только если вкладка по умолчанию видима
-    const currentDefaultTab = ALL_TABS.find(t => t.id === activeTabId);
-    if (visibleTabs.includes(currentDefaultTab)) {
+    // Убедимся, что fetchData вызывается только если вкладка видима
+    const currentTab = ALL_TABS.find(t => t.id === activeTabId);
+    if (currentTab && visibleTabs.includes(currentTab)) {
       fetchData();
     }
+    // Зависимости: activeTabId и visibleTabs определяют когда загружать
+    // fetchData стабильна благодаря useCallback с activeTabId
   }, [fetchData, visibleTabs, activeTabId]);
 
   const top3 = leaderboard.slice(0, 3);

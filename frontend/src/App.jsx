@@ -1,33 +1,36 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { checkUserStatus, getFeed, getBanners } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
-// Компоненты и страницы
+// Компоненты навигации (загружаются сразу, так как всегда видны)
 import BottomNav from './components/BottomNav';
 import SideNav from './components/SideNav';
-import RegistrationPage from './pages/RegistrationPage';
-import LoginPage from './pages/LoginPage';
-import HomePage from './pages/HomePage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import MarketplacePage from './pages/MarketplacePage';
-import ProfilePage from './pages/ProfilePage';
-import HistoryPage from './pages/HistoryPage';
-import AdminPage from './pages/AdminPage';
-import SettingsPage from './pages/SettingsPage';
-import FaqPage from './pages/FaqPage';
-import PendingPage from './pages/PendingPage';
-import RejectedPage from './pages/RejectedPage';
-import RoulettePage from './pages/RoulettePage';
-import BonusCardPage from './pages/BonusCardPage';
-import EditProfilePage from './pages/EditProfilePage';
-import BlockedPage from './pages/BlockedPage';
-import TransferPage from './pages/TransferPage'; // Страница отправки спасибок
-import NotificationsPage from './pages/NotificationsPage';
-import { startSession, pingSession } from './api';
-import OnboardingStories from './components/OnboardingStories'; // Обучающие истории
 import LoadingScreen from './components/LoadingScreen'; // Страница загрузки
+
+// Lazy loading страниц - загружаются только при необходимости
+const RegistrationPage = lazy(() => import('./pages/RegistrationPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
+const MarketplacePage = lazy(() => import('./pages/MarketplacePage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const FaqPage = lazy(() => import('./pages/FaqPage'));
+const PendingPage = lazy(() => import('./pages/PendingPage'));
+const RejectedPage = lazy(() => import('./pages/RejectedPage'));
+const RoulettePage = lazy(() => import('./pages/RoulettePage'));
+const BonusCardPage = lazy(() => import('./pages/BonusCardPage'));
+const EditProfilePage = lazy(() => import('./pages/EditProfilePage'));
+const BlockedPage = lazy(() => import('./pages/BlockedPage'));
+const TransferPage = lazy(() => import('./pages/TransferPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const OnboardingStories = lazy(() => import('./components/OnboardingStories'));
+
+import { startSession, pingSession } from './api';
 
 // Стили
 import './App.css';
@@ -171,7 +174,10 @@ function App() {
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    initializeCache();  
+    // Инициализация кеша (не блокирует, выполняется параллельно)
+    initializeCache().catch(err => {
+      console.warn('Cache initialization failed, continuing without cache:', err);
+    });
       
     const telegramUser = tg?.initDataUnsafe?.user;
     
@@ -634,7 +640,9 @@ function App() {
               ⏳ Ваши изменения отправлены на согласование администраторам.
             </div>
         )}
-        {renderPage()}
+        <Suspense fallback={<LoadingScreen />}>
+          {renderPage()}
+        </Suspense>
       </main>
     </div>
   );
