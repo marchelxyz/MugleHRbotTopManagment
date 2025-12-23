@@ -20,14 +20,14 @@ async def create_new_transaction(tr: schemas.TransferRequest, db: AsyncSession =
 @router.get("/transactions/feed", response_model=list[schemas.FeedItem])
 async def get_feed(
     days: int = 7,
-    limit: int = 100,
+    limit: int = 200,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Получает ленту транзакций.
     Параметры:
     - days: количество дней для выборки (по умолчанию 7)
-    - limit: максимальное количество записей (по умолчанию 100)
+    - limit: максимальное количество записей (по умолчанию 200)
     """
     return await crud.get_feed(db, days=days, limit=limit)
 
