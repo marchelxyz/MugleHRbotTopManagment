@@ -14,33 +14,25 @@ export default defineConfig({
       output: {
         // Разделение vendor и app кода для лучшего кеширования
         manualChunks: (id) => {
-          // ВАЖНО: Все React-зависимые библиотеки должны быть в одном чанке с React
-          // чтобы избежать ошибок типа "Cannot read properties of undefined (reading 'useLayoutEffect')"
-          if (
-            id.includes('node_modules/react') || 
-            id.includes('node_modules/react-dom') ||
-            id.includes('node_modules/react-icons') ||
-            id.includes('node_modules/react-barcode') ||
-            id.includes('node_modules/react-input-mask') ||
-            id.includes('node_modules/react-chartjs-2') ||
-            id.includes('node_modules/react-lottie-player') ||
-            id.includes('node_modules/react-datepicker') ||
-            id.includes('node_modules/react-onclickoutside') ||
-            id.includes('node_modules/scheduler') // React scheduler
-          ) {
+          // React и React DOM в отдельный чанк
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return 'react-vendor';
-          }
-          // Chart.js (не зависит от React напрямую)
-          if (id.includes('node_modules/chart.js')) {
-            return 'chart-vendor';
-          }
-          // Lottie-web (не зависит от React напрямую)
-          if (id.includes('node_modules/lottie-web')) {
-            return 'lottie-vendor';
           }
           // Axios в отдельный чанк
           if (id.includes('node_modules/axios')) {
             return 'axios-vendor';
+          }
+          // Chart.js и react-chartjs-2 в отдельный чанк (используется только в админке)
+          if (id.includes('node_modules/chart.js') || id.includes('node_modules/react-chartjs-2')) {
+            return 'chart-vendor';
+          }
+          // Lottie библиотеки в отдельный чанк (тяжелые анимации)
+          if (id.includes('node_modules/lottie-web') || id.includes('node_modules/react-lottie-player')) {
+            return 'lottie-vendor';
+          }
+          // React-icons в отдельный чанк
+          if (id.includes('node_modules/react-icons')) {
+            return 'icons-vendor';
           }
           // Date-fns в отдельный чанк
           if (id.includes('node_modules/date-fns')) {
