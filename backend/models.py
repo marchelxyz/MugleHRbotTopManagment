@@ -19,6 +19,7 @@ class User(Base):
     telegram_photo_url = Column(String, nullable=True)
     phone_number = Column(String, nullable=False)
     date_of_birth = Column(Date, nullable=False)
+    email = Column(String, nullable=True)  # Email пользователя для рассылок и уведомлений
     balance = Column(Integer, default=0)
     reserved_balance = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False, nullable=False)

@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     REDIS_URL: str = ""
 
+    # Настройки SMTP для отправки email через Timeweb
+    SMTP_HOST: str = "smtp.timeweb.com"
+    SMTP_PORT: int = 465  # 465 для SSL, 587 для TLS
+    SMTP_USERNAME: str = ""  # Полный email адрес от Timeweb
+    SMTP_PASSWORD: str = ""  # Пароль от почтового ящика
+    SMTP_USE_TLS: bool = False  # True для порта 587, False для порта 465
+    ADMIN_EMAILS: str = ""  # Список email админов через запятую для уведомлений
+    WEB_APP_LOGIN_URL: str = ""  # URL страницы входа в веб-приложение (опционально)
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
