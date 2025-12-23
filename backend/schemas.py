@@ -45,9 +45,11 @@ class UserResponse(UserBase):
     card_balance: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[date] = None
+    email: Optional[str] = None
     has_seen_onboarding: bool
     has_interacted_with_bot: bool
     login: Optional[str] = None
+    password_plain: Optional[str] = None  # Пароль в открытом виде (только для админов)
     browser_auth_enabled: bool = False
 
     @field_serializer('date_of_birth')
@@ -94,6 +96,7 @@ class RegisterRequest(BaseModel):
     telegram_photo_url: Optional[str] = None
     phone_number: str
     date_of_birth: str
+    email: Optional[str] = None
 
 class FeedItem(OrmBase):
     id: int

@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 // --- ИЗМЕНЕНИЕ: Добавляем иконку FaDownload и функцию exportAllUsers ---
-import { FaPencilAlt, FaTimes, FaDownload } from 'react-icons/fa';
-import { adminGetAllUsers, adminUpdateUser, adminDeleteUser, exportAllUsers } from '../../api';
+import { FaPencilAlt, FaTimes, FaDownload, FaKey, FaTrash } from 'react-icons/fa';
+import { adminGetAllUsers, adminUpdateUser, adminDeleteUser, exportAllUsers, adminChangeUserPassword, adminDeleteUserPassword } from '../../api';
 import styles from '../AdminPage.module.css';
 import userManagerStyles from './UserManager.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
@@ -11,8 +11,9 @@ import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { formatDateForDisplay } from '../../utils/dateFormatter';
 
 // Модальное окно для редактирования (остается без изменений)
-function EditUserModal({ user, onClose, onSave, onDelete }) {
+function EditUserModal({ user, onClose, onSave, onDelete, onChangePassword, onDeletePassword }) {
     const { confirm } = useConfirmation();
+    const { showAlert } = useModalAlert();
     const [formData, setFormData] = useState({
         ...user,
         date_of_birth: formatDateForDisplay(user.date_of_birth),
@@ -20,6 +21,8 @@ function EditUserModal({ user, onClose, onSave, onDelete }) {
         password: '', // Пароль не показываем, только для изменения
         browser_auth_enabled: user.browser_auth_enabled || false,
     });
+    const [newPassword, setNewPassword] = useState('');
+    const [showPasswordChange, setShowPasswordChange] = useState(false);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -51,6 +54,32 @@ function EditUserModal({ user, onClose, onSave, onDelete }) {
         );
         if (isConfirmed) {
             onSave(user.id, { ...formData, status: newStatus });
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!newPassword || newPassword.length < 6) {
+            showAlert('Пароль должен содержать минимум 6 символов', 'error');
+            return;
+        }
+        const isConfirmed = await confirm(
+            'Изменение пароля',
+            `Вы уверены, что хотите изменить пароль пользователя ${user.first_name}?`
+        );
+        if (isConfirmed) {
+            onChangePassword(user.id, newPassword);
+            setNewPassword('');
+            setShowPasswordChange(false);
+        }
+    };
+
+    const handleDeletePassword = async () => {
+        const isConfirmed = await confirm(
+            'Удаление пароля',
+            `Вы уверены, что хотите удалить пароль пользователя ${user.first_name}? Вход через браузер будет отключен.`
+        );
+        if (isConfirmed) {
+            onDeletePassword(user.id);
         }
     };
 
@@ -112,6 +141,59 @@ function EditUserModal({ user, onClose, onSave, onDelete }) {
                         {formData.login && (
                             <div style={{ gridColumn: '1 / -1', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
                                 💡 Текущий логин: <strong>{formData.login}</strong>
+                            </div>
+                        )}
+                        {user.password_plain && (
+                            <div style={{ gridColumn: '1 / -1', fontSize: '12px', color: '#666', fontStyle: 'italic', marginTop: '5px' }}>
+                                🔑 Текущий пароль: <strong style={{ fontFamily: 'monospace', backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{user.password_plain}</strong>
+                            </div>
+                        )}
+                        {!user.password_plain && user.login && (
+                            <div style={{ gridColumn: '1 / -1', fontSize: '12px', color: '#999', fontStyle: 'italic', marginTop: '5px' }}>
+                                ⚠️ Пароль не установлен
+                            </div>
+                        )}
+                        
+                        {/* Кнопки управления паролем */}
+                        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <button 
+                                type="button" 
+                                onClick={() => setShowPasswordChange(!showPasswordChange)}
+                                className={`${userManagerStyles.modalButton} ${styles.buttonGreen}`}
+                                style={{ flex: 1 }}
+                            >
+                                <FaKey /> {showPasswordChange ? 'Отменить изменение' : 'Изменить пароль'}
+                            </button>
+                            {user.password_plain && (
+                                <button 
+                                    type="button" 
+                                    onClick={handleDeletePassword}
+                                    className={`${userManagerStyles.modalButton} ${userManagerStyles.buttonRed}`}
+                                    style={{ flex: 1 }}
+                                >
+                                    <FaTrash /> Удалить пароль
+                                </button>
+                            )}
+                        </div>
+                        
+                        {showPasswordChange && (
+                            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', alignItems: 'center', marginTop: '10px' }}>
+                                <input 
+                                    type="password" 
+                                    value={newPassword} 
+                                    onChange={(e) => setNewPassword(e.target.value)} 
+                                    placeholder="Новый пароль (минимум 6 символов)" 
+                                    className={styles.input}
+                                    style={{ flex: 1 }}
+                                    minLength={6}
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={handleChangePassword}
+                                    className={`${userManagerStyles.modalButton} ${styles.buttonGreen}`}
+                                >
+                                    Сохранить
+                                </button>
                             </div>
                         )}
                     </div>
@@ -201,6 +283,42 @@ function UserManager() {
              showAlert(error.response?.data?.detail || 'Ошибка при анонимизации.', 'error');
         }
     };
+
+    const handleChangePassword = async (userId, newPassword) => {
+        try {
+            await adminChangeUserPassword(userId, newPassword);
+            showAlert('Пароль успешно изменен.', 'success');
+            fetchUsers();
+            // Обновляем редактируемого пользователя, если он открыт
+            if (editingUser && editingUser.id === userId) {
+                const updatedUsers = await adminGetAllUsers();
+                const updatedUser = updatedUsers.data.find(u => u.id === userId);
+                if (updatedUser) {
+                    setEditingUser(updatedUser);
+                }
+            }
+        } catch (error) {
+            showAlert(error.response?.data?.detail || 'Ошибка при изменении пароля.', 'error');
+        }
+    };
+
+    const handleDeletePassword = async (userId) => {
+        try {
+            await adminDeleteUserPassword(userId);
+            showAlert('Пароль успешно удален. Вход через браузер отключен.', 'success');
+            fetchUsers();
+            // Обновляем редактируемого пользователя, если он открыт
+            if (editingUser && editingUser.id === userId) {
+                const updatedUsers = await adminGetAllUsers();
+                const updatedUser = updatedUsers.data.find(u => u.id === userId);
+                if (updatedUser) {
+                    setEditingUser(updatedUser);
+                }
+            }
+        } catch (error) {
+            showAlert(error.response?.data?.detail || 'Ошибка при удалении пароля.', 'error');
+        }
+    };
     
     const filteredUsers = useMemo(() => {
         const targetStatus = view === 'blocked' ? 'blocked' : 'approved';
@@ -246,7 +364,9 @@ function UserManager() {
                     user={editingUser} 
                     onClose={() => setEditingUser(null)} 
                     onSave={handleSaveUser}
-                    onDelete={handleDeleteUser} // <-- Передаем новую функцию
+                    onDelete={handleDeleteUser}
+                    onChangePassword={handleChangePassword}
+                    onDeletePassword={handleDeletePassword}
                 />
             )}
             
@@ -287,6 +407,17 @@ function UserManager() {
                             <div className={userManagerStyles.userInfo}>
                                 <strong>{user.first_name} {user.last_name}</strong>
                                 <span>@{user.username || '...'} | {user.position}</span>
+                                {user.login && (
+                                    <span style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                                        Логин: <strong>{user.login}</strong>
+                                        {user.password_plain && (
+                                            <> | Пароль: <strong style={{ fontFamily: 'monospace' }}>{user.password_plain}</strong></>
+                                        )}
+                                        {!user.password_plain && user.login && (
+                                            <> | <span style={{ color: '#e74c3c' }}>Пароль не установлен</span></>
+                                        )}
+                                    </span>
+                                )}
                             </div>
                             <div className={userManagerStyles.userStats}>
                                 <span>Спасибок: {user.balance}</span>

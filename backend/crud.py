@@ -146,13 +146,14 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
         telegram_photo_url=user.telegram_photo_url,
         phone_number=user.phone_number,
         date_of_birth=dob,
+        email=user.email.strip() if user.email and user.email.strip() else None,
         last_login_date=date.today()
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     
-    # Отправляем уведомление администраторам только если есть TELEGRAM_CHAT_ID
+    # Отправляем уведомление администраторам через Telegram (если настроено)
     try:
         if settings.TELEGRAM_CHAT_ID:
             user_info = (
@@ -161,6 +162,7 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
                 f"🏢 Подразделение: {db_user.department or ''}\n"
                 f"💼 Должность: {db_user.position or ''}\n"
                 f"📞 Телефон: {db_user.phone_number or 'не указан'}\n"
+                f"📧 Email: {db_user.email or 'не указан'}\n"
                 f"🎂 Дата рождения: {str(db_user.date_of_birth) if db_user.date_of_birth else 'не указана'}\n"
                 f"🆔 Telegram ID: {db_user.telegram_id or 'не указан (веб-регистрация)'}"
             )
@@ -183,7 +185,23 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
                 parse_mode=None
             )
     except Exception as e:
-        print(f"FAILED to send admin notification. Error: {e}")
+        print(f"FAILED to send Telegram admin notification. Error: {e}")
+    
+    # Отправляем уведомление администраторам через Email (если настроено)
+    try:
+        from email_service import send_registration_notification_to_admins
+        is_web_registration = db_user.telegram_id is None or db_user.telegram_id < 0
+        await send_registration_notification_to_admins(
+            user_email=db_user.email,
+            user_name=f"{db_user.first_name or ''} {db_user.last_name or ''}".strip(),
+            user_department=db_user.department or '',
+            user_position=db_user.position or '',
+            user_phone=db_user.phone_number or '',
+            user_dob=str(db_user.date_of_birth) if db_user.date_of_birth else None,
+            is_web_registration=is_web_registration
+        )
+    except Exception as e:
+        print(f"FAILED to send email admin notification. Error: {e}")
     
     return db_user
 
@@ -940,6 +958,7 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
         if not user.password_hash:
             generated_password = generate_random_password(12)
             user.password_hash = get_password_hash(generated_password)
+            user.password_plain = generated_password  # Сохраняем пароль в открытом виде для админов
             password_was_generated = True
         
         # Включаем возможность входа через браузер
@@ -960,6 +979,23 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
             user._generated_login = user.login
         if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
             user._generated_password = generated_password
+        
+        # Отправляем email с учетными данными пользователю, если был одобрен и есть email
+        if status == 'approved' and user.email and generated_login and generated_password:
+            try:
+                from email_service import send_credentials_to_user
+                login_url = getattr(settings, 'WEB_APP_LOGIN_URL', None)
+                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+                await send_credentials_to_user(
+                    user_email=user.email,
+                    user_name=user_name,
+                    login=generated_login,
+                    password=generated_password,
+                    login_url=login_url
+                )
+            except Exception as e:
+                logger.error(f"Ошибка при отправке учетных данных на email {user.email}: {e}")
+                # Не прерываем выполнение, если не удалось отправить email
     
     return user
 
@@ -1563,30 +1599,42 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
     for key, new_value in update_data.items():
         old_value = getattr(user, key, None)
         
+        # Нормализуем значение login: пустая строка = None
+        if key == 'login':
+            # Для сравнения нормализуем значения (пустая строка = None)
+            normalized_old = None if (old_value is None or old_value == '') else old_value
+            normalized_new = None if (new_value is None or new_value == '') else new_value
+            # Используем нормализованные значения для сравнения
+            old_value_for_compare = normalized_old
+            new_value_for_compare = normalized_new
+        else:
+            old_value_for_compare = old_value
+            new_value_for_compare = new_value
+        
         # --- НАЧАЛО НОВОЙ, УМНОЙ ЛОГИКИ СРАВНЕНИЯ ---
         is_changed = False
         
         # 1. Отдельно обрабатываем дату, т.к. сравниваем объект date и строку
-        if isinstance(old_value, date):
-            old_value_str = old_value.isoformat()
-            if old_value_str != new_value:
+        if isinstance(old_value_for_compare, date):
+            old_value_str = old_value_for_compare.isoformat()
+            if old_value_str != new_value_for_compare:
                 is_changed = True
         # 2. Отдельно обрабатываем None и пустые строки для текстовых полей
-        elif (old_value is None and new_value != "") or \
-             (new_value is None and old_value != ""):
+        elif (old_value_for_compare is None and new_value_for_compare != "") or \
+             (new_value_for_compare is None and old_value_for_compare != ""):
             # Считаем изменением, если было "ничего", а стала пустая строка (и наоборот)
             # Это можно закомментировать, если такое поведение не нужно
-            if str(old_value) != str(new_value):
+            if str(old_value_for_compare) != str(new_value_for_compare):
                  is_changed = True
         # 3. Сравниваем все остальные типы (числа, строки, булевы) напрямую
-        elif type(old_value) != type(new_value) and old_value is not None:
+        elif type(old_value_for_compare) != type(new_value_for_compare) and old_value_for_compare is not None:
              # Если типы разные (например, int и str), пытаемся привести к типу из БД
              try:
-                 if old_value != type(old_value)(new_value):
+                 if old_value_for_compare != type(old_value_for_compare)(new_value_for_compare):
                      is_changed = True
              except (ValueError, TypeError):
                  is_changed = True # Не смогли привести типы - точно изменение
-        elif old_value != new_value:
+        elif old_value_for_compare != new_value_for_compare:
             is_changed = True
         # --- КОНЕЦ НОВОЙ ЛОГИКИ СРАВНЕНИЯ ---
 
@@ -1602,35 +1650,34 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
         elif key == 'password' and new_value:
             # Хешируем пароль перед сохранением
             user.password_hash = get_password_hash(new_value)
+            # Сохраняем пароль в открытом виде для админов
+            user.password_plain = new_value
             # Не сохраняем сам пароль в поле password (его там нет в модели)
         elif key == 'login':
-            # Конвертируем пустые строки в None для поля login,
-            # чтобы избежать нарушения уникального ограничения
-            # (PostgreSQL считает все пустые строки одинаковыми)
-            if new_value is not None and new_value.strip() == '':
-                setattr(user, key, None)
+            # Специальная обработка для поля login:
+            # 1. Преобразуем пустую строку в None (чтобы избежать нарушения уникального ограничения)
+            # 2. Проверяем уникальность перед установкой
+            if new_value is None or new_value == '':
+                # Пустая строка или None - устанавливаем None
+                user.login = None
             else:
-                setattr(user, key, new_value)
+                # Проверяем уникальность логина перед установкой
+                result = await db.execute(
+                    select(models.User).where(
+                        models.User.login == new_value,
+                        models.User.id != user_id
+                    )
+                )
+                existing_user = result.scalar_one_or_none()
+                if existing_user:
+                    raise ValueError(f"Логин '{new_value}' уже занят другим пользователем")
+                user.login = new_value
         else:
             setattr(user, key, new_value)
     
-    # Проверяем уникальность логина перед сохранением
-    if 'login' in update_data and user.login:
-        # Проверяем, не используется ли этот логин другим пользователем
-        existing_user = await db.execute(
-            select(models.User).where(
-                and_(
-                    models.User.login == user.login,
-                    models.User.id != user_id
-                )
-            )
-        )
-        if existing_user.scalar_one_or_none():
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=400,
-                detail=f"Логин '{user.login}' уже используется другим пользователем"
-            )
+    # Отслеживаем, были ли установлены логин и пароль для отправки email
+    login_was_set = 'login' in update_data and (update_data.get('login') is not None and update_data.get('login') != '')
+    password_was_set = 'password' in update_data and update_data.get('password') is not None
     
     # Автоматически включаем browser_auth_enabled, если есть логин и пароль
     if user.login and user.password_hash:
@@ -1658,6 +1705,26 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             text=log_message,
             message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
         )
+        
+        # Отправляем email с учетными данными, если были установлены логин и пароль
+        if (login_was_set or password_was_set) and user.email and user.login and user.password_plain:
+            try:
+                from email_service import send_credentials_to_user
+                login_url = getattr(settings, 'WEB_APP_LOGIN_URL', None)
+                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+                await send_credentials_to_user(
+                    user_email=user.email,
+                    user_name=user_name,
+                    login=user.login,
+                    password=user.password_plain,
+                    login_url=login_url
+                )
+                logger.info(f"Email с учетными данными отправлен пользователю {user.email} (ID: {user.id})")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке учетных данных на email {user.email}: {e}")
+                import traceback
+                traceback.print_exc()
+                # Не прерываем выполнение, если не удалось отправить email
     else:
         # Если изменений не было, ничего не сохраняем и не отправляем
         pass
@@ -1760,10 +1827,115 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
     # Устанавливаем логин и пароль
     user.login = login
     user.password_hash = get_password_hash(password)
+    user.password_plain = password  # Сохраняем пароль в открытом виде для админов
     user.browser_auth_enabled = True
     
     await db.commit()
     await db.refresh(user)
+    
+    # Отправляем учетные данные пользователю в Telegram
+    if user.telegram_id and user.telegram_id >= 0:
+        message_text = (
+            f"🔐 <b>Ваши учетные данные для входа в систему</b>\n\n"
+            f"👤 <b>Логин:</b> <code>{escape_html(user.login)}</code>\n"
+            f"🔑 <b>Пароль:</b> <code>{escape_html(password)}</code>\n\n"
+            f"⚠️ <i>Сохраните эти данные в безопасном месте. Пароль больше не будет показан.</i>"
+        )
+        
+        try:
+            await send_telegram_message(
+                chat_id=user.telegram_id,
+                text=message_text,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.error(f"Не удалось отправить учетные данные пользователю {user.id} ({user.telegram_id}) в Telegram: {e}")
+            # Не прерываем выполнение функции, так как учетные данные уже установлены
+    
+    return user
+
+# --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ ПАРОЛЯ ПОЛЬЗОВАТЕЛЯ ---
+async def admin_change_user_password(db: AsyncSession, user_id: int, new_password: str, admin_user: models.User):
+    """
+    Изменяет пароль пользователя от имени администратора.
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Валидация пароля
+    if len(new_password) < 6:
+        raise ValueError("Пароль должен содержать минимум 6 символов")
+    
+    # Обновляем пароль
+    user.password_hash = get_password_hash(new_password)
+    user.password_plain = new_password  # Сохраняем пароль в открытом виде для админов
+    
+    # Если пароль установлен, включаем browser_auth_enabled
+    if user.login:
+        user.browser_auth_enabled = True
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    # Отправляем уведомление в Telegram
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+    
+    log_message = (
+        f"🔑 <b>Админ изменил пароль пользователя</b>\n\n"
+        f"👤 <b>Администратор:</b> {escape_html(admin_name)}\n"
+        f"🎯 <b>Пользователь:</b> {escape_html(target_user_name)}\n"
+        f"👤 <b>Логин:</b> <code>{escape_html(user.login or 'не установлен')}</code>"
+    )
+    
+    try:
+        await bot.send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=log_message,
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        )
+    except Exception as e:
+        logger.error(f"Не удалось отправить уведомление об изменении пароля: {e}")
+    
+    return user
+
+# --- ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ПАРОЛЯ ПОЛЬЗОВАТЕЛЯ ---
+async def admin_delete_user_password(db: AsyncSession, user_id: int, admin_user: models.User):
+    """
+    Удаляет пароль пользователя, отключая вход через браузер.
+    """
+    user = await get_user(db, user_id)
+    if not user:
+        raise ValueError("Пользователь не найден")
+    
+    # Удаляем пароль и отключаем вход через браузер
+    user.password_hash = None
+    user.password_plain = None
+    user.browser_auth_enabled = False
+    
+    await db.commit()
+    await db.refresh(user)
+    
+    # Отправляем уведомление в Telegram
+    admin_name = f"@{admin_user.username}" if admin_user.username else f"{admin_user.first_name} {admin_user.last_name}"
+    target_user_name = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name}"
+    
+    log_message = (
+        f"🗑️ <b>Админ удалил пароль пользователя</b>\n\n"
+        f"👤 <b>Администратор:</b> {escape_html(admin_name)}\n"
+        f"🎯 <b>Пользователь:</b> {escape_html(target_user_name)}\n"
+        f"⚠️ <b>Вход через браузер отключен</b>"
+    )
+    
+    try:
+        await bot.send_telegram_message(
+            chat_id=settings.TELEGRAM_CHAT_ID,
+            text=log_message,
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        )
+    except Exception as e:
+        logger.error(f"Не удалось отправить уведомление об удалении пароля: {e}")
     
     return user
 
@@ -1803,41 +1975,51 @@ async def verify_user_credentials(db: AsyncSession, login: str, password: str):
 # --- ФУНКЦИЯ ДЛЯ ГЕНЕРАЦИИ ЛОГИНА НА ОСНОВЕ ИМЕНИ И ФАМИЛИИ ---
 def generate_login_from_name(first_name: Optional[str], last_name: Optional[str], user_id: int) -> str:
     """
-    Генерирует логин на основе имени и фамилии пользователя.
+    Генерирует логин на основе имени и фамилии пользователя с транслитерацией.
+    Транслитерирует русские символы в латиницу (например, "Роман Мазов" -> "roman.mazov").
     Если имя/фамилия отсутствуют, использует user_id.
     """
     import re
     
-    if first_name and last_name:
-        # Транслитерация кириллицы в латиницу (базовая)
-        translit_map = {
-            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
-            'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-            'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-            'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-            'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-        }
-        
-        def transliterate(text: str) -> str:
-            result = ''
-            for char in text.lower():
-                if char in translit_map:
-                    result += translit_map[char]
-                elif char.isalnum():
-                    result += char
-            return result
-        
-        first_translit = transliterate(first_name)
-        last_translit = transliterate(last_name)
-        
-        if first_translit and last_translit:
-            base_login = f"{first_translit}.{last_translit}"
-        elif first_translit:
-            base_login = first_translit
-        elif last_translit:
-            base_login = last_translit
-        else:
-            base_login = f"user{user_id}"
+    # Транслитерация кириллицы в латиницу
+    translit_map = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+        # Заглавные буквы
+        'А': 'a', 'Б': 'b', 'В': 'v', 'Г': 'g', 'Д': 'd', 'Е': 'e', 'Ё': 'yo',
+        'Ж': 'zh', 'З': 'z', 'И': 'i', 'Й': 'y', 'К': 'k', 'Л': 'l', 'М': 'm',
+        'Н': 'n', 'О': 'o', 'П': 'p', 'Р': 'r', 'С': 's', 'Т': 't', 'У': 'u',
+        'Ф': 'f', 'Х': 'h', 'Ц': 'ts', 'Ч': 'ch', 'Ш': 'sh', 'Щ': 'sch',
+        'Ъ': '', 'Ы': 'y', 'Ь': '', 'Э': 'e', 'Ю': 'yu', 'Я': 'ya'
+    }
+    
+    def transliterate(text: str) -> str:
+        """Транслитерирует текст с кириллицы на латиницу."""
+        if not text:
+            return ''
+        result = ''
+        for char in text:
+            char_lower = char.lower()
+            if char_lower in translit_map:
+                result += translit_map[char_lower]
+            elif char.isalnum():
+                result += char_lower
+        return result
+    
+    # Транслитерируем имя и фамилию
+    first_translit = transliterate(first_name) if first_name else ''
+    last_translit = transliterate(last_name) if last_name else ''
+    
+    # Формируем логин
+    if first_translit and last_translit:
+        base_login = f"{first_translit}.{last_translit}"
+    elif first_translit:
+        base_login = first_translit
+    elif last_translit:
+        base_login = last_translit
     else:
         base_login = f"user{user_id}"
     
@@ -1944,6 +2126,7 @@ async def bulk_send_credentials(
                 # Устанавливаем учетные данные
                 user.login = login
                 user.password_hash = get_password_hash(password)
+                user.password_plain = password  # Сохраняем пароль в открытом виде для админов
                 user.browser_auth_enabled = True
                 
                 credentials_generated += 1
@@ -1980,6 +2163,7 @@ async def bulk_send_credentials(
                     if user_credentials_generated:
                         user.login = None
                         user.password_hash = None
+                        user.password_plain = None
                         user.browser_auth_enabled = False
                         credentials_generated -= 1
             
@@ -1990,6 +2174,7 @@ async def bulk_send_credentials(
             if user_credentials_generated:
                 user.login = None
                 user.password_hash = None
+                user.password_plain = None
                 user.browser_auth_enabled = False
                 credentials_generated -= 1
     

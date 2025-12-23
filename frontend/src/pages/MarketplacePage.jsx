@@ -35,7 +35,10 @@ function MarketplacePage({ user, onPurchaseSuccess }) {
       }
     };
     fetchItems();
-  }, [showAlert]);
+    // showAlert стабильная функция из контекста, но лучше убрать зависимость
+    // чтобы избежать лишних запросов при изменении контекста
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePurchase = async (item) => {
     if (item.is_shared_gift) {
