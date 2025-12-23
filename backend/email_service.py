@@ -58,10 +58,22 @@ async def send_email(
             logger.error("SMTP настройки не заданы. Проверьте SMTP_USERNAME и SMTP_PASSWORD в .env")
             return False
         
+        # Проверяем, что пароль не пустой и не состоит только из пробелов
+        smtp_password = smtp_password.strip() if smtp_password else ""
+        if not smtp_password:
+            logger.error("SMTP_PASSWORD пустой или содержит только пробелы. Проверьте настройки в .env")
+            return False
+        
         # Проверяем, что SMTP_USERNAME является валидным email адресом
+        smtp_username = smtp_username.strip()
         if not is_valid_email(smtp_username):
             logger.error(f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. Укажите полный email (например: support@teleagentnn.ru)")
             return False
+        
+        # Логируем диагностическую информацию (без пароля)
+        password_length = len(smtp_password)
+        password_preview = f"{smtp_password[0]}***" if password_length > 0 else "пустой"
+        logger.debug(f"SMTP диагностика: username='{smtp_username}', password_length={password_length}, password_preview='{password_preview}'")
         
         # Для Timeweb SMTP адрес отправителя должен совпадать с SMTP_USERNAME
         # Это критично для успешной аутентификации
@@ -77,7 +89,7 @@ async def send_email(
             )
         
         # Логируем настройки для диагностики (без пароля)
-        logger.info(f"SMTP настройки: host={smtp_host}, port={smtp_port}, username={smtp_username}, from={sender_email}, to={to_email}")
+        logger.info(f"SMTP настройки: host={smtp_host}, port={smtp_port}, username={smtp_username}, from={sender_email}, to={to_email}, password_set={'да' if smtp_password else 'нет'}")
         
         # Создаем сообщение
         message = MIMEMultipart('alternative')
@@ -115,8 +127,13 @@ async def send_email(
                         timeout=30
                     ) as smtp:
                         logger.debug(f"Подключение к {host_to_try}:{smtp_port} установлено, выполняется аутентификация...")
-                        await smtp.login(smtp_username, smtp_password)
-                        logger.debug(f"Аутентификация успешна, отправка сообщения...")
+                        try:
+                            await smtp.login(smtp_username, smtp_password)
+                            logger.debug(f"Аутентификация успешна, отправка сообщения...")
+                        except Exception as auth_error:
+                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {auth_error}")
+                            logger.error(f"Проверяемые данные: username='{smtp_username}', password_length={len(smtp_password)}")
+                            raise
                         await smtp.send_message(message)
                 elif smtp_port == 587:
                     # TLS соединение (порт 587) - сначала обычное соединение, потом STARTTLS
@@ -125,7 +142,12 @@ async def send_email(
                         port=smtp_port,
                         start_tls=True
                     ) as smtp:
-                        await smtp.login(smtp_username, smtp_password)
+                        try:
+                            await smtp.login(smtp_username, smtp_password)
+                        except Exception as auth_error:
+                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {auth_error}")
+                            logger.error(f"Проверяемые данные: username='{smtp_username}', password_length={len(smtp_password)}")
+                            raise
                         await smtp.send_message(message)
                 else:
                     # Другие порты - используем настройки из конфига
@@ -135,7 +157,12 @@ async def send_email(
                         use_tls=smtp_use_tls,
                         start_tls=not smtp_use_tls if not smtp_use_tls else False
                     ) as smtp:
-                        await smtp.login(smtp_username, smtp_password)
+                        try:
+                            await smtp.login(smtp_username, smtp_password)
+                        except Exception as auth_error:
+                            logger.error(f"Ошибка при аутентификации на {host_to_try}: {type(auth_error).__name__}: {auth_error}")
+                            logger.error(f"Проверяемые данные: username='{smtp_username}', password_length={len(smtp_password)}")
+                            raise
                         await smtp.send_message(message)
                 
                 logger.info(f"Email успешно отправлен на {to_email} через {host_to_try}")
@@ -150,14 +177,22 @@ async def send_email(
                 logger.warning(f"Не удалось отправить через {host_to_try}: {error_type}: {error_msg}")
                 
                 # Специальная обработка ошибок аутентификации
-                if "535" in error_msg or "Incorrect authentication data" in error_msg or "SMTPAuthenticationError" in error_type:
+                if "535" in error_msg or "Incorrect authentication data" in error_msg or "SMTPAuthenticationError" in error_type or "authentication" in error_msg.lower():
                     logger.error(
                         f"Ошибка аутентификации SMTP на {host_to_try}. "
                         f"Проверьте:\n"
                         f"  1. SMTP_USERNAME должен быть полным email адресом (например: support@teleagentnn.ru)\n"
+                        f"     Текущее значение: '{smtp_username}'\n"
                         f"  2. SMTP_PASSWORD должен быть правильным паролем от почтового ящика\n"
-                        f"  3. Убедитесь, что пароль правильно экранирован в .env файле (особенно если содержит спецсимволы)\n"
-                        f"  4. Для Timeweb адрес From должен совпадать с SMTP_USERNAME"
+                        f"     Длина пароля: {len(smtp_password)} символов\n"
+                        f"  3. Убедитесь, что пароль правильно экранирован в .env файле:\n"
+                        f"     - Если пароль содержит спецсимволы (#, $, %, &, и т.д.), заключите его в кавычки\n"
+                        f"     - Пример: SMTP_PASSWORD=\"пароль#123\" или SMTP_PASSWORD='пароль#123'\n"
+                        f"     - Или экранируйте спецсимволы: SMTP_PASSWORD=пароль\\#123\n"
+                        f"  4. Для Timeweb адрес From должен совпадать с SMTP_USERNAME\n"
+                        f"     From адрес: '{sender_email}'\n"
+                        f"  5. Убедитесь, что почтовый ящик существует и пароль правильный\n"
+                        f"  6. Проверьте, что в панели Timeweb включена возможность отправки через SMTP"
                     )
                     # Для ошибок аутентификации не пробуем другие хосты
                     break
