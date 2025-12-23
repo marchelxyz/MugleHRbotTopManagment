@@ -40,11 +40,12 @@ async def send_email(
         smtp_use_tls = getattr(settings, 'SMTP_USE_TLS', False)
         
         # Альтернативные хосты для fallback (если основной не работает)
+        # Примечание: smtp.timeweb.com не работает (DNS не разрешается), поэтому не добавляем его как fallback
         smtp_hosts = [smtp_host]
         if smtp_host == 'smtp.timeweb.com':
-            smtp_hosts.append('smtp.timeweb.ru')  # Правильный хост для Timeweb
-        elif smtp_host == 'smtp.timeweb.ru':
-            smtp_hosts.append('smtp.timeweb.com')  # Fallback на .com если .ru не работает
+            # Если указан неправильный хост .com, добавляем правильный .ru
+            smtp_hosts.append('smtp.timeweb.ru')
+            logger.warning("Используется устаревший хост smtp.timeweb.com. Рекомендуется использовать smtp.timeweb.ru")
         
         if not smtp_username or not smtp_password:
             logger.error("SMTP настройки не заданы. Проверьте SMTP_USERNAME и SMTP_PASSWORD в .env")

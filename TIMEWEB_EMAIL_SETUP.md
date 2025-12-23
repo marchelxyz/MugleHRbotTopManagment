@@ -26,14 +26,18 @@
 
 ```env
 # Настройки SMTP Timeweb
+# SMTP сервер: smtp.timeweb.ru (для отправки писем)
+# IMAP сервер: mail.timeweb.com (для получения писем, не используется в этом проекте)
+# POP3 сервер: pop3.timeweb.ru (для получения писем, не используется в этом проекте)
 SMTP_HOST=smtp.timeweb.ru
 SMTP_PORT=465
-SMTP_USERNAME=your-email@yourdomain.com
-SMTP_PASSWORD=your_email_password
+SMTP_USERNAME=support@teleagentnn.ru
+SMTP_PASSWORD="j.IIaq-\\Ydpm14"  # Пароль в кавычках, если содержит специальные символы
 SMTP_USE_TLS=false
 
 # Email адреса администраторов (через запятую)
-ADMIN_EMAILS=admin1@example.com,admin2@example.com
+# Сюда будут приходить уведомления о новых регистрациях
+ADMIN_EMAILS=support@teleagentnn.ru
 
 # URL страницы входа в веб-приложение (опционально)
 # Это полный URL вашего фронтенда (где пользователи открывают приложение)
@@ -43,6 +47,11 @@ ADMIN_EMAILS=admin1@example.com,admin2@example.com
 # - Если фронтенд на Railway: https://your-frontend.up.railway.app
 WEB_APP_LOGIN_URL=https://your-app.com
 ```
+
+**⚠️ Важно для паролей со специальными символами:**
+Если пароль содержит специальные символы (например, `\`, `-`, `.`), оберните его в двойные кавычки в `.env` файле:
+- `SMTP_PASSWORD="j.IIaq-\\Ydpm14"` - правильный формат
+- `SMTP_PASSWORD=j.IIaq-\Ydpm14` - может не работать из-за специальных символов
 
 ### Описание переменных
 
@@ -111,6 +120,25 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NU
 
 ## Проверка работы
 
+### Проверка настроек
+
+Убедитесь, что в файле `.env` в папке `backend/` указаны правильные настройки:
+
+```env
+SMTP_HOST=smtp.timeweb.ru
+SMTP_PORT=465
+SMTP_USERNAME=support@teleagentnn.ru
+SMTP_PASSWORD="j.IIaq-\\Ydpm14"
+SMTP_USE_TLS=false
+ADMIN_EMAILS=support@teleagentnn.ru
+```
+
+**Проверка DNS разрешения:**
+```bash
+nslookup smtp.timeweb.ru
+# Должен вернуть IP адреса: 176.57.223.13, 176.57.223.7, 176.57.223.12
+```
+
 ### Тест отправки email
 
 Для проверки работы email интеграции можно использовать следующий код в Python консоли:
@@ -121,7 +149,7 @@ from backend.email_service import send_email
 
 async def test_email():
     result = await send_email(
-        to_email="test@example.com",
+        to_email="support@teleagentnn.ru",  # Ваш email для теста
         subject="Тестовое письмо",
         body_html="<h1>Тест</h1><p>Это тестовое письмо.</p>",
         body_text="Тест\n\nЭто тестовое письмо."
@@ -131,13 +159,18 @@ async def test_email():
 asyncio.run(test_email())
 ```
 
+Если тест успешен, вы должны получить письмо на указанный адрес.
+
 ## Устранение неполадок
 
 ### Письма не отправляются
 
 1. **Проверьте настройки SMTP:**
+   - Убедитесь, что `SMTP_HOST=smtp.timeweb.ru` (⚠️ используйте `.ru`, не `.com`)
    - Убедитесь, что `SMTP_USERNAME` и `SMTP_PASSWORD` указаны правильно
+   - Если пароль содержит специальные символы, оберните его в двойные кавычки: `SMTP_PASSWORD="j.IIaq-\\Ydpm14"`
    - Проверьте, что порт соответствует типу соединения (465 для SSL, 587 для TLS)
+   - Проверьте DNS разрешение: `nslookup smtp.timeweb.ru` должно работать
 
 2. **Проверьте логи:**
    - Ошибки отправки email логируются в консоль
