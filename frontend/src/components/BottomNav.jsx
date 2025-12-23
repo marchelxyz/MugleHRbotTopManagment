@@ -202,5 +202,3 @@ function BottomNav({ user, activePage, onNavigate }) {
 
 // Мемоизируем компонент для предотвращения лишних ререндеров
 export default React.memo(BottomNav);
-
-export default BottomNav;
