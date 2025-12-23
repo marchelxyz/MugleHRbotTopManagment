@@ -1,9 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 from pathlib import Path
 import logging
 import re
@@ -182,9 +180,6 @@ async def lifespan(app: FastAPI):
         logger.error(f"Ошибка при отключении от Redis: {e}")
 
 app = FastAPI(lifespan=lifespan)
-
-# Добавляем сжатие ответов для уменьшения размера передаваемых данных на 70-80%
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 class CacheControlMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

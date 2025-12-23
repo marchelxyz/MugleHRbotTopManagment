@@ -3,11 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import crud, schemas, models
 from database import get_db
 from dependencies import get_current_user
-from crud import verify_password, get_password_hash
-from redis_cache import redis_cache
-import logging
-
-logger = logging.getLogger(__name__) 
+from crud import verify_password, get_password_hash 
 
 router = APIRouter(
     prefix="/users",
@@ -70,29 +66,9 @@ async def list_users(db: AsyncSession = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserResponse)
 async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
-    telegram_id_int = int(telegram_id)
-    
-    # Пытаемся получить из кеша
-    try:
-        cached_user = await redis_cache.get(telegram_id_int, 'user_me')
-        if cached_user:
-            logger.debug(f"User {telegram_id_int} получен из кеша")
-            return schemas.UserResponse.model_validate(cached_user)
-    except Exception as e:
-        logger.warning(f"Ошибка при получении пользователя из кеша: {e}")
-    
-    # Если нет в кеше, получаем из БД
-    user = await crud.get_user_by_telegram(db, telegram_id_int)
+    user = await crud.get_user_by_telegram(db, int(telegram_id))
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
-    # Сохраняем в кеш на 5 минут (короткий TTL, так как данные могут часто меняться)
-    try:
-        user_dict = schemas.UserResponse.model_validate(user).model_dump()
-        await redis_cache.set(telegram_id_int, 'user_me', user_dict, ttl=300)
-    except Exception as e:
-        logger.warning(f"Ошибка при сохранении пользователя в кеш: {e}")
-    
     return user
 
 @router.put("/me", response_model=schemas.UserResponse)
