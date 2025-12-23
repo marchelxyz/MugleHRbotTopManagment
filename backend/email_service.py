@@ -6,9 +6,16 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 import logging
+import re
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def is_valid_email(email: str) -> bool:
+    """Проверяет, является ли строка валидным email адресом"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
 
 
 async def send_email(
@@ -51,14 +58,36 @@ async def send_email(
             logger.error("SMTP настройки не заданы. Проверьте SMTP_USERNAME и SMTP_PASSWORD в .env")
             return False
         
-        # Используем from_email из параметра или из настроек
-        sender_email = from_email or smtp_username
+        # Проверяем, что SMTP_USERNAME является валидным email адресом
+        if not is_valid_email(smtp_username):
+            logger.error(f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. Укажите полный email (например: support@teleagentnn.ru)")
+            return False
+        
+        # Для Timeweb SMTP адрес отправителя должен совпадать с SMTP_USERNAME
+        # Это критично для успешной аутентификации
+        sender_email = smtp_username
+        
+        # Если указан from_email и он отличается от smtp_username, используем Reply-To
+        # но From всегда должен быть smtp_username для успешной аутентификации
+        if from_email and from_email != smtp_username:
+            logger.warning(
+                f"Параметр from_email ({from_email}) отличается от SMTP_USERNAME ({smtp_username}). "
+                f"Для Timeweb SMTP адрес From будет установлен в SMTP_USERNAME для успешной аутентификации. "
+                f"Адрес {from_email} будет использован как Reply-To."
+            )
+        
+        # Логируем настройки для диагностики (без пароля)
+        logger.info(f"SMTP настройки: host={smtp_host}, port={smtp_port}, username={smtp_username}, from={sender_email}, to={to_email}")
         
         # Создаем сообщение
         message = MIMEMultipart('alternative')
         message['From'] = sender_email
         message['To'] = to_email
         message['Subject'] = subject
+        
+        # Если указан другой from_email, добавляем его как Reply-To
+        if from_email and from_email != smtp_username:
+            message['Reply-To'] = from_email
         
         # Добавляем текстовую и HTML версии
         if body_text:
@@ -76,13 +105,18 @@ async def send_email(
                 
                 # Отправляем через SMTP
                 if smtp_port == 465:
-                    # SSL соединение (порт 465) - используем SMTP_SSL
+                    # SSL соединение (порт 465) - используем SSL/TLS
+                    # Для Timeweb важно использовать правильные настройки SSL
                     async with aiosmtplib.SMTP(
                         hostname=host_to_try,
                         port=smtp_port,
-                        use_tls=True  # SSL через TLS
+                        use_tls=True,  # SSL через TLS
+                        tls_context=None,  # Используем контекст по умолчанию
+                        timeout=30
                     ) as smtp:
+                        logger.debug(f"Подключение к {host_to_try}:{smtp_port} установлено, выполняется аутентификация...")
                         await smtp.login(smtp_username, smtp_password)
+                        logger.debug(f"Аутентификация успешна, отправка сообщения...")
                         await smtp.send_message(message)
                 elif smtp_port == 587:
                     # TLS соединение (порт 587) - сначала обычное соединение, потом STARTTLS
@@ -110,7 +144,23 @@ async def send_email(
             except Exception as host_error:
                 last_error = host_error
                 error_msg = str(host_error)
-                logger.warning(f"Не удалось отправить через {host_to_try}: {error_msg}")
+                error_type = type(host_error).__name__
+                
+                # Детальное логирование ошибки
+                logger.warning(f"Не удалось отправить через {host_to_try}: {error_type}: {error_msg}")
+                
+                # Специальная обработка ошибок аутентификации
+                if "535" in error_msg or "Incorrect authentication data" in error_msg or "SMTPAuthenticationError" in error_type:
+                    logger.error(
+                        f"Ошибка аутентификации SMTP на {host_to_try}. "
+                        f"Проверьте:\n"
+                        f"  1. SMTP_USERNAME должен быть полным email адресом (например: support@teleagentnn.ru)\n"
+                        f"  2. SMTP_PASSWORD должен быть правильным паролем от почтового ящика\n"
+                        f"  3. Убедитесь, что пароль правильно экранирован в .env файле (особенно если содержит спецсимволы)\n"
+                        f"  4. Для Timeweb адрес From должен совпадать с SMTP_USERNAME"
+                    )
+                    # Для ошибок аутентификации не пробуем другие хосты
+                    break
                 
                 # Если это ошибка DNS и есть еще хосты для попытки, продолжаем
                 if "Name or service not known" in error_msg or "NXDOMAIN" in error_msg:
