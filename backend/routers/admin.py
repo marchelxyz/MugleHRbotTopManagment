@@ -314,6 +314,63 @@ async def set_user_credentials_route(
             detail="Не удалось установить учетные данные"
         )
 
+class ChangeUserPasswordRequest(BaseModel):
+    new_password: str
+
+@router.post("/users/{user_id}/change-password", response_model=schemas.UserResponse)
+async def admin_change_user_password_route(
+    user_id: int,
+    password_data: ChangeUserPasswordRequest,
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Изменяет пароль пользователя от имени администратора."""
+    try:
+        updated_user = await crud.admin_change_user_password(
+            db,
+            user_id,
+            password_data.new_password,
+            admin_user
+        )
+        return updated_user
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Ошибка при изменении пароля: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось изменить пароль"
+        )
+
+@router.delete("/users/{user_id}/password", response_model=schemas.UserResponse)
+async def admin_delete_user_password_route(
+    user_id: int,
+    admin_user: models.User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Удаляет пароль пользователя, отключая вход через браузер."""
+    try:
+        updated_user = await crud.admin_delete_user_password(
+            db,
+            user_id,
+            admin_user
+        )
+        return updated_user
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"Ошибка при удалении пароля: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Не удалось удалить пароль"
+        )
+
 @router.post("/users/bulk-send-credentials", response_model=schemas.BulkSendCredentialsResponse)
 async def bulk_send_credentials_route(
     request: schemas.BulkSendCredentialsRequest,

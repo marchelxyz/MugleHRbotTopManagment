@@ -667,3 +667,30 @@ export const rejectProfileUpdate = (updateId) => {
     }
     return apiClient.post(`/admin/profile-updates/${updateId}/reject`, {}, { headers });
 };
+
+// --- АДМИН API ДЛЯ УПРАВЛЕНИЯ ПАРОЛЯМИ ПОЛЬЗОВАТЕЛЕЙ ---
+export const adminChangeUserPassword = (userId, newPassword) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const currentUserId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (currentUserId) {
+        headers['X-User-Id'] = currentUserId;
+    }
+    return apiClient.post(`/admin/users/${userId}/change-password`, {
+        new_password: newPassword
+    }, { headers });
+};
+
+export const adminDeleteUserPassword = (userId) => {
+    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    const currentUserId = localStorage.getItem('userId');
+    const headers = {};
+    if (telegramId) {
+        headers['X-Telegram-Id'] = telegramId;
+    } else if (currentUserId) {
+        headers['X-User-Id'] = currentUserId;
+    }
+    return apiClient.delete(`/admin/users/${userId}/password`, { headers });
+};

@@ -49,6 +49,7 @@ class UserResponse(UserBase):
     has_seen_onboarding: bool
     has_interacted_with_bot: bool
     login: Optional[str] = None
+    password_plain: Optional[str] = None  # Пароль в открытом виде (только для админов)
     browser_auth_enabled: bool = False
 
     @field_serializer('date_of_birth')
