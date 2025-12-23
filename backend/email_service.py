@@ -1,5 +1,21 @@
 """
 Модуль для отправки email через SMTP Timeweb
+
+Настройки SMTP для Timeweb Cloud (согласно документации):
+- SMTP сервер: smtp.timeweb.ru
+- Порт 465: SSL/TLS (use_tls=True) - рекомендуется для безопасной отправки
+- Порт 587: STARTTLS (start_tls=True) - альтернативный вариант
+- Username: полный email адрес (например: support@teleagentnn.ru)
+- Password: пароль от почтового ящика
+- From адрес: должен совпадать с SMTP_USERNAME для успешной аутентификации
+
+Важные замечания:
+1. Пароль должен быть правильно экранирован в .env файле:
+   - Если пароль содержит обратный слэш: SMTP_PASSWORD="j.IIaq-\\\\Ydpm14" (удвоенный слэш в двойных кавычках)
+   - Или используйте одинарные кавычки: SMTP_PASSWORD='j.IIaq-\\Ydpm14'
+2. Для Timeweb адрес From всегда должен совпадать с SMTP_USERNAME
+3. Убедитесь, что SMTP включен в панели управления Timeweb
+4. Проверьте, что почтовый ящик активен и пароль правильный
 """
 import aiosmtplib
 from email.mime.text import MIMEText
@@ -196,11 +212,19 @@ async def send_email(
                 if smtp_port == 465:
                     # SSL соединение (порт 465) - используем SSL/TLS
                     # Для Timeweb важно использовать правильные настройки SSL
+                    # Согласно документации Timeweb, порт 465 использует SSL/TLS шифрование
+                    import ssl
+                    # Создаем TLS контекст с правильными настройками для Timeweb
+                    tls_context = ssl.create_default_context()
+                    # Для Timeweb может потребоваться проверка сертификата
+                    tls_context.check_hostname = True
+                    tls_context.verify_mode = ssl.CERT_REQUIRED
+                    
                     async with aiosmtplib.SMTP(
                         hostname=host_to_try,
                         port=smtp_port,
-                        use_tls=True,  # SSL через TLS
-                        tls_context=None,  # Используем контекст по умолчанию
+                        use_tls=True,  # SSL через TLS для порта 465
+                        tls_context=tls_context,
                         timeout=30
                     ) as smtp:
                         logger.info(f"Подключение к {host_to_try}:{smtp_port} установлено, выполняется аутентификация...")
@@ -222,10 +246,18 @@ async def send_email(
                         await smtp.send_message(message)
                 elif smtp_port == 587:
                     # TLS соединение (порт 587) - сначала обычное соединение, потом STARTTLS
+                    # Согласно документации Timeweb, порт 587 использует STARTTLS
+                    import ssl
+                    tls_context = ssl.create_default_context()
+                    tls_context.check_hostname = True
+                    tls_context.verify_mode = ssl.CERT_REQUIRED
+                    
                     async with aiosmtplib.SMTP(
                         hostname=host_to_try,
                         port=smtp_port,
-                        start_tls=True
+                        start_tls=True,
+                        tls_context=tls_context,
+                        timeout=30
                     ) as smtp:
                         try:
                             await smtp.login(smtp_username, smtp_password)
