@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Оптимизация для удаления console.log в продакшене
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   build: {
     // Оптимизация сборки для лучшего кеширования
     rollupOptions: {
@@ -43,16 +47,8 @@ export default defineConfig({
     },
     // Увеличиваем размер предупреждений для больших чанков
     chunkSizeWarningLimit: 1000,
-    // Включаем минификацию и оптимизацию
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Удаляем console.log в продакшене
-        drop_debugger: true,
-      },
-    },
-    // Оптимизация размера чанков
-    chunkSizeWarningLimit: 1000,
+    // Используем встроенный esbuild minifier (быстрее чем terser)
+    minify: 'esbuild',
     // Включаем source maps только для отладки
     sourcemap: false,
   },
