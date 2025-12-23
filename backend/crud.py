@@ -289,12 +289,16 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     
 # crud.py
 
-async def get_feed(db: AsyncSession):
+async def get_feed(db: AsyncSession, days: int = 7, limit: int = 200):
     """
-    Получает ленту транзакций, гарантируя, что отправитель и получатель существуют.
+    Получает ленту транзакций за последние N дней с ограничением количества.
+    По умолчанию: последняя неделя (7 дней), максимум 200 записей.
     """
     Sender = aliased(models.User, name='sender_user')
     Receiver = aliased(models.User, name='receiver_user')
+    
+    # Вычисляем дату начала периода
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
 
     stmt = (
         select(models.Transaction)
@@ -304,17 +308,23 @@ async def get_feed(db: AsyncSession):
             selectinload(models.Transaction.sender),
             selectinload(models.Transaction.receiver)
         )
+        .where(models.Transaction.timestamp >= cutoff_date)
         .order_by(models.Transaction.timestamp.desc())
+        .limit(limit)
     )
     result = await db.execute(stmt)
     return result.scalars().all()
 
-async def get_user_transactions(db: AsyncSession, user_id: int):
+async def get_user_transactions(db: AsyncSession, user_id: int, days: int = 7):
     """
-    Получает транзакции пользователя, гарантируя, что второй участник транзакции существует.
+    Получает транзакции пользователя за последние N дней.
+    По умолчанию: последняя неделя (7 дней).
     """
     Sender = aliased(models.User, name='sender_user')
     Receiver = aliased(models.User, name='receiver_user')
+    
+    # Вычисляем дату начала периода
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
 
     stmt = (
         select(models.Transaction)
@@ -324,7 +334,12 @@ async def get_user_transactions(db: AsyncSession, user_id: int):
             selectinload(models.Transaction.sender),
             selectinload(models.Transaction.receiver)
         )
-        .where((models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id))
+        .where(
+            and_(
+                (models.Transaction.sender_id == user_id) | (models.Transaction.receiver_id == user_id),
+                models.Transaction.timestamp >= cutoff_date
+            )
+        )
         .order_by(models.Transaction.timestamp.desc())
     )
     result = await db.execute(stmt)
