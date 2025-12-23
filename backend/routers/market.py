@@ -4,12 +4,35 @@ from typing import List
 import crud
 import schemas
 from database import get_db
+from redis_cache import redis_cache
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.get("/market/items", response_model=list[schemas.MarketItemResponse])
 async def list_items(db: AsyncSession = Depends(get_db)):
-    return await crud.get_active_items(db)
+    # Пытаемся получить из кеша (общий кеш для всех пользователей)
+    try:
+        cached_items = await redis_cache.get(0, 'market_items_global')
+        if cached_items:
+            logger.debug("Market items получены из кеша")
+            return cached_items
+    except Exception as e:
+        logger.warning(f"Ошибка при получении market items из кеша: {e}")
+    
+    # Если нет в кеше, получаем из БД
+    items = await crud.get_active_items(db)
+    
+    # Сохраняем в кеш на 5 минут (товары меняются реже)
+    try:
+        items_dict = [schemas.MarketItemResponse.model_validate(item).model_dump() for item in items]
+        await redis_cache.set(0, 'market_items_global', items_dict, ttl=300)
+    except Exception as e:
+        logger.warning(f"Ошибка при сохранении market items в кеш: {e}")
+    
+    return items
 
 @router.post("/market/purchase", response_model=schemas.PurchaseResponse)
 async def purchase_item(

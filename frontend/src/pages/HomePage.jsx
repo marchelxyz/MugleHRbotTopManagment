@@ -141,12 +141,22 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
                 <div className={styles.userBlock}>
                     {/* Гирлянда */}
                     <Garland />
-                    <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
+                    <img 
+                        src={telegramPhotoUrl || 'placeholder.png'} 
+                        alt="User" 
+                        className={styles.userAvatar}
+                        loading="eager"
+                        decoding="async"
+                        width="60"
+                        height="60"
+                    />
                     <span className={styles.userName}>{user.first_name}</span>
                     <img
                         src="https://i.postimg.cc/kgrZQyKK/knopka-otpr-sp-sinaa.webp"
                         alt="Отправить спасибки"
                         className={styles.thankYouButton}
+                        loading="eager"
+                        decoding="async"
                         onClick={() => onNavigate('transfer')}
                     />
                 </div>

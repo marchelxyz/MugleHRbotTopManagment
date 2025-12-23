@@ -1,9 +1,11 @@
 // frontend/src/components/OnboardingStories.jsx (ФИНАЛЬНАЯ ВЕРСИЯ)
 
-import React, { useState } from 'react';
-import Lottie from 'react-lottie-player';
+import React, { useState, lazy, Suspense } from 'react';
 import { completeOnboarding } from '../api';
 import styles from './OnboardingStories.module.css';
+
+// Lazy loading для Lottie - загружается только при показе onboarding
+const Lottie = lazy(() => import('react-lottie-player'));
 
 // --- ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ, СТАНДАРТНЫЙ ИМПОРТ ---
 import sticker1 from '../assets/AnimatedSticker1.json';
@@ -67,13 +69,14 @@ function OnboardingStories({ onComplete }) {
       )}
       <div className={styles.content}>
         <div className={styles.stickerContainer}>
-            {/* Этот код остается без изменений */}
-<Lottie
-  animationData={currentStory.animation}
-  loop
-  play // <-- ДОБАВЬ ЭТУ СТРОКУ
-  className={styles.sticker}
-/>
+          <Suspense fallback={<div className={styles.sticker} />}>
+            <Lottie
+              animationData={currentStory.animation}
+              loop
+              play
+              className={styles.sticker}
+            />
+          </Suspense>
         </div>
         <h1 className={styles.title}>{currentStory.title}</h1>
         <p className={styles.text}>{currentStory.text}</p>

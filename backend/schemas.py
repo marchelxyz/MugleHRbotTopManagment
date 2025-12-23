@@ -33,6 +33,17 @@ class PurchaseForMarketResponse(OrmBase):
     user: UserBase
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(
+        from_attributes=True,
+        # Оптимизация сериализации: используем mode='json' для лучшей производительности
+        json_encoders={
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat() if v else None,
+        },
+        # Исключаем ненужные поля при сериализации для уменьшения размера ответа
+        exclude_unset=True,
+    )
+    
     balance: int
     reserved_balance: int = 0
     daily_transfer_count: int

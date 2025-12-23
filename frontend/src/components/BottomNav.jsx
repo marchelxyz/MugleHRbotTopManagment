@@ -1,9 +1,19 @@
 // frontend/src/components/BottomNav.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { FaHome, FaTrophy, FaStore, FaUser, FaCog, FaDice } from 'react-icons/fa';
 
 // 1. Импортируем наши стили
 import styles from './BottomNav.module.css';
+
+// Маппинг страниц для prefetch
+const pagePrefetchMap = {
+  'home': () => import('../pages/HomePage'),
+  'leaderboard': () => import('../pages/LeaderboardPage'),
+  'roulette': () => import('../pages/RoulettePage'),
+  'marketplace': () => import('../pages/MarketplacePage'),
+  'profile': () => import('../pages/ProfilePage'),
+  'admin': () => import('../pages/AdminPage'),
+};
 
 function BottomNav({ user, activePage, onNavigate }) { 
   const [hasNavigationBar, setHasNavigationBar] = useState(false);
@@ -137,19 +147,38 @@ function BottomNav({ user, activePage, onNavigate }) {
     };
   }, []);
 
-  const navItems = [
-    { id: 'home', label: 'Лента', icon: <FaHome size={22} /> },
-    { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={22} /> },
-    { id: 'roulette', label: 'Рулетка', icon: <FaDice size={22} /> },
-    { id: 'marketplace', label: 'Магазин', icon: <FaStore size={22} /> },
-    { id: 'profile', label: 'Профиль', icon: <FaUser size={22} /> },
-  ];
+  // Мемоизируем navItems для предотвращения лишних ререндеров
+  const navItems = useMemo(() => {
+    const items = [
+      { id: 'home', label: 'Лента', icon: <FaHome size={22} /> },
+      { id: 'leaderboard', label: 'Рейтинг', icon: <FaTrophy size={22} /> },
+      { id: 'roulette', label: 'Рулетка', icon: <FaDice size={22} /> },
+      { id: 'marketplace', label: 'Магазин', icon: <FaStore size={22} /> },
+      { id: 'profile', label: 'Профиль', icon: <FaUser size={22} /> },
+    ];
 
     if (user && user.is_admin) {
-    navItems.push({ id: 'admin', label: 'Админ', icon: <FaCog size={22} /> });
-  }
+      items.push({ id: 'admin', label: 'Админ', icon: <FaCog size={22} /> });
+    }
+    
+    return items;
+  }, [user]);
+
+  // Prefetch страницы при наведении для мгновенной загрузки
+  const handleMouseEnter = useCallback((pageId) => {
+    if (pagePrefetchMap[pageId] && activePage !== pageId) {
+      pagePrefetchMap[pageId]().catch(() => {
+        // Игнорируем ошибки prefetch
+      });
+    }
+  }, [activePage]);
+
+  // Мемоизируем обработчик клика
+  const handleClick = useCallback((pageId) => {
+    onNavigate(pageId);
+  }, [onNavigate]);
   
- return (
+  return (
     <div 
       className={`${styles.nav} ${isKeyboardVisible ? styles.hidden : ''}`}
       style={{
@@ -159,7 +188,8 @@ function BottomNav({ user, activePage, onNavigate }) {
       {navItems.map(item => (
         <button
           key={item.id}
-          onClick={() => onNavigate(item.id)}
+          onClick={() => handleClick(item.id)}
+          onMouseEnter={() => handleMouseEnter(item.id)}
           className={`${styles.navButton} ${activePage === item.id ? styles.active : ''}`}
         >
           {item.icon}
@@ -169,5 +199,8 @@ function BottomNav({ user, activePage, onNavigate }) {
     </div>
   );
 }
+
+// Мемоизируем компонент для предотвращения лишних ререндеров
+export default React.memo(BottomNav);
 
 export default BottomNav;
