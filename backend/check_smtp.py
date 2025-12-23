@@ -5,7 +5,7 @@
 import asyncio
 import sys
 from config import settings
-from email_service import send_email
+from email_service import send_email, normalize_smtp_password
 
 async def test_smtp():
     """Тестирует настройки SMTP"""
@@ -39,6 +39,12 @@ async def test_smtp():
         
         # Показываем repr для диагностики экранирования
         print(f"   repr(password[:10]): {repr(smtp_password[:10])}")
+        
+        # Проверяем пароль на наличие проблем с экранированием
+        normalized_password, has_issue = normalize_smtp_password(smtp_password)
+        if has_issue:
+            print("   ⚠️  Обнаружены потенциальные проблемы с экранированием пароля!")
+            print("   Проверьте формат пароля в .env файле (см. инструкции выше)")
     else:
         print("4. SMTP_PASSWORD: НЕ ЗАДАН!")
     
