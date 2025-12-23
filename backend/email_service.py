@@ -7,6 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 import logging
 import re
+import json
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -388,12 +389,61 @@ async def send_credentials_to_user(
     try:
         subject = "Ваши учетные данные для входа в систему"
         
-        login_url_html = f'<p style="margin: 20px 0;"><a href="{login_url}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Войти в систему</a></p>' if login_url else ''
+        login_url_html = f'<div style="text-align: center; margin: 20px 0;"><a href="{login_url}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Войти в систему</a></div>' if login_url else ''
+        
+        # Экранируем логин и пароль для безопасного использования в JavaScript
+        login_escaped = json.dumps(login)
+        password_escaped = json.dumps(password)
+        
+        # JavaScript для копирования (работает в большинстве современных email клиентов)
+        copy_script = """
+        <script>
+        function copyToClipboard(text, buttonId) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    var btn = document.getElementById(buttonId);
+                    var originalText = btn.textContent;
+                    btn.textContent = '✓ Скопировано!';
+                    btn.style.backgroundColor = '#28a745';
+                    setTimeout(function() {
+                        btn.textContent = originalText;
+                        btn.style.backgroundColor = '#6c757d';
+                    }, 2000);
+                }).catch(function(err) {
+                    alert('Не удалось скопировать. Скопируйте вручную: ' + text);
+                });
+            } else {
+                // Fallback для старых браузеров
+                var textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    var btn = document.getElementById(buttonId);
+                    var originalText = btn.textContent;
+                    btn.textContent = '✓ Скопировано!';
+                    btn.style.backgroundColor = '#28a745';
+                    setTimeout(function() {
+                        btn.textContent = originalText;
+                        btn.style.backgroundColor = '#6c757d';
+                    }, 2000);
+                } catch (err) {
+                    alert('Не удалось скопировать. Скопируйте вручную: ' + text);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+        </script>
+        """
         
         html_body = f"""
         <html>
         <head>
             <meta charset="UTF-8">
+            {copy_script}
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -402,8 +452,16 @@ async def send_credentials_to_user(
                 <p>Ваша заявка на регистрацию была одобрена. Ниже указаны ваши учетные данные для входа в систему:</p>
                 
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
-                    <p style="margin: 10px 0;"><strong>Логин:</strong> <code style="background-color: #e9ecef; padding: 2px 6px; border-radius: 3px;">{login}</code></p>
-                    <p style="margin: 10px 0;"><strong>Пароль:</strong> <code style="background-color: #e9ecef; padding: 2px 6px; border-radius: 3px;">{password}</code></p>
+                    <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <strong>Логин:</strong> 
+                        <code style="background-color: #e9ecef; padding: 2px 6px; border-radius: 3px; flex: 1; min-width: 100px;">{login}</code>
+                        <button id="copy-login-btn" onclick="copyToClipboard({login_escaped}, 'copy-login-btn')" style="background-color: #6c757d; color: white; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap;">📋 Копировать</button>
+                    </div>
+                    <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <strong>Пароль:</strong> 
+                        <code style="background-color: #e9ecef; padding: 2px 6px; border-radius: 3px; flex: 1; min-width: 100px;">{password}</code>
+                        <button id="copy-password-btn" onclick="copyToClipboard({password_escaped}, 'copy-password-btn')" style="background-color: #6c757d; color: white; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap;">📋 Копировать</button>
+                    </div>
                 </div>
                 
                 <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
