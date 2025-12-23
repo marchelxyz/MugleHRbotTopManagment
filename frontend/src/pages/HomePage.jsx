@@ -18,28 +18,38 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
 
     useEffect(() => {
         const fetchData = async () => {
-            // Загружаем banners только если их нет в кэше
+            // Загружаем данные только если их нет в кэше
+            // Зависимости feed и banners убраны, чтобы избежать лишних запросов
+            const promises = [];
+            
             if (!banners || banners.length === 0) {
-                try {
-                    const bannersResponse = await getBanners();
-                    setBanners(bannersResponse.data);
-                } catch (error) {
-                    console.error("Failed to fetch banners", error);
-                }
+                promises.push(
+                    getBanners()
+                        .then(response => setBanners(response.data))
+                        .catch(error => console.error("Failed to fetch banners", error))
+                );
             }
-            // Загружаем feed только если его нет в кэше
+            
             if (!feed) {
-                try {
-                    const feedResponse = await getFeed();
-                    setFeed(feedResponse.data);
-                } catch (error) {
-                    console.error("Failed to fetch feed", error);
-                }
+                promises.push(
+                    getFeed()
+                        .then(response => setFeed(response.data))
+                        .catch(error => console.error("Failed to fetch feed", error))
+                );
             }
+            
+            // Если есть что загружать, ждем завершения
+            if (promises.length > 0) {
+                await Promise.all(promises);
+            }
+            
             setIsLoading(false);
         };
+        
         fetchData();
-    }, [feed, banners]);
+        // Пустой массив зависимостей - выполняется только при монтировании
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const mainBanners = banners.filter(b => b.position === 'main');
 
