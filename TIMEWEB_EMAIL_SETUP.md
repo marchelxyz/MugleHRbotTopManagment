@@ -36,7 +36,12 @@ SMTP_USE_TLS=false
 ADMIN_EMAILS=admin1@example.com,admin2@example.com
 
 # URL страницы входа в веб-приложение (опционально)
-WEB_APP_LOGIN_URL=https://your-app.com/login
+# Это полный URL вашего фронтенда (где пользователи открывают приложение)
+# Примеры:
+# - Если фронтенд на Vercel: https://your-project.vercel.app
+# - Если есть свой домен: https://yourdomain.com
+# - Если фронтенд на Railway: https://your-frontend.up.railway.app
+WEB_APP_LOGIN_URL=https://your-app.com
 ```
 
 ### Описание переменных
@@ -47,7 +52,12 @@ WEB_APP_LOGIN_URL=https://your-app.com/login
 - **SMTP_PASSWORD** - Пароль от почтового ящика
 - **SMTP_USE_TLS** - Использовать TLS (true для порта 587, false для порта 465)
 - **ADMIN_EMAILS** - Список email адресов администраторов через запятую для получения уведомлений о регистрациях
-- **WEB_APP_LOGIN_URL** - URL страницы входа в веб-приложение (будет добавлен в письмо с учетными данными)
+- **WEB_APP_LOGIN_URL** - Полный URL вашего фронтенда (веб-приложения), где пользователи открывают приложение в браузере. Это может быть:
+  - URL проекта на Vercel (например: `https://your-project.vercel.app`)
+  - Ваш собственный домен (например: `https://yourdomain.com`)
+  - URL проекта на Railway (например: `https://your-frontend.up.railway.app`)
+  
+  ⚠️ **Важно:** Это URL фронтенда (где пользователи видят страницу входа), а не бэкенда. Если не указать, письмо отправится без ссылки для входа.
 
 ## Установка зависимостей
 
