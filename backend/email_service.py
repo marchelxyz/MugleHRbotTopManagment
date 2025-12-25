@@ -1,5 +1,21 @@
 """
 Модуль для отправки email через SMTP Timeweb
+
+Настройки SMTP для Timeweb Cloud (согласно документации):
+- SMTP сервер: smtp.timeweb.ru
+- Порт 465: SSL/TLS (use_tls=True) - рекомендуется для безопасной отправки
+- Порт 587: STARTTLS (start_tls=True) - альтернативный вариант
+- Username: полный email адрес (например: support@teleagentnn.ru)
+- Password: пароль от почтового ящика
+- From адрес: должен совпадать с SMTP_USERNAME для успешной аутентификации
+
+Важные замечания:
+1. Пароль должен быть правильно экранирован в .env файле:
+   - Если пароль содержит обратный слэш: SMTP_PASSWORD="j.IIaq-\\\\Ydpm14" (удвоенный слэш в двойных кавычках)
+   - Или используйте одинарные кавычки: SMTP_PASSWORD='j.IIaq-\\Ydpm14'
+2. Для Timeweb адрес From всегда должен совпадать с SMTP_USERNAME
+3. Убедитесь, что SMTP включен в панели управления Timeweb
+4. Проверьте, что почтовый ящик активен и пароль правильный
 """
 import aiosmtplib
 from email.mime.text import MIMEText
@@ -17,6 +33,53 @@ def is_valid_email(email: str) -> bool:
     """Проверяет, является ли строка валидным email адресом"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))
+
+
+def normalize_smtp_password(password: str) -> tuple[str, bool]:
+    """
+    Нормализует SMTP пароль и проверяет наличие потенциальных проблем с экранированием.
+    
+    Args:
+        password: Исходный пароль из настроек
+        
+    Returns:
+        tuple: (нормализованный_пароль, была_ли_проблема_обнаружена)
+    """
+    if not password:
+        return password, False
+    
+    has_issue = False
+    
+    # Проверяем наличие обратных слэшей
+    if '\\' in password:
+        # Проверяем, есть ли проблемные escape-последовательности
+        # Стандартные escape-последовательности: \n, \t, \r, \\, \', \"
+        # Если есть \X где X - буква, но не стандартная escape-последовательность,
+        # это может быть проблемой
+        
+        # Проверяем наличие нестандартных escape-последовательностей
+        # Например, \Y может быть интерпретировано как escape, если пароль неправильно записан в .env
+        problematic_escapes = re.findall(r'\\([a-zA-Z])', password)
+        standard_escapes = ['n', 't', 'r', '\\', "'", '"', 'a', 'b', 'f', 'v', '0']
+        non_standard = [e for e in problematic_escapes if e not in standard_escapes]
+        
+        if non_standard:
+            logger.warning(
+                f"Обнаружены потенциально проблемные escape-последовательности в пароле: {non_standard}. "
+                "Если пароль содержит обратный слэш перед буквой, убедитесь, что в .env файле он правильно экранирован."
+            )
+            has_issue = True
+    
+    # Проверяем наличие невидимых символов
+    invisible_chars = [c for c in password if ord(c) < 32 and c not in ['\n', '\r', '\t']]
+    if invisible_chars:
+        logger.warning(
+            f"В пароле обнаружены невидимые символы (коды: {[ord(c) for c in invisible_chars]}). "
+            "Это может указывать на проблему с чтением пароля из .env файла."
+        )
+        has_issue = True
+    
+    return password, has_issue
 
 
 async def send_email(
@@ -65,15 +128,23 @@ async def send_email(
             logger.error("SMTP_PASSWORD пустой или содержит только пробелы. Проверьте настройки в .env")
             return False
         
-        # Дополнительная проверка: если пароль выглядит как неправильно экранированный (содержит \Y вместо \\Y)
-        # Это может произойти, если в .env файле пароль записан без кавычек или с одинарным обратным слэшем
-        # Но мы не можем автоматически исправлять, так как это может быть правильный пароль
-        # Просто логируем предупреждение
-        if '\\Y' in smtp_password and '\\\\Y' not in smtp_password:
+        # Нормализация и проверка пароля
+        smtp_password, password_has_issue = normalize_smtp_password(smtp_password)
+        
+        # Логируем диагностическую информацию о пароле
+        password_repr = repr(smtp_password)
+        logger.debug(f"Пароль (repr): {password_repr}, длина: {len(smtp_password)}")
+        
+        if password_has_issue:
             logger.warning(
-                "В пароле обнаружен одинарный обратный слэш перед Y. "
-                "Если пароль содержит обратный слэш, убедитесь, что в .env файле он правильно экранирован: "
-                "SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\" (с удвоенным обратным слэшем в кавычках)"
+                "Обнаружены потенциальные проблемы с паролем. "
+                "Убедитесь, что в .env файле пароль правильно экранирован:\n"
+                "  - Если пароль содержит обратный слэш, используйте: SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\" "
+                "(удвоенный слэш в двойных кавычках)\n"
+                "  - Или используйте одинарные кавычки: SMTP_PASSWORD='j.IIaq-\\Ydpm14' "
+                "(одинарный слэш в одинарных кавычках)\n"
+                "  - НЕ используйте: SMTP_PASSWORD=\"j.IIaq-\\Ydpm14\" (без удвоения в двойных кавычках) "
+                "- это может привести к неправильной интерпретации escape-последовательностей"
             )
         
         # Проверяем, что SMTP_USERNAME является валидным email адресом
@@ -142,11 +213,19 @@ async def send_email(
                 if smtp_port == 465:
                     # SSL соединение (порт 465) - используем SSL/TLS
                     # Для Timeweb важно использовать правильные настройки SSL
+                    # Согласно документации Timeweb, порт 465 использует SSL/TLS шифрование
+                    import ssl
+                    # Создаем TLS контекст с правильными настройками для Timeweb
+                    tls_context = ssl.create_default_context()
+                    # Для Timeweb может потребоваться проверка сертификата
+                    tls_context.check_hostname = True
+                    tls_context.verify_mode = ssl.CERT_REQUIRED
+                    
                     async with aiosmtplib.SMTP(
                         hostname=host_to_try,
                         port=smtp_port,
-                        use_tls=True,  # SSL через TLS
-                        tls_context=None,  # Используем контекст по умолчанию
+                        use_tls=True,  # SSL через TLS для порта 465
+                        tls_context=tls_context,
                         timeout=30
                     ) as smtp:
                         logger.info(f"Подключение к {host_to_try}:{smtp_port} установлено, выполняется аутентификация...")
@@ -168,10 +247,18 @@ async def send_email(
                         await smtp.send_message(message)
                 elif smtp_port == 587:
                     # TLS соединение (порт 587) - сначала обычное соединение, потом STARTTLS
+                    # Согласно документации Timeweb, порт 587 использует STARTTLS
+                    import ssl
+                    tls_context = ssl.create_default_context()
+                    tls_context.check_hostname = True
+                    tls_context.verify_mode = ssl.CERT_REQUIRED
+                    
                     async with aiosmtplib.SMTP(
                         hostname=host_to_try,
                         port=smtp_port,
-                        start_tls=True
+                        start_tls=True,
+                        tls_context=tls_context,
+                        timeout=30
                     ) as smtp:
                         try:
                             await smtp.login(smtp_username, smtp_password)
