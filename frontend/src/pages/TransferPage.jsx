@@ -157,6 +157,11 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
   const MIN_MESSAGE_LENGTH = 20;
 
+  // Функция для подсчета только букв (русских и английских)
+  const countLetters = (text) => {
+    return text.replace(/[^а-яёА-ЯЁa-zA-Z]/g, '').length;
+  };
+
   // --- ИСПРАВЛЕНИЕ №1: Проверка на наличие user для предотвращения падения ---
   if (!user) {
     return <PageLayout title="Отправить спасибку"><div className="loading-container">Загрузка...</div></PageLayout>;
@@ -172,8 +177,9 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
       return;
     }
     
-    if (message.trim().length < MIN_MESSAGE_LENGTH) {
-      setError(`Сообщение должно содержать минимум ${MIN_MESSAGE_LENGTH} символов (включая пробелы и знаки препинания). Сейчас: ${message.length} символов.`);
+    const letterCount = countLetters(message);
+    if (letterCount < MIN_MESSAGE_LENGTH) {
+      setError(`Сообщение должно содержать минимум ${MIN_MESSAGE_LENGTH} букв. Сейчас: ${letterCount} букв.`);
       return;
     }
     
@@ -233,11 +239,11 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
             ></textarea>
             {message.length > 0 && (
               <div className={styles.charCounter}>
-                {message.length} / {MIN_MESSAGE_LENGTH}
+                {countLetters(message)} / {MIN_MESSAGE_LENGTH}
               </div>
             )}
           </div>
-          {message.length > 0 && message.length < MIN_MESSAGE_LENGTH && (
+          {message.length > 0 && countLetters(message) < MIN_MESSAGE_LENGTH && (
             <div className={styles.messageHint}>
               <span className={styles.messageHintText}>
                 Расскажите подробнее, за что вы благодарны коллеге
@@ -247,7 +253,7 @@ function TransferPage({ user, onBack, onTransferSuccess }) {
         </div>
         <button 
           type="submit" 
-          disabled={isLoading || !receiver || message.trim().length < MIN_MESSAGE_LENGTH} 
+          disabled={isLoading || !receiver || countLetters(message) < MIN_MESSAGE_LENGTH} 
           className={styles.submitButton}
         >
           {isLoading ? 'Отправка...' : 'Отправить спасибку'}
