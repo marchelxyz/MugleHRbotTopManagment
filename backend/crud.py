@@ -1102,6 +1102,20 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
     for key, value in update_data.items():
         # Исключаем поля, которые обрабатываются отдельно
         if key not in ["added_stock", "new_item_codes"]:
+            if key == "price_rub":
+                # Цена в спасибках пересчитывается на сервере
+                if value is not None and db_item.price_rub != value:
+                    print(f"--- [UPDATE ITEM {item_id}] Обновляем поле 'price_rub': '{db_item.price_rub}' -> '{value}' ---") # <-- Лог 3.1
+                    db_item.price_rub = value
+                    updated_fields_count += 1
+
+                recalculated_price = calculate_spasibki_price(value or 0)
+                if db_item.price != recalculated_price:
+                    print(f"--- [UPDATE ITEM {item_id}] Обновляем поле 'price': '{db_item.price}' -> '{recalculated_price}' ---") # <-- Лог 3.2
+                    db_item.price = recalculated_price
+                    updated_fields_count += 1
+                continue
+
             # Проверяем, существует ли поле в модели и изменилось ли значение
             if hasattr(db_item, key) and getattr(db_item, key) != value:
                  print(f"--- [UPDATE ITEM {item_id}] Обновляем поле '{key}': '{getattr(db_item, key)}' -> '{value}' ---") # <-- Лог 3.1
