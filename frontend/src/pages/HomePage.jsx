@@ -9,7 +9,8 @@ import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 import LeaderboardBanner from '../components/LeaderboardBanner';
 import Garland from '../components/Garland';
 
-function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
+function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop, seasonTheme }) {
+    const isWinterTheme = seasonTheme === 'winter';
     const [feed, setFeed] = useState(() => getCachedData('feed'));
     const [banners, setBanners] = useState(() => getCachedData('banners') || []);
     const [isLoading, setIsLoading] = useState(!feed);
@@ -150,7 +151,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop }) {
             <div className={styles.contentArea}>
                 <div className={styles.userBlock}>
                     {/* Гирлянда */}
-                    <Garland />
+                    {isWinterTheme && <Garland />}
                     <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
                     <span className={styles.userName}>{user.first_name}</span>
                     <img

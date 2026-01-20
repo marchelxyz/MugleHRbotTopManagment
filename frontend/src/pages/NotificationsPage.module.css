@@ -6,7 +6,7 @@
   border: none;
   font-size: 16px;
   cursor: pointer;
-  color: #1976D2;
+  color: var(--theme-primary-dark);
   padding: 0;
   font-weight: bold;
 }
@@ -43,13 +43,13 @@
 
 .filterButton:hover {
   background: #f5f5f5;
-  border-color: #2196F3;
+  border-color: var(--theme-primary);
 }
 
 .filterButton.active {
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  background: var(--theme-accent-gradient);
   color: white;
-  border-color: #2196F3;
+  border-color: var(--theme-primary);
 }
 
 .notificationsList {
@@ -75,8 +75,8 @@
 }
 
 .notificationItem.unread {
-  border-left: 4px solid #2196F3;
-  background: #F5F9FF;
+  border-left: 4px solid var(--theme-primary);
+  background: var(--theme-light);
 }
 
 .notificationIconContainer {
@@ -84,14 +84,14 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  background: var(--theme-soft-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .notificationIcon {
-  color: #2196F3;
+  color: var(--theme-primary);
   font-size: 20px;
 }
 

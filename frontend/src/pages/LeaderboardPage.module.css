@@ -79,7 +79,7 @@
 
 /* --- Стили для карточки "Мой ранг" (без изменений) --- */
 .myRankCard {
-  background: linear-gradient(135deg, #2196F3, #1976D2); /* Зимний голубой градиент */
+  background: var(--theme-accent-gradient);
   color: white;
   padding: 15px 20px;
   border-radius: 12px;
@@ -167,7 +167,7 @@
 }
 .points {
   font-weight: bold;
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
   font-size: 16px;
 }
 

@@ -12,7 +12,7 @@
 
   display: flex;
   justify-content: space-around;
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой градиент */
+  background: var(--theme-accent-gradient);
   
   height: 75px; /* Увеличена высота блока навигации */
   padding-top: 6px; /* Уменьшен верхний padding на 2px для приближения верхней границы к иконкам */
@@ -20,7 +20,7 @@
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   
-  box-shadow: 0px -2px 10px rgba(33, 150, 243, 0.3); 
+  box-shadow: 0px -2px 10px var(--theme-shadow-strong); 
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   
   /* Плавная анимация скрытия/показа */
@@ -51,7 +51,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  color: #90CAF9; /* Зимний светло-голубой */
+  color: var(--theme-light-2);
   height: 100%; /* Растягиваем кнопку на всю высоту */
 
   /* --- ВОТ ИЗМЕНЕНИЕ: Убираем синее выделение при нажатии --- */

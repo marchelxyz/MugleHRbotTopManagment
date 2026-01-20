@@ -321,9 +321,9 @@ function CredentialsGenerator() {
                   <div style={{
                     marginTop: '12px',
                     padding: '12px',
-                    backgroundColor: '#f0f9ff',
+                    backgroundColor: 'var(--theme-light)',
                     borderRadius: '8px',
-                    border: '1px solid #2196F3'
+                    border: '1px solid var(--theme-primary)'
                   }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
                       Выбран: {selectedUser.first_name || ''} {selectedUser.last_name || ''}
@@ -406,8 +406,8 @@ function CredentialsGenerator() {
 
           {/* Показываем созданные учетные данные */}
           {generatedCredentials && (
-            <div className={styles.card} style={{ marginTop: '20px', backgroundColor: '#f0f9ff', border: '2px solid #2196F3' }}>
-              <h3 style={{ marginTop: 0, color: '#2196F3' }}>Учетные данные установлены!</h3>
+            <div className={styles.card} style={{ marginTop: '20px', backgroundColor: 'var(--theme-light)', border: '2px solid var(--theme-primary)' }}>
+              <h3 style={{ marginTop: 0, color: 'var(--theme-primary)' }}>Учетные данные установлены!</h3>
               <p style={{ marginBottom: '15px', color: '#666' }}>
                 Сохраните эти данные. Пароль больше не будет показан.
               </p>
@@ -427,7 +427,7 @@ function CredentialsGenerator() {
                     onClick={() => copyToClipboard(generatedCredentials.login, 'login')}
                     style={{
                       padding: '10px 15px',
-                      backgroundColor: copied.login ? '#4caf50' : '#2196F3',
+                      backgroundColor: copied.login ? '#4caf50' : 'var(--theme-primary)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -458,7 +458,7 @@ function CredentialsGenerator() {
                     onClick={() => copyToClipboard(generatedCredentials.password, 'password')}
                     style={{
                       padding: '10px 15px',
-                      backgroundColor: copied.password ? '#4caf50' : '#2196F3',
+                      backgroundColor: copied.password ? '#4caf50' : 'var(--theme-primary)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px',
@@ -575,8 +575,8 @@ function CredentialsGenerator() {
 
           {/* Результаты массовой рассылки */}
           {bulkResult && (
-            <div className={styles.card} style={{ marginTop: '20px', backgroundColor: '#f0f9ff', border: '2px solid #2196F3' }}>
-              <h3 style={{ marginTop: 0, color: '#2196F3' }}>Результаты рассылки</h3>
+            <div className={styles.card} style={{ marginTop: '20px', backgroundColor: 'var(--theme-light)', border: '2px solid var(--theme-primary)' }}>
+              <h3 style={{ marginTop: 0, color: 'var(--theme-primary)' }}>Результаты рассылки</h3>
               
               <div style={{ marginBottom: '15px' }}>
                 <div style={{ marginBottom: '8px' }}>
@@ -585,7 +585,7 @@ function CredentialsGenerator() {
                 <div style={{ marginBottom: '8px', color: '#4caf50' }}>
                   <strong>✓ Учетных данных сгенерировано:</strong> {bulkResult.credentials_generated}
                 </div>
-                <div style={{ marginBottom: '8px', color: '#2196F3' }}>
+                <div style={{ marginBottom: '8px', color: 'var(--theme-primary)' }}>
                   <strong>📨 Сообщений отправлено:</strong> {bulkResult.messages_sent}
                 </div>
                 {bulkResult.failed_users && bulkResult.failed_users.length > 0 && (
