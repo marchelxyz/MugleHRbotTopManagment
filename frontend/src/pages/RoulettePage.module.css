@@ -45,7 +45,7 @@
     font-size: 14px;
     color: #6E7A85;
 }
-.balanceBox strong {
+balanceBox strong {
     font-size: 24px;
     display: block;
 }
@@ -53,9 +53,9 @@
 .userBalance button {
     padding: 8px 15px;
     border-radius: 8px;
-    border: 1px solid #2196F3; /* Зимний голубой */
+    border: 1px solid var(--theme-primary);
     background: #fff;
-    color: #1976D2; /* Зимний синий */
+    color: var(--theme-primary-dark);
     font-weight: bold;
     cursor: pointer;
 }
@@ -85,7 +85,7 @@
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
-    border-top: 15px solid #2196F3; /* Зимний голубой */
+    border-top: 15px solid var(--theme-primary);
     z-index: 2;
 }
 
@@ -115,7 +115,7 @@
     font-size: 1.1rem;
     font-weight: bold;
     color: white;
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
+    background: var(--theme-accent-gradient);
     border: none;
     border-radius: 12px;
     cursor: pointer;
@@ -139,7 +139,7 @@
     margin-bottom: -21px;
 }
 .historySection h3 {
-    color: #1976D2; /* Зимний синий */
+    color: var(--theme-primary-dark);
     font-family: 'Arial', sans-serif;
     font-weight: bold;
     font-size: 19px;
@@ -200,7 +200,7 @@
 
 .winnerTransaction {
     font-size: 14px;
-    color: #1976D2; /* Зимний синий */
+    color: var(--theme-primary-dark);
     margin: 0;
 }
 
