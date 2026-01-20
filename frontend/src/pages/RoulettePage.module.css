@@ -33,7 +33,6 @@
     align-items: center;
     gap: 10px;
     margin: 0 auto 30px auto;
-    display: block;
     padding: 10px;
     background: #fff;
     border-radius: 12px;
@@ -41,6 +40,32 @@
 
 .balanceBox {
     text-align: center;
+}
+
+@media (min-width: 1025px) {
+    .userBalance {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+    }
+
+    .balanceBox {
+        flex: 1 1 0;
+    }
+
+    .balanceBox:first-child {
+        text-align: left;
+    }
+
+    .balanceBox:last-child {
+        text-align: right;
+    }
+
+    .userBalance button {
+        flex: 0 0 auto;
+        margin: 0 auto;
+    }
 }
 .balanceBox span {
     font-size: 14px;
