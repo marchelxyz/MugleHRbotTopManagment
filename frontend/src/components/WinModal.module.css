@@ -30,7 +30,7 @@
     margin: 5px 0 15px;
     font-size: 2rem;
     font-weight: bold;
-    color: #1976D2; /* Зимний синий */
+    color: var(--theme-primary-dark);
 }
 @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.9); }
