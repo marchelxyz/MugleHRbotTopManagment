@@ -266,6 +266,7 @@
     .spinButton {
         max-width: 500px;
         margin: 0 auto 40px auto;
+        display: block;
     }
 }
 
@@ -306,6 +307,7 @@
         max-width: 600px;
         font-size: 1.2rem;
         padding: 18px;
+        display: block;
     }
     
     .historySection h3 {
@@ -359,6 +361,7 @@
         max-width: 700px;
         font-size: 1.3rem;
         padding: 20px;
+        display: block;
     }
     
     .historySection h3 {
@@ -419,6 +422,7 @@
         max-width: 800px;
         font-size: 1.4rem;
         padding: 22px;
+        display: block;
     }
     
     .historySection h3 {
