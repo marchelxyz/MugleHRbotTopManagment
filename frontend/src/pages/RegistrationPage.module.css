@@ -8,7 +8,7 @@
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%);
+  background: var(--theme-bg-gradient);
   position: relative;
   overflow-x: hidden;
   width: 100%;
@@ -53,8 +53,8 @@
 
 .input:focus {
   outline: none;
-  border-color: #2196F3;
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px var(--theme-shadow-accent);
 }
 
 .submitButton {
@@ -62,7 +62,7 @@
   padding: 15px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  background: var(--theme-accent-gradient);
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -75,7 +75,7 @@
 
 .submitButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 4px 12px var(--theme-shadow-strong);
 }
 
 .submitButton:active:not(:disabled) {
@@ -104,7 +104,7 @@
   border: none;
   font-size: 16px;
   cursor: pointer;
-  color: #2196F3;
+  color: var(--theme-primary);
   padding: 0;
   font-weight: bold;
   text-decoration: underline;
@@ -112,11 +112,11 @@
 }
 
 .backButton:hover {
-  color: #1976D2;
+  color: var(--theme-primary-dark);
 }
 
 .backButton:active {
-  color: #1565C0;
+  color: var(--theme-primary-darker);
 }
 
 /* Адаптация для мобильных устройств */
@@ -227,7 +227,7 @@
   padding: 15px;
   border: none;
   border-radius: 20px;
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  background: var(--theme-accent-gradient);
   color: white;
   font-size: 16px;
   cursor: pointer;
