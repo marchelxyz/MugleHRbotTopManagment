@@ -22,8 +22,9 @@
     padding: 15px;
   }
   
-  .header img {
+  .logo {
     height: 28px;
+    width: 28px;
   }
   
   .header span {
@@ -47,8 +48,9 @@
     padding: 12px;
   }
   
-  .header img {
+  .logo {
     height: 24px;
+    width: 24px;
   }
   
   .header span {
@@ -72,9 +74,15 @@
   border-bottom: 1px solid var(--theme-light-2);
   background: var(--theme-soft-gradient);
 }
-.header img {
+.logo {
   height: 32px;
+  width: 32px;
   margin-right: 10px;
+  background-image: var(--theme-sidenav-logo);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
 }
 .header span {
   font-size: 18px;

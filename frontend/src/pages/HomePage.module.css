@@ -28,6 +28,12 @@
   box-shadow: 0 4px 20px var(--theme-shadow-strong);
 }
 
+@media (min-width: 1025px) {
+  .header {
+    background-image: var(--theme-header-image-desktop);
+  }
+}
+
 .contentArea {
   background: var(--theme-bg-gradient);
   border-top-left-radius: 20px;
