@@ -152,6 +152,23 @@ class RedisCache:
                 logger.info(f"Очищен кеш для пользователя {user_id}: {len(keys)} ключей")
         except Exception as e:
             logger.error(f"Ошибка при очистке кеша пользователя {user_id}: {e}")
+
+    async def clear_all_users_key(self, key: str):
+        """
+        Очищает кеш определенного ключа для всех пользователей.
+        Например: key='market' удалит все cache:*:market.
+        """
+        if not self.redis_client:
+            await self.connect()
+
+        try:
+            pattern = f"cache:*:{key}"
+            keys = await self.redis_client.keys(pattern)
+            if keys:
+                await self.redis_client.delete(*keys)
+                logger.info(f"Очищен кеш для ключа '{key}' у всех пользователей: {len(keys)} ключей")
+        except Exception as e:
+            logger.error(f"Ошибка при очистке кеша ключа '{key}' у всех пользователей: {e}")
     
     async def exists(self, user_id: int, key: str) -> bool:
         """

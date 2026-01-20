@@ -1,7 +1,7 @@
 /* frontend/src/pages/HomePage.module.css */
 
 .pageContainer {
-  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний градиент */
+  background: var(--theme-bg-gradient);
   position: relative;
   padding-bottom: calc(80px + env(safe-area-inset-bottom)); /* Учитываем кнопки навигации Android */
   overflow-x: hidden;
@@ -16,20 +16,26 @@
 
 .header {
   height: 250px;
-  background-image: url('https://i.postimg.cc/7PFGNvRb/Gemini-Generated-Image-8bd3bh8bd3bh8bd3.webp');
+  background-image: var(--theme-header-image-mobile);
   background-size: cover;
   background-position: center;
-  background-color: #418300;
+  background-color: var(--theme-primary-dark);
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1;
-  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 4px 20px var(--theme-shadow-strong);
+}
+
+@media (min-width: 1025px) {
+  .header {
+    background-image: var(--theme-header-image-desktop);
+  }
 }
 
 .contentArea {
-  background: linear-gradient(180deg, #F0F8FC 0%, #E8F4F8 100%); /* Зимний фон */
+  background: var(--theme-bg-gradient);
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   position: relative;
@@ -85,7 +91,7 @@
 .userName {
   font-family: 'Arial', sans-serif;
   font-size: 18px;
-  color: #1565C0; /* Зимний темно-синий */
+  color: var(--theme-primary-darker);
   margin-left: 16px;
   flex-grow: 1;
    /* 1. Запрещаем имени переноситься на новую строку */
@@ -147,7 +153,7 @@
   width: 30px;
   height: 30px;
   font-size: 18px;
-  color: #1976D2;
+  color: var(--theme-primary-dark);
   cursor: pointer;
   z-index: 10;
   display: flex;
@@ -232,7 +238,7 @@
   bottom: 0;
   left: 0;
   width: 50px; /* Ширина области затухания */
-  background: linear-gradient(to right, #E8F4F8, transparent);
+  background: linear-gradient(to right, var(--theme-bg-solid), transparent);
   z-index: 2; /* Размещаем поверх ленты */
 }
 
@@ -244,7 +250,7 @@
   bottom: 0;
   right: 0;
   width: 50px; /* Ширина области затухания */
-  background: linear-gradient(to left, #E8F4F8, transparent);
+  background: linear-gradient(to left, var(--theme-bg-solid), transparent);
   z-index: 2; /* Размещаем поверх ленты */
 }
 
@@ -270,7 +276,7 @@
 .photoPlaceholder {
   flex: 0 0 160px;
   height: 120px;
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
+  background: var(--theme-accent-gradient);
   border-radius: 20px;
   /* box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.15);  <-- ЭТА СТРОКА УДАЛЕНА */
   cursor: pointer;
@@ -319,7 +325,7 @@
 }
 
 .feedTitle {
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
   font-family: 'Arial', sans-serif;
   font-weight: bold;
   font-size: 19px;
@@ -340,13 +346,13 @@
 }
 
 .dateHeader span {
-  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%); /* Зимний голубой */
+  background: var(--theme-soft-gradient);
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 500;
-  color: #1565C0; /* Темно-синий текст */
-  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+  color: var(--theme-primary-darker);
+  box-shadow: 0 2px 4px var(--theme-shadow-accent);
 }
 
 .feedItem {
@@ -377,7 +383,7 @@
 
 .feedTransaction {
   font-size: 14px;
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
   margin: 0;
   white-space: normal;
   word-break: break-word;
@@ -520,16 +526,16 @@
 /* --- НОВЫЙ СТИЛЬ ДЛЯ ШАПКИ НА ПК --- */
 .headerDesktop {
   height: 250px;
-  background-image: url('https://i.postimg.cc/HxHpsyT4/sapka-dla-pk-3-sin.webp');
+  background-image: var(--theme-header-image-desktop);
   background-size: cover;
   background-position: center;
-  background-color: #418300;
+  background-color: var(--theme-primary-dark);
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1;
-  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 4px 20px var(--theme-shadow-strong);
 }
 
 /* --- НОВЫЕ СТИЛИ ДЛЯ ДАТЫ И ВРЕМЕНИ --- */
@@ -541,7 +547,7 @@
 }
 
 .dateHeader span {
-    background-color: #e9eef2;
+    background-color: var(--theme-light);
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 0.8rem;

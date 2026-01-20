@@ -27,6 +27,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_
 from sqlalchemy import text
 from sqlalchemy import select
+from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
 
@@ -542,6 +543,7 @@ async def admin_restore_market_item(db: AsyncSession, item_id: int):
     # Сохраняем изменения в базе данных
     await db.commit()
     await db.refresh(db_item)
+    await _invalidate_market_cache(f"восстановление товара {item_id}")
     
     # Возвращаем восстановленный товар
     return db_item
@@ -599,6 +601,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     # Сохраняем данные перед отправкой уведомлений
     await db.commit()
+    await _invalidate_market_cache(f"покупка товара {pr.item_id}")
     
     # Сохраняем данные для уведомлений перед отправкой
     item_name = item.name
@@ -1035,6 +1038,12 @@ def calculate_accumulation_forecast(price_spasibki: int) -> str:
         years = round(months_needed / 12, 1)
         return f"около {years} лет"
 
+async def _invalidate_market_cache(reason: str):
+    try:
+        await redis_cache.clear_all_users_key("market")
+    except Exception as e:
+        logger.warning(f"Не удалось очистить кеш market ({reason}): {e}")
+
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
     calculated_price = item.price_rub // 30
@@ -1071,6 +1080,7 @@ async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCre
             db.add(db_code)
 
     await db.commit()
+    await _invalidate_market_cache("создание товара")
 
     # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ---
     # После сохранения, заново запрашиваем товар из базы,
@@ -1102,6 +1112,20 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
     for key, value in update_data.items():
         # Исключаем поля, которые обрабатываются отдельно
         if key not in ["added_stock", "new_item_codes"]:
+            if key == "price_rub":
+                # Цена в спасибках пересчитывается на сервере
+                if value is not None and db_item.price_rub != value:
+                    print(f"--- [UPDATE ITEM {item_id}] Обновляем поле 'price_rub': '{db_item.price_rub}' -> '{value}' ---") # <-- Лог 3.1
+                    db_item.price_rub = value
+                    updated_fields_count += 1
+
+                recalculated_price = calculate_spasibki_price(value or 0)
+                if db_item.price != recalculated_price:
+                    print(f"--- [UPDATE ITEM {item_id}] Обновляем поле 'price': '{db_item.price}' -> '{recalculated_price}' ---") # <-- Лог 3.2
+                    db_item.price = recalculated_price
+                    updated_fields_count += 1
+                continue
+
             # Проверяем, существует ли поле в модели и изменилось ли значение
             if hasattr(db_item, key) and getattr(db_item, key) != value:
                  print(f"--- [UPDATE ITEM {item_id}] Обновляем поле '{key}': '{getattr(db_item, key)}' -> '{value}' ---") # <-- Лог 3.1
@@ -1157,6 +1181,7 @@ async def admin_update_market_item(db: AsyncSession, item_id: int, item_data: sc
     try:
         print(f"--- [UPDATE ITEM {item_id}] Пытаемся сохранить {updated_fields_count} изменений... ---") # <-- Лог 6
         await db.commit()
+        await _invalidate_market_cache(f"обновление товара {item_id}")
         print(f"--- [UPDATE ITEM {item_id}] Commit успешно выполнен ---") # <-- Лог 7
     except Exception as e:
         print(f"--- [UPDATE ITEM {item_id}] ОШИБКА во время commit: {type(e).__name__} - {e} ---") # <-- Лог Ошибки Commit
@@ -1187,6 +1212,7 @@ async def archive_market_item(db: AsyncSession, item_id: int, restore: bool = Fa
         db_item.is_archived = not restore
         db_item.archived_at = datetime.utcnow() if not restore else None
         await db.commit()
+        await _invalidate_market_cache(f"архивация товара {item_id}")
         return True
     return False
 
@@ -1219,6 +1245,7 @@ async def admin_delete_item_permanently(db: AsyncSession, item_id: int):
 
     await db.delete(db_item)
     await db.commit()
+    await _invalidate_market_cache(f"удаление товара {item_id}")
     return True # Успешное удаление
     
 # --- ФУНКЦИИ ДЛЯ РУЛЕТКИ ---

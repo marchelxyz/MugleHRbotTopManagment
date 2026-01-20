@@ -1,7 +1,7 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { checkUserStatus, getFeed, getBanners } from './api';
+import { checkUserStatus, getFeed, getBanners, getAppSettings } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты навигации (загружаются сразу, так как всегда видны)
@@ -50,6 +50,8 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [seasonTheme, setSeasonTheme] = useState('summer');
+  const seasonThemeRef = useRef('summer');
   // Инициализация windowWidth с проверкой доступности window
   const [windowWidth, setWindowWidth] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -59,6 +61,15 @@ function App() {
   });
   // Состояние для переключения между страницами входа и регистрации в браузере
   const [showRegistration, setShowRegistration] = useState(false);
+
+  const applyTelegramTheme = (theme) => {
+    if (!tg || !tg.setBackgroundColor || !tg.setHeaderColor) {
+      return;
+    }
+    const isWinter = theme === 'winter';
+    tg.setBackgroundColor(isWinter ? '#E8F4F8' : '#E5F5E3');
+    tg.setHeaderColor(isWinter ? '#2196F3' : '#5CA14A');
+  };
   
   // Определяем, является ли устройство десктопом
   // Пороговые значения:
@@ -114,12 +125,33 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const fetchAppTheme = async () => {
+      try {
+        const response = await getAppSettings();
+        if (response?.data?.season_theme) {
+          setSeasonTheme(response.data.season_theme);
+        }
+      } catch (error) {
+        console.warn('Не удалось загрузить настройки оформления, используем летнюю тему.', error);
+      }
+    };
+
+    fetchAppTheme();
+  }, []);
+
+  useEffect(() => {
+    seasonThemeRef.current = seasonTheme;
+    document.documentElement.classList.toggle('theme-winter', seasonTheme === 'winter');
+    document.documentElement.classList.toggle('theme-summer', seasonTheme !== 'winter');
+    applyTelegramTheme(seasonTheme);
+  }, [seasonTheme]);
+
+  useEffect(() => {
     // Инициализация Telegram WebApp только если он доступен
     if (tg) {
       tg.ready();
       tg.expand();
-      tg.setBackgroundColor('#E8F4F8'); // Зимний фон
-      tg.setHeaderColor('#2196F3'); // Зимний голубой
+      applyTelegramTheme(seasonThemeRef.current);
       
       // Включаем подтверждение закрытия для предотвращения случайного закрытия
       tg.enableClosingConfirmation();
@@ -157,13 +189,7 @@ function App() {
         try {
           tg.expand();
           tg.ready(); // Переподключаемся к Telegram WebApp
-          // Также пытаемся обновить состояние приложения
-          if (tg.setHeaderColor) {
-            tg.setHeaderColor('#2196F3');
-          }
-          if (tg.setBackgroundColor) {
-            tg.setBackgroundColor('#E8F4F8');
-          }
+          applyTelegramTheme(seasonThemeRef.current);
         } catch (error) {
           console.error('Ошибка при переподключении после возврата из фонового режима:', error);
         }
@@ -409,10 +435,10 @@ function App() {
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
         // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
         case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
-        case 'admin': return <AdminPage />;
+        case 'admin': return <AdminPage seasonTheme={seasonTheme} onThemeUpdated={setSeasonTheme} />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} />;
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
       }
     }
     

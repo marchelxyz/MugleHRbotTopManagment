@@ -188,7 +188,7 @@
 .bonusNumber {
   font-size: 24px;
   font-weight: 700;
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
   display: block;
   line-height: 1;
 }

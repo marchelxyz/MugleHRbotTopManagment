@@ -1,6 +1,6 @@
 /* frontend/src/pages/SettingsPage.module.css */
 
-.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: #1976D2; padding: 0; font-weight: bold; }
+.backButton { margin-bottom: 20px; background: none; border: none; font-size: 16px; cursor: pointer; color: var(--theme-primary-dark); padding: 0; font-weight: bold; }
 
 /* Контейнер для списка опций */
 .settingsList {
@@ -49,7 +49,7 @@
 /* Стили для иконок */
 .icon {
   margin-right: 15px;
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
   font-size: 20px;
 }
 
@@ -116,8 +116,8 @@ button:active {
 
 .passwordInputContainer .input:focus {
   outline: none;
-  border-color: #2196F3;
-  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px var(--theme-shadow-accent);
 }
 
 .eyeButton {
@@ -138,7 +138,7 @@ button:active {
 }
 
 .eyeButton:hover {
-  color: #2196F3;
+  color: var(--theme-primary);
 }
 
 .passwordModalButtons {
@@ -153,7 +153,7 @@ button:active {
   padding: 15px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  background: var(--theme-accent-gradient);
   color: white;
   font-size: 16px;
   cursor: pointer;
@@ -163,7 +163,7 @@ button:active {
 
 .passwordModalButtons .submitButton:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  box-shadow: 0 4px 12px var(--theme-shadow-strong);
 }
 
 .passwordModalButtons .submitButton:disabled {

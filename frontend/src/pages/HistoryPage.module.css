@@ -6,7 +6,7 @@
   border: none;
   font-size: 16px;
   cursor: pointer;
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
   padding: 0;
   font-weight: bold;
 }

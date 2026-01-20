@@ -13,6 +13,7 @@ import CredentialsGenerator from './admin/CredentialsGenerator';
 import RegistrationManager from './admin/RegistrationManager';
 import PurchasesManager from './admin/PurchasesManager';
 import ApprovalsManager from './admin/ApprovalsManager';
+import AppearanceSettings from './admin/AppearanceSettings';
 import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners, resetDailyTransferLimits } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
@@ -87,7 +88,7 @@ function MassActions() {
 */
 
 // --- ИСПРАВЛЕННЫЙ ГЛАВНЫЙ КОМПОНЕНТ ---
-function AdminPage() {
+function AdminPage({ seasonTheme, onThemeUpdated }) {
   // Используем одну переменную для навигации. null - это главное меню.
   const [activeSection, setActiveSection] = useState(null);
 
@@ -167,6 +168,7 @@ function AdminPage() {
           <button onClick={() => setActiveSection('approvals')} className={styles.gridButton}>Согласования</button>
           <button onClick={() => setActiveSection('items')} className={styles.gridButton}>Товары</button>
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
+          <button onClick={() => setActiveSection('appearance')} className={styles.gridButton}>Оформление</button>
           <button onClick={() => setActiveSection('credentials')} className={styles.gridButton}>Генерация учетных данных</button>
 {/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
           <button 
@@ -208,6 +210,7 @@ function AdminPage() {
       case 'registrations': return <RegistrationManager />;
       case 'purchases': return <PurchasesManager />;
       case 'approvals': return <ApprovalsManager />;
+      case 'appearance': return <AppearanceSettings seasonTheme={seasonTheme} onThemeUpdated={onThemeUpdated} />;
       case 'credentials': return <CredentialsGenerator />;
       default: return null; // На случай непредвиденного значения
     }

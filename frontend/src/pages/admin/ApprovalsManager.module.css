@@ -83,8 +83,8 @@
 
 .expandButton:hover {
   background: #f5f5f5;
-  border-color: #2196F3;
-  color: #2196F3;
+  border-color: var(--theme-primary);
+  color: var(--theme-primary);
 }
 
 .updateDetails {

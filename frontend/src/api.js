@@ -144,6 +144,15 @@ export const createMarketItem = (itemData) => {
 
 export const getBanners = () => apiClient.get('/banners');
 
+export const getAppSettings = () => apiClient.get('/app-settings');
+
+export const updateAppSettings = (settingsData) => {
+  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+  return apiClient.put('/app-settings', settingsData, {
+    headers: { 'X-Telegram-Id': telegramId },
+  });
+};
+
 export const getAllBanners = () => {
     const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
     return apiClient.get('/admin/banners', {

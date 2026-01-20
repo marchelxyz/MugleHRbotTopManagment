@@ -199,3 +199,10 @@ class LocalGift(Base):
     user = relationship("User", lazy='selectin')
     item = relationship("MarketItem", lazy='selectin')
     purchase = relationship("Purchase", lazy='selectin')
+
+class AppSettings(Base):
+    __tablename__ = "app_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    season_theme = Column(String, default="summer", nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)

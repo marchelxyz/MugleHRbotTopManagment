@@ -26,7 +26,7 @@
 }
 
 .success {
-  border-top-color: #2196F3; /* Зимний голубой */
+  border-top-color: var(--theme-primary);
 }
 .error {
   border-top-color: #e74c3c; /* Красный для ошибок */
@@ -38,7 +38,7 @@
   margin-bottom: 10px;
 }
 .success .title {
-  color: #1976D2; /* Зимний синий */
+  color: var(--theme-primary-dark);
 }
 .error .title {
   color: #e74c3c;
@@ -62,7 +62,7 @@
   transition: opacity 0.2s ease;
 }
 .success .button {
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); /* Зимний голубой */
+  background: var(--theme-accent-gradient);
 }
 .error .button {
   background-color: #e74c3c;
