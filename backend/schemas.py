@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_serializer
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime, date
 
 class OrmBase(BaseModel):
@@ -258,6 +258,13 @@ class PopularItemsStats(BaseModel):
 class InactiveUsersStats(BaseModel):
     users: List[UserResponse]
 
+class AppSettingsResponse(OrmBase):
+    id: int
+    season_theme: Literal['summer', 'winter']
+
+class AppSettingsUpdate(BaseModel):
+    season_theme: Literal['summer', 'winter']
+
 class TotalBalanceStats(BaseModel):
     total_balance: int
 
@@ -388,4 +395,3 @@ class LocalGiftResponse(OrmBase):
 class LocalGiftApprovalRequest(BaseModel):
     local_purchase_id: int  # Оставляем старое название поля для совместимости с БД
     action: str  # 'approve' или 'reject'
-
