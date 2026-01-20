@@ -11,6 +11,12 @@ import Garland from '../components/Garland';
 
 function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop, seasonTheme }) {
     const isWinterTheme = seasonTheme === 'winter';
+    const sendThanksImage = isWinterTheme
+        ? 'https://i.postimg.cc/kgrZQyKK/knopka-otpr-sp-sinaa.webp'
+        : 'https://i.postimg.cc/ncfzjKGc/кнопка_спасибки.webp';
+    const feedLogoImage = isWinterTheme
+        ? 'https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp'
+        : 'https://i.postimg.cc/cLCwXyrL/Frame_2131328056.webp';
     const [feed, setFeed] = useState(() => getCachedData('feed'));
     const [banners, setBanners] = useState(() => getCachedData('banners') || []);
     const [isLoading, setIsLoading] = useState(!feed);
@@ -155,7 +161,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop, seasonTheme }
                     <img src={telegramPhotoUrl || 'placeholder.png'} alt="User" className={styles.userAvatar} />
                     <span className={styles.userName}>{user.first_name}</span>
                     <img
-                        src="https://i.postimg.cc/kgrZQyKK/knopka-otpr-sp-sinaa.webp"
+                        src={sendThanksImage}
                         alt="Отправить спасибки"
                         className={styles.thankYouButton}
                         onClick={() => onNavigate('transfer')}
@@ -262,7 +268,7 @@ function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop, seasonTheme }
                                         </div>
                                         {groupedFeed[dateKey].map(item => (
                                             <div key={item.id} className={styles.feedItem}>
-                                                <img src="https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp" alt="feed logo" className={styles.feedItemLogo} loading="lazy" />
+                                                <img src={feedLogoImage} alt="feed logo" className={styles.feedItemLogo} loading="lazy" />
                                                 <div className={styles.feedItemContent}>
                                                     <p className={styles.feedTransaction}>
                                                         @{item.sender?.username || item.sender?.first_name || 'Неизвестно'} <span className={styles.arrow}>&rarr;</span> @{item.receiver?.username || item.receiver?.first_name || 'Неизвестно'}

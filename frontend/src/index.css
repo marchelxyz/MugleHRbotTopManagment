@@ -13,9 +13,11 @@
   --theme-soft-gradient: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
   --theme-shadow-accent: rgba(76, 175, 80, 0.2);
   --theme-shadow-strong: rgba(76, 175, 80, 0.3);
-  --theme-header-image-mobile: linear-gradient(135deg, #7BC96F 0%, #4A8C3A 100%);
-  --theme-header-image-desktop: linear-gradient(135deg, #6FBF4A 0%, #3F7F35 100%);
-  --theme-section-header-image: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  --theme-header-image-mobile: url('https://i.postimg.cc/rw5Vy6Vk/обложка_правильная_1.webp');
+  --theme-header-image-desktop: url('https://i.postimg.cc/9MvKPMj0/шапка_для_пк.webp');
+  --theme-section-header-image: linear-gradient(135deg, #3F7F35 0%, #2F6A2C 100%);
+  --theme-sidenav-logo: url('https://i.postimg.cc/zvmd8fQr/лого_зеленое_св.webp');
+  --theme-leaderboard-banner-gradient: linear-gradient(135deg, #6FBF4A 0%, #2F6A2C 100%);
 }
 
 .theme-winter {
@@ -35,6 +37,8 @@
   --theme-header-image-mobile: url('https://i.postimg.cc/7PFGNvRb/Gemini-Generated-Image-8bd3bh8bd3bh8bd3.webp');
   --theme-header-image-desktop: url('https://i.postimg.cc/HxHpsyT4/sapka-dla-pk-3-sin.webp');
   --theme-section-header-image: url('https://i.postimg.cc/6psSrhnR/sapka-ost-razdelov-sinaa.webp');
+  --theme-sidenav-logo: url('https://i.postimg.cc/RVsHnPHk/LOGO-SP-SIN.webp');
+  --theme-leaderboard-banner-gradient: linear-gradient(135deg, #4a90e2 0%, #0662BE 100%);
 }
 
 html {
