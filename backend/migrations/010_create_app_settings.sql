@@ -7,6 +7,6 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO app_settings (season_theme)
-SELECT 'summer'
+INSERT INTO app_settings (season_theme, updated_at)
+SELECT 'summer', NOW()
 WHERE NOT EXISTS (SELECT 1 FROM app_settings);
