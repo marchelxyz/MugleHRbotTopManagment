@@ -25,11 +25,32 @@ function RoulettePage({ user, onUpdateUser }) {
     const [infoVisible, setInfoVisible] = useState(false);
     const [prizeReel, setPrizeReel] = useState(() => generatePrizeReel(1));
     const [winPrize, setWinPrize] = useState(null);
+    const [prizeItemWidth, setPrizeItemWidth] = useState(80);
     const rouletteTrackRef = useRef(null);
+    const prizeItemRef = useRef(null);
 
     useEffect(() => {
         getRouletteHistory().then(res => setHistory(res.data));
     }, []);
+
+    useEffect(() => {
+        const updatePrizeItemWidth = () => {
+            if (prizeItemRef.current) {
+                const width = prizeItemRef.current.getBoundingClientRect().width;
+                if (width) {
+                    setPrizeItemWidth(width);
+                }
+            }
+        };
+
+        const rafId = requestAnimationFrame(updatePrizeItemWidth);
+        window.addEventListener('resize', updatePrizeItemWidth);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            window.removeEventListener('resize', updatePrizeItemWidth);
+        };
+    }, [prizeReel]);
 
     const groupedHistory = useMemo(() => {
         if (!history || history.length === 0) return {};
@@ -70,7 +91,7 @@ function RoulettePage({ user, onUpdateUser }) {
             setPrizeReel(newReel);
 
             setTimeout(() => {
-                const prizeElementWidth = 80;
+                const prizeElementWidth = prizeItemWidth || 80;
                 const stopPosition = (newReel.length - 5) * prizeElementWidth;
                 const randomOffset = (Math.random() - 0.5) * (prizeElementWidth * 0.8);
                 const finalPosition = stopPosition - randomOffset;
@@ -126,9 +147,19 @@ function RoulettePage({ user, onUpdateUser }) {
 
                 <div className={styles.rouletteContainer}>
                     <div className={styles.pointer}></div>
-                    <div className={styles.rouletteTrack} ref={rouletteTrackRef}>
+                    <div
+                        className={styles.rouletteTrack}
+                        ref={rouletteTrackRef}
+                        style={{ left: `calc(50% - ${prizeItemWidth / 2}px)` }}
+                    >
                         {prizeReel.map((prize, index) => (
-                            <div key={index} className={styles.prizeItem}>{prize}</div>
+                            <div
+                                key={index}
+                                className={styles.prizeItem}
+                                ref={index === 0 ? prizeItemRef : null}
+                            >
+                                {prize}
+                            </div>
                         ))}
                     </div>
                 </div>
