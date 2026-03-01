@@ -45,6 +45,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                             "Добро пожаловать!",
                             'Спасибо за регистрацию в системе "Спасибо".',
                         )
+                        await db.commit()
 
         if "message" in data and "document" in data["message"]:
             document = data["message"]["document"]
@@ -99,6 +100,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                                 "Бонусная карта добавлена",
                                 "Ваша бонусная карта успешно добавлена в профиль.",
                             )
+                            await db.commit()
                         else:
                             print(f"Failed to process pkpass file for user {user.id}")
                             await safe_send_message(user.telegram_id, "❌ Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.")
@@ -149,7 +151,8 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         "Изменения профиля одобрены",
                         "Ваши изменения в профиле были одобрены администратором.",
                     )
-                    
+                    await db.commit()
+
                 elif user and status == "rejected":
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "❌ Администратор отклонил ваши изменения в профиле.")
@@ -160,6 +163,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         "Изменения профиля отклонены",
                         "Ваши изменения в профиле были отклонены администратором.",
                     )
+                    await db.commit()
 
             elif callback_data.startswith("approve_local_purchase_") or callback_data.startswith("reject_local_purchase_"):
                 local_purchase_id = int(callback_data.split("_")[-1])
@@ -222,6 +226,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         "Регистрация одобрена",
                         "Ваша заявка на регистрацию одобрена! Добро пожаловать.",
                     )
+                    await db.commit()
 
                 elif action == "reject":
                     await crud.update_user_status(db, user_id, "rejected")
@@ -233,6 +238,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         "Регистрация отклонена",
                         "В регистрации отказано.",
                     )
+                    await db.commit()
 
     except Exception as e:
         print(f"Error in telegram webhook: {e}")

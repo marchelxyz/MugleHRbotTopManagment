@@ -312,6 +312,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         "Вам начислена спасибка",
         f"От: {sender_name}. Сообщение: {tr.message or '—'}",
     )
+    await db.commit()
 
     return sender
     
@@ -680,8 +681,9 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     notif_msg = f'Вы приобрели "{item_name}"'
     if issued_code_value:
-        notif_msg += f". Код: {issued_code_value}"
+        notif_msg += f"\n[code]{issued_code_value}[/code]"
     await _create_notification(db, user.id, "purchase", "Покупка совершена", notif_msg)
+    await db.commit()
 
     return {"new_balance": user.balance, "issued_code": issued_code_value}
 
@@ -871,6 +873,7 @@ async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, 
             "Локальный подарок отклонён",
             f'Товар: "{item.name}". Возвращено: {local_purchase.reserved_amount} спасибок.',
         )
+    await db.commit()
 
     return {"status": local_purchase.status, "user_balance": user.balance, "reserved_balance": user.reserved_balance}
     
@@ -1955,6 +1958,7 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
         "Учётные данные для входа",
         f"Вам назначены учётные данные для входа через браузер. Логин: {user.login}",
     )
+    await db.commit()
 
     return user
 
@@ -2901,6 +2905,7 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
             "Покупка бонусов Statix",
             f"Куплено {bonus_amount} бонусов Statix за {thanks_cost} спасибок.",
         )
+        await db.commit()
 
     return {
         "new_balance": user.balance,
@@ -3087,6 +3092,7 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
         "Приглашение на совместный подарок",
         f'{buyer_name} приглашает разделить товар "{item.name}".',
     )
+    await db.commit()
 
     return db_invitation
 
@@ -3200,6 +3206,7 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         "Приглашение принято",
         f'{invited_name} согласился разделить товар "{item.name}". Возвращена половина стоимости.',
     )
+    await db.commit()
 
     return {
         "message": "Приглашение принято успешно",
@@ -3260,6 +3267,7 @@ async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
             "Приглашение отклонено",
             f'{invited_name} отклонил приглашение на товар "{item_name}". Возвращена полная стоимость.',
         )
+        await db.commit()
     except Exception:
         pass
 
