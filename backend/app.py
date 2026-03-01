@@ -15,8 +15,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    CREATE_TABLES_LOCK_KEY = 1234567891
+    async with engine.connect() as conn:
+        async with conn.begin():
+            await conn.execute(text(f"SELECT pg_advisory_lock({CREATE_TABLES_LOCK_KEY})"))
+        try:
+            async with conn.begin():
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception as e:
+            logger.warning(f"⚠️ metadata.create_all завершился с ошибкой (таблицы могли быть созданы другим воркером): {e}")
+        finally:
+            async with conn.begin():
+                await conn.execute(text(f"SELECT pg_advisory_unlock({CREATE_TABLES_LOCK_KEY})"))
     
     migrations_dir = Path(__file__).parent / "migrations"
     if not migrations_dir.exists():
