@@ -1,19 +1,19 @@
-// frontend/src/pages/BonusCardPage.jsx
-
-import React from 'react';
-import Barcode from 'react-barcode';
+import React, { useState, useRef } from 'react';
 import PageLayout from '../components/PageLayout';
-import { deleteUserCard } from '../api';
+import { deleteUserCard, uploadPkpassFile } from '../api';
 import styles from './BonusCardPage.module.css';
 import BonusCard from '../components/BonusCard';
-import { useModalAlert } from '../contexts/ModalAlertContext'; // 1. Импортируем наш хук
-import { useConfirmation } from '../contexts/ConfirmationContext'; // 1. Импортируем
+import { useModalAlert } from '../contexts/ModalAlertContext';
+import { useConfirmation } from '../contexts/ConfirmationContext';
+import { FaUpload, FaSpinner } from 'react-icons/fa';
 
 function BonusCardPage({ user, onBack, onUpdateUser }) {
-  const { confirm } = useConfirmation(); // 2. Получаем функцию
-  const { showAlert } = useModalAlert(); // 2. Получаем функцию для вызова уведомлений
-  
-  // Ссылка на аккаунт поддержки в Telegram (такой же, как в настройках)
+  const { confirm } = useConfirmation();
+  const { showAlert } = useModalAlert();
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const isTelegramWebApp = !!window.Telegram?.WebApp;
   const supportUrl = 'https://t.me/fix2Form';
   
   const handleDelete = async () => {
@@ -34,23 +34,40 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
   };
 
   const handleRequestCard = () => {
-    // Формируем сообщение с данными пользователя
     const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Не указано';
     const phoneNumber = user.phone_number || 'Не указан';
     
     const message = `Здравствуйте! Мне нужна карта Statix. Мои данные для выдачи:\n1. Имя Фамилия - ${userName}\n2. Номер телефона - ${phoneNumber}`;
-    
-    // Кодируем сообщение для URL
     const encodedMessage = encodeURIComponent(message);
-    
-    // Формируем URL с предзаполненным сообщением
     const url = `${supportUrl}?text=${encodedMessage}`;
     
-    // Используем Telegram Web App API, если доступен, иначе обычный window.open
     if (window.Telegram?.WebApp?.openLink) {
       window.Telegram.WebApp.openLink(url);
     } else {
       window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.pkpass')) {
+      showAlert('Допускается только файл формата .pkpass', 'error');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const response = await uploadPkpassFile(file);
+      onUpdateUser(response.data);
+      showAlert('Бонусная карта успешно добавлена!', 'success');
+    } catch (error) {
+      const msg = error.response?.data?.detail || 'Ошибка при загрузке файла';
+      showAlert(msg, 'error');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -60,17 +77,46 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
 
       {user.card_barcode ? (
         <div className={styles.cardContainer}>
-          {/* --- ИЗМЕНЕНИЕ: Используем новый компонент BonusCard --- */}
           <BonusCard user={user} />
           <button onClick={handleDelete} className={styles.deleteButton}>Удалить карту</button>
         </div>
       ) : (
         <div className={styles.cardContainer}>
           <p className={styles.infoText}>У вас пока нет бонусной карты.</p>
-          <p className={styles.subText}>Чтобы добавить карту, отправьте файл `.pkpass` нашему боту в Telegram.</p>
-          <button onClick={handleRequestCard} className={styles.requestButton}>
-            Запросить карту
-          </button>
+
+          {!isTelegramWebApp ? (
+            <>
+              <p className={styles.subText}>Загрузите файл <code>.pkpass</code> с вашей бонусной картой.</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pkpass"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={styles.requestButton}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <><FaSpinner className={styles.spinIcon} style={{ marginRight: '8px' }} /> Загрузка...</>
+                ) : (
+                  <><FaUpload style={{ marginRight: '8px' }} /> Загрузить .pkpass</>
+                )}
+              </button>
+              <p className={styles.subText} style={{ marginTop: '12px', fontSize: '13px', opacity: 0.7 }}>
+                Или <span onClick={handleRequestCard} style={{ textDecoration: 'underline', cursor: 'pointer' }}>запросите карту</span> у поддержки.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className={styles.subText}>Чтобы добавить карту, отправьте файл <code>.pkpass</code> нашему боту в Telegram.</p>
+              <button onClick={handleRequestCard} className={styles.requestButton}>
+                Запросить карту
+              </button>
+            </>
+          )}
         </div>
       )}
     </PageLayout>

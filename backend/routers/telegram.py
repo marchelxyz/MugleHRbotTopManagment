@@ -40,6 +40,11 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                             user_tg_id,
                             "👋 Добро пожаловать! Теперь вы можете использовать приложение."
                         )
+                        await crud._create_notification(
+                            db, user.id, "system",
+                            "Добро пожаловать!",
+                            'Спасибо за регистрацию в системе "Спасибо".',
+                        )
 
         if "message" in data and "document" in data["message"]:
             document = data["message"]["document"]
@@ -89,6 +94,11 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         if result:
                             print(f"Pkpass file processed successfully for user {user.id}")
                             await safe_send_message(user.telegram_id, "✅ Ваша бонусная карта успешно добавлена в профиль!")
+                            await crud._create_notification(
+                                db, user.id, "system",
+                                "Бонусная карта добавлена",
+                                "Ваша бонусная карта успешно добавлена в профиль.",
+                            )
                         else:
                             print(f"Failed to process pkpass file for user {user.id}")
                             await safe_send_message(user.telegram_id, "❌ Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.")
@@ -134,12 +144,22 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                         await safe_send_message(user.telegram_id, "✅ Администратор одобрил ваши изменения в профиле!")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Изменения для @{escape_html(user.username or user.first_name or '')} одобрены адм. @{escape_html(admin_username)}.", 
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID)
+                    await crud._create_notification(
+                        db, user.id, "profile",
+                        "Изменения профиля одобрены",
+                        "Ваши изменения в профиле были одобрены администратором.",
+                    )
                     
                 elif user and status == "rejected":
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "❌ Администратор отклонил ваши изменения в профиле.")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Изменения для @{escape_html(user.username or user.first_name or '')} отклонены адм. @{escape_html(admin_username)}.", 
                                                 message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID)
+                    await crud._create_notification(
+                        db, user.id, "profile",
+                        "Изменения профиля отклонены",
+                        "Ваши изменения в профиле были отклонены администратором.",
+                    )
 
             elif callback_data.startswith("approve_local_purchase_") or callback_data.startswith("reject_local_purchase_"):
                 local_purchase_id = int(callback_data.split("_")[-1])
@@ -197,12 +217,22 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "✅ Ваша заявка на регистрацию одобрена!")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Авторизация @{escape_html(user.username or user.first_name or '')} одобрена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
+                    await crud._create_notification(
+                        db, user.id, "system",
+                        "Регистрация одобрена",
+                        "Ваша заявка на регистрацию одобрена! Добро пожаловать.",
+                    )
 
                 elif action == "reject":
                     await crud.update_user_status(db, user_id, "rejected")
                     if user.telegram_id and user.telegram_id >= 0:
                         await safe_send_message(user.telegram_id, "❌ В регистрации отказано.")
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Авторизация @{escape_html(user.username or user.first_name or '')} отклонена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
+                    await crud._create_notification(
+                        db, user.id, "system",
+                        "Регистрация отклонена",
+                        "В регистрации отказано.",
+                    )
 
     except Exception as e:
         print(f"Error in telegram webhook: {e}")

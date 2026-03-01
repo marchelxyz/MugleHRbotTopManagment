@@ -1,12 +1,21 @@
 // frontend/src/pages/ProfilePage.jsx
 
-import React from 'react'; // Убрали неиспользуемый useEffect
+import React, { useState, useEffect } from 'react';
 import styles from './ProfilePage.module.css';
 import { FaCog, FaCreditCard, FaPencilAlt, FaBell } from 'react-icons/fa';
 import PageLayout from '../components/PageLayout';
 import { formatDateForDisplay } from '../utils/dateFormatter';
+import { getUnreadNotificationCount } from '../api';
 
 function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    getUnreadNotificationCount()
+      .then(res => setUnreadCount(res.data.unread_count || 0))
+      .catch(() => {});
+  }, [user]);
 
   // --- 1. ГЛАВНОЕ ИСПРАВЛЕНИЕ: Добавляем проверку на наличие user ---
   if (!user) {
@@ -68,9 +77,18 @@ function ProfilePage({ user, telegramPhotoUrl, onNavigate }) {
           <FaCreditCard style={{ marginRight: '8px' }} />
           Бонусная карта
         </button>
-        <button onClick={() => onNavigate('notifications')} className={styles.actionButton}>
+        <button onClick={() => onNavigate('notifications')} className={styles.actionButton} style={{ position: 'relative' }}>
           <FaBell style={{ marginRight: '8px' }} />
           Уведомления
+          {unreadCount > 0 && (
+            <span style={{
+              position: 'absolute', top: '6px', right: '10px',
+              background: '#e74c3c', color: '#fff', borderRadius: '50%',
+              minWidth: '20px', height: '20px', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              fontSize: '11px', fontWeight: 'bold',
+            }}>{unreadCount}</span>
+          )}
         </button>
       </div>
     </PageLayout>

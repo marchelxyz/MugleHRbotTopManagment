@@ -200,6 +200,18 @@ class LocalGift(Base):
     item = relationship("MarketItem", lazy='selectin')
     purchase = relationship("Purchase", lazy='selectin')
 
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
+    message = Column(String, nullable=False)
+    is_read = Column(Boolean, default=False, server_default="false", nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+
 class AppSettings(Base):
     __tablename__ = "app_settings"
 
