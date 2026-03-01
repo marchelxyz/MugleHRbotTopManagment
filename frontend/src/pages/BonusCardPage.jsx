@@ -84,9 +84,18 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
         <div className={styles.cardContainer}>
           <p className={styles.infoText}>У вас пока нет бонусной карты.</p>
 
-          {!isTelegramWebApp ? (
+          <p className={styles.subText}>
+            {isTelegramWebApp
+              ? <>Чтобы добавить карту, отправьте файл <code>.pkpass</code> нашему боту в Telegram.</>
+              : <>Загрузите файл <code>.pkpass</code> с вашей бонусной картой или запросите её у поддержки.</>}
+          </p>
+
+          <button onClick={handleRequestCard} className={styles.requestButton}>
+            Запросить карту
+          </button>
+
+          {!isTelegramWebApp && (
             <>
-              <p className={styles.subText}>Загрузите файл <code>.pkpass</code> с вашей бонусной картой.</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -96,7 +105,7 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className={styles.requestButton}
+                className={styles.uploadButton}
                 disabled={uploading}
               >
                 {uploading ? (
@@ -104,16 +113,6 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
                 ) : (
                   <><FaUpload style={{ marginRight: '8px' }} /> Загрузить .pkpass</>
                 )}
-              </button>
-              <p className={styles.subText} style={{ marginTop: '12px', fontSize: '13px', opacity: 0.7 }}>
-                Или <span onClick={handleRequestCard} style={{ textDecoration: 'underline', cursor: 'pointer' }}>запросите карту</span> у поддержки.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className={styles.subText}>Чтобы добавить карту, отправьте файл <code>.pkpass</code> нашему боту в Telegram.</p>
-              <button onClick={handleRequestCard} className={styles.requestButton}>
-                Запросить карту
               </button>
             </>
           )}

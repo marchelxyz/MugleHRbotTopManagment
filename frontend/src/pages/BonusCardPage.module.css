@@ -5,6 +5,9 @@
 .subText { font-size: 14px; color: #6E7A85; margin-bottom: 20px; }
 .deleteButton { background: #e74c3c; color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 25px; }
 .requestButton { background: var(--theme-accent-gradient); color: white; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+.uploadButton { background: white; color: var(--theme-primary-dark); border: 2px solid var(--theme-primary); padding: 10px 25px; border-radius: 20px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 12px; display: inline-flex; align-items: center; transition: background 0.2s; }
+.uploadButton:hover { background: var(--theme-light); }
+.uploadButton:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Убираем синюю разметку при фокусе и нажатии */
 button,
