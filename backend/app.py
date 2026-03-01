@@ -198,13 +198,13 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         
         if path.startswith('/banners') or path.startswith('/market/items') or path.startswith('/market/statix-bonus'):
-            response.headers["Cache-Control"] = "public, max-age=300"
+            response.headers["Cache-Control"] = "public, max-age=60"
         elif path.startswith('/leaderboard'):
-            response.headers["Cache-Control"] = "public, max-age=60"
+            response.headers["Cache-Control"] = "public, max-age=15"
         elif path.startswith('/transactions/feed'):
-            response.headers["Cache-Control"] = "public, max-age=30"
+            response.headers["Cache-Control"] = "public, max-age=10"
         elif request.method == "GET" and not path.startswith('/users/me') and not path.startswith('/admin'):
-            response.headers["Cache-Control"] = "public, max-age=60"
+            response.headers["Cache-Control"] = "public, max-age=15"
         else:
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"

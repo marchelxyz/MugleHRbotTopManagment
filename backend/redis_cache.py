@@ -6,6 +6,15 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_TTL: dict[str, int] = {
+    "feed": 60,
+    "market": 120,
+    "leaderboard": 60,
+    "banners": 300,
+    "history": 120,
+}
+
+
 class RedisCache:
     """Класс для работы с Redis кешем."""
     
@@ -96,14 +105,7 @@ class RedisCache:
             redis_key = self._get_key(user_id, key)
             
             if ttl is None:
-                if key in ['feed', 'market', 'banners']:
-                    ttl = 3600
-                elif key == 'leaderboard':
-                    ttl = 300
-                elif key == 'history':
-                    ttl = 1800
-                else:
-                    ttl = 3600
+                ttl = _DEFAULT_TTL.get(key, 120)
             
             if isinstance(value, (dict, list)):
                 serialized_value = json.dumps(value, ensure_ascii=False)

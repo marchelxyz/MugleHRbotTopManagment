@@ -328,12 +328,14 @@ function App() {
   const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
     clearCache('market');
+    clearCache('feed');
+    clearCache('leaderboard');
   };
 
-  // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
   const handleTransferSuccess = (updatedSenderData) => {
-    updateUser(updatedSenderData); // Обновляем состояние user новыми данными
+    updateUser(updatedSenderData);
     clearCache('feed');
+    clearCache('leaderboard');
     navigate('home');
   };
   
