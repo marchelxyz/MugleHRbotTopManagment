@@ -16,10 +16,14 @@ CREATE TABLE IF NOT EXISTS statix_bonus_items (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Вставляем запись по умолчанию
-INSERT INTO statix_bonus_items (name, description, thanks_to_statix_rate, min_bonus_per_step, max_bonus_per_step, bonus_step)
-VALUES ('Бонусы Statix', 'Покупка бонусов для платформы Statix', 10, 100, 10000, 100)
-ON CONFLICT DO NOTHING;
+ALTER TABLE statix_bonus_items ALTER COLUMN is_active SET DEFAULT true;
+ALTER TABLE statix_bonus_items ALTER COLUMN created_at SET DEFAULT NOW();
+ALTER TABLE statix_bonus_items ALTER COLUMN updated_at SET DEFAULT NOW();
+
+-- Вставляем запись по умолчанию (только если таблица пуста)
+INSERT INTO statix_bonus_items (name, description, is_active, thanks_to_statix_rate, min_bonus_per_step, max_bonus_per_step, bonus_step, created_at, updated_at)
+SELECT 'Бонусы Statix', 'Покупка бонусов для платформы Statix', true, 10, 100, 10000, 100, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM statix_bonus_items LIMIT 1);
 
 -- Создаем индекс для быстрого поиска активных товаров
 CREATE INDEX IF NOT EXISTS idx_statix_bonus_items_active ON statix_bonus_items(is_active);
