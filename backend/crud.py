@@ -313,6 +313,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         f"От: {sender_name}. Сообщение: {tr.message or '—'}",
     )
     await db.commit()
+    await _invalidate_feed_and_leaderboard("перевод спасибки")
 
     return sender
     
@@ -630,7 +631,8 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     # Сохраняем данные перед отправкой уведомлений
     await db.commit()
     await _invalidate_market_cache(f"покупка товара {pr.item_id}")
-    
+    await _invalidate_feed_and_leaderboard(f"покупка товара {pr.item_id}")
+
     # Сохраняем данные для уведомлений перед отправкой
     item_name = item.name
     user_telegram_id = user.telegram_id
@@ -795,7 +797,8 @@ async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
     )
 
     await db.commit()
-    
+    await _invalidate_feed_and_leaderboard("локальный подарок")
+
     return {
         "new_balance": user.balance,
         "reserved_balance": user.reserved_balance,
@@ -853,7 +856,8 @@ async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, 
     
     local_purchase.updated_at = datetime.utcnow()
     await db.commit()
-    
+    await _invalidate_feed_and_leaderboard("одобрение/отклонение локального подарка")
+
     # Отправляем уведомление пользователю
     try:
         if user.telegram_id and user.telegram_id >= 0:
@@ -881,6 +885,7 @@ async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, 
 async def add_points_to_all_users(db: AsyncSession, amount: int):
     await db.execute(update(models.User).values(balance=models.User.balance + amount))
     await db.commit()
+    await _invalidate_feed_and_leaderboard("начисление баллов всем")
     return True
 
 # --- НАЧАЛО ИЗМЕНЕНИЙ: Добавляем новую функцию ---
@@ -980,8 +985,9 @@ async def process_birthday_bonuses(db: AsyncSession):
     # --- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ ---
     await reset_ticket_parts(db)
     await reset_tickets(db)
-    
+
     await db.commit()
+    await _invalidate_feed_and_leaderboard("бонусы ко дню рождения")
     return len(users)
 
 # --- ДОБАВЬТЕ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
@@ -1103,6 +1109,15 @@ async def _invalidate_market_cache(reason: str):
         await redis_cache.clear_all_users_key("market")
     except Exception as e:
         logger.warning(f"Не удалось очистить кеш market ({reason}): {e}")
+
+
+async def _invalidate_feed_and_leaderboard(reason: str):
+    """Инвалидирует кеш ленты и рейтинга для всех пользователей."""
+    for key in ("feed", "leaderboard"):
+        try:
+            await redis_cache.clear_all_users_key(key)
+        except Exception as e:
+            logger.warning("Не удалось очистить кеш %s (%s): %s", key, reason, e)
 
 # Мы переименуем старую функцию create_market_item
 async def admin_create_market_item(db: AsyncSession, item: schemas.MarketItemCreate):
