@@ -703,3 +703,39 @@ export const adminDeleteUserPassword = (userId) => {
     }
     return apiClient.delete(`/admin/users/${userId}/password`, { headers });
 };
+
+// --- NOTIFICATIONS ---
+export const getNotifications = (type = null, page = 1) => {
+    const params = { page };
+    if (type) params.type = type;
+    return apiClient.get('/notifications', { params });
+};
+
+export const getUnreadNotificationCount = () => {
+    return apiClient.get('/notifications/unread-count');
+};
+
+export const markNotificationRead = (notificationId) => {
+    return apiClient.put(`/notifications/${notificationId}/read`);
+};
+
+export const markAllNotificationsRead = () => {
+    return apiClient.put('/notifications/read-all');
+};
+
+// --- CARD UPLOAD ---
+export const uploadPkpassFile = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/users/me/card', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+// --- ADMIN ALL PURCHASES ---
+export const getAllPurchases = (type = null, statusFilter = null, page = 1, perPage = 50) => {
+    const params = { page, per_page: perPage };
+    if (type) params.type = type;
+    if (statusFilter) params.status = statusFilter;
+    return apiClient.get('/admin/purchases/all', { params });
+};

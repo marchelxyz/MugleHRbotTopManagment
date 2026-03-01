@@ -395,3 +395,34 @@ class LocalGiftResponse(OrmBase):
 class LocalGiftApprovalRequest(BaseModel):
     local_purchase_id: int  # Оставляем старое название поля для совместимости с БД
     action: str  # 'approve' или 'reject'
+
+class NotificationResponse(OrmBase):
+    id: int
+    user_id: int
+    type: str
+    title: str
+    message: str
+    is_read: bool
+    created_at: datetime
+
+class NotificationListResponse(BaseModel):
+    items: List['NotificationResponse']
+    total: int
+    unread_count: int
+
+class UnifiedPurchaseResponse(BaseModel):
+    id: int
+    purchase_type: str
+    user_name: str
+    user_id: int
+    item_name: str
+    item_id: Optional[int] = None
+    amount: int
+    status: str
+    created_at: datetime
+    city: Optional[str] = None
+    website_url: Optional[str] = None
+
+class UnifiedPurchaseListResponse(BaseModel):
+    items: List['UnifiedPurchaseResponse']
+    total: int

@@ -1,12 +1,10 @@
-/* frontend/src/pages/admin/PurchasesManager.module.css */
-
 .container {
   padding: 20px;
 }
 
 .container h2 {
   margin-top: 0;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   color: #333;
   font-size: 24px;
 }
@@ -37,16 +35,83 @@
   opacity: 0.3;
 }
 
+/* --- Tabs --- */
+.tabsRow {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+}
+
+.tabButton {
+  padding: 8px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: #fafafa;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.tabButton:hover {
+  background: #f0f0f0;
+}
+
+.tabActive {
+  background: var(--theme-primary, #5B7FF0);
+  color: #fff;
+  border-color: var(--theme-primary, #5B7FF0);
+}
+
+/* --- Filters --- */
+.filtersRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filterChip {
+  padding: 6px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  background: #fff;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterChip:hover {
+  background: #f5f5f5;
+}
+
+.filterActive {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
+
+.totalLabel {
+  color: #999;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+/* --- List --- */
 .purchasesList {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .purchaseCard {
   background: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
   border: 1px solid #f0f0f0;
 }
@@ -55,15 +120,39 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
-  gap: 16px;
+  margin-bottom: 12px;
+  gap: 12px;
 }
 
 .purchaseHeader h3 {
-  margin: 0;
-  font-size: 18px;
+  margin: 0 0 6px 0;
+  font-size: 16px;
   color: #333;
-  flex: 1;
+}
+
+.badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.typeBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #eee;
+  color: #555;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .purchaseDate {
@@ -73,17 +162,17 @@
 }
 
 .purchaseInfo {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .purchaseInfo p {
-  margin: 8px 0;
-  font-size: 14px;
+  margin: 4px 0;
+  font-size: 13px;
   color: #666;
 }
 
 .purchaseInfo a {
-  color: var(--theme-primary);
+  color: var(--theme-primary, #5B7FF0);
   text-decoration: none;
 }
 
@@ -93,21 +182,21 @@
 
 .purchaseActions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .approveButton, .rejectButton {
   flex: 1;
-  padding: 12px 20px;
+  padding: 10px 16px;
   border: none;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -135,4 +224,41 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+/* --- Pagination --- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 12px 0;
+}
+
+.pageButton {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pageButton:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+.pageButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pageInfo {
+  font-size: 14px;
+  color: #666;
 }

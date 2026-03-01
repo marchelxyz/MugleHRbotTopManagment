@@ -31,6 +31,28 @@ from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
 
+
+async def _create_notification(
+    db: AsyncSession,
+    user_id: int,
+    type: str,
+    title: str,
+    message: str,
+) -> None:
+    """Сохраняет уведомление в БД для отображения в веб-интерфейсе."""
+    try:
+        notification = models.Notification(
+            user_id=user_id,
+            type=type,
+            title=title,
+            message=message,
+        )
+        db.add(notification)
+        await db.flush()
+    except Exception as e:
+        logger.warning("Не удалось создать уведомление для user_id=%s: %s", user_id, e)
+
+
 # --- УТИЛИТЫ ДЛЯ РАБОТЫ С ПАРОЛЯМИ ---
 def _get_password_context():
     """Создает и возвращает контекст для работы с паролями."""
@@ -279,13 +301,18 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         message_text = (f"🎉 Вам начислена <b>1</b> спасибка!\n"
                         f"От: <b>{escape_html(sender.first_name or '')} {escape_html(sender.last_name or '')}</b>\n"
                         f"Сообщение: <i>{escape_html(tr.message or '')}</i>")
-        # Игнорируем анонимизированных пользователей (telegram_id < 0)
         if receiver.telegram_id and receiver.telegram_id >= 0:
             await send_telegram_message(chat_id=receiver.telegram_id, text=message_text)
     except Exception as e:
         print(f"Could not send notification to user {receiver.telegram_id}. Error: {e}")
-    
-    # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: Возвращаем обновленного отправителя ---
+
+    sender_name = f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+    await _create_notification(
+        db, receiver.id, "transfer",
+        "Вам начислена спасибка",
+        f"От: {sender_name}. Сообщение: {tr.message or '—'}",
+    )
+
     return sender
     
 # crud.py
@@ -650,7 +677,12 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
 
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
-    
+
+    notif_msg = f'Вы приобрели "{item_name}"'
+    if issued_code_value:
+        notif_msg += f". Код: {issued_code_value}"
+    await _create_notification(db, user.id, "purchase", "Покупка совершена", notif_msg)
+
     return {"new_balance": user.balance, "issued_code": issued_code_value}
 
 async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
@@ -754,6 +786,12 @@ async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
     except Exception as e:
         print(f"Could not send user notification. Error: {e}")
 
+    await _create_notification(
+        db, user.id, "purchase",
+        "Заявка на локальный подарок принята",
+        f'Товар: "{item.name}", город: {pr.city}. Ожидайте решения администратора.',
+    )
+
     await db.commit()
     
     return {
@@ -820,7 +858,20 @@ async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, 
             await send_telegram_message(chat_id=user.telegram_id, text=user_message)
     except Exception as e:
         print(f"Could not send user notification. Error: {e}")
-    
+
+    if action == 'approve':
+        await _create_notification(
+            db, user.id, "purchase",
+            "Локальный подарок одобрен",
+            f'Товар: "{item.name}". Списано: {local_purchase.reserved_amount} спасибок.',
+        )
+    else:
+        await _create_notification(
+            db, user.id, "purchase",
+            "Локальный подарок отклонён",
+            f'Товар: "{item.name}". Возвращено: {local_purchase.reserved_amount} спасибок.',
+        )
+
     return {"status": local_purchase.status, "user_balance": user.balance, "reserved_balance": user.reserved_balance}
     
 # Админ
@@ -916,6 +967,12 @@ async def process_birthday_bonuses(db: AsyncSession):
                 await send_telegram_message(user.telegram_id, birthday_message)
             except Exception as e:
                 logger.error(f"Не удалось отправить поздравление пользователю {user.id}: {e}")
+
+        await _create_notification(
+            db, user.id, "system",
+            "С Днём Рождения!",
+            "Поздравляем с днём рождения! Вам начислено 15 спасибок в качестве подарка.",
+        )
     
     # --- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ ---
     await reset_ticket_parts(db)
@@ -1892,8 +1949,13 @@ async def set_user_credentials(db: AsyncSession, user_id: int, login: str, passw
             )
         except Exception as e:
             logger.error(f"Не удалось отправить учетные данные пользователю {user.id} ({user.telegram_id}) в Telegram: {e}")
-            # Не прерываем выполнение функции, так как учетные данные уже установлены
-    
+
+    await _create_notification(
+        db, user.id, "system",
+        "Учётные данные для входа",
+        f"Вам назначены учётные данные для входа через браузер. Логин: {user.login}",
+    )
+
     return user
 
 # --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ ПАРОЛЯ ПОЛЬЗОВАТЕЛЯ ---
@@ -2201,13 +2263,18 @@ async def bulk_send_credentials(
                 except Exception as e:
                     logger.error(f"Не удалось отправить сообщение пользователю {user.id} ({user.telegram_id}): {e}")
                     failed_users.append(user.id)
-                    # Откатываем изменения для этого пользователя
                     if user_credentials_generated:
                         user.login = None
                         user.password_hash = None
                         user.password_plain = None
                         user.browser_auth_enabled = False
                         credentials_generated -= 1
+
+            await _create_notification(
+                db, user.id, "system",
+                "Учётные данные для входа",
+                f"Вам назначены учётные данные для входа через браузер. Логин: {user.login}",
+            )
             
         except Exception as e:
             logger.error(f"Ошибка при обработке пользователя {user.id}: {e}")
@@ -2828,7 +2895,13 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
             )
         except Exception as e:
             print(f"Could not send admin notification for Statix purchase. Error: {e}")
-    
+
+        await _create_notification(
+            db, user.id, "purchase",
+            "Покупка бонусов Statix",
+            f"Куплено {bonus_amount} бонусов Statix за {thanks_cost} спасибок.",
+        )
+
     return {
         "new_balance": user.balance,
         "purchased_bonus_amount": bonus_amount,
@@ -3007,7 +3080,14 @@ async def create_shared_gift_invitation(db: AsyncSession, invitation: schemas.Cr
             )
     except Exception as e:
         print(f"Failed to send shared gift invitation notification: {e}")
-    
+
+    buyer_name = f"{buyer.first_name or ''} {buyer.last_name or ''}".strip()
+    await _create_notification(
+        db, invited_user.id, "shared_gift",
+        "Приглашение на совместный подарок",
+        f'{buyer_name} приглашает разделить товар "{item.name}".',
+    )
+
     return db_invitation
 
 async def get_shared_gift_invitation(db: AsyncSession, invitation_id: int):
@@ -3113,7 +3193,14 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         )
     except Exception as e:
         print(f"Failed to send shared gift admin notification: {e}")
-    
+
+    invited_name = f"{invitation.invited_user.first_name or ''} {invitation.invited_user.last_name or ''}".strip()
+    await _create_notification(
+        db, buyer.id, "shared_gift",
+        "Приглашение принято",
+        f'{invited_name} согласился разделить товар "{item.name}". Возвращена половина стоимости.',
+    )
+
     return {
         "message": "Приглашение принято успешно",
         "new_balance": buyer.balance
@@ -3164,7 +3251,18 @@ async def reject_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
                 )
     except Exception as e:
         print(f"Failed to send shared gift rejected notification: {e}")
-    
+
+    try:
+        invited_name = f"{invitation.invited_user.first_name or ''} {invitation.invited_user.last_name or ''}".strip()
+        item_name = item.name if item else "товар"
+        await _create_notification(
+            db, invitation.buyer_id, "shared_gift",
+            "Приглашение отклонено",
+            f'{invited_name} отклонил приглашение на товар "{item_name}". Возвращена полная стоимость.',
+        )
+    except Exception:
+        pass
+
     return {
         "message": "Приглашение отклонено, средства возвращены"
     }
@@ -3247,6 +3345,13 @@ async def cleanup_expired_shared_gift_invitations(db: AsyncSession):
                     )
         except Exception as e:
             print(f"Failed to send shared gift expired notification: {e}")
+
+        if item:
+            await _create_notification(
+                db, invitation.buyer_id, "shared_gift",
+                "Приглашение истекло",
+                f'Время на принятие приглашения на товар "{item.name}" истекло. Возвращена полная стоимость.',
+            )
     
     await db.commit()
     return len(expired_invitations)
