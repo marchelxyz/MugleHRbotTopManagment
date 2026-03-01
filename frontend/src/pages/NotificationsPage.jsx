@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styles from './NotificationsPage.module.css';
 import PageLayout from '../components/PageLayout';
-import { FaBell, FaGift, FaUserEdit, FaInfoCircle, FaExchangeAlt, FaUsers, FaCheckDouble, FaSpinner } from 'react-icons/fa';
+import { FaBell, FaGift, FaUserEdit, FaInfoCircle, FaExchangeAlt, FaUsers, FaCheckDouble, FaSpinner, FaCopy, FaCheck } from 'react-icons/fa';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api';
 
 function NotificationsPage({ user, onBack }) {
@@ -93,6 +93,23 @@ function NotificationsPage({ user, onBack }) {
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   };
 
+  const [copiedId, setCopiedId] = useState(null);
+
+  function parseMessageWithCode(message) {
+    const match = message.match(/\[code\]([\s\S]*?)\[\/code\]/);
+    if (!match) return { text: message, code: null };
+    const text = message.replace(/\n?\[code\][\s\S]*?\[\/code\]/, '').trim();
+    return { text, code: match[1] };
+  }
+
+  function handleCopyCode(e, code, notificationId) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedId(notificationId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
   const filters = [
     { key: 'all', label: 'Все' },
     { key: 'purchase', label: 'Покупки' },
@@ -155,7 +172,28 @@ function NotificationsPage({ user, onBack }) {
                     {formatTimestamp(notification.created_at)}
                   </span>
                 </div>
-                <p className={styles.notificationMessage}>{notification.message}</p>
+                {(() => {
+                  const { text, code } = parseMessageWithCode(notification.message);
+                  return (
+                    <>
+                      <p className={styles.notificationMessage}>{text}</p>
+                      {code && (
+                        <div className={styles.codeBlock}>
+                          <span className={styles.codeValue}>{code}</span>
+                          <button
+                            className={styles.copyButton}
+                            onClick={(e) => handleCopyCode(e, code, notification.id)}
+                            title="Скопировать"
+                          >
+                            {copiedId === notification.id
+                              ? <><FaCheck /> Скопировано</>
+                              : <><FaCopy /> Скопировать</>}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))
