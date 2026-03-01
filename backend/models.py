@@ -156,16 +156,16 @@ class PendingUpdate(Base):
 class StatixBonusItem(Base):
     __tablename__ = "statix_bonus_items"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, default="Бонусы Statix", nullable=False)
+    name = Column(String, server_default="Бонусы Statix", default="Бонусы Statix", nullable=False)
     description = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    thanks_to_statix_rate = Column(Integer, default=10, nullable=False)
-    min_bonus_per_step = Column(Integer, default=100, nullable=False)
-    max_bonus_per_step = Column(Integer, default=10000, nullable=False)
-    bonus_step = Column(Integer, default=100, nullable=False)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, server_default="true", default=True, nullable=False)
+    thanks_to_statix_rate = Column(Integer, server_default="10", default=10, nullable=False)
+    min_bonus_per_step = Column(Integer, server_default="100", default=100, nullable=False)
+    max_bonus_per_step = Column(Integer, server_default="10000", default=10000, nullable=False)
+    bonus_step = Column(Integer, server_default="100", default=100, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), default=func.now(), onupdate=func.now())
 
 class SharedGiftInvitation(Base):
     __tablename__ = "shared_gift_invitations"
