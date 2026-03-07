@@ -716,10 +716,10 @@ function App() {
           - Для mobile применяем mobile-wrapper */}
       <main className={
         isLoginOrRegistrationPage 
-          ? '' 
+          ? 'no-selection' 
           : (isDesktop 
-              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''}` 
-              : 'mobile-wrapper')
+              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''} ${page === 'admin' ? 'allow-selection' : 'no-selection'}` 
+              : `mobile-wrapper ${page === 'admin' ? 'allow-selection' : 'no-selection'}`)
       }>
         {showPendingBanner && (
             <div className="pending-update-banner">
