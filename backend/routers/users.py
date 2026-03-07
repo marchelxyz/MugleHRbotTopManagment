@@ -101,14 +101,14 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete registration process.")
 
 @router.get("/", response_model=list[schemas.UserResponse])
-async def list_users(db: AsyncSession = Depends(get_db)):
+async def list_users(
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     return await crud.get_users(db)
 
 @router.get("/me", response_model=schemas.UserResponse)
-async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
-    user = await crud.get_user_by_telegram(db, int(telegram_id))
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+async def get_self(user: models.User = Depends(get_current_user)):
     return user
 
 @router.put("/me", response_model=schemas.UserResponse)

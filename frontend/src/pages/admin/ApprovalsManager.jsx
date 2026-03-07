@@ -6,6 +6,7 @@ import { getPendingProfileUpdates, approveProfileUpdate, rejectProfileUpdate } f
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { FaCheckCircle, FaTimesCircle, FaUserEdit, FaSpinner } from 'react-icons/fa';
+import { formatDateTimeShort } from '../../utils/dateFormatter';
 
 function ApprovalsManager() {
   const { showAlert } = useModalAlert();
@@ -82,18 +83,6 @@ function ApprovalsManager() {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Не указано';
-    const date = new Date(dateString);
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const formatFieldName = (fieldName) => {
     const names = {
       'last_name': 'Фамилия',
@@ -137,7 +126,7 @@ function ApprovalsManager() {
               <div className={styles.updateHeader}>
                 <div>
                   <h3>{update.user_name}</h3>
-                  <span className={styles.updateDate}>{formatDate(update.created_at)}</span>
+                  <span className={styles.updateDate}>{formatDateTimeShort(update.created_at, 'Не указано')}</span>
                 </div>
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : update.id)}

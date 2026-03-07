@@ -7,16 +7,7 @@ import styles from './RegistrationPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 
-// --- НОВАЯ ФУНКЦИЯ: Конвертирует дату из DD.MM.YYYY в YYYY-MM-DD ---
-const formatDateForApi = (date) => {
-  if (!date || date.includes('_')) return null;
-  const parts = date.split('.');
-  if (parts.length === 3) {
-    const [day, month, year] = parts;
-    return `${year}-${month}-${day}`;
-  }
-  return null;
-};
+import { formatDateForApi } from '../utils/dateFormatter';
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = false, onBackToLogin }) {
   const { showAlert } = useModalAlert();

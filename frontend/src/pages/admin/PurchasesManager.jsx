@@ -4,6 +4,7 @@ import { getAllPurchases, approveLocalPurchase, rejectLocalPurchase } from '../.
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { FaCheckCircle, FaTimesCircle, FaGift, FaSpinner, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { formatDateTimeShort } from '../../utils/dateFormatter';
 
 const STATUS_TABS = [
   { key: null, label: 'Все' },
@@ -103,13 +104,6 @@ function PurchasesManager() {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleString('ru-RU', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-  };
-
   const totalPages = Math.ceil(total / perPage);
 
   return (
@@ -174,7 +168,7 @@ function PurchasesManager() {
                         </span>
                       </div>
                     </div>
-                    <span className={styles.purchaseDate}>{formatDate(purchase.created_at)}</span>
+                    <span className={styles.purchaseDate}>{formatDateTimeShort(purchase.created_at)}</span>
                   </div>
                   <div className={styles.purchaseInfo}>
                     <p><strong>Пользователь:</strong> {purchase.user_name}</p>
