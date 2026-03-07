@@ -1,7 +1,7 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { checkUserStatus, getFeed, getBanners, getAppSettings } from './api';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты навигации (загружаются сразу, так как всегда видны)
@@ -326,6 +326,46 @@ function App() {
   };
   
   const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
+
+  /** Обновляет данные пользователя с сервера (баланс, спасибки и т.д.). */
+  const refreshUser = useCallback(async () => {
+    const telegramUser = tg?.initDataUnsafe?.user;
+    const userId = telegramUser ? null : (user?.id ?? localStorage.getItem('userId'));
+    if (!telegramUser && !userId) return;
+    try {
+      const resp = telegramUser
+        ? await checkUserStatus(telegramUser.id)
+        : await checkUserStatusById(String(userId));
+      setUser(resp.data);
+      if (!telegramUser) {
+        localStorage.setItem('user', JSON.stringify(resp.data));
+      }
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 404) {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('user');
+        setUser(null);
+      }
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || user.status !== 'approved') return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUser();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user?.id, user?.status, refreshUser]);
+
+  /** Обновляем данные пользователя при переходе на профиль или магазин. */
+  useEffect(() => {
+    if (user?.status === 'approved' && (page === 'profile' || page === 'marketplace')) {
+      refreshUser();
+    }
+  }, [page, user?.status, refreshUser]);
 
   const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
