@@ -681,6 +681,34 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     except Exception as e:
         print(f"Could not send notification. Error: {e}")
 
+    # Email: пользователю (подтверждение + код) и админам
+    try:
+        from email_service import (
+            send_purchase_confirmation_to_user,
+            send_purchase_notification_to_admins,
+        )
+        user_name_display = f"{user_first_name or ''} {user_last_name or ''}".strip() or str(user_telegram_id)
+        if user.email:
+            await send_purchase_confirmation_to_user(
+                to_email=user.email,
+                user_name=user_name_display,
+                item_name=item_name,
+                amount=item_price,
+                issued_code=issued_code_value,
+                purchase_type="regular",
+            )
+        await send_purchase_notification_to_admins(
+            purchase_type="regular",
+            user_name=user_name_display,
+            user_phone=user_phone_number or "",
+            user_email=user.email,
+            item_name=item_name,
+            amount=item_price,
+            issued_code=issued_code_value,
+        )
+    except Exception as e:
+        print(f"Could not send purchase email notifications. Error: {e}")
+
     notif_msg = f'Вы приобрели "{item_name}"'
     if issued_code_value:
         notif_msg += f"\n[code]{issued_code_value}[/code]"
@@ -790,6 +818,22 @@ async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
     except Exception as e:
         print(f"Could not send user notification. Error: {e}")
 
+    # Email админам о новой заявке на локальный подарок
+    try:
+        from email_service import send_purchase_notification_to_admins
+        user_name_display = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        await send_purchase_notification_to_admins(
+            purchase_type="local",
+            user_name=user_name_display,
+            user_phone=user.phone_number or "",
+            user_email=user.email,
+            item_name=item.name,
+            amount=item.price,
+            extra_info=f"Город: {pr.city}. Ссылка: {pr.website_url}. Статус: ожидает согласования.",
+        )
+    except Exception as e:
+        print(f"Could not send local gift email to admins. Error: {e}")
+
     await _create_notification(
         db, user.id, "purchase",
         "Заявка на локальный подарок принята",
@@ -864,6 +908,34 @@ async def process_local_gift_approval(db: AsyncSession, local_purchase_id: int, 
             await send_telegram_message(chat_id=user.telegram_id, text=user_message)
     except Exception as e:
         print(f"Could not send user notification. Error: {e}")
+
+    # Email пользователю и админам
+    try:
+        from email_service import (
+            send_local_gift_status_to_user,
+            send_purchase_notification_to_admins,
+        )
+        user_name_display = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        if user.email:
+            await send_local_gift_status_to_user(
+                to_email=user.email,
+                user_name=user_name_display,
+                item_name=item.name,
+                amount=local_purchase.reserved_amount,
+                approved=(action == "approve"),
+            )
+        if action == "approve":
+            await send_purchase_notification_to_admins(
+                purchase_type="local",
+                user_name=user_name_display,
+                user_phone=user.phone_number or "",
+                user_email=user.email,
+                item_name=item.name,
+                amount=local_purchase.reserved_amount,
+                extra_info="Локальный подарок одобрен, спасибки списаны.",
+            )
+    except Exception as e:
+        print(f"Could not send local gift status emails. Error: {e}")
 
     if action == 'approve':
         await _create_notification(
@@ -2915,6 +2987,33 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
         except Exception as e:
             print(f"Could not send admin notification for Statix purchase. Error: {e}")
 
+        # Email пользователю и админам
+        try:
+            from email_service import (
+                send_purchase_confirmation_to_user,
+                send_purchase_notification_to_admins,
+            )
+            user_name_display = f"{user.first_name or ''} {user.last_name or ''}".strip()
+            if user.email:
+                await send_purchase_confirmation_to_user(
+                    to_email=user.email,
+                    user_name=user_name_display,
+                    item_name="Бонусы Statix",
+                    amount=int(thanks_cost),
+                    purchase_type="statix",
+                )
+            await send_purchase_notification_to_admins(
+                purchase_type="statix",
+                user_name=user_name_display,
+                user_phone=user.phone_number or "",
+                user_email=user.email,
+                item_name="Бонусы Statix",
+                amount=int(thanks_cost),
+                extra_info=f"Куплено бонусов: {bonus_amount}",
+            )
+        except Exception as e:
+            print(f"Could not send Statix purchase emails. Error: {e}")
+
         await _create_notification(
             db, user.id, "purchase",
             "Покупка бонусов Statix",
@@ -3214,6 +3313,34 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
         )
     except Exception as e:
         print(f"Failed to send shared gift admin notification: {e}")
+
+    # Email покупателю и админам
+    try:
+        from email_service import (
+            send_purchase_confirmation_to_user,
+            send_purchase_notification_to_admins,
+        )
+        buyer_name = f"{buyer.first_name or ''} {buyer.last_name or ''}".strip()
+        invited_name = f"{invitation.invited_user.first_name or ''} {invitation.invited_user.last_name or ''}".strip()
+        if buyer.email:
+            await send_purchase_confirmation_to_user(
+                to_email=buyer.email,
+                user_name=buyer_name,
+                item_name=item.name,
+                amount=item.price,
+                purchase_type="shared",
+            )
+        await send_purchase_notification_to_admins(
+            purchase_type="shared",
+            user_name=buyer_name,
+            user_phone=buyer.phone_number or "",
+            user_email=buyer.email,
+            item_name=item.name,
+            amount=item.price,
+            extra_info=f"Приглашённый: {invited_name}. Совместная покупка завершена.",
+        )
+    except Exception as e:
+        print(f"Could not send shared gift emails. Error: {e}")
 
     invited_name = f"{invitation.invited_user.first_name or ''} {invitation.invited_user.last_name or ''}".strip()
     await _create_notification(

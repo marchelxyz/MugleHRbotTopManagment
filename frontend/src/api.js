@@ -26,12 +26,13 @@ apiClient.interceptors.request.use(
 
 // --- Существующие функции (без изменений) ---
 
-// --- ФУНКЦИЯ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР ---
-export const loginUser = (login, password) => {
-  return apiClient.post('/users/auth/login', {
-    login,
-    password
-  });
+// --- ФУНКЦИЯ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР / ПРИВЯЗКИ TELEGRAM ---
+export const loginUser = (login, password, telegramId = null) => {
+  const headers = {};
+  if (telegramId) {
+    headers['X-Telegram-Id'] = String(telegramId);
+  }
+  return apiClient.post('/users/auth/login', { login, password }, { headers });
 };
 
 export const checkUserStatus = (telegramId) => {
