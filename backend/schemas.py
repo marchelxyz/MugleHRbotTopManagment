@@ -422,6 +422,13 @@ class UnifiedPurchaseResponse(BaseModel):
     created_at: datetime
     city: Optional[str] = None
     website_url: Optional[str] = None
+    # Данные покупателя (как в сообщении в Telegram)
+    phone_number: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    position: Optional[str] = None
+    email: Optional[str] = None
+    telegram_username: Optional[str] = None
 
 class UnifiedPurchaseListResponse(BaseModel):
     items: List['UnifiedPurchaseResponse']

@@ -3,6 +3,7 @@ import styles from './NotificationsPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { FaBell, FaGift, FaUserEdit, FaInfoCircle, FaExchangeAlt, FaUsers, FaCheckDouble, FaSpinner, FaCopy, FaCheck } from 'react-icons/fa';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api';
+import { formatToMsk } from '../utils/dateFormatter';
 
 function NotificationsPage({ user, onBack }) {
   const [notifications, setNotifications] = useState([]);
@@ -79,7 +80,7 @@ function NotificationsPage({ user, onBack }) {
   };
 
   const formatTimestamp = (dateStr) => {
-    const date = new Date(dateStr);
+    const date = new Date(typeof dateStr === 'string' && !dateStr.endsWith('Z') ? dateStr + 'Z' : dateStr);
     const now = new Date();
     const diff = now - date;
     const minutes = Math.floor(diff / 60000);
@@ -90,7 +91,7 @@ function NotificationsPage({ user, onBack }) {
     if (minutes < 60) return `${minutes} мин. назад`;
     if (hours < 24) return `${hours} ч. назад`;
     if (days < 7) return `${days} дн. назад`;
-    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    return formatToMsk(date, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
   const [copiedId, setCopiedId] = useState(null);
