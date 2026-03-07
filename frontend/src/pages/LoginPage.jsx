@@ -110,7 +110,8 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
 
     try {
       const telegramId = telegramUser?.id ?? null;
-      const response = await loginUser(formData.login, formData.password, telegramId);
+      const telegramPhotoUrl = telegramUser?.photo_url ?? null;
+      const response = await loginUser(formData.login, formData.password, telegramId, telegramPhotoUrl);
       const user = response.data;
       
       // Сохраняем user_id в localStorage для последующих запросов

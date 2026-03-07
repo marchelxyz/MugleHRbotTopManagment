@@ -85,37 +85,32 @@ function BonusCardPage({ user, onBack, onUpdateUser }) {
           <p className={styles.infoText}>У вас пока нет бонусной карты.</p>
 
           <p className={styles.subText}>
-            {isTelegramWebApp
-              ? <>Чтобы добавить карту, отправьте файл <code>.pkpass</code> нашему боту в Telegram.</>
-              : <>Загрузите файл <code>.pkpass</code> с вашей бонусной картой или запросите её у поддержки.</>}
+            Загрузите файл <code>.pkpass</code> с вашей бонусной картой или запросите её у поддержки.
+            {isTelegramWebApp && <> Также можно отправить файл боту в Telegram.</>}
           </p>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pkpass"
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className={styles.uploadButton}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <><FaSpinner className={styles.spinIcon} style={{ marginRight: '8px' }} /> Загрузка...</>
+            ) : (
+              <><FaUpload style={{ marginRight: '8px' }} /> Загрузить карту Statix</>
+            )}
+          </button>
 
           <button onClick={handleRequestCard} className={styles.requestButton}>
             Запросить карту
           </button>
-
-          {!isTelegramWebApp && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pkpass"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className={styles.uploadButton}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <><FaSpinner className={styles.spinIcon} style={{ marginRight: '8px' }} /> Загрузка...</>
-                ) : (
-                  <><FaUpload style={{ marginRight: '8px' }} /> Загрузить .pkpass</>
-                )}
-              </button>
-            </>
-          )}
         </div>
       )}
     </PageLayout>

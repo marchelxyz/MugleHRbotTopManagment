@@ -16,6 +16,7 @@ async def login_user(
     request: schemas.LoginRequest,
     db: AsyncSession = Depends(get_db),
     telegram_id: Optional[str] = Header(None, alias="X-Telegram-Id"),
+    telegram_photo_url: Optional[str] = Header(None, alias="X-Telegram-Photo-Url"),
 ):
     """
     Вход по логину и паролю.
@@ -46,6 +47,12 @@ async def login_user(
                         detail="Этот Telegram уже привязан к другому аккаунту",
                     )
                 user.telegram_id = tg_id
+                if telegram_photo_url:
+                    user.telegram_photo_url = telegram_photo_url
+                await db.commit()
+                await db.refresh(user)
+            elif user.telegram_id == tg_id and telegram_photo_url:
+                user.telegram_photo_url = telegram_photo_url
                 await db.commit()
                 await db.refresh(user)
             elif user.telegram_id != tg_id:

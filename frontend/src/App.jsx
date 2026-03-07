@@ -478,7 +478,7 @@ function App() {
         case 'leaderboard': return <LeaderboardPage user={user} />;
         case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
-        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
         case 'notifications': return <NotificationsPage user={user} onBack={() => navigate('profile')} />;
@@ -498,7 +498,7 @@ function App() {
         case 'admin': return <AdminPage seasonTheme={seasonTheme} onThemeUpdated={setSeasonTheme} />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
       }
     }
     
