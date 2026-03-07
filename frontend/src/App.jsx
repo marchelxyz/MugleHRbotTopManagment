@@ -61,6 +61,8 @@ function App() {
   });
   // Состояние для переключения между страницами входа и регистрации в браузере
   const [showRegistration, setShowRegistration] = useState(false);
+  // В Telegram: true = показать "Войти", false = показать "Регистрация"
+  const [showLoginInTelegram, setShowLoginInTelegram] = useState(false);
 
   const applyTelegramTheme = (theme) => {
     if (!tg || !tg.setBackgroundColor || !tg.setHeaderColor) {
@@ -395,7 +397,23 @@ function App() {
         }
         return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
-      return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
+      // В Telegram: выбор между "Войти" (привязка к веб-аккаунту) и "Регистрация"
+      if (showLoginInTelegram) {
+        return (
+          <LoginPage
+            telegramUser={telegramUser}
+            onLoginSuccess={handleLoginSuccess}
+            onShowRegistration={() => setShowLoginInTelegram(false)}
+          />
+        );
+      }
+      return (
+        <RegistrationPage
+          telegramUser={telegramUser}
+          onRegistrationSuccess={handleRegistrationSuccess}
+          onBackToLogin={() => setShowLoginInTelegram(true)}
+        />
+      );
     }
 
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно

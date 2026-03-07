@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, schemas, models
@@ -11,13 +12,52 @@ router = APIRouter(
 )
 
 @router.post("/auth/login", response_model=schemas.UserResponse)
-async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login_user(
+    request: schemas.LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    telegram_id: Optional[str] = Header(None, alias="X-Telegram-Id"),
+):
+    """
+    Вход по логину и паролю.
+    Если передан заголовок X-Telegram-Id, привязывает telegram_id к аккаунту
+    (для пользователей, зарегистрировавшихся через веб и входящих из Telegram).
+    """
     user = await crud.verify_user_credentials(db, request.login, request.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный логин или пароль"
         )
+    
+    # Привязка аккаунта к Telegram (если вход из Telegram WebApp)
+    if telegram_id:
+        try:
+            tg_id = int(telegram_id)
+            if tg_id < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Некорректный Telegram ID",
+                )
+            if user.telegram_id is None:
+                existing = await crud.get_user_by_telegram(db, tg_id)
+                if existing and existing.id != user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Этот Telegram уже привязан к другому аккаунту",
+                    )
+                user.telegram_id = tg_id
+                await db.commit()
+                await db.refresh(user)
+            elif user.telegram_id != tg_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Этот аккаунт уже привязан к другому Telegram",
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Некорректный Telegram ID",
+            )
     
     # Проверяем статус пользователя
     if user.status == 'blocked':
