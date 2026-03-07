@@ -1,5 +1,27 @@
 /* frontend/src/App.css */
 
+/* Запрет выделения текста в клиентской части (админ — исключение) */
+.no-selection {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.no-selection input,
+.no-selection textarea,
+.no-selection [contenteditable='true'] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.allow-selection {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
 .app-wrapper {
   margin: 0 auto;
   max-width: 450px;
@@ -7,10 +29,6 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   position: relative;
   background-color: var(--theme-app-bg);
-
-  /* --- ДОБАВЛЯЕМ ЭТО СВОЙСТВО --- */
-  user-select: none; /* Запрещаем выделение текста */
-  -webkit-user-select: none; /* Для поддержки Safari */
   background: var(--theme-bg-gradient);
 }
 
