@@ -67,3 +67,47 @@ export const formatDateForDisplay = (dateString) => {
   if (!dateString) return '';
   return formatToMsk(dateString, { hour: undefined, minute: undefined, second: undefined });
 };
+
+/**
+ * Форматирование даты и времени (ДД.ММ.ГГГГ, ЧЧ:ММ).
+ * @param {string | Date} dateString - Входящая дата.
+ * @param {string} fallback - Строка при отсутствии даты.
+ * @returns {string}
+ */
+export const formatDateTimeShort = (dateString, fallback = '—') => {
+  if (!dateString) return fallback;
+  return formatToMsk(dateString, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+/**
+ * Конвертирует дату из DD.MM.YYYY в YYYY-MM-DD для API.
+ * @param {string} date - Дата в формате DD.MM.YYYY или с маской.
+ * @returns {string | null} - Дата в YYYY-MM-DD или null.
+ */
+export function formatDateForApi(date) {
+  if (!date || (typeof date === 'string' && date.includes('_'))) return null;
+  const parts = String(date).split('.');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    return `${year}-${month}-${day}`;
+  }
+  return null;
+}
+
+/**
+ * Конвертирует Date в YYYY-MM-DD для API.
+ * @param {Date | string | null} date - Дата.
+ * @returns {string | null}
+ */
+export function formatDateForApiFromDate(date) {
+  if (!date) return null;
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().split('T')[0];
+}

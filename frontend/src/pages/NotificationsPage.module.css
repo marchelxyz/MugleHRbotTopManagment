@@ -129,6 +129,47 @@
   line-height: 1.5;
 }
 
+.codeBlock {
+  margin-top: 8px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.codeValue {
+  font-family: monospace;
+  font-size: 13px;
+  color: #333;
+  word-break: break-all;
+  flex: 1;
+}
+
+.copyButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--theme-accent-gradient);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.copyButton:hover {
+  opacity: 0.85;
+}
+
 .emptyState {
   text-align: center;
   padding: 60px 20px;
@@ -144,4 +185,13 @@
 .emptyState p {
   margin: 0;
   font-size: 16px;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

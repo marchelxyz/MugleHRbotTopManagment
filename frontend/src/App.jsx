@@ -1,7 +1,7 @@
 // frontend/src/App.jsx
 
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { checkUserStatus, getFeed, getBanners, getAppSettings } from './api';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты навигации (загружаются сразу, так как всегда видны)
@@ -61,6 +61,8 @@ function App() {
   });
   // Состояние для переключения между страницами входа и регистрации в браузере
   const [showRegistration, setShowRegistration] = useState(false);
+  // В Telegram: true = показать "Войти", false = показать "Регистрация"
+  const [showLoginInTelegram, setShowLoginInTelegram] = useState(false);
 
   const applyTelegramTheme = (theme) => {
     if (!tg || !tg.setBackgroundColor || !tg.setHeaderColor) {
@@ -325,15 +327,57 @@ function App() {
   
   const updateUser = (newUserData) => setUser(prev => ({ ...prev, ...newUserData }));
 
+  /** Обновляет данные пользователя с сервера (баланс, спасибки и т.д.). */
+  const refreshUser = useCallback(async () => {
+    const telegramUser = tg?.initDataUnsafe?.user;
+    const userId = telegramUser ? null : (user?.id ?? localStorage.getItem('userId'));
+    if (!telegramUser && !userId) return;
+    try {
+      const resp = telegramUser
+        ? await checkUserStatus(telegramUser.id)
+        : await checkUserStatusById(String(userId));
+      setUser(resp.data);
+      if (!telegramUser) {
+        localStorage.setItem('user', JSON.stringify(resp.data));
+      }
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 404) {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('user');
+        setUser(null);
+      }
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user || user.status !== 'approved') return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUser();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user?.id, user?.status, refreshUser]);
+
+  /** Обновляем данные пользователя при переходе на профиль или магазин. */
+  useEffect(() => {
+    if (user?.status === 'approved' && (page === 'profile' || page === 'marketplace')) {
+      refreshUser();
+    }
+  }, [page, user?.status, refreshUser]);
+
   const handlePurchaseAndUpdate = (newUserData) => {
     updateUser(newUserData);
     clearCache('market');
+    clearCache('feed');
+    clearCache('leaderboard');
   };
 
-  // --- 1. НОВАЯ ФУНКЦИЯ-ОБРАБОТЧИК ---
   const handleTransferSuccess = (updatedSenderData) => {
-    updateUser(updatedSenderData); // Обновляем состояние user новыми данными
+    updateUser(updatedSenderData);
     clearCache('feed');
+    clearCache('leaderboard');
     navigate('home');
   };
   
@@ -393,7 +437,23 @@ function App() {
         }
         return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
       }
-      return <RegistrationPage telegramUser={telegramUser} onRegistrationSuccess={handleRegistrationSuccess} />;
+      // В Telegram: выбор между "Войти" (привязка к веб-аккаунту) и "Регистрация"
+      if (showLoginInTelegram) {
+        return (
+          <LoginPage
+            telegramUser={telegramUser}
+            onLoginSuccess={handleLoginSuccess}
+            onShowRegistration={() => setShowLoginInTelegram(false)}
+          />
+        );
+      }
+      return (
+        <RegistrationPage
+          telegramUser={telegramUser}
+          onRegistrationSuccess={handleRegistrationSuccess}
+          onBackToLogin={() => setShowLoginInTelegram(true)}
+        />
+      );
     }
 
     // 4. ГЛАВНАЯ ЛОГИКА: Показываем обучение, если нужно
@@ -418,7 +478,7 @@ function App() {
         case 'leaderboard': return <LeaderboardPage user={user} />;
         case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
-        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} />;
+        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
         case 'notifications': return <NotificationsPage user={user} onBack={() => navigate('profile')} />;
@@ -438,7 +498,7 @@ function App() {
         case 'admin': return <AdminPage seasonTheme={seasonTheme} onThemeUpdated={setSeasonTheme} />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
       }
     }
     
@@ -656,10 +716,10 @@ function App() {
           - Для mobile применяем mobile-wrapper */}
       <main className={
         isLoginOrRegistrationPage 
-          ? '' 
+          ? 'no-selection' 
           : (isDesktop 
-              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''}` 
-              : 'mobile-wrapper')
+              ? `desktop-wrapper ${shouldShowSideNav ? 'with-sidebar' : ''} ${page === 'admin' ? 'allow-selection' : 'no-selection'}` 
+              : `mobile-wrapper ${page === 'admin' ? 'allow-selection' : 'no-selection'}`)
       }>
         {showPendingBanner && (
             <div className="pending-update-banner">

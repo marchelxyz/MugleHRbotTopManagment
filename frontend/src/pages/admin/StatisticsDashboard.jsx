@@ -15,7 +15,8 @@ import InactiveUsersPage from './stats/InactiveUsersPage';
 import EconomyBalancePage from './stats/EconomyBalancePage';
 import LoginActivityPage from './stats/LoginActivityPage';
 import ActiveUserRatioPage from './stats/ActiveUserRatioPage';
-import AverageSessionDurationPage from './stats/AverageSessionDurationPage'; // <-- Новый
+import AverageSessionDurationPage from './stats/AverageSessionDurationPage';
+import { formatDateForApiFromDate } from '../../utils/dateFormatter';
 
 const StatisticsDashboard = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -23,16 +24,11 @@ const StatisticsDashboard = () => {
     const [endDate, setEndDate] = useState(null);
     const [isExporting, setIsExporting] = useState(false);
 
-    const formatDateForApi = (date) => {
-        if (!date) return null;
-        return date.toISOString().split('T')[0];
-    };
-    
     const handleConsolidatedExport = async () => {
         setIsExporting(true);
         try {
-            const formattedStartDate = formatDateForApi(startDate);
-            const formattedEndDate = formatDateForApi(endDate);
+            const formattedStartDate = formatDateForApiFromDate(startDate);
+            const formattedEndDate = formatDateForApiFromDate(endDate);
             
             const response = await exportConsolidatedReport(formattedStartDate, formattedEndDate);
             
@@ -65,8 +61,8 @@ const StatisticsDashboard = () => {
 
     const renderActiveComponent = () => {
         const dateProps = {
-            startDate: formatDateForApi(startDate),
-            endDate: formatDateForApi(endDate)
+            startDate: formatDateForApiFromDate(startDate),
+            endDate: formatDateForApiFromDate(endDate)
         };
         switch (activeTab) {
             case 'general': return <GeneralStats {...dateProps} />;

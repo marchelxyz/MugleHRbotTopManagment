@@ -505,3 +505,213 @@ async def send_credentials_to_user(
         import traceback
         traceback.print_exc()
         return False
+
+
+async def send_purchase_confirmation_to_user(
+    to_email: str,
+    user_name: str,
+    item_name: str,
+    amount: int,
+    issued_code: Optional[str] = None,
+    purchase_type: str = "regular",
+) -> bool:
+    """
+    Отправляет пользователю подтверждение покупки и код (если есть).
+
+    Args:
+        to_email: Email получателя.
+        user_name: Имя пользователя.
+        item_name: Название товара.
+        amount: Стоимость в спасибках.
+        issued_code: Код/ссылка для автовыдачи (опционально).
+        purchase_type: Тип покупки (regular, local, statix, shared).
+
+    Returns:
+        True если письмо отправлено успешно.
+    """
+    if not to_email or not is_valid_email(to_email):
+        return False
+    try:
+        type_labels = {
+            "regular": "Покупка в магазине",
+            "local": "Локальный подарок",
+            "statix": "Бонусы Statix",
+            "shared": "Совместный подарок",
+        }
+        type_label = type_labels.get(purchase_type, "Покупка")
+
+        subject = f"{type_label}: {item_name}"
+
+        code_block = ""
+        if issued_code:
+            code_block = f"""
+                <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #4caf50;">
+                    <p style="margin: 0 0 8px 0;"><strong>Ваш код/ссылка:</strong></p>
+                    <code style="background-color: #fff; padding: 8px 12px; border-radius: 4px; display: block; word-break: break-all; font-size: 14px;">{issued_code}</code>
+                </div>
+            """
+
+        html_body = f"""
+        <html>
+        <head><meta charset="UTF-8"></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2c3e50;">Покупка подтверждена</h2>
+                <p>Здравствуйте, {user_name}!</p>
+                <p>Ваша покупка успешно оформлена.</p>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p style="margin: 5px 0;"><strong>Товар:</strong> {item_name}</p>
+                    <p style="margin: 5px 0;"><strong>Стоимость:</strong> {amount} спасибок</p>
+                </div>
+                {code_block}
+                <p style="color: #666; font-size: 14px;">Спасибо, что пользуетесь нашим магазином!</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        text_parts = [
+            f"Здравствуйте, {user_name}!",
+            "",
+            "Ваша покупка успешно оформлена.",
+            f"Товар: {item_name}",
+            f"Стоимость: {amount} спасибок",
+        ]
+        if issued_code:
+            text_parts.extend(["", "Ваш код/ссылка:", issued_code])
+        text_parts.extend(["", "Спасибо, что пользуетесь нашим магазином!"])
+        text_body = "\n".join(text_parts)
+
+        return await send_email(
+            to_email=to_email,
+            subject=subject,
+            body_html=html_body,
+            body_text=text_body,
+        )
+    except Exception as e:
+        logger.error(f"Ошибка при отправке подтверждения покупки на {to_email}: {e}")
+        return False
+
+
+async def send_local_gift_status_to_user(
+    to_email: str,
+    user_name: str,
+    item_name: str,
+    amount: int,
+    approved: bool,
+) -> bool:
+    """Отправляет пользователю уведомление об одобрении или отклонении локального подарка."""
+    if not to_email or not is_valid_email(to_email):
+        return False
+    try:
+        if approved:
+            subject = f"Локальный подарок одобрен: {item_name}"
+            status_text = "одобрен"
+            status_color = "#4caf50"
+        else:
+            subject = f"Локальный подарок отклонён: {item_name}"
+            status_text = "отклонён"
+            status_color = "#f44336"
+
+        html_body = f"""
+        <html>
+        <head><meta charset="UTF-8"></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2c3e50;">Локальный подарок {status_text}</h2>
+                <p>Здравствуйте, {user_name}!</p>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid {status_color};">
+                    <p style="margin: 5px 0;"><strong>Товар:</strong> {item_name}</p>
+                    <p style="margin: 5px 0;"><strong>Стоимость:</strong> {amount} спасибок</p>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                    {f"Спасибки списаны с вашего баланса." if approved else "Спасибки возвращены на ваш баланс."}
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        text_body = f"Здравствуйте, {user_name}!\n\nЛокальный подарок {status_text}.\nТовар: {item_name}\nСтоимость: {amount} спасибок"
+        return await send_email(to_email=to_email, subject=subject, body_html=html_body, body_text=text_body)
+    except Exception as e:
+        logger.error(f"Ошибка при отправке уведомления о локальном подарке на {to_email}: {e}")
+        return False
+
+
+async def send_purchase_notification_to_admins(
+    purchase_type: str,
+    user_name: str,
+    user_phone: str,
+    user_email: Optional[str],
+    item_name: str,
+    amount: int,
+    issued_code: Optional[str] = None,
+    extra_info: Optional[str] = None,
+) -> bool:
+    """
+    Отправляет админам уведомление о покупке (любого типа).
+
+    Args:
+        purchase_type: regular, local, statix, shared.
+        user_name: Имя покупателя.
+        user_phone: Телефон.
+        user_email: Email (если есть).
+        item_name: Название товара.
+        amount: Стоимость.
+        issued_code: Код для автовыдачи (опционально).
+        extra_info: Доп. текст (город, ссылка, приглашённый и т.д.).
+
+    Returns:
+        True если хотя бы одно письмо отправлено.
+    """
+    try:
+        admin_emails = getattr(settings, "ADMIN_EMAILS", None)
+        if not admin_emails:
+            return False
+        admin_list = [e.strip() for e in admin_emails.split(",") if e.strip()]
+        if not admin_list:
+            return False
+
+        type_labels = {
+            "regular": "Покупка в магазине",
+            "local": "Локальный подарок",
+            "statix": "Бонусы Statix",
+            "shared": "Совместный подарок",
+        }
+        type_label = type_labels.get(purchase_type, "Покупка")
+
+        subject = f"{type_label}: {item_name} — {user_name}"
+
+        code_block = ""
+        if issued_code:
+            code_block = f'<p style="margin: 5px 0;"><strong>Код/ссылка:</strong> <code>{issued_code}</code></p>'
+        extra_block = f"<p>{extra_info}</p>" if extra_info else ""
+
+        html_body = f"""
+        <html>
+        <head><meta charset="UTF-8"></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2c3e50;">{type_label}</h2>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p style="margin: 5px 0;"><strong>Покупатель:</strong> {user_name}</p>
+                    <p style="margin: 5px 0;"><strong>Телефон:</strong> {user_phone or "не указан"}</p>
+                    {f'<p style="margin: 5px 0;"><strong>Email:</strong> {user_email}</p>' if user_email else ""}
+                    <p style="margin: 5px 0;"><strong>Товар:</strong> {item_name}</p>
+                    <p style="margin: 5px 0;"><strong>Стоимость:</strong> {amount} спасибок</p>
+                    {code_block}
+                </div>
+                {extra_block}
+            </div>
+        </body>
+        </html>
+        """
+
+        success = 0
+        for admin_email in admin_list:
+            if await send_email(to_email=admin_email, subject=subject, body_html=html_body):
+                success += 1
+        return success > 0
+    except Exception as e:
+        logger.error(f"Ошибка при отправке уведомления админам о покупке: {e}")
+        return False

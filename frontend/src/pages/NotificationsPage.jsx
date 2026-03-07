@@ -1,46 +1,66 @@
-// frontend/src/pages/NotificationsPage.jsx
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styles from './NotificationsPage.module.css';
 import PageLayout from '../components/PageLayout';
-import { FaBell, FaCheckCircle, FaTimesCircle, FaGift, FaUserEdit, FaInfoCircle } from 'react-icons/fa';
+import { FaBell, FaGift, FaUserEdit, FaInfoCircle, FaExchangeAlt, FaUsers, FaCheckDouble, FaSpinner, FaCopy, FaCheck } from 'react-icons/fa';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api';
+import { formatToMsk } from '../utils/dateFormatter';
 
 function NotificationsPage({ user, onBack }) {
   const [notifications, setNotifications] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'purchases', 'profile', 'system'
+  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Заглушка для уведомлений - в реальности нужно будет получать их с сервера
+  const typeMap = {
+    all: null,
+    purchase: 'purchase',
+    profile: 'profile',
+    system: 'system',
+    transfer: 'transfer',
+    shared_gift: 'shared_gift',
+  };
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getNotifications(typeMap[filter]);
+      const data = response.data;
+      setNotifications(data.items || []);
+      setUnreadCount(data.unread_count || 0);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
   useEffect(() => {
-    // Здесь будет запрос к API для получения уведомлений
-    // Пока используем заглушку
-    const mockNotifications = [
-      {
-        id: 1,
-        type: 'purchase',
-        title: 'Покупка одобрена',
-        message: 'Ваш локальный подарок "Подарочная карта" был одобрен администратором',
-        timestamp: new Date(Date.now() - 3600000),
-        read: false
-      },
-      {
-        id: 2,
-        type: 'profile',
-        title: 'Изменения профиля одобрены',
-        message: 'Ваши изменения в профиле были одобрены администратором',
-        timestamp: new Date(Date.now() - 7200000),
-        read: false
-      },
-      {
-        id: 3,
-        type: 'system',
-        title: 'Добро пожаловать!',
-        message: 'Спасибо за регистрацию в системе "Спасибо"',
-        timestamp: new Date(Date.now() - 86400000),
-        read: true
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.is_read) {
+      try {
+        await markNotificationRead(notification.id);
+        setNotifications(prev =>
+          prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error);
       }
-    ];
-    setNotifications(mockNotifications);
-  }, []);
+    }
+  };
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -48,6 +68,10 @@ function NotificationsPage({ user, onBack }) {
         return <FaGift className={styles.notificationIcon} />;
       case 'profile':
         return <FaUserEdit className={styles.notificationIcon} />;
+      case 'transfer':
+        return <FaExchangeAlt className={styles.notificationIcon} />;
+      case 'shared_gift':
+        return <FaUsers className={styles.notificationIcon} />;
       case 'system':
         return <FaInfoCircle className={styles.notificationIcon} />;
       default:
@@ -55,7 +79,8 @@ function NotificationsPage({ user, onBack }) {
     }
   };
 
-  const formatTimestamp = (date) => {
+  const formatTimestamp = (dateStr) => {
+    const date = new Date(typeof dateStr === 'string' && !dateStr.endsWith('Z') ? dateStr + 'Z' : dateStr);
     const now = new Date();
     const diff = now - date;
     const minutes = Math.floor(diff / 60000);
@@ -66,14 +91,34 @@ function NotificationsPage({ user, onBack }) {
     if (minutes < 60) return `${minutes} мин. назад`;
     if (hours < 24) return `${hours} ч. назад`;
     if (days < 7) return `${days} дн. назад`;
-    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    return formatToMsk(date, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  const filteredNotifications = filter === 'all' 
-    ? notifications 
-    : notifications.filter(n => n.type === filter);
+  const [copiedId, setCopiedId] = useState(null);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  function parseMessageWithCode(message) {
+    const match = message.match(/\[code\]([\s\S]*?)\[\/code\]/);
+    if (!match) return { text: message, code: null };
+    const text = message.replace(/\n?\[code\][\s\S]*?\[\/code\]/, '').trim();
+    return { text, code: match[1] };
+  }
+
+  function handleCopyCode(e, code, notificationId) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedId(notificationId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
+  const filters = [
+    { key: 'all', label: 'Все' },
+    { key: 'purchase', label: 'Покупки' },
+    { key: 'profile', label: 'Профиль' },
+    { key: 'transfer', label: 'Переводы' },
+    { key: 'shared_gift', label: 'Совместные' },
+    { key: 'system', label: 'Система' },
+  ];
 
   return (
     <PageLayout title="Уведомления">
@@ -82,49 +127,41 @@ function NotificationsPage({ user, onBack }) {
       </button>
 
       {unreadCount > 0 && (
-        <div className={styles.unreadBadge}>
-          {unreadCount} непрочитанных
+        <div className={styles.unreadBadge} onClick={handleMarkAllRead} style={{ cursor: 'pointer' }}>
+          <FaCheckDouble style={{ marginRight: '6px' }} />
+          {unreadCount} непрочитанных — нажмите, чтобы прочитать все
         </div>
       )}
 
       <div className={styles.filterButtons}>
-        <button
-          onClick={() => setFilter('all')}
-          className={`${styles.filterButton} ${filter === 'all' ? styles.active : ''}`}
-        >
-          Все
-        </button>
-        <button
-          onClick={() => setFilter('purchases')}
-          className={`${styles.filterButton} ${filter === 'purchases' ? styles.active : ''}`}
-        >
-          Покупки
-        </button>
-        <button
-          onClick={() => setFilter('profile')}
-          className={`${styles.filterButton} ${filter === 'profile' ? styles.active : ''}`}
-        >
-          Профиль
-        </button>
-        <button
-          onClick={() => setFilter('system')}
-          className={`${styles.filterButton} ${filter === 'system' ? styles.active : ''}`}
-        >
-          Система
-        </button>
+        {filters.map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`${styles.filterButton} ${filter === f.key ? styles.active : ''}`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       <div className={styles.notificationsList}>
-        {filteredNotifications.length === 0 ? (
+        {loading ? (
+          <div className={styles.emptyState}>
+            <FaSpinner className={`${styles.emptyIcon} ${styles.spinning}`} />
+            <p>Загрузка...</p>
+          </div>
+        ) : notifications.length === 0 ? (
           <div className={styles.emptyState}>
             <FaBell className={styles.emptyIcon} />
             <p>Нет уведомлений</p>
           </div>
         ) : (
-          filteredNotifications.map(notification => (
+          notifications.map(notification => (
             <div
               key={notification.id}
-              className={`${styles.notificationItem} ${!notification.read ? styles.unread : ''}`}
+              className={`${styles.notificationItem} ${!notification.is_read ? styles.unread : ''}`}
+              onClick={() => handleNotificationClick(notification)}
             >
               <div className={styles.notificationIconContainer}>
                 {getNotificationIcon(notification.type)}
@@ -133,10 +170,31 @@ function NotificationsPage({ user, onBack }) {
                 <div className={styles.notificationHeader}>
                   <h3 className={styles.notificationTitle}>{notification.title}</h3>
                   <span className={styles.notificationTime}>
-                    {formatTimestamp(notification.timestamp)}
+                    {formatTimestamp(notification.created_at)}
                   </span>
                 </div>
-                <p className={styles.notificationMessage}>{notification.message}</p>
+                {(() => {
+                  const { text, code } = parseMessageWithCode(notification.message);
+                  return (
+                    <>
+                      <p className={styles.notificationMessage}>{text}</p>
+                      {code && (
+                        <div className={styles.codeBlock}>
+                          <span className={styles.codeValue}>{code}</span>
+                          <button
+                            className={styles.copyButton}
+                            onClick={(e) => handleCopyCode(e, code, notification.id)}
+                            title="Скопировать"
+                          >
+                            {copiedId === notification.id
+                              ? <><FaCheck /> Скопировано</>
+                              : <><FaCopy /> Скопировать</>}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           ))

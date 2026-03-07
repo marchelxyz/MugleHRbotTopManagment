@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 import crud, schemas, models
 from database import get_db
 from dependencies import get_current_user
-from crud import verify_password, get_password_hash 
+from crud import verify_password, get_password_hash
 
 router = APIRouter(
     prefix="/users",
@@ -11,13 +12,59 @@ router = APIRouter(
 )
 
 @router.post("/auth/login", response_model=schemas.UserResponse)
-async def login_user(request: schemas.LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login_user(
+    request: schemas.LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    telegram_id: Optional[str] = Header(None, alias="X-Telegram-Id"),
+    telegram_photo_url: Optional[str] = Header(None, alias="X-Telegram-Photo-Url"),
+):
+    """
+    Вход по логину и паролю.
+    Если передан заголовок X-Telegram-Id, привязывает telegram_id к аккаунту
+    (для пользователей, зарегистрировавшихся через веб и входящих из Telegram).
+    """
     user = await crud.verify_user_credentials(db, request.login, request.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный логин или пароль"
         )
+    
+    # Привязка аккаунта к Telegram (если вход из Telegram WebApp)
+    if telegram_id:
+        try:
+            tg_id = int(telegram_id)
+            if tg_id < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Некорректный Telegram ID",
+                )
+            if user.telegram_id is None:
+                existing = await crud.get_user_by_telegram(db, tg_id)
+                if existing and existing.id != user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Этот Telegram уже привязан к другому аккаунту",
+                    )
+                user.telegram_id = tg_id
+                if telegram_photo_url:
+                    user.telegram_photo_url = telegram_photo_url
+                await db.commit()
+                await db.refresh(user)
+            elif user.telegram_id == tg_id and telegram_photo_url:
+                user.telegram_photo_url = telegram_photo_url
+                await db.commit()
+                await db.refresh(user)
+            elif user.telegram_id != tg_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Этот аккаунт уже привязан к другому Telegram",
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Некорректный Telegram ID",
+            )
     
     # Проверяем статус пользователя
     if user.status == 'blocked':
@@ -61,14 +108,14 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to complete registration process.")
 
 @router.get("/", response_model=list[schemas.UserResponse])
-async def list_users(db: AsyncSession = Depends(get_db)):
+async def list_users(
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     return await crud.get_users(db)
 
 @router.get("/me", response_model=schemas.UserResponse)
-async def get_self(telegram_id: str = Header(alias="X-Telegram-Id"), db: AsyncSession = Depends(get_db)):
-    user = await crud.get_user_by_telegram(db, int(telegram_id))
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+async def get_self(user: models.User = Depends(get_current_user)):
     return user
 
 @router.put("/me", response_model=schemas.UserResponse)
@@ -106,6 +153,42 @@ async def get_user_transactions_route(
     - days: количество дней для выборки (по умолчанию 7)
     """
     return await crud.get_user_transactions(db, user_id=user_id, days=days)
+
+@router.post("/me/card", response_model=schemas.UserResponse)
+async def upload_card(
+    file: UploadFile,
+    user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Загружает .pkpass файл бонусной карты через браузер."""
+    if not file.filename or not file.filename.endswith('.pkpass'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Допускается только файл формата .pkpass",
+        )
+    file_content = await file.read()
+    if not file_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Файл пустой",
+        )
+    try:
+        result = await crud.process_pkpass_file(db, user.id, file_content)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.",
+        )
+    await crud._create_notification(
+        db, user.id, "system",
+        "Бонусная карта добавлена",
+        "Ваша бонусная карта успешно добавлена в профиль.",
+    )
+    await db.commit()
+    await db.refresh(user)
+    return schemas.UserResponse.model_validate(user)
 
 @router.delete("/me/card", response_model=schemas.UserResponse)
 async def delete_card(

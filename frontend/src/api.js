@@ -1,13 +1,27 @@
 // frontend/src/api.js
 import axios from 'axios';
 
-// API_BASE_URL используется только для apiClient, экспортировать его не нужно
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-console.log('Using API URL:', API_BASE_URL);
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
+
+/**
+ * Возвращает заголовки авторизации (X-Telegram-Id или X-User-Id).
+ * В Telegram WebApp использует telegram user id, в браузере — userId из localStorage.
+ */
+export function getAuthHeaders() {
+  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+  if (telegramId) {
+    return { headers: { 'X-Telegram-Id': telegramId } };
+  }
+  const userId = localStorage.getItem('userId');
+  if (userId) {
+    return { headers: { 'X-User-Id': userId } };
+  }
+  return {};
+}
 
 // Интерсептор для автоматического добавления заголовка авторизации
 apiClient.interceptors.request.use(
@@ -26,12 +40,16 @@ apiClient.interceptors.request.use(
 
 // --- Существующие функции (без изменений) ---
 
-// --- ФУНКЦИЯ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР ---
-export const loginUser = (login, password) => {
-  return apiClient.post('/users/auth/login', {
-    login,
-    password
-  });
+// --- ФУНКЦИЯ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР / ПРИВЯЗКИ TELEGRAM ---
+export const loginUser = (login, password, telegramId = null, telegramPhotoUrl = null) => {
+  const headers = {};
+  if (telegramId) {
+    headers['X-Telegram-Id'] = String(telegramId);
+  }
+  if (telegramPhotoUrl) {
+    headers['X-Telegram-Photo-Url'] = telegramPhotoUrl;
+  }
+  return apiClient.post('/users/auth/login', { login, password }, { headers });
 };
 
 export const checkUserStatus = (telegramId) => {
@@ -78,35 +96,19 @@ export const transferPoints = (transferData) => {
   return apiClient.post('/points/transfer', transferData);
 };
 
-export const requestProfileUpdate = (updateData) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/users/me/request-update', updateData, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const requestProfileUpdate = (updateData) =>
+  apiClient.post('/users/me/request-update', updateData, getAuthHeaders());
 
 export const getFeed = () => apiClient.get('/transactions/feed');
 
-export const getLeaderboard = ({ period, type }) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get(`/leaderboard/?period=${period}&type=${type}`, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const getLeaderboard = ({ period, type }) =>
+  apiClient.get(`/leaderboard/?period=${period}&type=${type}`, getAuthHeaders());
 
-export const getMyRank = ({ period, type }) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const getMyRank = ({ period, type }) =>
+  apiClient.get(`/leaderboard/my-rank?period=${period}&type=${type}`, getAuthHeaders());
 
-export const getLeaderboardStatus = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get('/leaderboard/status', {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const getLeaderboardStatus = () =>
+  apiClient.get('/leaderboard/status', getAuthHeaders());
 
 export const getMarketItems = () => apiClient.get('/market/items');
 
@@ -128,222 +130,93 @@ export const getUserTransactions = (userId) => {
   return apiClient.get(`/users/${userId}/transactions`);
 };
 
-export const addPointsToAll = (data) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/admin/add-points', data, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const addPointsToAll = (data) =>
+  apiClient.post('/admin/add-points', data, getAuthHeaders());
 
-export const createMarketItem = (itemData) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/admin/market-items', itemData, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const createMarketItem = (itemData) =>
+  apiClient.post('/admin/market-items', itemData, getAuthHeaders());
 
 export const getBanners = () => apiClient.get('/banners');
 
 export const getAppSettings = () => apiClient.get('/app-settings');
 
-export const updateAppSettings = (settingsData) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.put('/app-settings', settingsData, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const updateAppSettings = (settingsData) =>
+  apiClient.put('/app-settings', settingsData, getAuthHeaders());
 
-export const getAllBanners = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.get('/admin/banners', {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const getAllBanners = () =>
+  apiClient.get('/admin/banners', getAuthHeaders());
 
-export const createBanner = (bannerData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post('/admin/banners', bannerData, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const createBanner = (bannerData) =>
+  apiClient.post('/admin/banners', bannerData, getAuthHeaders());
 
-export const updateBanner = (bannerId, bannerData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.put(`/admin/banners/${bannerId}`, bannerData, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const updateBanner = (bannerId, bannerData) =>
+  apiClient.put(`/admin/banners/${bannerId}`, bannerData, getAuthHeaders());
 
-export const deleteBanner = (bannerId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.delete(`/admin/banners/${bannerId}`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const deleteBanner = (bannerId) =>
+  apiClient.delete(`/admin/banners/${bannerId}`, getAuthHeaders());
 
-export const getAllMarketItems = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.get('/admin/market-items', {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const getAllMarketItems = () =>
+  apiClient.get('/admin/market-items', getAuthHeaders());
 
-export const updateMarketItem = (itemId, itemData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;  
-    return apiClient.put(`/admin/market-items/${itemId}`, itemData, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const updateMarketItem = (itemId, itemData) =>
+  apiClient.put(`/admin/market-items/${itemId}`, itemData, getAuthHeaders());
 
-export const archiveMarketItem = (itemId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.delete(`/admin/market-items/${itemId}`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const archiveMarketItem = (itemId) =>
+  apiClient.delete(`/admin/market-items/${itemId}`, getAuthHeaders());
 
-export const getArchivedMarketItems = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.get('/admin/market-items/archived', {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const getArchivedMarketItems = () =>
+  apiClient.get('/admin/market-items/archived', getAuthHeaders());
 
-export const restoreMarketItem = (itemId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post(`/admin/market-items/${itemId}/restore`, {}, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const restoreMarketItem = (itemId) =>
+  apiClient.post(`/admin/market-items/${itemId}/restore`, {}, getAuthHeaders());
 
-export const assembleTickets = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post('/roulette/assemble', {}, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const assembleTickets = () =>
+  apiClient.post('/roulette/assemble', {}, getAuthHeaders());
 
-export const spinRoulette = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post('/roulette/spin', {}, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const spinRoulette = () =>
+  apiClient.post('/roulette/spin', {}, getAuthHeaders());
 
 export const getRouletteHistory = () => apiClient.get('/roulette/history');
 
-export const addTicketsToAll = (data) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/admin/add-tickets', data, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const addTicketsToAll = (data) =>
+  apiClient.post('/admin/add-tickets', data, getAuthHeaders());
 
-export const resetDailyTransferLimits = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/admin/reset-daily-transfer-limits', {}, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const resetDailyTransferLimits = () =>
+  apiClient.post('/admin/reset-daily-transfer-limits', {}, getAuthHeaders());
 
-export const deleteUserCard = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.delete('/users/me/card', {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const deleteUserCard = () =>
+  apiClient.delete('/users/me/card', getAuthHeaders());
 
-export const searchUsers = (query) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.get(`/users/search/?query=${query}`, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const searchUsers = (query) =>
+  apiClient.get(`/users/search/?query=${query}`, getAuthHeaders());
 
-export const adminGetAllUsers = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.get('/admin/users', {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const adminGetAllUsers = () =>
+  apiClient.get('/admin/users', getAuthHeaders());
 
-export const adminUpdateUser = (userId, userData) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.put(`/admin/users/${userId}`, userData, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const adminUpdateUser = (userId, userData) =>
+  apiClient.put(`/admin/users/${userId}`, userData, getAuthHeaders());
 
-export const adminDeleteUser = (userId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.delete(`/admin/users/${userId}`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const adminDeleteUser = (userId) =>
+  apiClient.delete(`/admin/users/${userId}`, getAuthHeaders());
 
 // --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ РЕГИСТРАЦИЯМИ ---
-export const getPendingUsers = () => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.get('/admin/users/pending', { headers });
-};
+export const getPendingUsers = () =>
+  apiClient.get('/admin/users/pending', getAuthHeaders());
 
-export const approveUserRegistration = (userId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const currentUserId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (currentUserId) {
-        headers['X-User-Id'] = currentUserId;
-    }
-    return apiClient.post(`/admin/users/${userId}/approve`, {}, { headers });
-};
+export const approveUserRegistration = (userId) =>
+  apiClient.post(`/admin/users/${userId}/approve`, {}, getAuthHeaders());
 
-export const rejectUserRegistration = (userId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const currentUserId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (currentUserId) {
-        headers['X-User-Id'] = currentUserId;
-    }
-    return apiClient.post(`/admin/users/${userId}/reject`, {}, { headers });
-};
+export const rejectUserRegistration = (userId) =>
+  apiClient.post(`/admin/users/${userId}/reject`, {}, getAuthHeaders());
 
 // --- ФУНКЦИИ ДЛЯ УПРАВЛЕНИЯ УЧЕТНЫМИ ДАННЫМИ ---
-export const setUserCredentials = (userId, credentials) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    if (!telegramId) {
-      return Promise.reject(new Error('Telegram ID не найден'));
-    }
-    return apiClient.post(`/admin/users/${userId}/set-credentials`, credentials, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const setUserCredentials = (userId, credentials) =>
+  apiClient.post(`/admin/users/${userId}/set-credentials`, credentials, getAuthHeaders());
 
-export const bulkSendCredentials = (requestData) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    if (!telegramId) {
-      return Promise.reject(new Error('Telegram ID не найден'));
-    }
-    return apiClient.post('/admin/users/bulk-send-credentials', requestData, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const bulkSendCredentials = (requestData) =>
+  apiClient.post('/admin/users/bulk-send-credentials', requestData, getAuthHeaders());
 
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ АДМИН-ПАНЕЛИ ---
-
-const getAdminHeaders = () => ({
-  headers: { 'X-Telegram-Id': window.Telegram.WebApp.initDataUnsafe?.user?.id },
-});
 
 // Добавляем startDate и endDate в параметры
 export const getGeneralStats = (startDate, endDate) => {
@@ -352,7 +225,7 @@ export const getGeneralStats = (startDate, endDate) => {
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
 
-    return apiClient.get(`/admin/statistics/general?${params.toString()}`, getAdminHeaders());
+    return apiClient.get(`/admin/statistics/general?${params.toString()}`, getAuthHeaders());
 };
 
 export const getHourlyActivityStats = (startDate, endDate) => {
@@ -360,23 +233,23 @@ export const getHourlyActivityStats = (startDate, endDate) => {
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
 
-  return apiClient.get(`/admin/statistics/hourly_activity?${params.toString()}`, getAdminHeaders());
+  return apiClient.get(`/admin/statistics/hourly_activity?${params.toString()}`, getAuthHeaders());
 };
 
 export const getUserEngagementStats = () => {
-  return apiClient.get('/admin/statistics/user_engagement', getAdminHeaders());
+  return apiClient.get('/admin/statistics/user_engagement', getAuthHeaders());
 };
 
 export const getPopularItemsStats = () => {
-  return apiClient.get('/admin/statistics/popular_items', getAdminHeaders());
+  return apiClient.get('/admin/statistics/popular_items', getAuthHeaders());
 };
 
 export const getInactiveUsers = () => {
-  return apiClient.get('/admin/statistics/inactive_users', getAdminHeaders());
+  return apiClient.get('/admin/statistics/inactive_users', getAuthHeaders());
 };
 
 export const getTotalBalance = () => {
-  return apiClient.get('/admin/statistics/total_balance', getAdminHeaders());
+  return apiClient.get('/admin/statistics/total_balance', getAuthHeaders());
 };
 
 export const getLoginActivityStats = (startDate, endDate) => {
@@ -384,18 +257,18 @@ export const getLoginActivityStats = (startDate, endDate) => {
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
 
-    return apiClient.get(`/admin/statistics/login_activity?${params.toString()}`, getAdminHeaders());
+    return apiClient.get(`/admin/statistics/login_activity?${params.toString()}`, getAuthHeaders());
 };
 
 export const getActiveUserRatio = () => {
-    return apiClient.get('/admin/statistics/active_user_ratio', getAdminHeaders());
+    return apiClient.get('/admin/statistics/active_user_ratio', getAuthHeaders());
 };
 
 // --- НОВЫЙ БЛОК ДЛЯ ЭКСПОРТА ---
 
 export const exportUserEngagement = () => {
     return apiClient.get('/admin/statistics/user_engagement/export', {
-        ...getAdminHeaders(), // Добавляем заголовки аутентификации
+        ...getAuthHeaders(), // Добавляем заголовки аутентификации
         responseType: 'blob', // <-- ВАЖНО: указываем, что мы ожидаем файл
     });
 };
@@ -408,7 +281,7 @@ export const exportConsolidatedReport = (startDate, endDate) => {
     if (endDate) params.append('end_date', endDate);
 
     return apiClient.get(`/admin/statistics/export/consolidated?${params.toString()}`, {
-        ...getAdminHeaders(),
+        ...getAuthHeaders(),
         responseType: 'blob', // Указываем, что ждем файл
     });
 };
@@ -416,65 +289,41 @@ export const exportConsolidatedReport = (startDate, endDate) => {
 // --- ВЫГРУЗКА ВСЕГО СПИСКА ПОЛЬЗОВАТЕЛЕЙ ---
 export const exportAllUsers = () => {
     return apiClient.get('/admin/users/export', {
-        ...getAdminHeaders(),
+        ...getAuthHeaders(),
         responseType: 'blob', // Указываем, что ждем файл
     });
 };
 
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С СЕССИЯМИ ---
 
-export const startSession = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  // Отправляем POST-запрос для создания новой сессии
-  return apiClient.post('/sessions/start', {}, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const startSession = () =>
+  apiClient.post('/sessions/start', {}, getAuthHeaders());
 
-export const pingSession = (sessionId) => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  // Отправляем PUT-запрос для обновления существующей сессии
-  return apiClient.put(`/sessions/ping/${sessionId}`, {}, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const pingSession = (sessionId) =>
+  apiClient.put(`/sessions/ping/${sessionId}`, {}, getAuthHeaders());
 
 export const getAverageSessionDuration = (startDate, endDate) => {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
 
-    return apiClient.get(`/admin/statistics/average_session_duration?${params.toString()}`, getAdminHeaders());
+    return apiClient.get(`/admin/statistics/average_session_duration?${params.toString()}`, getAuthHeaders());
 };
 
 // --- ОБУЧАЮЩИЕ ИСТОРИИ ---
-export const completeOnboarding = () => {
-  const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-  return apiClient.post('/users/me/complete-onboarding', {}, {
-    headers: { 'X-Telegram-Id': telegramId },
-  });
-};
+export const completeOnboarding = () =>
+  apiClient.post('/users/me/complete-onboarding', {}, getAuthHeaders());
 
-export const deleteMarketItemPermanently = (itemId) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.delete(`/admin/market-items/${itemId}/permanent`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const deleteMarketItemPermanently = (itemId) =>
+  apiClient.delete(`/admin/market-items/${itemId}/permanent`, getAuthHeaders());
 
 // --- API ФУНКЦИИ ДЛЯ STATIX BONUS ---
 export const getStatixBonusItem = () => {
     return apiClient.get('/market/statix-bonus');
 };
 
-export const purchaseStatixBonus = (telegramId, bonusAmount) => {
-    return apiClient.post('/market/statix-bonus/purchase', {
-        user_id: telegramId,
-        bonus_amount: bonusAmount
-    }, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const purchaseStatixBonus = (telegramId, bonusAmount) =>
+  apiClient.post('/market/statix-bonus/purchase', { user_id: telegramId, bonus_amount: bonusAmount }, getAuthHeaders());
 
 // --- Функции для работы с Redis кешем ---
 
@@ -482,12 +331,8 @@ export const purchaseStatixBonus = (telegramId, bonusAmount) => {
  * Получает значение из кеша Redis
  * @param {string} key - Ключ кеша (feed, market, leaderboard, banners, history)
  */
-export const getCache = (key) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    return apiClient.get(`/cache/${key}`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const getCache = (key) =>
+  apiClient.get(`/cache/${key}`, getAuthHeaders());
 
 /**
  * Устанавливает значение в кеш Redis
@@ -495,67 +340,34 @@ export const getCache = (key) => {
  * @param {any} value - Значение для сохранения
  * @param {number} ttl - Время жизни в секундах (опционально)
  */
-export const setCache = (key, value, ttl = null) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    return apiClient.post(`/cache/${key}`, {
-        key,
-        value,
-        ttl
-    }, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const setCache = (key, value, ttl = null) =>
+  apiClient.post(`/cache/${key}`, { key, value, ttl }, getAuthHeaders());
 
 /**
  * Удаляет значение из кеша Redis
  * @param {string} key - Ключ кеша
  */
-export const deleteCache = (key) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    return apiClient.delete(`/cache/${key}`, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const deleteCache = (key) =>
+  apiClient.delete(`/cache/${key}`, getAuthHeaders());
 
 /**
  * Очищает весь кеш пользователя
  */
-export const clearAllCache = () => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    return apiClient.delete('/cache/', {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const clearAllCache = () =>
+  apiClient.delete('/cache/', getAuthHeaders());
 
 // --- АДМИН API ДЛЯ STATIX BONUS ---
-export const getStatixBonusSettings = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.get('/admin/statix-bonus', {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const getStatixBonusSettings = () =>
+  apiClient.get('/admin/statix-bonus', getAuthHeaders());
 
-export const updateStatixBonusSettings = (settings) => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.put('/admin/statix-bonus', settings, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const updateStatixBonusSettings = (settings) =>
+  apiClient.put('/admin/statix-bonus', settings, getAuthHeaders());
 
-export const adminGenerateLeaderboardBanners = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post('/admin/generate-leaderboard-banners', {}, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const adminGenerateLeaderboardBanners = () =>
+  apiClient.post('/admin/generate-leaderboard-banners', {}, getAuthHeaders());
 
-// --- НОВАЯ ФУНКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ ---
-export const adminGenerateTestLeaderboardBanners = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post('/admin/generate-test-banners', {}, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const adminGenerateTestLeaderboardBanners = () =>
+  apiClient.post('/admin/generate-test-banners', {}, getAuthHeaders());
 
 // --- API ДЛЯ СОВМЕСТНЫХ ПОДАРКОВ ---
 export const createSharedGiftInvitation = (invitationData) => {
@@ -581,125 +393,66 @@ export const rejectSharedGiftInvitation = (invitationId, userId) => {
     });
 };
 
-export const cleanupExpiredSharedGiftInvitations = () => {
-    const telegramId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
-    return apiClient.post('/shared-gifts/cleanup', {}, {
-        headers: { 'X-Telegram-Id': telegramId },
-    });
-};
+export const cleanupExpiredSharedGiftInvitations = () =>
+  apiClient.post('/shared-gifts/cleanup', {}, getAuthHeaders());
 
 // --- ФУНКЦИЯ ДЛЯ ИЗМЕНЕНИЯ ПАРОЛЯ ---
-export const changePassword = (currentPassword, newPassword) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.post('/users/me/change-password', {
-        current_password: currentPassword,
-        new_password: newPassword
-    }, { headers });
-};
+export const changePassword = (currentPassword, newPassword) =>
+  apiClient.post('/users/me/change-password', { current_password: currentPassword, new_password: newPassword }, getAuthHeaders());
 
 // --- АДМИН API ДЛЯ УПРАВЛЕНИЯ ПОКУПКАМИ И СОГЛАСОВАНИЯМИ ---
-export const getPendingLocalPurchases = () => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.get('/admin/local-purchases/pending', { headers });
-};
+export const getPendingLocalPurchases = () =>
+  apiClient.get('/admin/local-purchases/pending', getAuthHeaders());
 
-export const getPendingProfileUpdates = () => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.get('/admin/profile-updates/pending', { headers });
-};
+export const getPendingProfileUpdates = () =>
+  apiClient.get('/admin/profile-updates/pending', getAuthHeaders());
 
-export const approveLocalPurchase = (purchaseId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.post(`/admin/local-purchases/${purchaseId}/approve`, {}, { headers });
-};
+export const approveLocalPurchase = (purchaseId) =>
+  apiClient.post(`/admin/local-purchases/${purchaseId}/approve`, {}, getAuthHeaders());
 
-export const rejectLocalPurchase = (purchaseId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.post(`/admin/local-purchases/${purchaseId}/reject`, {}, { headers });
-};
+export const rejectLocalPurchase = (purchaseId) =>
+  apiClient.post(`/admin/local-purchases/${purchaseId}/reject`, {}, getAuthHeaders());
 
-export const approveProfileUpdate = (updateId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.post(`/admin/profile-updates/${updateId}/approve`, {}, { headers });
-};
+export const approveProfileUpdate = (updateId) =>
+  apiClient.post(`/admin/profile-updates/${updateId}/approve`, {}, getAuthHeaders());
 
-export const rejectProfileUpdate = (updateId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const userId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (userId) {
-        headers['X-User-Id'] = userId;
-    }
-    return apiClient.post(`/admin/profile-updates/${updateId}/reject`, {}, { headers });
-};
+export const rejectProfileUpdate = (updateId) =>
+  apiClient.post(`/admin/profile-updates/${updateId}/reject`, {}, getAuthHeaders());
 
 // --- АДМИН API ДЛЯ УПРАВЛЕНИЯ ПАРОЛЯМИ ПОЛЬЗОВАТЕЛЕЙ ---
-export const adminChangeUserPassword = (userId, newPassword) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const currentUserId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (currentUserId) {
-        headers['X-User-Id'] = currentUserId;
-    }
-    return apiClient.post(`/admin/users/${userId}/change-password`, {
-        new_password: newPassword
-    }, { headers });
+export const adminChangeUserPassword = (userId, newPassword) =>
+  apiClient.post(`/admin/users/${userId}/change-password`, { new_password: newPassword }, getAuthHeaders());
+
+export const adminDeleteUserPassword = (userId) =>
+  apiClient.delete(`/admin/users/${userId}/password`, getAuthHeaders());
+
+// --- NOTIFICATIONS ---
+export const getNotifications = (type = null, page = 1) => {
+  const params = { page };
+  if (type) params.type = type;
+  return apiClient.get('/notifications', { ...getAuthHeaders(), params });
 };
 
-export const adminDeleteUserPassword = (userId) => {
-    const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const currentUserId = localStorage.getItem('userId');
-    const headers = {};
-    if (telegramId) {
-        headers['X-Telegram-Id'] = telegramId;
-    } else if (currentUserId) {
-        headers['X-User-Id'] = currentUserId;
-    }
-    return apiClient.delete(`/admin/users/${userId}/password`, { headers });
+export const getUnreadNotificationCount = () =>
+  apiClient.get('/notifications/unread-count', getAuthHeaders());
+
+export const markNotificationRead = (notificationId) =>
+  apiClient.put(`/notifications/${notificationId}/read`, null, getAuthHeaders());
+
+export const markAllNotificationsRead = () =>
+  apiClient.put('/notifications/read-all', null, getAuthHeaders());
+
+// --- CARD UPLOAD ---
+export const uploadPkpassFile = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiClient.post('/users/me/card', formData, getAuthHeaders());
+};
+
+// --- ADMIN ALL PURCHASES ---
+export const getAllPurchases = (type = null, statusFilter = null, page = 1, perPage = 50) => {
+  const params = { page, per_page: perPage };
+  if (type) params.type = type;
+  if (statusFilter) params.status = statusFilter;
+  return apiClient.get('/admin/purchases/all', { ...getAuthHeaders(), params });
 };

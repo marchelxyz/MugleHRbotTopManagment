@@ -8,15 +8,25 @@ import re
 from sqlalchemy import text, select
 
 from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications
 from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    CREATE_TABLES_LOCK_KEY = 1234567891
+    async with engine.connect() as conn:
+        async with conn.begin():
+            await conn.execute(text(f"SELECT pg_advisory_lock({CREATE_TABLES_LOCK_KEY})"))
+        try:
+            async with conn.begin():
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception as e:
+            logger.warning(f"⚠️ metadata.create_all завершился с ошибкой (таблицы могли быть созданы другим воркером): {e}")
+        finally:
+            async with conn.begin():
+                await conn.execute(text(f"SELECT pg_advisory_unlock({CREATE_TABLES_LOCK_KEY})"))
     
     migrations_dir = Path(__file__).parent / "migrations"
     if not migrations_dir.exists():
@@ -188,13 +198,13 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         
         if path.startswith('/banners') or path.startswith('/market/items') or path.startswith('/market/statix-bonus'):
-            response.headers["Cache-Control"] = "public, max-age=300"
+            response.headers["Cache-Control"] = "public, max-age=60"
         elif path.startswith('/leaderboard'):
-            response.headers["Cache-Control"] = "public, max-age=60"
+            response.headers["Cache-Control"] = "public, max-age=15"
         elif path.startswith('/transactions/feed'):
-            response.headers["Cache-Control"] = "public, max-age=30"
+            response.headers["Cache-Control"] = "public, max-age=10"
         elif request.method == "GET" and not path.startswith('/users/me') and not path.startswith('/admin'):
-            response.headers["Cache-Control"] = "public, max-age=60"
+            response.headers["Cache-Control"] = "public, max-age=15"
         else:
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
@@ -230,6 +240,7 @@ app.include_router(sessions.router)
 app.include_router(shared_gifts.router)
 app.include_router(cache.router)
 app.include_router(app_settings.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 def read_root():

@@ -7,16 +7,7 @@ import styles from './RegistrationPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 
-// --- НОВАЯ ФУНКЦИЯ: Конвертирует дату из DD.MM.YYYY в YYYY-MM-DD ---
-const formatDateForApi = (date) => {
-  if (!date || date.includes('_')) return null;
-  const parts = date.split('.');
-  if (parts.length === 3) {
-    const [day, month, year] = parts;
-    return `${year}-${month}-${day}`;
-  }
-  return null;
-};
+import { formatDateForApi } from '../utils/dateFormatter';
 
 function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = false, onBackToLogin }) {
   const { showAlert } = useModalAlert();
@@ -192,9 +183,14 @@ function RegistrationPage({ telegramUser, onRegistrationSuccess, isWebBrowser = 
     <PageLayout title="Регистрация">
       <div className={styles.subtitle}>
         <p>{`Привет, ${telegramUser?.first_name || 'пользователь'}! Для завершения настройки, пожалуйста, укажите вашу информацию.`}</p>
-        <p style={{ marginTop: '10px', fontSize: '0.9em', color: '#666' }}>
-          Если у вас уже есть аккаунт в веб-версии, укажите ваш email для автоматического связывания аккаунтов.
-        </p>
+        {onBackToLogin && (
+          <p style={{ marginTop: '10px', fontSize: '0.9em' }}>
+            Уже есть аккаунт (регистрировались через веб)?{' '}
+            <button type="button" onClick={onBackToLogin} className={styles.linkButton}>
+              Войти
+            </button>
+          </p>
+        )}
       </div>
       <form onSubmit={handleSubmit} className={styles.form}>
         <input name="firstName" type="text" value={formData.firstName} onChange={handleChange} placeholder="Ваше имя" className={styles.input} />

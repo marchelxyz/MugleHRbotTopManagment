@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import select, func, union_all, literal, case
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 import crud
@@ -712,3 +713,138 @@ async def trigger_leaderboard_test_banner_generation(
     except Exception as e:
         print(f"Ошибка при ручной генерации ТЕСТОВЫХ баннеров: {e}")
         raise HTTPException(status_code=500, detail="Не удалось сгенерировать тестовые баннеры")
+
+
+@router.get("/purchases/all", response_model=schemas.UnifiedPurchaseListResponse)
+async def get_all_purchases(
+    type: Optional[str] = Query(None, description="regular, local, statix, shared"),
+    status_filter: Optional[str] = Query(None, alias="status", description="pending, approved, rejected, expired, completed"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает все покупки всех типов с фильтрацией и пагинацией."""
+    items, total = await _get_all_purchases_from_db(db, type, status_filter, page, per_page)
+    return schemas.UnifiedPurchaseListResponse(items=items, total=total)
+
+
+async def _get_all_purchases_from_db(
+    db: AsyncSession,
+    purchase_type: Optional[str],
+    status_filter: Optional[str],
+    page: int,
+    per_page: int,
+) -> tuple[list[schemas.UnifiedPurchaseResponse], int]:
+    """Собирает и объединяет все покупки из разных таблиц."""
+    result_items: list[schemas.UnifiedPurchaseResponse] = []
+
+    # --- Regular purchases ---
+    if not purchase_type or purchase_type == 'regular':
+        q = (
+            select(models.Purchase)
+            .join(models.MarketItem, models.Purchase.item_id == models.MarketItem.id)
+            .join(models.User, models.Purchase.user_id == models.User.id)
+            .options(selectinload(models.Purchase.user), selectinload(models.Purchase.item))
+            .where(models.MarketItem.is_local_purchase == False)  # noqa: E712
+            .where(models.MarketItem.is_shared_gift == False)  # noqa: E712
+        )
+        rows = (await db.execute(q)).scalars().all()
+        for p in rows:
+            is_statix = p.item and 'statix' in (p.item.name or '').lower()
+            ptype = 'statix' if is_statix else 'regular'
+            if purchase_type and ptype != purchase_type:
+                continue
+            u = p.user
+            result_items.append(schemas.UnifiedPurchaseResponse(
+                id=p.id,
+                purchase_type=ptype,
+                user_name=f"{u.first_name or ''} {u.last_name or ''}".strip(),
+                user_id=p.user_id,
+                item_name=p.item.name if p.item else "—",
+                item_id=p.item_id,
+                amount=p.item.price if p.item else 0,
+                status="completed",
+                created_at=p.timestamp or datetime.utcnow(),
+                phone_number=u.phone_number,
+                first_name=u.first_name,
+                last_name=u.last_name,
+                position=u.position,
+                email=u.email,
+                telegram_username=u.username,
+            ))
+
+    # --- Local purchases ---
+    if not purchase_type or purchase_type == 'local':
+        q = (
+            select(models.LocalGift)
+            .options(selectinload(models.LocalGift.user), selectinload(models.LocalGift.item))
+        )
+        rows = (await db.execute(q)).scalars().all()
+        for lp in rows:
+            u = lp.user
+            result_items.append(schemas.UnifiedPurchaseResponse(
+                id=lp.id,
+                purchase_type='local',
+                user_name=f"{u.first_name or ''} {u.last_name or ''}".strip(),
+                user_id=lp.user_id,
+                item_name=lp.item.name if lp.item else "—",
+                item_id=lp.item_id,
+                amount=lp.reserved_amount,
+                status=lp.status,
+                created_at=lp.created_at or datetime.utcnow(),
+                city=lp.city,
+                website_url=lp.website_url,
+                phone_number=u.phone_number,
+                first_name=u.first_name,
+                last_name=u.last_name,
+                position=u.position,
+                email=u.email,
+                telegram_username=u.username,
+            ))
+
+    # --- Shared gifts ---
+    if not purchase_type or purchase_type == 'shared':
+        q = (
+            select(models.SharedGiftInvitation)
+            .options(
+                selectinload(models.SharedGiftInvitation.buyer),
+                selectinload(models.SharedGiftInvitation.invited_user),
+                selectinload(models.SharedGiftInvitation.item),
+            )
+        )
+        rows = (await db.execute(q)).scalars().all()
+        for sg in rows:
+            buyer = sg.buyer
+            buyer_name = f"{buyer.first_name or ''} {buyer.last_name or ''}".strip() if buyer else "—"
+            invited_name = f"{sg.invited_user.first_name or ''} {sg.invited_user.last_name or ''}".strip() if sg.invited_user else ""
+            result_items.append(schemas.UnifiedPurchaseResponse(
+                id=sg.id,
+                purchase_type='shared',
+                user_name=f"{buyer_name} + {invited_name}" if invited_name else buyer_name,
+                user_id=sg.buyer_id,
+                item_name=sg.item.name if sg.item else "—",
+                item_id=sg.item_id,
+                amount=sg.item.price if sg.item else 0,
+                status=sg.status,
+                created_at=sg.created_at or datetime.utcnow(),
+                phone_number=buyer.phone_number if buyer else None,
+                first_name=buyer.first_name if buyer else None,
+                last_name=buyer.last_name if buyer else None,
+                position=buyer.position if buyer else None,
+                email=buyer.email if buyer else None,
+                telegram_username=buyer.username if buyer else None,
+            ))
+
+    # --- Status filter ---
+    if status_filter:
+        result_items = [i for i in result_items if i.status == status_filter]
+
+    # --- Sort by date ---
+    result_items.sort(key=lambda x: x.created_at, reverse=True)
+    total = len(result_items)
+
+    # --- Paginate ---
+    offset = (page - 1) * per_page
+    page_items = result_items[offset:offset + per_page]
+
+    return page_items, total
