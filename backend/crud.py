@@ -9,24 +9,18 @@ import traceback
 import httpx
 from typing import Optional
 from datetime import datetime
-from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select
+from sqlalchemy.orm import selectinload, aliased
+from sqlalchemy import select, func, update, delete, extract, and_
 import random
 import bot
 import config
-from sqlalchemy.future import select
-from sqlalchemy.orm import aliased
-from sqlalchemy import select, func, update, delete, extract, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
-from database import settings
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import or_
-from sqlalchemy import text
-from sqlalchemy import select
+from sqlalchemy import or_, text
 from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
@@ -101,19 +95,29 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     pwd_context = _get_password_context()
     return pwd_context.verify(plain_password, hashed_password)
 
+def _should_reset_daily_transfer(user: models.User) -> bool:
+    """Проверяет, нужно ли сбросить daily_transfer_count (новый день)."""
+    today = date.today()
+    return user.last_login_date is None or user.last_login_date.date() < today
+
+
+async def _reset_daily_transfer_if_needed(db: AsyncSession, user: models.User) -> None:
+    """Сбрасывает daily_transfer_count при наступлении нового дня."""
+    if user and _should_reset_daily_transfer(user):
+        user.daily_transfer_count = 0
+        user.last_login_date = datetime.utcnow()
+        await db.commit()
+        await db.refresh(user)
+
+
 # Пользователи
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
     if user:
-        # Сбрасываем счетчик, если наступил новый день
-        today = date.today()
-        if user.last_login_date is None or user.last_login_date.date() < today:
-            user.daily_transfer_count = 0
-            user.last_login_date = datetime.utcnow()
-            await db.commit()
-            await db.refresh(user)
+        await _reset_daily_transfer_if_needed(db, user)
     return user
+
 
 async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     # Игнорируем анонимизированных пользователей (telegram_id < 0)
@@ -125,13 +129,7 @@ async def get_user_by_telegram(db: AsyncSession, telegram_id: int):
     )
     user = result.scalars().first()
     if user:
-        # Сбрасываем счетчик, если наступил новый день
-        today = date.today()
-        if user.last_login_date is None or user.last_login_date.date() < today:
-            user.daily_transfer_count = 0
-            user.last_login_date = datetime.utcnow()
-            await db.commit()
-            await db.refresh(user)
+        await _reset_daily_transfer_if_needed(db, user)
     return user
 
 async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
@@ -637,6 +635,7 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
     item_name = item.name
     user_telegram_id = user.telegram_id
     user_first_name = user.first_name
+    user_last_name = user.last_name
     user_username = user.username
     user_position = user.position
     user_phone_number = user.phone_number
