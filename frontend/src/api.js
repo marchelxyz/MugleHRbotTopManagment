@@ -41,10 +41,13 @@ apiClient.interceptors.request.use(
 // --- Существующие функции (без изменений) ---
 
 // --- ФУНКЦИЯ ДЛЯ ВХОДА ЧЕРЕЗ БРАУЗЕР / ПРИВЯЗКИ TELEGRAM ---
-export const loginUser = (login, password, telegramId = null) => {
+export const loginUser = (login, password, telegramId = null, telegramPhotoUrl = null) => {
   const headers = {};
   if (telegramId) {
     headers['X-Telegram-Id'] = String(telegramId);
+  }
+  if (telegramPhotoUrl) {
+    headers['X-Telegram-Photo-Url'] = telegramPhotoUrl;
   }
   return apiClient.post('/users/auth/login', { login, password }, { headers });
 };
