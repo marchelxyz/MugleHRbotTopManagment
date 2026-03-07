@@ -172,6 +172,18 @@ function PurchasesManager() {
                   </div>
                   <div className={styles.purchaseInfo}>
                     <p><strong>Пользователь:</strong> {purchase.user_name}</p>
+                    {purchase.phone_number && (
+                      <p><strong>Телефон:</strong> {purchase.phone_number}</p>
+                    )}
+                    {purchase.position && (
+                      <p><strong>Должность:</strong> {purchase.position}</p>
+                    )}
+                    {purchase.email && (
+                      <p><strong>Почта:</strong> {purchase.email}</p>
+                    )}
+                    {purchase.telegram_username && (
+                      <p><strong>Telegram:</strong> @{purchase.telegram_username}</p>
+                    )}
                     <p><strong>Сумма:</strong> {purchase.amount} спасибок</p>
                     {purchase.city && <p><strong>Город:</strong> {purchase.city}</p>}
                     {purchase.website_url && (

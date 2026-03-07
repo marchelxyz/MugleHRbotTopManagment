@@ -754,16 +754,23 @@ async def _get_all_purchases_from_db(
             ptype = 'statix' if is_statix else 'regular'
             if purchase_type and ptype != purchase_type:
                 continue
+            u = p.user
             result_items.append(schemas.UnifiedPurchaseResponse(
                 id=p.id,
                 purchase_type=ptype,
-                user_name=f"{p.user.first_name or ''} {p.user.last_name or ''}".strip(),
+                user_name=f"{u.first_name or ''} {u.last_name or ''}".strip(),
                 user_id=p.user_id,
                 item_name=p.item.name if p.item else "—",
                 item_id=p.item_id,
                 amount=p.item.price if p.item else 0,
                 status="completed",
                 created_at=p.timestamp or datetime.utcnow(),
+                phone_number=u.phone_number,
+                first_name=u.first_name,
+                last_name=u.last_name,
+                position=u.position,
+                email=u.email,
+                telegram_username=u.username,
             ))
 
     # --- Local purchases ---
@@ -774,10 +781,11 @@ async def _get_all_purchases_from_db(
         )
         rows = (await db.execute(q)).scalars().all()
         for lp in rows:
+            u = lp.user
             result_items.append(schemas.UnifiedPurchaseResponse(
                 id=lp.id,
                 purchase_type='local',
-                user_name=f"{lp.user.first_name or ''} {lp.user.last_name or ''}".strip(),
+                user_name=f"{u.first_name or ''} {u.last_name or ''}".strip(),
                 user_id=lp.user_id,
                 item_name=lp.item.name if lp.item else "—",
                 item_id=lp.item_id,
@@ -786,6 +794,12 @@ async def _get_all_purchases_from_db(
                 created_at=lp.created_at or datetime.utcnow(),
                 city=lp.city,
                 website_url=lp.website_url,
+                phone_number=u.phone_number,
+                first_name=u.first_name,
+                last_name=u.last_name,
+                position=u.position,
+                email=u.email,
+                telegram_username=u.username,
             ))
 
     # --- Shared gifts ---
@@ -800,7 +814,8 @@ async def _get_all_purchases_from_db(
         )
         rows = (await db.execute(q)).scalars().all()
         for sg in rows:
-            buyer_name = f"{sg.buyer.first_name or ''} {sg.buyer.last_name or ''}".strip() if sg.buyer else "—"
+            buyer = sg.buyer
+            buyer_name = f"{buyer.first_name or ''} {buyer.last_name or ''}".strip() if buyer else "—"
             invited_name = f"{sg.invited_user.first_name or ''} {sg.invited_user.last_name or ''}".strip() if sg.invited_user else ""
             result_items.append(schemas.UnifiedPurchaseResponse(
                 id=sg.id,
@@ -812,6 +827,12 @@ async def _get_all_purchases_from_db(
                 amount=sg.item.price if sg.item else 0,
                 status=sg.status,
                 created_at=sg.created_at or datetime.utcnow(),
+                phone_number=buyer.phone_number if buyer else None,
+                first_name=buyer.first_name if buyer else None,
+                last_name=buyer.last_name if buyer else None,
+                position=buyer.position if buyer else None,
+                email=buyer.email if buyer else None,
+                telegram_username=buyer.username if buyer else None,
             ))
 
     # --- Status filter ---
