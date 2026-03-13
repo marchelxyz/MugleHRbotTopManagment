@@ -1,0 +1,106 @@
+/* frontend/src/components/EmailPromptModal.module.css */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modal {
+  background: white;
+  border-radius: 24px;
+  padding: 30px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+}
+
+.title {
+  margin: 0 0 12px 0;
+  font-size: 22px;
+  color: #333;
+}
+
+.text {
+  margin: 0 0 24px 0;
+  color: #666;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+}
+
+.error {
+  margin: 0;
+  color: #e74c3c;
+  font-size: 14px;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.submitBtn {
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  background: var(--theme-accent-gradient);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.submitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.laterBtn {
+  padding: 12px 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: white;
+  color: #666;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.laterBtn:hover {
+  background: #f5f5f5;
+  color: #333;
+}

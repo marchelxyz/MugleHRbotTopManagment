@@ -14,7 +14,7 @@ function EditProfilePage({ user, onBack, onSaveSuccess }) {
   const [department, setDepartment] = useState(user?.department || '');
   const [position, setPosition] = useState(user?.position || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || '');
-  // Дата должна быть в формате YYYY-MM-DD для input type="date"
+  const [email, setEmail] = useState(user?.email || '');
   const [dateOfBirth, setDateOfBirth] = useState(user?.date_of_birth || '');
   
   const [error, setError] = useState('');
@@ -34,8 +34,8 @@ function EditProfilePage({ user, onBack, onSaveSuccess }) {
         last_name: lastName,
         department: department,
         position: position,
-        // Отправляем пустую строку, если поле пустое (чтобы "стереть" данные)
-        phone_number: phoneNumber || "", 
+        phone_number: phoneNumber || "",
+        email: email || "",
         date_of_birth: dateOfBirth || "",
       };
 
@@ -66,6 +66,7 @@ function EditProfilePage({ user, onBack, onSaveSuccess }) {
         <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Ваше подразделение" className={styles.input} required />
         <input type="text" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Ваша должность" className={styles.input} required />
         <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Номер телефона (необязательно)" className={styles.input} />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (для покупок и поддержки)" className={styles.input} />
         {/* Используем трюк для placeholder'а у input[type=date] */}
         <input type="text" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => {if (!e.target.value) e.target.type = 'text'}} value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} placeholder="Дата рождения (необязательно)" className={styles.input} />
 

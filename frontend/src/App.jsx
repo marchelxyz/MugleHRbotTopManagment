@@ -1,7 +1,7 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings } from './api';
+import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings, updateMe } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты навигации (загружаются сразу, так как всегда видны)
@@ -29,6 +29,7 @@ const BlockedPage = lazy(() => import('./pages/BlockedPage'));
 const TransferPage = lazy(() => import('./pages/TransferPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const OnboardingStories = lazy(() => import('./components/OnboardingStories'));
+import EmailPromptModal from './components/EmailPromptModal';
 
 import { startSession, pingSession } from './api';
 
@@ -50,6 +51,7 @@ function App() {
   const [showPendingBanner, setShowPendingBanner] = useState(false);
  // 2. Добавляем новое состояние для принудительного показа обучения
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showEmailPromptModal, setShowEmailPromptModal] = useState(false);
   const [seasonTheme, setSeasonTheme] = useState('summer');
   const seasonThemeRef = useRef('summer');
   // Инициализация windowWidth с проверкой доступности window
@@ -315,9 +317,14 @@ function App() {
   
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    // Сохраняем пользователя в localStorage
     localStorage.setItem('userId', userData.id.toString());
     localStorage.setItem('user', JSON.stringify(userData));
+    if (!isTelegramWebApp && userData.status === 'approved') {
+      const hasEmail = userData.email && String(userData.email).trim();
+      if (!hasEmail) {
+        setShowEmailPromptModal(true);
+      }
+    }
   };
   
   const navigate = (targetPage) => {
@@ -730,6 +737,20 @@ function App() {
           {renderPage()}
         </Suspense>
       </main>
+
+      {showEmailPromptModal && (
+        <EmailPromptModal
+          initialEmail={user?.email}
+          onSave={async (email) => {
+            const resp = await updateMe({ email });
+            const updated = resp.data;
+            updateUser(updated);
+            localStorage.setItem('user', JSON.stringify(updated));
+            setShowEmailPromptModal(false);
+          }}
+          onLater={() => setShowEmailPromptModal(false)}
+        />
+      )}
     </div>
   );
   // --- КОНЕЦ ИЗМЕНЕНИЙ ---

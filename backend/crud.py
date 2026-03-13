@@ -1620,7 +1620,8 @@ async def request_profile_update(db: AsyncSession, user: models.User, update_dat
         "department": user.department,
         "position": user.position,
         "phone_number": user.phone_number,
-        "date_of_birth": user.date_of_birth.isoformat() if user.date_of_birth else None
+        "date_of_birth": user.date_of_birth.isoformat() if user.date_of_birth else None,
+        "email": user.email,
     }
     
     # 2. Собираем запрошенные новые данные
