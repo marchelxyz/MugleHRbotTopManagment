@@ -99,6 +99,9 @@ export const transferPoints = (transferData) => {
 export const requestProfileUpdate = (updateData) =>
   apiClient.post('/users/me/request-update', updateData, getAuthHeaders());
 
+export const updateMe = (updateData) =>
+  apiClient.put('/users/me', updateData, getAuthHeaders());
+
 export const getFeed = () => apiClient.get('/transactions/feed');
 
 export const getLeaderboard = ({ period, type }) =>

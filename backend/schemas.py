@@ -163,6 +163,7 @@ class UserUpdate(BaseModel):
     position: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
+    email: Optional[str] = None
 
 class ProfileUpdateRequest(BaseModel):
     last_name: Optional[str] = None
@@ -170,6 +171,7 @@ class ProfileUpdateRequest(BaseModel):
     position: Optional[str] = None
     phone_number: Optional[str] = None
     date_of_birth: Optional[str] = None
+    email: Optional[str] = None
 
 class AdminUserUpdate(BaseModel):
     first_name: Optional[str] = None
