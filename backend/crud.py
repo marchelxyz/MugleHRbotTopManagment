@@ -1860,6 +1860,8 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
                 if existing_user:
                     raise ValueError(f"Логин '{new_value}' уже занят другим пользователем")
                 user.login = new_value
+        elif key == 'email':
+            user.email = None if (new_value is None or new_value == '') else new_value
         else:
             setattr(user, key, new_value)
     
@@ -2137,13 +2139,17 @@ async def admin_delete_user_password(db: AsyncSession, user_id: int, admin_user:
 async def verify_user_credentials(db: AsyncSession, login: str, password: str):
     """
     Проверяет логин и пароль пользователя.
+    Поиск выполняется по полю login или email.
     Возвращает пользователя, если учетные данные верны, иначе None.
     """
-    # Ищем пользователя по логину
+    login_trimmed = login.strip()
     result = await db.execute(
         select(models.User).where(
-            models.User.login == login,
-            models.User.browser_auth_enabled == True
+            or_(
+                models.User.login == login_trimmed,
+                models.User.email == login_trimmed,
+            ),
+            models.User.browser_auth_enabled == True,
         )
     )
     user = result.scalar_one_or_none()
