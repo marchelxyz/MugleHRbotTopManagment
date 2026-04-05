@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from typing import Any, Optional
@@ -18,6 +19,7 @@ from bitrix_service import (
     normalize_bitrix_domain,
     parse_install_auth_param,
 )
+from config import settings
 from database import get_db
 
 logger = logging.getLogger(__name__)
@@ -33,24 +35,21 @@ async def bitrix_install(request: Request, db: AsyncSession = Depends(get_db)) -
     """
     auth_raw = await _read_install_auth_param(request)
     if not auth_raw:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Отсутствует параметр auth",
-        )
+        return _html_response(_install_wrong_handler_or_missing_auth_html())
+
     try:
         auth = parse_install_auth_param(auth_raw)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return _html_response(_install_parse_error_html(str(exc)))
     if auth is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пустой auth")
+        return _html_response(_install_parse_error_html("Пустой auth"))
 
     try:
         await bitrix_crud.upsert_bitrix_portal(db, auth)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        return _html_response(_install_parse_error_html(str(exc)))
 
-    html = _install_finish_html()
-    return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
+    return _html_response(_install_finish_html())
 
 
 @router.post("/session", response_model=schemas.BitrixSessionResponse)
@@ -134,6 +133,64 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
     except UnicodeDecodeError:
         pass
     return None
+
+
+def _html_response(body: str) -> HTMLResponse:
+    """Ответ HTML для страниц установки Bitrix (в т.ч. в iframe)."""
+    return HTMLResponse(content=body, media_type="text/html; charset=utf-8")
+
+
+def _install_wrong_handler_or_missing_auth_html() -> str:
+    """
+    Подсказка, если /bitrix/install открыли из меню: в карточке перепутаны обработчик и установка.
+
+    Параметр auth Bitrix передаёт только при первой установке, не при каждом открытии приложения.
+    """
+    base = settings.BITRIX_WEB_APP_URL.rstrip("/")
+    handler_url = f"{base}/bitrix.html"
+    install_url = settings.BITRIX_INSTALL_URL
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Настройка Bitrix24</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }}
+    code {{ background: #f0f0f0; padding: 2px 6px; word-break: break-all; }}
+  </style>
+</head>
+<body>
+  <h1>Неверная ссылка в карточке приложения</h1>
+  <p>Адрес <code>/bitrix/install</code> вызывается только при <strong>первой установке</strong> —
+  Bitrix один раз передаёт сюда параметр <code>auth</code>.</p>
+  <p>Если вы открываете приложение из <strong>меню портала</strong>, параметр <code>auth</code> сюда не передаётся.</p>
+  <p><strong>Исправьте карточку приложения Bitrix24:</strong></p>
+  <ul>
+    <li><strong>Путь обработчика</strong> (открытие из меню) — Vercel:<br/><code>{handler_url}</code></li>
+    <li><strong>Путь для первоначальной установки</strong> — только этот API:<br/><code>{install_url}</code></li>
+  </ul>
+  <p>Сохраните настройки и снова откройте приложение из меню.</p>
+</body>
+</html>
+"""
+
+
+def _install_parse_error_html(detail: str) -> str:
+    """HTML при ошибке разбора auth или сохранения портала."""
+    safe = html.escape(detail, quote=True)
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <title>Ошибка установки Bitrix24</title>
+</head>
+<body>
+  <h1>Ошибка установки</h1>
+  <p>{safe}</p>
+</body>
+</html>
+"""
 
 
 def _install_finish_html() -> str:
