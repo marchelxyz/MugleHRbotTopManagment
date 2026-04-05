@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     # Bitrix24: URL веб-приложения (Vercel), открывается из меню портала
     BITRIX_WEB_APP_URL: str = "https://mugle-h-rbot-top-managment-m11i.vercel.app/"
+    # Публичный URL эндпоинта установки на API (Railway) — только для поля «Путь установки» в Bitrix
+    BITRIX_INSTALL_URL: str = "https://muglehrbottopmanagment-test.up.railway.app/bitrix/install"
 
     class Config:
         env_file = ".env"
