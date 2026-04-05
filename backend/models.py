@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, BigInteger, Boolean, Date, func
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, BigInteger, Boolean, Date, func
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -42,6 +42,10 @@ class User(Base):
 
     has_seen_onboarding: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
     has_interacted_with_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default='false', nullable=False)
+
+    bitrix_user_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    bitrix_domain: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     sent_transactions = relationship(
         "Transaction",
         back_populates="sender",
@@ -218,3 +222,22 @@ class AppSettings(Base):
     id = Column(Integer, primary_key=True, index=True)
     season_theme = Column(String, default="summer", nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class BitrixPortal(Base):
+    """Токены OAuth локального приложения Bitrix24 (одна запись на портал)."""
+
+    __tablename__ = "bitrix_portals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    domain: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    member_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    access_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    application_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    client_endpoint: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

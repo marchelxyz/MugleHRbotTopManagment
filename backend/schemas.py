@@ -58,6 +58,22 @@ class UserResponse(UserBase):
             return None
         return dob.isoformat()
 
+
+class BitrixSessionRequest(BaseModel):
+    """Тело запроса обмена OAuth пользователя Bitrix24 на сессию HR (user id)."""
+
+    access_token: str
+    domain: str
+    member_id: str = ""
+
+
+class BitrixSessionResponse(BaseModel):
+    """Ответ после успешной привязки Bitrix к пользователю приложения."""
+
+    user_id: int
+    user: UserResponse
+
+
 class ItemCodeResponse(OrmBase):
     id: int
     code_value: str

@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""  # Список email админов через запятую для уведомлений
     WEB_APP_LOGIN_URL: str = ""  # URL страницы входа в веб-приложение (опционально)
 
+    # Bitrix24: URL веб-приложения (Vercel), открывается из меню портала
+    BITRIX_WEB_APP_URL: str = "https://mugle-h-rbot-top-managment-m11i.vercel.app/"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
