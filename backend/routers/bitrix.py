@@ -5,11 +5,11 @@ from __future__ import annotations
 import html
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import bitrix_crud
@@ -28,14 +28,20 @@ router = APIRouter(prefix="/bitrix", tags=["bitrix"])
 
 
 @router.api_route("/install", methods=["GET", "POST"])
-async def bitrix_install(request: Request, db: AsyncSession = Depends(get_db)) -> HTMLResponse:
+async def bitrix_install(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Union[HTMLResponse, RedirectResponse]:
     """
     Первоначальная установка локального приложения: сохраняет токены портала и завершает установку в UI.
     В карточке приложения Bitrix24 укажите этот URL как «Путь для первоначальной установки».
+
+    Если запрос без auth (часто из-за перепутанного «Пути обработчика»), редирект на bitrix.html на Vercel,
+    чтобы в iframe открылось приложение, а не пустая справка.
     """
     auth_raw = await _read_install_auth_param(request)
     if not auth_raw:
-        return _html_response(_install_wrong_handler_or_missing_auth_html())
+        return _redirect_to_bitrix_web_app(request)
 
     try:
         auth = parse_install_auth_param(auth_raw)
@@ -140,40 +146,17 @@ def _html_response(body: str) -> HTMLResponse:
     return HTMLResponse(content=body, media_type="text/html; charset=utf-8")
 
 
-def _install_wrong_handler_or_missing_auth_html() -> str:
+def _redirect_to_bitrix_web_app(request: Request) -> RedirectResponse:
     """
-    Подсказка, если /bitrix/install открыли из меню: в карточке перепутаны обработчик и установка.
+    Редирект на страницу входа Bitrix на Vercel, если /bitrix/install вызван без auth.
 
-    Параметр auth Bitrix передаёт только при первой установке, не при каждом открытии приложения.
+    Сохраняет query-string (например DOMAIN от портала), чтобы фронт мог его обработать.
     """
-    base = settings.BITRIX_WEB_APP_URL.rstrip("/")
-    handler_url = f"{base}/bitrix.html"
-    install_url = settings.BITRIX_INSTALL_URL
-    return f"""<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Настройка Bitrix24</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }}
-    code {{ background: #f0f0f0; padding: 2px 6px; word-break: break-all; }}
-  </style>
-</head>
-<body>
-  <h1>Неверная ссылка в карточке приложения</h1>
-  <p>Адрес <code>/bitrix/install</code> вызывается только при <strong>первой установке</strong> —
-  Bitrix один раз передаёт сюда параметр <code>auth</code>.</p>
-  <p>Если вы открываете приложение из <strong>меню портала</strong>, параметр <code>auth</code> сюда не передаётся.</p>
-  <p><strong>Исправьте карточку приложения Bitrix24:</strong></p>
-  <ul>
-    <li><strong>Путь обработчика</strong> (открытие из меню) — Vercel:<br/><code>{handler_url}</code></li>
-    <li><strong>Путь для первоначальной установки</strong> — только этот API:<br/><code>{install_url}</code></li>
-  </ul>
-  <p>Сохраните настройки и снова откройте приложение из меню.</p>
-</body>
-</html>
-"""
+    base = settings.BITRIX_WEB_APP_URL.rstrip("/") + "/bitrix.html"
+    q = request.url.query
+    target = f"{base}?{q}" if q else base
+    logger.info("bitrix/install без параметра auth — редирект 302 на %s", target)
+    return RedirectResponse(url=target, status_code=302)
 
 
 def _install_parse_error_html(detail: str) -> str:
