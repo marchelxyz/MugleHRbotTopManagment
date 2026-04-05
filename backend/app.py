@@ -8,7 +8,7 @@ import re
 from sqlalchemy import text, select
 
 from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications
+from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications, bitrix
 from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
@@ -197,7 +197,11 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
         
         path = request.url.path
         
-        if path.startswith('/banners') or path.startswith('/market/items') or path.startswith('/market/statix-bonus'):
+        if path.startswith("/bitrix"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        elif path.startswith('/banners') or path.startswith('/market/items') or path.startswith('/market/statix-bonus'):
             response.headers["Cache-Control"] = "public, max-age=60"
         elif path.startswith('/leaderboard'):
             response.headers["Cache-Control"] = "public, max-age=15"
@@ -241,6 +245,7 @@ app.include_router(shared_gifts.router)
 app.include_router(cache.router)
 app.include_router(app_settings.router)
 app.include_router(notifications.router)
+app.include_router(bitrix.router)
 
 @app.get("/")
 def read_root():
