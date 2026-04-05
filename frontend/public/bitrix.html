@@ -4,70 +4,113 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>HR Спасибо — Bitrix24</title>
-  <script src="https://api.bitrix24.com/api/v1/"></script>
 </head>
 <body>
-  <p id="status">Подключение к Bitrix24…</p>
+  <p id="status">Загрузка Bitrix24…</p>
+  <!--
+    Скрипт api.bitrix24.com подключается с onload: иначе следующий inline мог выполниться
+    до появления BX24 (приложение «не открывается» / «SDK не загружен»).
+  -->
   <script>
 (function () {
   var API_BASE = 'https://muglehrbottopmanagment-test.up.railway.app';
 
   function setStatus(text) {
     var el = document.getElementById('status');
-    if (el) el.textContent = text;
+    if (el) {
+      el.textContent = text;
+    }
   }
 
   function fail(msg) {
     setStatus(msg || 'Ошибка входа');
-    if (typeof console !== 'undefined' && console.error) console.error(msg);
+    if (typeof console !== 'undefined' && console.error) {
+      console.error(msg);
+    }
   }
 
-  if (typeof BX24 === 'undefined') {
-    fail('SDK Bitrix24 не загружен. Откройте страницу из портала Bitrix24 (меню приложения).');
-    return;
+  function postSession(auth) {
+    var domain = auth.domain || '';
+    var memberId = auth.member_id || '';
+    setStatus('Вход в HR Спасибо…');
+    fetch(API_BASE + '/bitrix/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_token: auth.access_token,
+        domain: domain,
+        member_id: memberId
+      })
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, status: res.status, data: data };
+        });
+      })
+      .then(function (r) {
+        if (!r.ok) {
+          var d = r.data && r.data.detail;
+          fail(typeof d === 'string' ? d : (r.data && r.data.detail ? JSON.stringify(r.data.detail) : 'Ошибка сервера (' + r.status + ')'));
+          return;
+        }
+        if (r.data.user_id) {
+          localStorage.setItem('userId', String(r.data.user_id));
+          localStorage.setItem('user', JSON.stringify(r.data.user));
+        }
+        window.location.replace('/');
+      })
+      .catch(function (e) {
+        fail(e && e.message ? e.message : 'Сеть недоступна');
+      });
   }
 
-  BX24.init(function () {
-    BX24.getAuth(function (auth) {
-      if (!auth || !auth.access_token) {
-        fail('Не удалось получить токен (BX24.getAuth).');
+  function runBitrix() {
+    var initTimeout = window.setTimeout(function () {
+      fail('BX24.init не ответил за 45 с. Откройте приложение из меню портала Bitrix24.');
+    }, 45000);
+
+    BX24.init(function () {
+      window.clearTimeout(initTimeout);
+      if (typeof BX24.getAuth !== 'function') {
+        fail('BX24.getAuth недоступен в этой версии портала.');
         return;
       }
-      var domain = auth.domain || '';
-      var memberId = auth.member_id || '';
-      setStatus('Вход в HR Спасибо…');
-      fetch(API_BASE + '/bitrix/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_token: auth.access_token,
-          domain: domain,
-          member_id: memberId
-        })
-      })
-        .then(function (res) {
-          return res.json().then(function (data) {
-            return { ok: res.ok, status: res.status, data: data };
-          });
-        })
-        .then(function (r) {
-          if (!r.ok) {
-            var d = r.data && r.data.detail;
-            fail(typeof d === 'string' ? d : (r.data && r.data.detail ? JSON.stringify(r.data.detail) : 'Ошибка сервера (' + r.status + ')'));
-            return;
-          }
-          if (r.data.user_id) {
-            localStorage.setItem('userId', String(r.data.user_id));
-            localStorage.setItem('user', JSON.stringify(r.data.user));
-          }
-          window.location.replace('/');
-        })
-        .catch(function (e) {
-          fail(e && e.message ? e.message : 'Сеть недоступна');
-        });
+      BX24.getAuth(function (auth) {
+        if (!auth || !auth.access_token) {
+          fail('Не удалось получить токен (BX24.getAuth).');
+          return;
+        }
+        postSession(auth);
+      });
     });
-  });
+  }
+
+  function afterExternalScriptLoaded() {
+    setStatus('Подключение к Bitrix24…');
+    var tries = 0;
+    function waitBx() {
+      if (typeof BX24 !== 'undefined') {
+        runBitrix();
+        return;
+      }
+      tries += 1;
+      if (tries > 80) {
+        fail('SDK Bitrix24 не загружен. Откройте приложение из меню портала Bitrix24.');
+        return;
+      }
+      window.setTimeout(waitBx, 50);
+    }
+    waitBx();
+  }
+
+  window.__hrBitrixOnSdkLoad = function () {
+    afterExternalScriptLoaded();
+  };
+  window.__hrBitrixOnSdkError = function () {
+    fail('Не удалось загрузить скрипт Bitrix24 (сеть или блокировка).');
+  };
 })();
   </script>
+  <script src="https://api.bitrix24.com/api/v1/" onload="window.__hrBitrixOnSdkLoad()" onerror="window.__hrBitrixOnSdkError()"></script>
 </body>
 </html>
