@@ -96,6 +96,7 @@ function EditUserModal({ user, onClose, onSave, onDelete, onChangePassword, onDe
                         <input name="department" value={formData.department || ''} onChange={handleChange} placeholder="Подразделение" className={styles.input} />
                         <input name="position" value={formData.position || ''} onChange={handleChange} placeholder="Должность" className={styles.input} />
                         <input type="tel" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} placeholder="Номер телефона" className={styles.input} />
+                        <input type="email" name="email" value={formData.email || ''} onChange={handleChange} placeholder="Email (при наличии)" className={styles.input} />
                         <input type="text" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} placeholder="Дата (ДД.ММ.ГГГГ)" className={styles.input} />
                         <input type="number" name="balance" value={formData.balance || 0} onChange={handleChange} placeholder="Баланс" className={styles.input} />
                         <input type="number" name="tickets" value={formData.tickets || 0} onChange={handleChange} placeholder="Билеты" className={styles.input} />
@@ -141,6 +142,11 @@ function EditUserModal({ user, onClose, onSave, onDelete, onChangePassword, onDe
                         {formData.login && (
                             <div style={{ gridColumn: '1 / -1', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
                                 💡 Текущий логин: <strong>{formData.login}</strong>
+                            </div>
+                        )}
+                        {formData.email && (
+                            <div style={{ gridColumn: '1 / -1', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                                ✉️ Текущий email: <strong>{formData.email}</strong>
                             </div>
                         )}
                         {user.password_plain && (

@@ -186,6 +186,7 @@ class AdminUserUpdate(BaseModel):
     status: Optional[str] = None
     is_admin: Optional[bool] = None
     login: Optional[str] = None
+    email: Optional[str] = None
     password: Optional[str] = None
     browser_auth_enabled: Optional[bool] = None
 

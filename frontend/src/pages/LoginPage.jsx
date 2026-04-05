@@ -6,9 +6,6 @@ import styles from './LoginPage.module.css';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
-// Определяем, является ли это браузером (не Telegram WebApp)
-const isWebBrowser = !window.Telegram?.WebApp;
-
 function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) {
   const { showAlert } = useModalAlert();
   const [formData, setFormData] = useState({
@@ -84,14 +81,7 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
   const validateForm = () => {
     const newErrors = {};
     if (!formData.login.trim()) {
-      newErrors.login = isWebBrowser ? 'Email обязателен' : 'Логин обязателен';
-    }
-    // Валидация email для браузера
-    if (isWebBrowser && formData.login.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.login.trim())) {
-        newErrors.login = 'Введите корректный email';
-      }
+      newErrors.login = 'Введите логин или email';
     }
     if (!formData.password.trim()) newErrors.password = 'Пароль обязателен';
 
@@ -143,19 +133,17 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
         <p className={styles.subtitle}>
           {telegramUser
             ? 'Введите логин и пароль от веб-аккаунта, чтобы привязать его к Telegram'
-            : isWebBrowser
-              ? 'Войдите в систему, используя ваш email и пароль'
-              : 'Войдите в систему, используя ваш логин и пароль'}
+            : 'Войдите в систему, используя логин или email и пароль'}
         </p>
         <form onSubmit={handleSubmit} className={styles.form}>
           <input 
             name="login" 
-            type={(isWebBrowser && !telegramUser) ? "email" : "text"}
+            type="text"
             value={formData.login} 
             onChange={handleChange} 
-            placeholder={(isWebBrowser && !telegramUser) ? "Email" : "Логин"}
+            placeholder="Логин или email"
             className={styles.input}
-            autoComplete={(isWebBrowser && !telegramUser) ? "email" : "username"}
+            autoComplete="username"
           />
           {errors.login && <p className={styles.error}>{errors.login}</p>}
 

@@ -205,7 +205,10 @@ async def get_pending_profile_updates_route(db: AsyncSession = Depends(get_db)):
     from sqlalchemy import select
     from models import PendingUpdate
     result = await db.execute(
-        select(PendingUpdate).where(PendingUpdate.status == 'pending').order_by(PendingUpdate.created_at.desc())
+        select(PendingUpdate)
+        .options(selectinload(PendingUpdate.user))
+        .where(PendingUpdate.status == 'pending')
+        .order_by(PendingUpdate.created_at.desc())
     )
     pending_updates = result.scalars().all()
     return [
