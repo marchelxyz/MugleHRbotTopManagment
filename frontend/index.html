@@ -2,6 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
+    <!-- Bitrix24: при открытии из меню портал подставляет DOMAIN / PLACEMENT / APP_SID. Корень — это SPA без BX24; перенаправляем на страницу с SDK. -->
+    <script>
+(function () {
+  try {
+    if (/\btgWebAppData=/.test(window.location.search + window.location.hash)) {
+      return;
+    }
+    var q = new URLSearchParams(window.location.search || '');
+    var path = window.location.pathname || '';
+    if (path !== '/' && path !== '') {
+      return;
+    }
+    if (q.has('DOMAIN') || q.has('PLACEMENT') || q.has('APP_SID')) {
+      window.location.replace('/bitrix.html' + window.location.search + window.location.hash);
+      return;
+    }
+    if (window.self !== window.top && /bitrix24\.(com|ru)\b/i.test(document.referrer || '')) {
+      window.location.replace('/bitrix.html' + window.location.search + window.location.hash);
+    }
+  } catch (e) {}
+})();
+    </script>
     
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     
