@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     BITRIX_WEB_APP_URL: str = "https://mugle-h-rbot-top-managment-m11i.vercel.app/"
     # Публичный URL эндпоинта установки на API (Railway) — только для поля «Путь установки» в Bitrix
     BITRIX_INSTALL_URL: str = "https://muglehrbottopmanagment-test.up.railway.app/bitrix/install"
+    # Дополнительные Origin для CORS (через запятую): превью Vercel, другой прод-домен, опечатки в URL
+    CORS_EXTRA_ORIGINS: str = ""
 
     class Config:
         env_file = ".env"

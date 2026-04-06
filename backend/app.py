@@ -7,6 +7,7 @@ import logging
 import re
 from sqlalchemy import text, select
 
+from config import settings
 from database import engine, Base
 from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications, bitrix
 from redis_cache import redis_cache
@@ -218,11 +219,26 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CacheControlMiddleware)
 
-origins = [
-    "https://mugle-h-rbot-top-managment-m11i.vercel.app",
-    "https://mugle-h-rbot-top-managment.vercel.app",
-    "http://localhost:8080",
-]
+
+def _cors_origins() -> list[str]:
+    """Базовые origin фронта + CORS_EXTRA_ORIGINS из .env (превью Vercel и т.п.)."""
+    base = [
+        "https://mugle-h-rbot-top-managment-m11i.vercel.app",
+        "https://mugle-h-r-bot-top-managment-m11i.vercel.app",
+        "https://mugle-h-rbot-top-managment.vercel.app",
+        "http://localhost:8080",
+    ]
+    extra = [x.strip() for x in settings.CORS_EXTRA_ORIGINS.split(",") if x.strip()]
+    merged: list[str] = []
+    seen: set[str] = set()
+    for origin in base + extra:
+        if origin not in seen:
+            seen.add(origin)
+            merged.append(origin)
+    return merged
+
+
+origins = _cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
