@@ -25,6 +25,7 @@ from bitrix_service import (
     bitrix_oauth_verify_state,
     normalize_bitrix_domain,
     parse_install_auth_param,
+    portal_install_auth_from_oauth_token_payload,
 )
 from config import settings
 from database import get_db
@@ -180,6 +181,15 @@ async def bitrix_oauth_callback(
     access_token = token_payload.get("access_token")
     if not access_token or not isinstance(access_token, str):
         return _html_response(_oauth_error_html("no_access_token", "В ответе oauth/token нет access_token."))
+
+    portal_auth = portal_install_auth_from_oauth_token_payload(dom, token_payload)
+    if portal_auth:
+        try:
+            await bitrix_crud.upsert_bitrix_portal(db, portal_auth)
+        except ValueError as exc:
+            logger.warning("OAuth: не сохранён портал (ожидаемо при неверных полях): %s", exc)
+        except Exception:
+            logger.exception("OAuth: ошибка сохранения портала по токену")
 
     try:
         user = await bitrix_crud.get_or_create_user_for_bitrix(db, dom, access_token)
