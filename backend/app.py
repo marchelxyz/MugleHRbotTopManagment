@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
+from urllib.parse import urlparse
 import logging
 import re
 from sqlalchemy import text, select
@@ -221,21 +222,45 @@ app.add_middleware(CacheControlMiddleware)
 
 
 def _cors_origins() -> list[str]:
-    """Базовые origin фронта + CORS_EXTRA_ORIGINS из .env (превью Vercel и т.п.)."""
+    """Базовые origin фронта + origin из BITRIX_* / WEB_APP_URL + CORS_EXTRA_ORIGINS.
+
+    Важно: в Railway для develop/preview укажите BITRIX_WEB_APP_URL на тот же домен Vercel,
+    что открывается в iframe — иначе браузер заблокирует POST /bitrix/session (CORS).
+    """
     base = [
         "https://mugle-h-rbot-top-managment-m11i.vercel.app",
         "https://mugle-h-r-bot-top-managment-m11i.vercel.app",
         "https://mugle-h-rbot-top-managment.vercel.app",
         "http://localhost:8080",
     ]
+    from_settings: list[str] = []
+    for raw in (
+        settings.BITRIX_WEB_APP_URL,
+        settings.BITRIX_OAUTH_REDIRECT_URI,
+        settings.WEB_APP_LOGIN_URL,
+    ):
+        origin = _origin_from_url(raw)
+        if origin:
+            from_settings.append(origin)
     extra = [x.strip() for x in settings.CORS_EXTRA_ORIGINS.split(",") if x.strip()]
     merged: list[str] = []
     seen: set[str] = set()
-    for origin in base + extra:
+    for origin in base + from_settings + extra:
         if origin not in seen:
             seen.add(origin)
             merged.append(origin)
     return merged
+
+
+def _origin_from_url(url: str) -> str | None:
+    """Возвращает origin (scheme://host) для CORS или None, если строка не URL."""
+    stripped = url.strip()
+    if not stripped:
+        return None
+    parsed = urlparse(stripped)
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 origins = _cors_origins()
