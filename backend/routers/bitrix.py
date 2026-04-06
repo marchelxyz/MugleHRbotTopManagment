@@ -44,12 +44,13 @@ async def bitrix_install(
     Первоначальная установка локального приложения: сохраняет токены портала и завершает установку в UI.
     В карточке приложения Bitrix24 укажите этот URL как «Путь для первоначальной установки».
 
-    Если запрос без auth (часто из-за перепутанного «Пути обработчика»), редирект на bitrix.html на Vercel,
-    чтобы в iframe открылось приложение, а не пустая справка.
+    Без параметра auth установка не завершится. Раньше делался редирект 302 на Vercel — для POST
+    от Bitrix браузер терял тело запроса, установка ломалась; теперь показываем страницу с подсказкой.
     """
     auth_raw = await _read_install_auth_param(request)
     if not auth_raw:
-        return _redirect_to_bitrix_web_app(request)
+        logger.warning("bitrix/install: параметр auth не найден (method=%s)", request.method)
+        return _html_response(_install_missing_auth_html())
 
     try:
         auth = parse_install_auth_param(auth_raw)
@@ -262,28 +263,80 @@ async def bitrix_event(request: Request, db: AsyncSession = Depends(get_db)) -> 
     return {"status": "ok"}
 
 
+def _flat_params_to_auth_json(flat: dict[str, str]) -> Optional[str]:
+    """Собирает JSON auth из плоских полей POST (вариант без обёртки auth у Bitrix24)."""
+    token = flat.get("access_token") or flat.get("AUTH_ID")
+    member = flat.get("member_id") or flat.get("memberId")
+    domain = flat.get("domain") or flat.get("DOMAIN")
+    if not token or not member or not domain:
+        return None
+    obj: dict[str, Any] = {
+        "access_token": str(token),
+        "member_id": str(member),
+        "domain": str(domain),
+    }
+    if flat.get("refresh_token"):
+        obj["refresh_token"] = str(flat["refresh_token"])
+    if flat.get("application_token"):
+        obj["application_token"] = str(flat["application_token"])
+    if flat.get("client_endpoint"):
+        obj["client_endpoint"] = str(flat["client_endpoint"])
+    exp = flat.get("expires") or flat.get("expires_in")
+    if exp:
+        obj["expires"] = exp
+    return json.dumps(obj)
+
+
 async def _read_install_auth_param(request: Request) -> Optional[str]:
-    """Читает auth из query, JSON-тела или form-data."""
-    q = request.query_params.get("auth")
-    if q:
-        return q
+    """Читает auth из query, JSON-тела, urlencoded, multipart или плоских полей POST."""
+    for key in ("auth", "AUTH"):
+        q = request.query_params.get(key)
+        if q:
+            return q
     if request.method != "POST":
         return None
+
+    ctype = (request.headers.get("content-type") or "").lower()
+
+    if "multipart/form-data" in ctype:
+        try:
+            form = await request.form()
+            flat = {str(k): str(form[k]) for k in form}
+            if flat.get("auth"):
+                return flat["auth"]
+            if flat.get("AUTH"):
+                return flat["AUTH"]
+            alt = _flat_params_to_auth_json(flat)
+            if alt:
+                return alt
+        except Exception as exc:
+            logger.warning("bitrix install: multipart: %s", exc)
+        return None
+
     body = await request.body()
     if not body:
         return None
+    text = body.decode("utf-8", errors="replace")
     try:
-        data = json.loads(body.decode("utf-8"))
-        if isinstance(data, dict) and data.get("auth") is not None:
-            return str(data["auth"])
-    except (json.JSONDecodeError, UnicodeDecodeError):
+        data = json.loads(text)
+        if isinstance(data, dict):
+            for key in ("auth", "AUTH"):
+                if data.get(key) is not None:
+                    return str(data[key])
+    except json.JSONDecodeError:
         pass
     try:
-        parsed = parse_qs(body.decode("utf-8"))
-        if parsed.get("auth"):
-            return str(parsed["auth"][0])
-    except UnicodeDecodeError:
-        pass
+        parsed = parse_qs(text)
+        flat = {k: v[0] for k, v in parsed.items() if v}
+        if flat.get("auth"):
+            return str(flat["auth"])
+        if flat.get("AUTH"):
+            return str(flat["AUTH"])
+        alt = _flat_params_to_auth_json(flat)
+        if alt:
+            return alt
+    except Exception as exc:
+        logger.warning("bitrix install: parse_qs: %s", exc)
     return None
 
 
@@ -312,17 +365,29 @@ def _oauth_error_html(code: str, detail: Optional[str] = None) -> str:
 """
 
 
-def _redirect_to_bitrix_web_app(request: Request) -> RedirectResponse:
-    """
-    Редирект на страницу входа Bitrix на Vercel, если /bitrix/install вызван без auth.
-
-    Сохраняет query-string (например DOMAIN от портала), чтобы фронт мог его обработать.
-    """
-    base = settings.BITRIX_WEB_APP_URL.rstrip("/") + "/bitrix.html"
-    q = request.url.query
-    target = f"{base}?{q}" if q else base
-    logger.info("bitrix/install без параметра auth — редирект 302 на %s", target)
-    return RedirectResponse(url=target, status_code=302)
+def _install_missing_auth_html() -> str:
+    """HTML, если Bitrix не передал auth (или формат тела не распознан)."""
+    base = html.escape(settings.BITRIX_WEB_APP_URL.rstrip("/"), quote=True)
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <title>Установка Bitrix24 — нет auth</title>
+</head>
+<body>
+  <h1>Не удалось прочитать данные установки (auth)</h1>
+  <p>При первом открытии приложения Bitrix24 должен передать токены в запросе к
+  <strong>Пути для первоначальной установки</strong> (поле <code>auth</code> или набор полей
+  <code>access_token</code>, <code>member_id</code>, <code>domain</code>).</p>
+  <p><strong>Не открывайте</strong> этот URL вручную в новой вкладке — зайдите в портал:
+  <strong>Приложения</strong> → ваше приложение → <strong>Переустановить</strong> или откройте из меню.</p>
+  <p>Если использовали POST: редирект 302 на другой домен <strong>сбрасывает тело запроса</strong>;
+  на API должны приходить именно поля установки (см.
+  <a href="https://apidocs.bitrix24.com/settings/app-installation/installation-finish.html">документацию</a>).</p>
+  <p><a href="{base}/bitrix.html">Открыть обработчик (bitrix.html на Vercel)</a></p>
+</body>
+</html>
+"""
 
 
 def _install_parse_error_html(detail: str) -> str:
@@ -388,13 +453,26 @@ _INSTALL_FINISH_HTML = """<!DOCTYPE html>
         BX24.installFinish();
       });
     }
-    function start() {
+    var scheduled = false;
+    function scheduleOnce() {
+      if (scheduled) { return; }
+      scheduled = true;
       window.setTimeout(callInit, 0);
     }
+    var rf = 5000;
     if (typeof BX24.ready === "function") {
-      BX24.ready(start);
+      var rt = window.setTimeout(function () {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("[HR Bitrix install] BX24.ready таймаут " + rf + " мс — вызываем init");
+        }
+        scheduleOnce();
+      }, rf);
+      BX24.ready(function () {
+        window.clearTimeout(rt);
+        scheduleOnce();
+      });
     } else {
-      start();
+      scheduleOnce();
     }
   }
   function afterSdkLoaded() {
@@ -423,7 +501,7 @@ _INSTALL_FINISH_HTML = """<!DOCTYPE html>
   };
 })();
   </script>
-  <script src="https://api.bitrix24.com/api/v1/" onload="window.__hrBitrixInstallFinishOnSdkLoad()" onerror="window.__hrBitrixInstallFinishOnSdkError()"></script>
+  <script src="//api.bitrix24.com/api/v1/" onload="window.__hrBitrixInstallFinishOnSdkLoad()" onerror="window.__hrBitrixInstallFinishOnSdkError()"></script>
 </body>
 </html>
 """
