@@ -225,6 +225,46 @@ async def bitrix_oauth_exchange_code(code: str, redirect_uri: str) -> dict[str, 
     return data
 
 
+def portal_install_auth_from_oauth_token_payload(
+    domain: str,
+    token_payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    """
+    Преобразует ответ oauth.bitrix.info/oauth/token/ в формат auth установки приложения.
+
+    Позволяет вызвать upsert_bitrix_portal после OAuth: в БД появляются member_id и токены портала,
+    как у шага «Путь установки». Без этого пользователь HR создаётся, а запись портала — нет.
+    Поле application_token при ответе OAuth может отсутствовать — его обычно задаёт установка.
+    """
+    member_raw = token_payload.get("member_id")
+    if member_raw is None or str(member_raw).strip() == "":
+        return None
+    dom = normalize_bitrix_domain(domain)
+    exp: int | None = None
+    raw_exp = token_payload.get("expires")
+    if raw_exp is not None:
+        try:
+            exp = int(raw_exp)
+        except (TypeError, ValueError):
+            exp = None
+    if exp is None and token_payload.get("expires_in") is not None:
+        try:
+            exp = int(time.time()) + int(token_payload["expires_in"])
+        except (TypeError, ValueError):
+            exp = None
+    auth: dict[str, Any] = {
+        "domain": dom,
+        "member_id": str(member_raw).strip(),
+        "access_token": token_payload.get("access_token"),
+        "refresh_token": token_payload.get("refresh_token"),
+        "client_endpoint": token_payload.get("client_endpoint"),
+        "application_token": token_payload.get("application_token"),
+    }
+    if exp is not None:
+        auth["expires"] = exp
+    return auth
+
+
 def bitrix_handoff_sign_user_id(user_id: int) -> str:
     """Одноразовый токен для передачи сессии на Vercel после OAuth (короткий срок)."""
     exp = int(time.time()) + _HANDOFF_MAX_AGE_SEC
