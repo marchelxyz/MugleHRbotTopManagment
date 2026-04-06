@@ -14,11 +14,16 @@
     if (path !== '/' && path !== '') {
       return;
     }
-    if (q.has('DOMAIN') || q.has('PLACEMENT') || q.has('APP_SID')) {
+    /* Вход по логину/паролю HR внутри Bitrix: не перенаправлять на bitrix.html (см. ссылка в bitrix.html). */
+    if ((q.has('DOMAIN') || q.has('PLACEMENT') || q.has('APP_SID')) && !q.has('bitrix_login')) {
       window.location.replace('/bitrix.html' + window.location.search + window.location.hash);
       return;
     }
-    if (window.self !== window.top && /bitrix24\.(com|ru)\b/i.test(document.referrer || '')) {
+    if (
+      window.self !== window.top &&
+      /bitrix24\.(com|ru)\b/i.test(document.referrer || '') &&
+      !q.has('bitrix_login')
+    ) {
       window.location.replace('/bitrix.html' + window.location.search + window.location.hash);
     }
   } catch (e) {}
