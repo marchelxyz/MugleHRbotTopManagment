@@ -49,7 +49,11 @@ async def bitrix_install(
     """
     auth_raw = await _read_install_auth_param(request)
     if not auth_raw:
-        logger.warning("bitrix/install: параметр auth не найден (method=%s)", request.method)
+        logger.warning(
+            "bitrix/install: auth не распознан (method=%s, content-type=%s)",
+            request.method,
+            (request.headers.get("content-type") or "")[:240],
+        )
         return _html_response(_install_missing_auth_html())
 
     try:
@@ -287,6 +291,16 @@ def _flat_params_to_auth_json(flat: dict[str, str]) -> Optional[str]:
     return json.dumps(obj)
 
 
+def _dict_to_auth_json_string(data: dict[str, Any]) -> Optional[str]:
+    """Если тело — JSON-объект с полями auth на верхнем уровне без ключа `auth`, собирает строку для parse_install_auth_param."""
+    flat: dict[str, str] = {}
+    for key, value in data.items():
+        if isinstance(value, (dict, list)):
+            continue
+        flat[str(key)] = str(value) if value is not None else ""
+    return _flat_params_to_auth_json(flat)
+
+
 async def _read_install_auth_param(request: Request) -> Optional[str]:
     """Читает auth из query, JSON-тела, urlencoded, multipart или плоских полей POST."""
     for key in ("auth", "AUTH"):
@@ -323,6 +337,9 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
             for key in ("auth", "AUTH"):
                 if data.get(key) is not None:
                     return str(data[key])
+            alt = _dict_to_auth_json_string(data)
+            if alt:
+                return alt
     except json.JSONDecodeError:
         pass
     try:
