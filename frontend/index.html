@@ -35,7 +35,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     
     <title>HR App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Telegram WebApp: только в Mini App (иначе лишний запрос к telegram.org и таймаут в Bitrix/браузере). -->
+    <script>
+(function () {
+  try {
+    var s = window.location.search || '';
+    var h = window.location.hash || '';
+    if (!/\btgWebAppData=/.test(s + h)) {
+      return;
+    }
+    var sc = document.createElement('script');
+    sc.src = 'https://telegram.org/js/telegram-web-app.js';
+    sc.async = true;
+    document.head.appendChild(sc);
+  } catch (e) {}
+})();
+    </script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -6,6 +6,20 @@
   <title>HR Спасибо — Bitrix24</title>
   <style>
     #status { max-width: 36rem; margin: 1rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.45; white-space: pre-wrap; }
+    #bitrixFallbackBanner {
+      display: none;
+      max-width: 36rem;
+      margin: 0.75rem auto 0;
+      padding: 12px 14px;
+      border: 1px solid #c5cdd6;
+      border-radius: 8px;
+      background: #f4f7fb;
+      font-family: system-ui, sans-serif;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      color: #222;
+    }
+    #bitrixFallbackBanner strong { display: block; margin-bottom: 6px; }
   </style>
 </head>
 <body>
@@ -28,13 +42,17 @@
 })();
   </script>
   <p id="status">Загрузка Bitrix24…</p>
+  <div id="bitrixFallbackBanner">
+    <strong>Подключение к Bitrix24</strong>
+    Если встроенный SDK (BX24.init) не ответит за несколько секунд — типично для витрины — страница <strong>сама перейдёт</strong> к входу через Bitrix (OAuth), без кнопки. Либо сразу «Войти по логину и паролю HR».
+  </div>
   <p id="oauthHint" style="display:none; max-width:36rem; margin:0.75rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.9rem; color:#444;">
-    OAuth обходит зависание BX24.init в превью Маркета и в части iframe — можно нажать сразу, не дожидаясь таймаута.
+    OAuth — основной обход, если BX24.init в этом iframe не завершается.
   </p>
-  <p id="oauthRow" style="display:none; margin-top:1rem; font-size:0.95rem;">
-    <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth) — если «Подключение…» не завершается</a>
+  <p id="oauthRow" style="display:none; margin-top:0.75rem; font-size:0.95rem; max-width:36rem; margin-left:auto; margin-right:auto; padding:0 1rem;">
+    <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth)</a>
   </p>
-  <p id="passwordLoginRow" style="max-width:36rem; margin:1rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.95rem;">
+  <p id="passwordLoginRow" style="max-width:36rem; margin:0.75rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.95rem;">
     <a id="passwordLoginLink" href="#">Войти по логину и паролю HR (как на сайте)</a>
   </p>
   <!--
@@ -60,42 +78,6 @@
     }
   }
 
-  /** True, если переход был со страницы маркетплейса (там BX24.init часто не завершается). */
-  function isMarketplaceReferrer() {
-    try {
-      var r = document.referrer || '';
-      return /\/marketplace\//i.test(r) || /marketplace\.bitrix24\./i.test(r);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /**
-   * Bitrix может передать PLACEMENT / контекст в query iframe; в превью Маркета handshake с родителем часто не завершается.
-   * Referrer часто пустой (HTTPS / переход из карточки), поэтому смотрим ещё параметры.
-   */
-  function isLikelyMarketplacePlacement() {
-    if (isMarketplaceReferrer()) {
-      return true;
-    }
-    try {
-      var p = new URLSearchParams(window.location.search || '');
-      var pl = (p.get('PLACEMENT') || '').toUpperCase();
-      if (pl.indexOf('MARKET') >= 0) {
-        return true;
-      }
-      /* Иногда в опциях передаётся JSON с типом размещения */
-      var po = p.get('PLACEMENT_OPTIONS') || '';
-      if (po && /market|витрин|slider|marketplace/i.test(po)) {
-        return true;
-      }
-      /* Открытие из витрины: в адресе портала часто .../marketplace/app/... — родитель не читаем, но пользователь видит подсказку по OAuth */
-    } catch (e) {
-      return false;
-    }
-    return false;
-  }
-
   function whenDomReady(fn) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', fn);
@@ -105,41 +87,69 @@
   }
 
   function bitrixInitHintSuffix() {
-    if (isLikelyMarketplacePlacement()) {
-      return (
-        '\n\nОткройте «Спасибо» из левого меню портала (часто под «Ещё»), а не через страницу Маркетплейса ' +
-        'и не кнопку «Перейти к приложению» в карточке — там URL вида .../marketplace/app/... и BX24.init может не ответить.'
-      );
-    }
-    return '';
+    return (
+      '\n\nЕсли так и зависнет — не обязательно ждать: выше уже есть «Войти через Bitrix24 (OAuth)» ' +
+      'и «Войти по логину и паролю HR» (это нормально при открытии из витрины после переустановки).'
+    );
   }
 
   function initTimeoutMs() {
-    /* Основной обход зависания в Маркете — OAuth; таймаут только информирует. */
-    return 60000;
+    /* Раньше выводим подсказку про OAuth/логин; полный обход — не ждать минуту. */
+    return 25000;
   }
 
   function timeoutFailMessage() {
     return (
       'BX24.init не ответил за отведённое время.\n\n' +
-      'По документации Bitrix24, JS-библиотека BX24.js нужна только если интерфейс открыт ' +
-      'внутри портала (iframe), а не для «голого» вебхука: ' +
-      'https://apidocs.bitrix24.ru/sdk/bx24-js-sdk/index.html\n\n' +
-      'BX24.init запрашивает данные у родительского окна портала; в превью Маркета (.../marketplace/app/...) ' +
-      'и в части встроек обмен с родителем не завершается — callback init не вызывается. ' +
-      'Это не ошибка Railway: POST /bitrix/session уходит только после успешных BX24.init и BX24.getAuth.\n\n' +
-      'Что проверить:\n' +
-      '• Откройте приложение пунктом левого меню («Спасибо» / «Ещё»), не из витрины Маркета.\n' +
-      '• В карточке локального приложения: «Путь обработчика» = URL bitrix.html на Vercel (как в браузере), ' +
-      '«Путь установки» = …/bitrix/install на API (см. также обзор: ' +
-      'https://b24.org.ru/lokalnye-prilozheniya-bitriks24-v-2025/ ).\n' +
-      '• В Network: есть ли POST .../bitrix/session. Нет — проблема iframe/SDK; есть, но красный — CORS на API.\n\n' +
-      'Ниже — вход через OAuth (полный OAuth 2.0), если встроенный SDK так и не заработал.'
+      'Так часто бывает при открытии из витрины Маркета (в т.ч. после «Переустановить»): обмен с родительским окном ' +
+      'не завершается — это ограничение сценария Bitrix, а не «сломанный» сервер.\n\n' +
+      'Что делать: используйте блок «Быстрый вход» выше — OAuth или логин/пароль HR. ' +
+      'POST /bitrix/session возможен только после успешного BX24.getAuth.\n\n' +
+      'Проверка в Network: нет POST …/bitrix/session — iframe/SDK; запрос красный — смотреть CORS на API (Railway).\n' +
+      'Документация BX24: https://apidocs.bitrix24.ru/sdk/bx24-js-sdk/index.html'
     );
   }
 
   /** Кэш ответа /bitrix/oauth/status, чтобы при таймауте init не дёргать повторно. */
   var oauthEnabledCache = null;
+  /** True, если BX24.init уже вызвал callback — отменяем авто-OAuth. */
+  var bx24InitCallbackFired = false;
+  var autoOAuthRedirectTimer = null;
+
+  function clearAutoOAuthRedirect() {
+    if (autoOAuthRedirectTimer !== null) {
+      window.clearTimeout(autoOAuthRedirectTimer);
+      autoOAuthRedirectTimer = null;
+    }
+  }
+
+  /**
+   * Если BX24.init «молчит» (витрина и т.д.), автоматически открываем OAuth — тот же поток, что по кнопке.
+   */
+  function scheduleAutoOAuthRedirect() {
+    clearAutoOAuthRedirect();
+    fetchOAuthEnabled().then(function (enabled) {
+      if (!enabled || !getDomainFromQuery()) {
+        return;
+      }
+      autoOAuthRedirectTimer = window.setTimeout(function () {
+        if (bx24InitCallbackFired) {
+          return;
+        }
+        var dom = getDomainFromQuery();
+        if (!dom) {
+          return;
+        }
+        setStatus('Подключение через Bitrix24 (OAuth)…');
+        var url = API_BASE + '/bitrix/oauth/start?domain=' + encodeURIComponent(dom);
+        try {
+          window.top.location.href = url;
+        } catch (e) {
+          window.location.href = url;
+        }
+      }, 6000);
+    });
+  }
 
   function getDomainFromQuery() {
     try {
@@ -225,6 +235,7 @@
   }
 
   function runBitrix() {
+    scheduleAutoOAuthRedirect();
     var ms = initTimeoutMs();
     var initTimeout = window.setTimeout(function () {
       fail(timeoutFailMessage());
@@ -324,15 +335,27 @@
     fail('Не удалось загрузить скрипт Bitrix24 (сеть или блокировка).');
   };
 
+  function showFallbackBanner() {
+    try {
+      if (!getDomainFromQuery()) {
+        return;
+      }
+      var b = document.getElementById('bitrixFallbackBanner');
+      if (b) {
+        b.style.display = 'block';
+      }
+    } catch (e) {}
+  }
+
   /**
-   * Показывает OAuth как запасной вход сразу (не после таймаута), если API настроен.
-   * Параллельно с BX24.init — пользователю не нужно ждать 60 с.
+   * OAuth сразу при загрузке (если включён на API), плюс баннер про быстрый вход — без ожидания таймаута BX24.
    */
   function setupOAuthFallbackLink() {
     try {
       if (!getDomainFromQuery()) {
         return;
       }
+      showFallbackBanner();
       fetchOAuthEnabled().then(function (enabled) {
         if (enabled) {
           showOAuthFallbackUi();
