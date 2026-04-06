@@ -5,11 +5,11 @@ from __future__ import annotations
 import html
 import json
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import bitrix_crud
@@ -27,11 +27,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bitrix", tags=["bitrix"])
 
 
-@router.api_route("/install", methods=["GET", "POST"])
+@router.api_route("/install", methods=["GET", "POST"], response_model=None)
 async def bitrix_install(
     request: Request,
     db: AsyncSession = Depends(get_db),
-) -> Union[HTMLResponse, RedirectResponse]:
+) -> Response:
     """
     Первоначальная установка локального приложения: сохраняет токены портала и завершает установку в UI.
     В карточке приложения Bitrix24 укажите этот URL как «Путь для первоначальной установки».
