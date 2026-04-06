@@ -4,6 +4,9 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>HR Спасибо — Bitrix24</title>
+  <style>
+    #status { max-width: 36rem; margin: 1rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.45; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
   <p id="status">Загрузка Bitrix24…</p>
@@ -27,6 +30,23 @@
     if (typeof console !== 'undefined' && console.error) {
       console.error(msg);
     }
+  }
+
+  /** True, если переход был со страницы маркетплейса (там BX24.init часто не завершается). */
+  function isMarketplaceReferrer() {
+    try {
+      var r = document.referrer || '';
+      return /\/marketplace\//i.test(r) || /marketplace\.bitrix24\./i.test(r);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function bitrixInitHintSuffix() {
+    if (isMarketplaceReferrer()) {
+      return '\n\nЕсли долго «Подключение…»: откройте приложение из левого меню портала («Приложения» → ваше приложение), а не со страницы Маркетплейса.';
+    }
+    return '';
   }
 
   function postSession(auth) {
@@ -66,7 +86,11 @@
 
   function runBitrix() {
     var initTimeout = window.setTimeout(function () {
-      fail('BX24.init не ответил за 45 с. Откройте приложение из меню портала Bitrix24.');
+      fail(
+        'BX24.init не ответил за 45 с.\n\n' +
+        'Чаще всего так бывает при открытии со страницы «Маркетплейс».\n' +
+        'Откройте приложение из левого меню портала Bitrix24: «Приложения» → нужное приложение (например «TeleAgent 24» / «Спасибо»).'
+      );
     }, 45000);
 
     BX24.init(function () {
@@ -86,7 +110,18 @@
   }
 
   function afterExternalScriptLoaded() {
-    setStatus('Подключение к Bitrix24…');
+    try {
+      if (window.self === window.top) {
+        fail(
+          'Приложение должно открываться внутри портала Bitrix24 (во встроенной области), а не в отдельной вкладке.\n\n' +
+          'Закройте эту вкладку и откройте: левое меню портала → «Приложения» → ваше приложение.'
+        );
+        return;
+      }
+    } catch (e) {
+      /* cross-origin: считаем, что мы во вложении */
+    }
+    setStatus('Подключение к Bitrix24…' + bitrixInitHintSuffix());
     var tries = 0;
     function waitBx() {
       if (typeof BX24 !== 'undefined') {
