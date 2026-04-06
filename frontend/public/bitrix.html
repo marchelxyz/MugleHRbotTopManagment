@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>HR Спасибо — Bitrix24</title>
   <style>
+    body { margin: 0; min-height: 100vh; color: #1a1a1a; background: #fff; }
     #status { max-width: 36rem; margin: 1rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.45; white-space: pre-wrap; }
     #bitrixFallbackBanner {
       display: none;
@@ -337,11 +338,12 @@
 
   function showFallbackBanner() {
     try {
-      if (!getDomainFromQuery()) {
+      var q = new URLSearchParams(window.location.search || '');
+      var b = document.getElementById('bitrixFallbackBanner');
+      if (!b) {
         return;
       }
-      var b = document.getElementById('bitrixFallbackBanner');
-      if (b) {
+      if (q.get('install_finished') === 'Y' || getDomainFromQuery()) {
         b.style.display = 'block';
       }
     } catch (e) {}
@@ -352,10 +354,14 @@
    */
   function setupOAuthFallbackLink() {
     try {
+      var q = new URLSearchParams(window.location.search || '');
+      if (q.get('install_finished') === 'Y') {
+        setStatus('Установка в Bitrix24 завершена. Подключаем приложение…');
+      }
+      showFallbackBanner();
       if (!getDomainFromQuery()) {
         return;
       }
-      showFallbackBanner();
       fetchOAuthEnabled().then(function (enabled) {
         if (enabled) {
           showOAuthFallbackUi();

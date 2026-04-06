@@ -8,7 +8,7 @@ import hmac
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from urllib.parse import unquote, urlencode
 
@@ -57,14 +57,30 @@ def parse_install_auth_param(raw: str | None) -> dict[str, Any] | None:
 
 
 def auth_expires_at(auth: dict[str, Any]) -> Optional[datetime]:
-    """Срок действия access_token из payload auth (поле expires — unix time)."""
+    """Срок действия access_token: ``expires`` — unix-время **или** секунды TTL (как ``AUTH_EXPIRES`` при установке).
+
+    Bitrix в POST установки часто шлёт ``AUTH_EXPIRES=3600`` (час), а не timestamp; ``fromtimestamp(3600)``
+    давало бы 1970 год — избегаем этого.
+    """
     exp = auth.get("expires")
     if exp is None:
         return None
     try:
-        return datetime.fromtimestamp(int(exp), tz=timezone.utc)
-    except (TypeError, ValueError, OSError):
+        ts = int(exp)
+    except (TypeError, ValueError):
         return None
+    if ts <= 0:
+        return None
+    now = datetime.now(timezone.utc)
+    if ts >= 1_000_000_000:
+        try:
+            return datetime.fromtimestamp(ts, tz=timezone.utc)
+        except (OSError, OverflowError, ValueError):
+            return None
+    max_ttl_sec = 86400 * 366 * 3
+    if ts <= max_ttl_sec:
+        return now + timedelta(seconds=ts)
+    return None
 
 
 async def bitrix_rest_user_current(domain: str, access_token: str) -> dict[str, Any]:
