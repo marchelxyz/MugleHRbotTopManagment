@@ -28,6 +28,9 @@
 })();
   </script>
   <p id="status">Загрузка Bitrix24…</p>
+  <p id="oauthHint" style="display:none; max-width:36rem; margin:0.75rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.9rem; color:#444;">
+    OAuth обходит зависание BX24.init в превью Маркета и в части iframe — можно нажать сразу, не дожидаясь таймаута.
+  </p>
   <p id="oauthRow" style="display:none; margin-top:1rem; font-size:0.95rem;">
     <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth) — если «Подключение…» не завершается</a>
   </p>
@@ -64,7 +67,8 @@
   }
 
   /**
-   * Bitrix может передать PLACEMENT в query iframe; в сценариях «маркет» handshake с родителем часто не завершается.
+   * Bitrix может передать PLACEMENT / контекст в query iframe; в превью Маркета handshake с родителем часто не завершается.
+   * Referrer часто пустой (HTTPS / переход из карточки), поэтому смотрим ещё параметры.
    */
   function isLikelyMarketplacePlacement() {
     if (isMarketplaceReferrer()) {
@@ -76,6 +80,12 @@
       if (pl.indexOf('MARKET') >= 0) {
         return true;
       }
+      /* Иногда в опциях передаётся JSON с типом размещения */
+      var po = p.get('PLACEMENT_OPTIONS') || '';
+      if (po && /market|витрин|slider|marketplace/i.test(po)) {
+        return true;
+      }
+      /* Открытие из витрины: в адресе портала часто .../marketplace/app/... — родитель не читаем, но пользователь видит подсказку по OAuth */
     } catch (e) {
       return false;
     }
@@ -101,7 +111,8 @@
   }
 
   function initTimeoutMs() {
-    return isLikelyMarketplacePlacement() ? 25000 : 45000;
+    /* Основной обход зависания в Маркете — OAuth; таймаут только информирует. */
+    return 60000;
   }
 
   function timeoutFailMessage() {
@@ -112,8 +123,60 @@
       'Если в адресной строке портала был путь .../marketplace/app/... — откройте приложение пунктом меню слева («Спасибо» / «Ещё»), не из витрины.\n\n' +
       'Установка приложения (поле «Путь для первоначальной установки» → /bitrix/install) — отдельный шаг; смотрите логи Railway на этот URL.\n\n' +
       'Если уже открываете из меню и ошибка повторяется: в DevTools → Network проверьте, есть ли POST .../bitrix/session. ' +
-      'Если его нет — всё ещё проблема iframe/BX24. Если есть, но красный — проверьте CORS: Origin страницы Vercel должен быть в allow_origins API.'
+      'Если его нет — всё ещё проблема iframe/BX24. Если есть, но красный — проверьте CORS: Origin страницы Vercel должен быть в allow_origins API.\n\n' +
+      'Ниже доступна ссылка «Войти через Bitrix24 (OAuth)» — используйте её, если init так и не ответил.'
     );
+  }
+
+  /** Кэш ответа /bitrix/oauth/status, чтобы при таймауте init не дёргать повторно. */
+  var oauthEnabledCache = null;
+
+  function getDomainFromQuery() {
+    try {
+      return new URLSearchParams(window.location.search || '').get('DOMAIN') || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function showOAuthFallbackUi() {
+    try {
+      var domain = getDomainFromQuery();
+      if (!domain) {
+        return;
+      }
+      var row = document.getElementById('oauthRow');
+      var a = document.getElementById('oauthLink');
+      var hint = document.getElementById('oauthHint');
+      if (!row || !a) {
+        return;
+      }
+      a.href = API_BASE + '/bitrix/oauth/start?domain=' + encodeURIComponent(domain);
+      a.target = '_top';
+      a.rel = 'noopener';
+      row.style.display = 'block';
+      if (hint) {
+        hint.style.display = 'block';
+      }
+    } catch (e) {}
+  }
+
+  function fetchOAuthEnabled() {
+    if (oauthEnabledCache !== null) {
+      return Promise.resolve(oauthEnabledCache);
+    }
+    return fetch(API_BASE + '/bitrix/oauth/status')
+      .then(function (res) {
+        return res.json();
+      })
+      .then(function (data) {
+        oauthEnabledCache = !!(data && data.oauth_enabled);
+        return oauthEnabledCache;
+      })
+      .catch(function () {
+        oauthEnabledCache = false;
+        return false;
+      });
   }
 
   function postSession(auth) {
@@ -155,6 +218,11 @@
     var ms = initTimeoutMs();
     var initTimeout = window.setTimeout(function () {
       fail(timeoutFailMessage());
+      fetchOAuthEnabled().then(function (enabled) {
+        if (enabled) {
+          showOAuthFallbackUi();
+        }
+      });
     }, ms);
 
     function callBx24Init() {
@@ -222,31 +290,20 @@
     fail('Не удалось загрузить скрипт Bitrix24 (сеть или блокировка).');
   };
 
+  /**
+   * Показывает OAuth как запасной вход сразу (не после таймаута), если API настроен.
+   * Параллельно с BX24.init — пользователю не нужно ждать 60 с.
+   */
   function setupOAuthFallbackLink() {
     try {
-      var domain = new URLSearchParams(window.location.search || '').get('DOMAIN') || '';
-      if (!domain) {
+      if (!getDomainFromQuery()) {
         return;
       }
-      fetch(API_BASE + '/bitrix/oauth/status')
-        .then(function (res) {
-          return res.json();
-        })
-        .then(function (data) {
-          if (!data || !data.oauth_enabled) {
-            return;
-          }
-          var row = document.getElementById('oauthRow');
-          var a = document.getElementById('oauthLink');
-          if (!row || !a) {
-            return;
-          }
-          a.href = API_BASE + '/bitrix/oauth/start?domain=' + encodeURIComponent(domain);
-          a.target = '_top';
-          a.rel = 'noopener';
-          row.style.display = 'block';
-        })
-        .catch(function () {});
+      fetchOAuthEnabled().then(function (enabled) {
+        if (enabled) {
+          showOAuthFallbackUi();
+        }
+      });
     } catch (e) {}
   }
 
