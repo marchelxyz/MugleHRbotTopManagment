@@ -42,11 +42,54 @@
     }
   }
 
-  function bitrixInitHintSuffix() {
+  /**
+   * Bitrix может передать PLACEMENT в query iframe; в сценариях «маркет» handshake с родителем часто не завершается.
+   */
+  function isLikelyMarketplacePlacement() {
     if (isMarketplaceReferrer()) {
-      return '\n\nЕсли долго «Подключение…»: откройте приложение из левого меню портала («Приложения» → ваше приложение), а не со страницы Маркетплейса.';
+      return true;
+    }
+    try {
+      var p = new URLSearchParams(window.location.search || '');
+      var pl = (p.get('PLACEMENT') || '').toUpperCase();
+      if (pl.indexOf('MARKET') >= 0) {
+        return true;
+      }
+    } catch (e) {
+      return false;
+    }
+    return false;
+  }
+
+  function whenDomReady(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn);
+    } else {
+      fn();
+    }
+  }
+
+  function bitrixInitHintSuffix() {
+    if (isLikelyMarketplacePlacement()) {
+      return (
+        '\n\nОткройте «Спасибо» из левого меню портала (часто под «Ещё»), а не через страницу Маркетплейса ' +
+        'и не кнопку «Перейти к приложению» в карточке — там URL вида .../marketplace/app/... и BX24.init может не ответить.'
+      );
     }
     return '';
+  }
+
+  function initTimeoutMs() {
+    return isLikelyMarketplacePlacement() ? 25000 : 45000;
+  }
+
+  function timeoutFailMessage() {
+    var base =
+      'BX24.init не ответил за отведённое время.\n\n' +
+      'Если в адресной строке портала был путь .../marketplace/app/... — это превью в Маркете. ' +
+      'Откройте приложение пунктом меню слева («Спасибо» / «Ещё»), не из витрины.\n\n' +
+      'Кнопка «Переустановить» в настройках локального приложения снова открывает то же окно — это нормально.';
+    return base;
   }
 
   function postSession(auth) {
@@ -85,28 +128,38 @@
   }
 
   function runBitrix() {
+    var ms = initTimeoutMs();
     var initTimeout = window.setTimeout(function () {
-      fail(
-        'BX24.init не ответил за 45 с.\n\n' +
-        'Чаще всего так бывает при открытии со страницы «Маркетплейс».\n' +
-        'Откройте приложение из левого меню портала Bitrix24: «Приложения» → нужное приложение (например «TeleAgent 24» / «Спасибо»).'
-      );
-    }, 45000);
+      fail(timeoutFailMessage());
+    }, ms);
 
-    BX24.init(function () {
-      window.clearTimeout(initTimeout);
-      if (typeof BX24.getAuth !== 'function') {
-        fail('BX24.getAuth недоступен в этой версии портала.');
-        return;
-      }
-      BX24.getAuth(function (auth) {
-        if (!auth || !auth.access_token) {
-          fail('Не удалось получить токен (BX24.getAuth).');
+    function callBx24Init() {
+      BX24.init(function () {
+        window.clearTimeout(initTimeout);
+        if (typeof BX24.getAuth !== 'function') {
+          fail('BX24.getAuth недоступен в этой версии портала.');
           return;
         }
-        postSession(auth);
+        BX24.getAuth(function (auth) {
+          if (!auth || !auth.access_token) {
+            fail('Не удалось получить токен (BX24.getAuth).');
+            return;
+          }
+          postSession(auth);
+        });
       });
-    });
+    }
+
+    /* Документация Bitrix24: примеры вызывают BX24.init после готовности DOM; BX24.ready (если есть) — до init. */
+    function startInit() {
+      window.setTimeout(callBx24Init, 0);
+    }
+
+    if (typeof BX24.ready === 'function') {
+      BX24.ready(startInit);
+    } else {
+      startInit();
+    }
   }
 
   function afterExternalScriptLoaded() {
@@ -135,7 +188,7 @@
       }
       window.setTimeout(waitBx, 50);
     }
-    waitBx();
+    whenDomReady(waitBx);
   }
 
   window.__hrBitrixOnSdkLoad = function () {
