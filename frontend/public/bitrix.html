@@ -43,8 +43,8 @@
   </script>
   <p id="status">Загрузка Bitrix24…</p>
   <div id="bitrixFallbackBanner">
-    <strong>Быстрый вход (рекомендуется при переустановке и из витрины)</strong>
-    После «Переустановить» Bitrix часто открывает приложение в режиме витрины — там обмен с окном портала бывает сломан, и BX24.init может так и не ответить. Это не ошибка сервера: используйте OAuth или логин HR ниже, не ждите минуту.
+    <strong>Подключение к Bitrix24</strong>
+    Если встроенный SDK (BX24.init) не ответит за несколько секунд — типично для витрины — страница <strong>сама перейдёт</strong> к входу через Bitrix (OAuth), без кнопки. Либо сразу «Войти по логину и паролю HR».
   </div>
   <p id="oauthHint" style="display:none; max-width:36rem; margin:0.75rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.9rem; color:#444;">
     OAuth — основной обход, если BX24.init в этом iframe не завершается.
@@ -112,6 +112,44 @@
 
   /** Кэш ответа /bitrix/oauth/status, чтобы при таймауте init не дёргать повторно. */
   var oauthEnabledCache = null;
+  /** True, если BX24.init уже вызвал callback — отменяем авто-OAuth. */
+  var bx24InitCallbackFired = false;
+  var autoOAuthRedirectTimer = null;
+
+  function clearAutoOAuthRedirect() {
+    if (autoOAuthRedirectTimer !== null) {
+      window.clearTimeout(autoOAuthRedirectTimer);
+      autoOAuthRedirectTimer = null;
+    }
+  }
+
+  /**
+   * Если BX24.init «молчит» (витрина и т.д.), автоматически открываем OAuth — тот же поток, что по кнопке.
+   */
+  function scheduleAutoOAuthRedirect() {
+    clearAutoOAuthRedirect();
+    fetchOAuthEnabled().then(function (enabled) {
+      if (!enabled || !getDomainFromQuery()) {
+        return;
+      }
+      autoOAuthRedirectTimer = window.setTimeout(function () {
+        if (bx24InitCallbackFired) {
+          return;
+        }
+        var dom = getDomainFromQuery();
+        if (!dom) {
+          return;
+        }
+        setStatus('Подключение через Bitrix24 (OAuth)…');
+        var url = API_BASE + '/bitrix/oauth/start?domain=' + encodeURIComponent(dom);
+        try {
+          window.top.location.href = url;
+        } catch (e) {
+          window.location.href = url;
+        }
+      }, 6000);
+    });
+  }
 
   function getDomainFromQuery() {
     try {
@@ -197,6 +235,7 @@
   }
 
   function runBitrix() {
+    scheduleAutoOAuthRedirect();
     var ms = initTimeoutMs();
     var initTimeout = window.setTimeout(function () {
       fail(timeoutFailMessage());
