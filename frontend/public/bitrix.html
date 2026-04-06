@@ -47,6 +47,9 @@
     <strong>Подключение к Bitrix24</strong>
     Если встроенный SDK (BX24.init) не ответит за несколько секунд — типично для витрины — страница <strong>сама перейдёт</strong> к входу через Bitrix (OAuth), без кнопки. Либо сразу «Войти по логину и паролю HR».
   </div>
+  <p id="staticBitrixHelp" style="max-width:36rem;margin:0.5rem auto 0;padding:0 1rem;font-family:system-ui,sans-serif;font-size:0.88rem;line-height:1.45;color:#444;">
+    Если экран остаётся пустым: подождите ~6 с (авто-OAuth) или откройте «Войти через Bitrix24». Домен портала подставляется из адреса Bitrix, когда в ссылке приложения нет параметра DOMAIN.
+  </p>
   <p id="oauthHint" style="display:none; max-width:36rem; margin:0.75rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.9rem; color:#444;">
     OAuth — основной обход, если BX24.init в этом iframe не завершается.
   </p>
@@ -130,14 +133,14 @@
   function scheduleAutoOAuthRedirect() {
     clearAutoOAuthRedirect();
     fetchOAuthEnabled().then(function (enabled) {
-      if (!enabled || !getDomainFromQuery()) {
+      if (!enabled || !resolveBitrixDomain()) {
         return;
       }
       autoOAuthRedirectTimer = window.setTimeout(function () {
         if (bx24InitCallbackFired) {
           return;
         }
-        var dom = getDomainFromQuery();
+        var dom = resolveBitrixDomain();
         if (!dom) {
           return;
         }
@@ -160,9 +163,31 @@
     }
   }
 
+  /**
+   * Домен портала Bitrix24: из query (DOMAIN), иначе из referrer родителя (витрина без DOMAIN в URL iframe).
+   */
+  function resolveBitrixDomain() {
+    var fromQuery = getDomainFromQuery();
+    if (fromQuery) {
+      return fromQuery;
+    }
+    try {
+      var ref = document.referrer || '';
+      if (!ref) {
+        return '';
+      }
+      var parsed = new URL(ref);
+      var host = (parsed.hostname || '').toLowerCase();
+      if (/bitrix24\.(ru|com|de|by|kz|in|eu|fr|co\.uk|br)\b/i.test(host) || /\.bitrix\.company\b/i.test(host)) {
+        return host;
+      }
+    } catch (e) {}
+    return '';
+  }
+
   function showOAuthFallbackUi() {
     try {
-      var domain = getDomainFromQuery();
+      var domain = resolveBitrixDomain();
       if (!domain) {
         return;
       }
@@ -343,7 +368,7 @@
       if (!b) {
         return;
       }
-      if (q.get('install_finished') === 'Y' || getDomainFromQuery()) {
+      if (q.get('install_finished') === 'Y' || resolveBitrixDomain()) {
         b.style.display = 'block';
       }
     } catch (e) {}
@@ -359,7 +384,7 @@
         setStatus('Установка в Bitrix24 завершена. Подключаем приложение…');
       }
       showFallbackBanner();
-      if (!getDomainFromQuery()) {
+      if (!resolveBitrixDomain()) {
         return;
       }
       fetchOAuthEnabled().then(function (enabled) {
@@ -379,6 +404,10 @@
       e.preventDefault();
       var q = new URLSearchParams(window.location.search || '');
       q.set('bitrix_login', '1');
+      var inferred = resolveBitrixDomain();
+      if (inferred && !q.get('DOMAIN')) {
+        q.set('DOMAIN', inferred);
+      }
       var tail = q.toString();
       window.location.href = '/' + (tail ? '?' + tail : '') + (window.location.hash || '');
     });
