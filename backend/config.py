@@ -43,8 +43,9 @@ class Settings(BaseSettings):
     # OAuth 2.0 (обход зависания BX24.init в iframe): client_id и client_secret из карточки локального приложения Bitrix24
     BITRIX_CLIENT_ID: str = ""
     BITRIX_CLIENT_SECRET: str = ""
-    # Должен совпадать с «Callback / redirect URI» в настройках того же приложения в Bitrix24
-    BITRIX_OAUTH_REDIRECT_URI: str = "https://muglehrbottopmanagment-test.up.railway.app/bitrix/oauth/callback"
+    # Должен точно совпадать с redirect_uri в Bitrix24 (часто тот же URL, что «Путь обработчика» — bitrix.html на Vercel).
+    # Тогда Bitrix вернёт code на Vercel; страница bitrix.html редиректит запрос на API /bitrix/oauth/callback для обмена code.
+    BITRIX_OAUTH_REDIRECT_URI: str = "https://mugle-h-rbot-top-managment-m11i.vercel.app/bitrix.html"
     # Дополнительные Origin для CORS (через запятую): превью Vercel, другой прод-домен, опечатки в URL
     CORS_EXTRA_ORIGINS: str = ""
 

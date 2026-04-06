@@ -9,6 +9,24 @@
   </style>
 </head>
 <body>
+  <!--
+    Bitrix иногда редиректит OAuth на тот же URL, что и обработчик (Vercel bitrix.html?code=...).
+    Тогда вкладка не в iframe — BX24 не инициализируется. Сразу передаём ответ на API (обмен code).
+  -->
+  <script>
+(function () {
+  try {
+    var API_BASE = 'https://muglehrbottopmanagment-test.up.railway.app';
+    var q = new URLSearchParams(window.location.search || '');
+    var hasCode = q.get('code');
+    var hasState = q.get('state');
+    var hasOAuthError = q.get('error');
+    if (hasOAuthError || (hasCode && hasState)) {
+      window.location.replace(API_BASE + '/bitrix/oauth/callback?' + q.toString());
+    }
+  } catch (e) {}
+})();
+  </script>
   <p id="status">Загрузка Bitrix24…</p>
   <p id="oauthRow" style="display:none; margin-top:1rem; font-size:0.95rem;">
     <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth) — если «Подключение…» не завершается</a>
