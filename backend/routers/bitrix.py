@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from typing import Any, Optional
-from urllib.parse import parse_qs, quote
+from urllib.parse import parse_qs, quote, unquote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -281,6 +281,49 @@ def _merge_bracket_form_keys(flat: dict[str, str]) -> dict[str, str]:
     return merged
 
 
+def _domain_from_placement_options(raw: str) -> Optional[str]:
+    """Достаёт DOMAIN из JSON в PLACEMENT_OPTIONS (частый формат при установке из Маркета)."""
+    s = str(raw).strip()
+    if not s:
+        return None
+    for candidate in (s, unquote(s)):
+        try:
+            opts = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(opts, dict):
+            continue
+        for key in ("DOMAIN", "domain", "PROTOCOL_DOMAIN"):
+            val = opts.get(key)
+            if val:
+                return str(val).strip()
+    return None
+
+
+def _enrich_install_flat_from_request(request: Request, flat: dict[str, str]) -> dict[str, str]:
+    """Дополняет поля установки Bitrix24: DOMAIN из query, из PLACEMENT_OPTIONS, алиасы REFRESH_ID и т.д."""
+    out: dict[str, str] = dict(flat)
+    if not out.get("domain") and not out.get("DOMAIN"):
+        qd = request.query_params.get("DOMAIN") or request.query_params.get("domain")
+        if qd:
+            out["domain"] = str(qd)
+    if not out.get("domain") and not out.get("DOMAIN"):
+        po = out.get("PLACEMENT_OPTIONS")
+        if po:
+            dom = _domain_from_placement_options(po)
+            if dom:
+                out["domain"] = dom
+    if not out.get("refresh_token") and out.get("REFRESH_ID"):
+        out["refresh_token"] = str(out["REFRESH_ID"])
+    if not out.get("access_token") and out.get("AUTH_ID"):
+        out["access_token"] = str(out["AUTH_ID"])
+    if not out.get("application_token") and out.get("APPLICATION_TOKEN"):
+        out["application_token"] = str(out["APPLICATION_TOKEN"])
+    if not out.get("expires") and not out.get("expires_in") and out.get("AUTH_EXPIRES"):
+        out["expires"] = str(out["AUTH_EXPIRES"])
+    return out
+
+
 def _flat_params_to_auth_json(flat: dict[str, str]) -> Optional[str]:
     """Собирает JSON auth из плоских полей POST (вариант без обёртки auth у Bitrix24)."""
     token = flat.get("access_token") or flat.get("AUTH_ID") or flat.get("oauth_token")
@@ -293,13 +336,15 @@ def _flat_params_to_auth_json(flat: dict[str, str]) -> Optional[str]:
         "member_id": str(member),
         "domain": str(domain),
     }
-    if flat.get("refresh_token"):
-        obj["refresh_token"] = str(flat["refresh_token"])
-    if flat.get("application_token"):
-        obj["application_token"] = str(flat["application_token"])
+    rt = flat.get("refresh_token") or flat.get("REFRESH_ID")
+    if rt:
+        obj["refresh_token"] = str(rt)
+    at = flat.get("application_token") or flat.get("APPLICATION_TOKEN")
+    if at:
+        obj["application_token"] = str(at)
     if flat.get("client_endpoint"):
         obj["client_endpoint"] = str(flat["client_endpoint"])
-    exp = flat.get("expires") or flat.get("expires_in")
+    exp = flat.get("expires") or flat.get("expires_in") or flat.get("AUTH_EXPIRES")
     if exp:
         obj["expires"] = exp
     return json.dumps(obj)
@@ -341,7 +386,7 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
     if "multipart/form-data" in ctype:
         try:
             form = await request.form()
-            flat = {str(k): str(form[k]) for k in form}
+            flat = _enrich_install_flat_from_request(request, {str(k): str(form[k]) for k in form})
             alt = _auth_string_from_flat(flat)
             if alt:
                 return alt
@@ -367,6 +412,7 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
     try:
         parsed = parse_qs(text)
         flat = {k: v[0] for k, v in parsed.items() if v}
+        flat = _enrich_install_flat_from_request(request, flat)
         alt = _auth_string_from_flat(flat)
         if alt:
             return alt
