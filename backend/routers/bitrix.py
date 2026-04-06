@@ -177,20 +177,87 @@ def _install_parse_error_html(detail: str) -> str:
 
 
 def _install_finish_html() -> str:
-    """HTML с вызовом BX24.installFinish() после успешного сохранения токенов."""
-    return """<!DOCTYPE html>
+    """HTML с вызовом BX24.installFinish() после успешного сохранения токенов.
+
+    По документации Bitrix24, пока не вызван BX24.installFinish(), портал считает
+    приложение ненастроенным и при открытии снова показывает слайдер с URL установки.
+    Порядок как в официальном примере: DOM → BX24.init → installFinish; SDK грузим
+    с onload (иначе inline мог выполниться до появления BX24).
+    """
+    return _INSTALL_FINISH_HTML
+
+
+_INSTALL_FINISH_HTML = """<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8"/>
   <title>Установка HR Спасибо</title>
 </head>
 <body>
-<script src="https://api.bitrix24.com/api/v1/"></script>
-<script>
-BX24.init(function(){
-  BX24.installFinish();
-});
-</script>
+  <p id="status">Завершение установки…</p>
+  <script>
+(function () {
+  function setStatus(text) {
+    var el = document.getElementById("status");
+    if (el) { el.textContent = text; }
+  }
+  function fail(msg) {
+    setStatus(msg || "Ошибка завершения установки");
+    if (typeof console !== "undefined" && console.error) { console.error(msg); }
+  }
+  function whenDomReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn);
+    } else {
+      fn();
+    }
+  }
+  function runInstallFinish() {
+    var deadline = window.setTimeout(function () {
+      fail("BX24.init не ответил. Обновите страницу или откройте приложение из меню портала.");
+    }, 45000);
+    function callInit() {
+      BX24.init(function () {
+        window.clearTimeout(deadline);
+        BX24.installFinish();
+      });
+    }
+    function start() {
+      window.setTimeout(callInit, 0);
+    }
+    if (typeof BX24.ready === "function") {
+      BX24.ready(start);
+    } else {
+      start();
+    }
+  }
+  function afterSdkLoaded() {
+    whenDomReady(function () {
+      var tries = 0;
+      function waitBx() {
+        if (typeof BX24 !== "undefined") {
+          runInstallFinish();
+          return;
+        }
+        tries += 1;
+        if (tries > 80) {
+          fail("SDK Bitrix24 не загружен.");
+          return;
+        }
+        window.setTimeout(waitBx, 50);
+      }
+      waitBx();
+    });
+  }
+  window.__hrBitrixInstallFinishOnSdkLoad = function () {
+    afterSdkLoaded();
+  };
+  window.__hrBitrixInstallFinishOnSdkError = function () {
+    fail("Не удалось загрузить скрипт Bitrix24.");
+  };
+})();
+  </script>
+  <script src="https://api.bitrix24.com/api/v1/" onload="window.__hrBitrixInstallFinishOnSdkLoad()" onerror="window.__hrBitrixInstallFinishOnSdkError()"></script>
 </body>
 </html>
 """
