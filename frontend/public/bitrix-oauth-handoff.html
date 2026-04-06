@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Вход HR Спасибо — Bitrix OAuth</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 28rem; margin: 2rem auto; padding: 0 1rem; }
+  </style>
+</head>
+<body>
+  <p id="status">Завершение входа…</p>
+  <script>
+(function () {
+  var API_BASE = 'https://muglehrbottopmanagment-test.up.railway.app';
+  function fail(msg) {
+    var el = document.getElementById('status');
+    if (el) { el.textContent = msg || 'Ошибка'; }
+  }
+  try {
+    var params = new URLSearchParams(window.location.search || '');
+    var t = params.get('t');
+    if (!t) {
+      fail('Нет токена в ссылке.');
+      return;
+    }
+    fetch(API_BASE + '/bitrix/oauth/handoff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: t })
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, status: res.status, data: data };
+        });
+      })
+      .then(function (r) {
+        if (!r.ok) {
+          var d = r.data && r.data.detail;
+          fail(typeof d === 'string' ? d : JSON.stringify(r.data || {}));
+          return;
+        }
+        if (r.data.user_id) {
+          localStorage.setItem('userId', String(r.data.user_id));
+          localStorage.setItem('user', JSON.stringify(r.data.user));
+        }
+        window.location.replace('/');
+      })
+      .catch(function (e) {
+        fail(e && e.message ? e.message : 'Сеть недоступна');
+      });
+  } catch (e) {
+    fail(e && e.message ? e.message : 'Ошибка');
+  }
+})();
+  </script>
+</body>
+</html>

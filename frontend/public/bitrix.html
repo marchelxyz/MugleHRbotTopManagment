@@ -10,6 +10,9 @@
 </head>
 <body>
   <p id="status">Загрузка Bitrix24…</p>
+  <p id="oauthRow" style="display:none; margin-top:1rem; font-size:0.95rem;">
+    <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth) — если «Подключение…» не завершается</a>
+  </p>
   <!--
     Скрипт api.bitrix24.com подключается с onload: иначе следующий inline мог выполниться
     до появления BX24 (приложение «не открывается» / «SDK не загружен»).
@@ -200,6 +203,36 @@
   window.__hrBitrixOnSdkError = function () {
     fail('Не удалось загрузить скрипт Bitrix24 (сеть или блокировка).');
   };
+
+  function setupOAuthFallbackLink() {
+    try {
+      var domain = new URLSearchParams(window.location.search || '').get('DOMAIN') || '';
+      if (!domain) {
+        return;
+      }
+      fetch(API_BASE + '/bitrix/oauth/status')
+        .then(function (res) {
+          return res.json();
+        })
+        .then(function (data) {
+          if (!data || !data.oauth_enabled) {
+            return;
+          }
+          var row = document.getElementById('oauthRow');
+          var a = document.getElementById('oauthLink');
+          if (!row || !a) {
+            return;
+          }
+          a.href = API_BASE + '/bitrix/oauth/start?domain=' + encodeURIComponent(domain);
+          a.target = '_top';
+          a.rel = 'noopener';
+          row.style.display = 'block';
+        })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
+  whenDomReady(setupOAuthFallbackLink);
 })();
   </script>
   <script src="https://api.bitrix24.com/api/v1/" onload="window.__hrBitrixOnSdkLoad()" onerror="window.__hrBitrixOnSdkError()"></script>

@@ -6,16 +6,23 @@ import html
 import json
 import logging
 from typing import Any, Optional
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import bitrix_crud
+import crud
 import schemas
 from bitrix_service import (
+    bitrix_handoff_sign_user_id,
+    bitrix_handoff_verify,
     bitrix_imbot_message_add,
+    bitrix_oauth_build_authorize_url,
+    bitrix_oauth_exchange_code,
+    bitrix_oauth_sign_state,
+    bitrix_oauth_verify_state,
     normalize_bitrix_domain,
     parse_install_auth_param,
 )
@@ -87,6 +94,135 @@ async def bitrix_session(
     )
 
 
+@router.get("/oauth/status")
+def bitrix_oauth_status() -> dict[str, bool]:
+    """Показывает, включён ли обход входа через полный OAuth (когда BX24.init в iframe не работает)."""
+    enabled = bool(
+        settings.BITRIX_CLIENT_ID.strip()
+        and settings.BITRIX_CLIENT_SECRET.strip()
+        and settings.BITRIX_OAUTH_REDIRECT_URI.strip()
+    )
+    return {"oauth_enabled": enabled}
+
+
+@router.get("/oauth/start", response_model=None)
+async def bitrix_oauth_start(domain: str) -> Response:
+    """
+    Редирект на страницу авторизации портала Bitrix24 (шаг 1 OAuth 2.0).
+    В карточке локального приложения укажите тот же redirect_uri, что BITRIX_OAUTH_REDIRECT_URI.
+    """
+    if not settings.BITRIX_CLIENT_ID.strip() or not settings.BITRIX_CLIENT_SECRET.strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OAuth Bitrix24 не настроен: задайте BITRIX_CLIENT_ID и BITRIX_CLIENT_SECRET в API.",
+        )
+    if not settings.BITRIX_OAUTH_REDIRECT_URI.strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Не задан BITRIX_OAUTH_REDIRECT_URI.",
+        )
+    try:
+        state = bitrix_oauth_sign_state(domain)
+        url = bitrix_oauth_build_authorize_url(
+            domain,
+            state,
+            settings.BITRIX_OAUTH_REDIRECT_URI.strip(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return RedirectResponse(url=url, status_code=302)
+
+
+@router.get("/oauth/callback", response_model=None)
+async def bitrix_oauth_callback(
+    db: AsyncSession = Depends(get_db),
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    domain: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None,
+) -> Response:
+    """Шаг 2 OAuth: обмен code на токен, создание пользователя HR, редирект на Vercel с handoff-токеном."""
+    if error:
+        return _html_response(_oauth_error_html(error, error_description))
+    if not code or not state:
+        return _html_response(
+            _oauth_error_html("missing_params", "Нет code или state в ответе Bitrix24.")
+        )
+    try:
+        expected_dom = bitrix_oauth_verify_state(state)
+    except ValueError as exc:
+        return _html_response(_oauth_error_html("invalid_state", str(exc)))
+
+    if domain:
+        dom = normalize_bitrix_domain(domain)
+        if dom != expected_dom:
+            return _html_response(
+                _oauth_error_html(
+                    "domain_mismatch",
+                    "Домен в ответе Bitrix не совпадает с начатым входом. Закройте окно и начните вход снова.",
+                )
+            )
+    else:
+        dom = expected_dom
+
+    try:
+        token_payload = await bitrix_oauth_exchange_code(
+            code,
+            settings.BITRIX_OAUTH_REDIRECT_URI.strip(),
+        )
+    except ValueError as exc:
+        return _html_response(_oauth_error_html("token_exchange", str(exc)))
+    except Exception as exc:
+        logger.exception("OAuth token exchange failed")
+        return _html_response(_oauth_error_html("token_exchange", str(exc)))
+
+    access_token = token_payload.get("access_token")
+    if not access_token or not isinstance(access_token, str):
+        return _html_response(_oauth_error_html("no_access_token", "В ответе oauth/token нет access_token."))
+
+    try:
+        user = await bitrix_crud.get_or_create_user_for_bitrix(db, dom, access_token)
+    except ValueError as exc:
+        return _html_response(_oauth_error_html("user", str(exc)))
+
+    if user.status == "blocked":
+        return _html_response(_oauth_error_html("blocked", "Аккаунт заблокирован."))
+    if user.status == "rejected":
+        return _html_response(_oauth_error_html("rejected", "Заявка отклонена."))
+
+    handoff = bitrix_handoff_sign_user_id(user.id)
+    base = settings.BITRIX_WEB_APP_URL.rstrip("/")
+    target = f"{base}/bitrix-oauth-handoff.html?t={quote(handoff, safe='')}"
+    return RedirectResponse(url=target, status_code=302)
+
+
+@router.post("/oauth/handoff", response_model=schemas.BitrixSessionResponse)
+async def bitrix_oauth_handoff(
+    body: schemas.BitrixOAuthHandoffRequest,
+    db: AsyncSession = Depends(get_db),
+) -> schemas.BitrixSessionResponse:
+    """Меняет одноразовый токен после OAuth на ту же сессию, что и POST /bitrix/session."""
+    try:
+        uid = bitrix_handoff_verify(body.token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    user = await crud.get_user(db, uid)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+
+    if user.status == "blocked":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Аккаунт заблокирован")
+    if user.status == "rejected":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Заявка отклонена")
+
+    return schemas.BitrixSessionResponse(
+        user_id=user.id,
+        user=schemas.UserResponse.model_validate(user),
+    )
+
+
 @router.post("/event")
 async def bitrix_event(request: Request, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
     """
@@ -144,6 +280,26 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
 def _html_response(body: str) -> HTMLResponse:
     """Ответ HTML для страниц установки Bitrix (в т.ч. в iframe)."""
     return HTMLResponse(content=body, media_type="text/html; charset=utf-8")
+
+
+def _oauth_error_html(code: str, detail: Optional[str] = None) -> str:
+    """HTML при ошибке OAuth (показывается после редиректа с oauth.bitrix.info)."""
+    safe_code = html.escape(str(code), quote=True)
+    safe_detail = html.escape(str(detail or ""), quote=True)
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <title>Ошибка входа Bitrix24 (OAuth)</title>
+</head>
+<body>
+  <h1>Не удалось завершить вход</h1>
+  <p><strong>{safe_code}</strong></p>
+  <p>{safe_detail}</p>
+  <p>Закройте вкладку и откройте приложение в портале снова.</p>
+</body>
+</html>
+"""
 
 
 def _redirect_to_bitrix_web_app(request: Request) -> RedirectResponse:

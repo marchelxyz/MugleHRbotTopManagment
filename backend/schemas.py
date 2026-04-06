@@ -74,6 +74,12 @@ class BitrixSessionResponse(BaseModel):
     user: UserResponse
 
 
+class BitrixOAuthHandoffRequest(BaseModel):
+    """Обмен одноразового токена после OAuth-редиректа на фронт (bitrix-oauth-handoff.html)."""
+
+    token: str
+
+
 class ItemCodeResponse(OrmBase):
     id: int
     code_value: str
