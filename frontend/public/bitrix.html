@@ -34,6 +34,9 @@
   <p id="oauthRow" style="display:none; margin-top:1rem; font-size:0.95rem;">
     <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth) — если «Подключение…» не завершается</a>
   </p>
+  <p id="passwordLoginRow" style="max-width:36rem; margin:1rem auto 0; padding:0 1rem; font-family:system-ui,sans-serif; font-size:0.95rem;">
+    <a id="passwordLoginLink" href="#">Войти по логину и паролю HR (как на сайте)</a>
+  </p>
   <!--
     Скрипт BX24: как в документации — //api…/api/v1/ (протокол как у страницы).
     https://apidocs.bitrix24.ru/sdk/bx24-js-sdk/index.html
@@ -338,7 +341,22 @@
     } catch (e) {}
   }
 
+  function setupPasswordLoginLink() {
+    var a = document.getElementById('passwordLoginLink');
+    if (!a) {
+      return;
+    }
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var q = new URLSearchParams(window.location.search || '');
+      q.set('bitrix_login', '1');
+      var tail = q.toString();
+      window.location.href = '/' + (tail ? '?' + tail : '') + (window.location.hash || '');
+    });
+  }
+
   whenDomReady(setupOAuthFallbackLink);
+  whenDomReady(setupPasswordLoginLink);
 })();
   </script>
   <script src="//api.bitrix24.com/api/v1/" onload="window.__hrBitrixOnSdkLoad()" onerror="window.__hrBitrixOnSdkError()"></script>
