@@ -35,8 +35,9 @@
     <a id="oauthLink" href="#">Войти через Bitrix24 (OAuth) — если «Подключение…» не завершается</a>
   </p>
   <!--
-    Скрипт api.bitrix24.com подключается с onload: иначе следующий inline мог выполниться
-    до появления BX24 (приложение «не открывается» / «SDK не загружен»).
+    Скрипт BX24: как в документации — //api…/api/v1/ (протокол как у страницы).
+    https://apidocs.bitrix24.ru/sdk/bx24-js-sdk/index.html
+    Редко для другого контура указывают api.bitrix24.tech — при необходимости замените src ниже.
   -->
   <script>
 (function () {
@@ -118,13 +119,19 @@
   function timeoutFailMessage() {
     return (
       'BX24.init не ответил за отведённое время.\n\n' +
-      'Это не значит, что «Railway не отвечает Bitrix»: запрос к API на вход (/bitrix/session) ' +
-      'отправляется только после успешного BX24.init и BX24.getAuth. Пока init завис, до сервера дело не доходит.\n\n' +
-      'Если в адресной строке портала был путь .../marketplace/app/... — откройте приложение пунктом меню слева («Спасибо» / «Ещё»), не из витрины.\n\n' +
-      'Установка приложения (поле «Путь для первоначальной установки» → /bitrix/install) — отдельный шаг; смотрите логи Railway на этот URL.\n\n' +
-      'Если уже открываете из меню и ошибка повторяется: в DevTools → Network проверьте, есть ли POST .../bitrix/session. ' +
-      'Если его нет — всё ещё проблема iframe/BX24. Если есть, но красный — проверьте CORS: Origin страницы Vercel должен быть в allow_origins API.\n\n' +
-      'Ниже доступна ссылка «Войти через Bitrix24 (OAuth)» — используйте её, если init так и не ответил.'
+      'По документации Bitrix24, JS-библиотека BX24.js нужна только если интерфейс открыт ' +
+      'внутри портала (iframe), а не для «голого» вебхука: ' +
+      'https://apidocs.bitrix24.ru/sdk/bx24-js-sdk/index.html\n\n' +
+      'BX24.init запрашивает данные у родительского окна портала; в превью Маркета (.../marketplace/app/...) ' +
+      'и в части встроек обмен с родителем не завершается — callback init не вызывается. ' +
+      'Это не ошибка Railway: POST /bitrix/session уходит только после успешных BX24.init и BX24.getAuth.\n\n' +
+      'Что проверить:\n' +
+      '• Откройте приложение пунктом левого меню («Спасибо» / «Ещё»), не из витрины Маркета.\n' +
+      '• В карточке локального приложения: «Путь обработчика» = URL bitrix.html на Vercel (как в браузере), ' +
+      '«Путь установки» = …/bitrix/install на API (см. также обзор: ' +
+      'https://b24.org.ru/lokalnye-prilozheniya-bitriks24-v-2025/ ).\n' +
+      '• В Network: есть ли POST .../bitrix/session. Нет — проблема iframe/SDK; есть, но красный — CORS на API.\n\n' +
+      'Ниже — вход через OAuth (полный OAuth 2.0), если встроенный SDK так и не заработал.'
     );
   }
 
@@ -242,15 +249,39 @@
       });
     }
 
-    /* Документация Bitrix24: примеры вызывают BX24.init после готовности DOM; BX24.ready (если есть) — до init. */
-    function startInit() {
+    /**
+     * BX24.ready ждёт готовность связи с порталом; в Маркете/части iframe она не наступает,
+     * и init никогда не вызывается. Официальные примеры: ready перед init — см.
+     * https://apidocs.bitrix24.com/sdk/bx24-js-sdk/system-functions/bx24-init.html
+     * Добавляем таймаут: если ready «молчит», всё равно пробуем BX24.init (как в обсуждениях интеграторов).
+     */
+    var initScheduled = false;
+    function scheduleBx24InitOnce() {
+      if (initScheduled) {
+        return;
+      }
+      initScheduled = true;
       window.setTimeout(callBx24Init, 0);
     }
 
+    var READY_FALLBACK_MS = 5000;
     if (typeof BX24.ready === 'function') {
-      BX24.ready(startInit);
+      var readyTimer = window.setTimeout(function () {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn(
+            '[HR Bitrix] BX24.ready не завершился за ' +
+              READY_FALLBACK_MS +
+              ' мс — вызываем BX24.init (обход для Маркета/зависшего handshake).'
+          );
+        }
+        scheduleBx24InitOnce();
+      }, READY_FALLBACK_MS);
+      BX24.ready(function () {
+        window.clearTimeout(readyTimer);
+        scheduleBx24InitOnce();
+      });
     } else {
-      startInit();
+      scheduleBx24InitOnce();
     }
   }
 
@@ -310,6 +341,6 @@
   whenDomReady(setupOAuthFallbackLink);
 })();
   </script>
-  <script src="https://api.bitrix24.com/api/v1/" onload="window.__hrBitrixOnSdkLoad()" onerror="window.__hrBitrixOnSdkError()"></script>
+  <script src="//api.bitrix24.com/api/v1/" onload="window.__hrBitrixOnSdkLoad()" onerror="window.__hrBitrixOnSdkError()"></script>
 </body>
 </html>
