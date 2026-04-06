@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import json
 import logging
+import re
 from typing import Any, Optional
 from urllib.parse import parse_qs, quote
 
@@ -267,10 +268,23 @@ async def bitrix_event(request: Request, db: AsyncSession = Depends(get_db)) -> 
     return {"status": "ok"}
 
 
+_BRACKET_AUTH_KEY = re.compile(r"^(?:auth|AUTH)\[(?P<inner>[^\]]+)\]$")
+
+
+def _merge_bracket_form_keys(flat: dict[str, str]) -> dict[str, str]:
+    """Разворачивает ключи вида ``auth[access_token]`` (как в PHP) в плоские ``access_token``."""
+    merged: dict[str, str] = dict(flat)
+    for key, value in flat.items():
+        m = _BRACKET_AUTH_KEY.match(key)
+        if m:
+            merged[m.group("inner")] = value
+    return merged
+
+
 def _flat_params_to_auth_json(flat: dict[str, str]) -> Optional[str]:
     """Собирает JSON auth из плоских полей POST (вариант без обёртки auth у Bitrix24)."""
-    token = flat.get("access_token") or flat.get("AUTH_ID")
-    member = flat.get("member_id") or flat.get("memberId")
+    token = flat.get("access_token") or flat.get("AUTH_ID") or flat.get("oauth_token")
+    member = flat.get("member_id") or flat.get("memberId") or flat.get("MEMBER_ID")
     domain = flat.get("domain") or flat.get("DOMAIN")
     if not token or not member or not domain:
         return None
@@ -289,6 +303,18 @@ def _flat_params_to_auth_json(flat: dict[str, str]) -> Optional[str]:
     if exp:
         obj["expires"] = exp
     return json.dumps(obj)
+
+
+def _auth_string_from_flat(flat: dict[str, str]) -> Optional[str]:
+    """Из плоских полей формы извлекает строку auth (поле auth или сборка из access_token/member_id/domain)."""
+    merged = _merge_bracket_form_keys(flat)
+    raw_auth = merged.get("auth")
+    if raw_auth is not None and str(raw_auth).strip():
+        return str(raw_auth)
+    raw_upper = merged.get("AUTH")
+    if raw_upper is not None and str(raw_upper).strip():
+        return str(raw_upper)
+    return _flat_params_to_auth_json(merged)
 
 
 def _dict_to_auth_json_string(data: dict[str, Any]) -> Optional[str]:
@@ -316,11 +342,7 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
         try:
             form = await request.form()
             flat = {str(k): str(form[k]) for k in form}
-            if flat.get("auth"):
-                return flat["auth"]
-            if flat.get("AUTH"):
-                return flat["AUTH"]
-            alt = _flat_params_to_auth_json(flat)
+            alt = _auth_string_from_flat(flat)
             if alt:
                 return alt
         except Exception as exc:
@@ -345,13 +367,14 @@ async def _read_install_auth_param(request: Request) -> Optional[str]:
     try:
         parsed = parse_qs(text)
         flat = {k: v[0] for k, v in parsed.items() if v}
-        if flat.get("auth"):
-            return str(flat["auth"])
-        if flat.get("AUTH"):
-            return str(flat["AUTH"])
-        alt = _flat_params_to_auth_json(flat)
+        alt = _auth_string_from_flat(flat)
         if alt:
             return alt
+        merged = _merge_bracket_form_keys(flat)
+        logger.warning(
+            "bitrix/install: urlencoded не распознан; имена полей формы: %s",
+            sorted(merged.keys()),
+        )
     except Exception as exc:
         logger.warning("bitrix install: parse_qs: %s", exc)
     return None
