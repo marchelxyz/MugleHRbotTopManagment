@@ -232,6 +232,15 @@ export const setUserCredentials = (userId, credentials) =>
 export const bulkSendCredentials = (requestData) =>
   apiClient.post('/admin/users/bulk-send-credentials', requestData, getAuthHeaders());
 
+export const getBroadcastEmailPreview = (onlyBrowserUsers) =>
+  apiClient.get('/admin/users/broadcast-email/preview', {
+    params: { only_browser_users: onlyBrowserUsers },
+    ...getAuthHeaders(),
+  });
+
+export const broadcastEmail = (payload) =>
+  apiClient.post('/admin/users/broadcast-email', payload, getAuthHeaders());
+
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ АДМИН-ПАНЕЛИ ---
 
 // Добавляем startDate и endDate в параметры

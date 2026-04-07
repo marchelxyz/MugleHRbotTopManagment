@@ -715,3 +715,45 @@ async def send_purchase_notification_to_admins(
     except Exception as e:
         logger.error(f"Ошибка при отправке уведомления админам о покупке: {e}")
         return False
+
+
+def build_broadcast_email_content(
+    body_plain: str,
+    login_url: Optional[str] = None,
+) -> tuple[str, str]:
+    """Формирует HTML и текст письма для массовой рассылки (текст экранируется).
+
+    Args:
+        body_plain: Текст сообщения от администратора.
+        login_url: Если задан, в конец добавляется блок со ссылкой для входа.
+
+    Returns:
+        Кортеж (body_html, body_text) для send_email.
+    """
+    import html as html_mod
+
+    stripped = body_plain.strip()
+    text_parts = [stripped]
+    if login_url:
+        text_parts.append("")
+        text_parts.append(f"Ссылка для входа: {login_url}")
+    body_text = "\n".join(text_parts)
+
+    escaped = html_mod.escape(stripped)
+    inner = escaped.replace("\n", "<br/>")
+    html_chunks: list[str] = [
+        "<html><head><meta charset=\"UTF-8\"></head><body>",
+        "<div style=\"max-width:600px;margin:0 auto;padding:20px;font-family:Arial,sans-serif;"
+        "line-height:1.6;color:#333;\">",
+        f"<p style=\"margin:0;\">{inner}</p>",
+    ]
+    if login_url:
+        safe_url = html_mod.escape(login_url, quote=True)
+        html_chunks.append(
+            "<p style=\"margin-top:20px;\">"
+            f"<a href=\"{safe_url}\" style=\"color:#007bff;\">Перейти по ссылке для входа</a></p>"
+            f"<p style=\"font-size:12px;color:#666;word-break:break-all;\">{html_mod.escape(login_url)}</p>"
+        )
+    html_chunks.extend(["</div>", "</body></html>"])
+    body_html = "".join(html_chunks)
+    return body_html, body_text

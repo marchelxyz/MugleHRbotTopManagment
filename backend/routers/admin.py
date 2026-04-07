@@ -13,6 +13,7 @@ import io
 from fastapi.responses import StreamingResponse
 from dependencies import get_current_admin_user
 from database import get_db
+from config import settings
 from openpyxl import Workbook
 import pandas as pd
 import pytz
@@ -413,6 +414,74 @@ async def bulk_send_credentials_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Не удалось выполнить массовую рассылку"
         )
+
+
+@router.get("/users/broadcast-email/preview", response_model=schemas.BroadcastEmailPreviewResponse)
+async def broadcast_email_preview_route(
+    only_browser_users: bool = Query(
+        True,
+        description="Считать только пользователей с доступом через браузер (не заблокированы, одобрены)",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Оценка числа получателей по email и в Telegram (независимо от выбранных каналов при отправке)."""
+    n_email = await crud.count_broadcast_email_recipients(db, only_browser_users)
+    n_tg = await crud.count_broadcast_telegram_recipients(db, only_browser_users)
+    return schemas.BroadcastEmailPreviewResponse(
+        recipient_count_email=n_email,
+        recipient_count_telegram=n_tg,
+    )
+
+
+@router.post("/users/broadcast-email", response_model=schemas.BroadcastEmailResponse)
+async def broadcast_email_route(
+    request: schemas.BroadcastEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Рассылка в email, Telegram или оба канала: одобренные пользователи, не заблокированы."""
+    if request.send_email:
+        smtp_user = getattr(settings, "SMTP_USERNAME", None) or ""
+        smtp_pass = getattr(settings, "SMTP_PASSWORD", None) or ""
+        if not str(smtp_user).strip() or not str(smtp_pass).strip():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="SMTP не настроен (SMTP_USERNAME / SMTP_PASSWORD). Проверьте переменные окружения.",
+            )
+    if request.send_telegram:
+        token = getattr(settings, "TELEGRAM_BOT_TOKEN", None) or ""
+        if not str(token).strip():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Telegram бот не настроен (TELEGRAM_BOT_TOKEN).",
+            )
+    result = await crud.broadcast_announcement_to_users(
+        db,
+        subject=request.subject,
+        body_plain=request.body,
+        only_browser_users=request.only_browser_users,
+        append_login_url=request.append_login_url,
+        send_email=request.send_email,
+        send_telegram=request.send_telegram,
+    )
+    parts: list[str] = []
+    if request.send_email:
+        parts.append(
+            f"Email: {result['sent_ok_email']}/{result['recipient_count_email']}",
+        )
+    if request.send_telegram:
+        parts.append(
+            f"Telegram: {result['sent_ok_telegram']}/{result['recipient_count_telegram']}",
+        )
+    msg = "; ".join(parts) if parts else "Ничего не отправлено"
+    return schemas.BroadcastEmailResponse(
+        message=msg,
+        recipient_count_email=result["recipient_count_email"],
+        recipient_count_telegram=result["recipient_count_telegram"],
+        sent_ok_email=result["sent_ok_email"],
+        sent_ok_telegram=result["sent_ok_telegram"],
+        failed=[schemas.BroadcastEmailFailedItem(**f) for f in result["failed"]],
+    )
+
 
 @router.get("/statistics/general", response_model=schemas.GeneralStatsResponse)
 async def get_general_statistics_route(start_date: Optional[date] = Query(None), end_date: Optional[date] = Query(None), db: AsyncSession = Depends(get_db)):

@@ -14,6 +14,7 @@ import RegistrationManager from './admin/RegistrationManager';
 import PurchasesManager from './admin/PurchasesManager';
 import ApprovalsManager from './admin/ApprovalsManager';
 import AppearanceSettings from './admin/AppearanceSettings';
+import EmailBroadcast from './admin/EmailBroadcast';
 import { addPointsToAll, addTicketsToAll, adminGenerateLeaderboardBanners, adminGenerateTestLeaderboardBanners, resetDailyTransferLimits } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { useConfirmation } from '../contexts/ConfirmationContext';
@@ -170,6 +171,7 @@ function AdminPage({ seasonTheme, themeAssets, onAppearanceUpdated }) {
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
           <button onClick={() => setActiveSection('appearance')} className={styles.gridButton}>Оформление</button>
           <button onClick={() => setActiveSection('credentials')} className={styles.gridButton}>Генерация учетных данных</button>
+          <button onClick={() => setActiveSection('email-broadcast')} className={styles.gridButton}>Рассылка email / Telegram</button>
 {/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
           <button 
             onClick={handleGenerateBanners} 
@@ -212,6 +214,7 @@ function AdminPage({ seasonTheme, themeAssets, onAppearanceUpdated }) {
       case 'approvals': return <ApprovalsManager />;
       case 'appearance': return <AppearanceSettings seasonTheme={seasonTheme} themeAssets={themeAssets} onAppearanceUpdated={onAppearanceUpdated} />;
       case 'credentials': return <CredentialsGenerator />;
+      case 'email-broadcast': return <EmailBroadcast />;
       default: return null; // На случай непредвиденного значения
     }
   };

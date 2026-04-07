@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
+from email_service import send_email, is_valid_email, build_broadcast_email_content
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_, text
@@ -2393,6 +2394,175 @@ async def bulk_send_credentials(
         "messages_sent": messages_sent,
         "failed_users": failed_users
     }
+
+
+async def broadcast_announcement_to_users(
+    db: AsyncSession,
+    subject: str,
+    body_plain: str,
+    only_browser_users: bool,
+    append_login_url: bool,
+    send_email: bool,
+    send_telegram: bool,
+) -> dict:
+    """Рассылка сообщения по email и/или Telegram.
+
+    Получатели: статус ``approved``, не ``deleted`` / ``blocked``.
+    Email: валидный адрес в профиле. Telegram: ``telegram_id`` не меньше 0.
+
+    Returns:
+        Словарь с счётчиками по каналам и списком ``failed`` с ключами
+        ``channel``, ``target``, ``detail``.
+    """
+    login_url = None
+    if append_login_url:
+        raw = (getattr(settings, "WEB_APP_LOGIN_URL", None) or "").strip()
+        login_url = raw or None
+
+    sent_ok_email = 0
+    sent_ok_telegram = 0
+    recipient_count_email = 0
+    recipient_count_telegram = 0
+    failed: list[dict[str, str]] = []
+
+    if send_email:
+        users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+        recipient_count_email = len(users)
+        body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
+        for user in users:
+            to_email = user.email.strip()
+            try:
+                ok = await send_email(
+                    to_email=to_email,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text,
+                )
+                if ok:
+                    sent_ok_email += 1
+                else:
+                    failed.append(
+                        {
+                            "channel": "email",
+                            "target": to_email,
+                            "detail": "Не удалось отправить (проверьте SMTP)",
+                        }
+                    )
+            except Exception as exc:
+                logger.error("Ошибка рассылки на %s: %s", to_email, exc)
+                failed.append(
+                    {
+                        "channel": "email",
+                        "target": to_email,
+                        "detail": str(exc)[:500],
+                    }
+                )
+
+    if send_telegram:
+        users_tg = await _fetch_broadcast_telegram_users(db, only_browser_users)
+        recipient_count_telegram = len(users_tg)
+        tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
+        for user in users_tg:
+            tid = user.telegram_id
+            try:
+                await send_telegram_message(
+                    chat_id=int(tid),
+                    text=tg_text,
+                    parse_mode="HTML",
+                )
+                sent_ok_telegram += 1
+            except Exception as exc:
+                logger.error("Ошибка Telegram-рассылки %s: %s", tid, exc)
+                failed.append(
+                    {
+                        "channel": "telegram",
+                        "target": str(tid),
+                        "detail": str(exc)[:500],
+                    }
+                )
+
+    return {
+        "recipient_count_email": recipient_count_email,
+        "recipient_count_telegram": recipient_count_telegram,
+        "sent_ok_email": sent_ok_email,
+        "sent_ok_telegram": sent_ok_telegram,
+        "failed": failed,
+    }
+
+
+async def count_broadcast_email_recipients(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> int:
+    """Возвращает число получателей массовой email-рассылки (после фильтра по валидному email)."""
+    users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    return len(users)
+
+
+async def count_broadcast_telegram_recipients(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> int:
+    """Число пользователей с Telegram для рассылки (одобрены, есть telegram_id)."""
+    users = await _fetch_broadcast_telegram_users(db, only_browser_users)
+    return len(users)
+
+
+async def _fetch_broadcast_recipient_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[models.User]:
+    """Возвращает пользователей для рассылки: одобрены, не удалены/заблокированы, есть валидный email."""
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+        models.User.email.isnot(None),
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(select(models.User).where(and_(*conditions)))
+    rows = result.scalars().all()
+    out: list[models.User] = []
+    for user in rows:
+        if not user.email:
+            continue
+        addr = user.email.strip()
+        if addr and is_valid_email(addr):
+            out.append(user)
+    return out
+
+
+def _build_broadcast_telegram_html(
+    subject: str,
+    body_plain: str,
+    login_url: Optional[str],
+) -> str:
+    """Формирует HTML для Telegram (parse_mode=HTML): тема жирным, текст, опционально ссылка."""
+    header = f"<b>{escape_html(subject)}</b>\n\n{escape_html(body_plain)}"
+    if not login_url:
+        return header
+    href = login_url.replace("&", "&amp;")
+    return header + f"\n\n<a href=\"{href}\">Ссылка для входа</a>"
+
+
+async def _fetch_broadcast_telegram_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[models.User]:
+    """Пользователи для рассылки в Telegram: одобрены, есть реальный telegram_id."""
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+        models.User.telegram_id.isnot(None),
+        models.User.telegram_id >= 0,
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(select(models.User).where(and_(*conditions)))
+    return list(result.scalars().all())
+
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
 async def get_leaderboards_status(db: AsyncSession):

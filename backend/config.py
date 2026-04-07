@@ -36,9 +36,9 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""  # Список email админов через запятую для уведомлений
     WEB_APP_LOGIN_URL: str = ""  # URL страницы входа в веб-приложение (опционально)
 
-    # Yandex Object Storage (S3-совместимый API) — загрузка изображений интерфейса (AVIF)
-    S3_ENDPOINT_URL: str = "https://storage.yandexcloud.net"
-    S3_REGION: str = "ru-central1"
+    # Object Storage S3 (Timeweb Cloud по умолчанию; совместимо с любым S3 API)
+    S3_ENDPOINT_URL: str = "https://s3.twcstorage.ru"
+    S3_REGION: str = "ru-1"
     S3_BUCKET: str = ""
     S3_ACCESS_KEY_ID: str = ""
     S3_SECRET_ACCESS_KEY: str = ""
