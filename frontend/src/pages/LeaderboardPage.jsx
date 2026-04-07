@@ -4,6 +4,7 @@ import { getLeaderboard, getMyRank, getLeaderboardStatus } from '../api';
 import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { FaCrown, FaCalendarDay, FaCalendarAlt, FaGift, FaInfinity } from 'react-icons/fa';
+import { resolveSeasonAssets } from '../themeAssetDefaults';
 
 // --- ИЗМЕНЕНИЕ ЗДЕСЬ: "За всё время" теперь первая в списке ---
 const ALL_TABS = [
@@ -13,7 +14,7 @@ const ALL_TABS = [
   { id: 'generosity', label: 'Щедрость', icon: <FaGift />, params: { period: 'current_month', type: 'sent' } },
 ];
 
-function LeaderboardPage({ user }) {
+function LeaderboardPage({ user, seasonTheme, themeAssets }) {
   // Теперь по умолчанию будет выбрана первая вкладка из нового списка
   const [activeTabId, setActiveTabId] = useState(ALL_TABS[0].id);
   const [visibleTabs, setVisibleTabs] = useState(user.is_admin ? ALL_TABS : []);
@@ -86,6 +87,9 @@ function LeaderboardPage({ user }) {
   const top3 = leaderboard.slice(0, 3);
   const others = leaderboard.slice(3);
 
+  const seasonKey = seasonTheme === 'winter' ? 'winter' : 'summer';
+  const thanksLogoUrl = resolveSeasonAssets(seasonKey, themeAssets).leaderboard_thanks_logo;
+
   return (
     <PageLayout title="Рейтинг">
       {visibleTabs.length > 0 && (
@@ -151,7 +155,7 @@ function LeaderboardPage({ user }) {
                   </div>
                   <div className={styles.pointsContainer}>
                     <span className={styles.points}>{item.total_received}</span>
-                    <img src="https://i.postimg.cc/cLCwXyrL/Frame-2131328056.webp" alt="спасибо" className={styles.pointsLogo} loading="lazy" />
+                    <img src={thanksLogoUrl} alt="спасибо" className={styles.pointsLogo} loading="lazy" />
                   </div>
                 </li>
               ))}

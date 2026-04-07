@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { injectThemeAssetStyles } from './utils/themeAssetsCss';
 import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings, updateMe } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
@@ -53,6 +54,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showEmailPromptModal, setShowEmailPromptModal] = useState(false);
   const [seasonTheme, setSeasonTheme] = useState('summer');
+  const [themeAssets, setThemeAssets] = useState(null);
   const seasonThemeRef = useRef('summer');
   // Инициализация windowWidth с проверкой доступности window
   const [windowWidth, setWindowWidth] = useState(() => {
@@ -135,12 +137,26 @@ function App() {
         if (response?.data?.season_theme) {
           setSeasonTheme(response.data.season_theme);
         }
+        setThemeAssets(response?.data?.theme_assets ?? null);
       } catch (error) {
         console.warn('Не удалось загрузить настройки оформления, используем летнюю тему.', error);
       }
     };
 
     fetchAppTheme();
+  }, []);
+
+  useEffect(() => {
+    injectThemeAssetStyles(themeAssets);
+  }, [themeAssets]);
+
+  const handleAppearanceUpdated = useCallback((data) => {
+    if (data?.season_theme) {
+      setSeasonTheme(data.season_theme);
+    }
+    if (data && Object.prototype.hasOwnProperty.call(data, 'theme_assets')) {
+      setThemeAssets(data.theme_assets ?? null);
+    }
   }, []);
 
   useEffect(() => {
@@ -482,7 +498,7 @@ function App() {
     
     if (user.status === 'approved') {
       switch (page) {
-        case 'leaderboard': return <LeaderboardPage user={user} />;
+        case 'leaderboard': return <LeaderboardPage user={user} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
         case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} />;
@@ -502,10 +518,10 @@ function App() {
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
         // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
         case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
-        case 'admin': return <AdminPage seasonTheme={seasonTheme} onThemeUpdated={setSeasonTheme} />;
+        case 'admin': return <AdminPage seasonTheme={seasonTheme} themeAssets={themeAssets} onAppearanceUpdated={handleAppearanceUpdated} />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
       }
     }
     

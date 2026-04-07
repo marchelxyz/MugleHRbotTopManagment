@@ -261,12 +261,32 @@ class PopularItemsStats(BaseModel):
 class InactiveUsersStats(BaseModel):
     users: List[UserResponse]
 
+class ThemeSeasonAssets(BaseModel):
+    """URL изображений для одной сезонной темы (пустые поля — дефолты из фронта)."""
+
+    header_image_mobile: Optional[str] = None
+    header_image_desktop: Optional[str] = None
+    section_header_image: Optional[str] = None
+    sidenav_logo: Optional[str] = None
+    thanks_button: Optional[str] = None
+    thanks_feed_logo: Optional[str] = None
+    leaderboard_thanks_logo: Optional[str] = None
+
+
+class ThemeAssetsPayload(BaseModel):
+    summer: Optional[ThemeSeasonAssets] = None
+    winter: Optional[ThemeSeasonAssets] = None
+
+
 class AppSettingsResponse(OrmBase):
     id: int
     season_theme: Literal['summer', 'winter']
+    theme_assets: Optional[ThemeAssetsPayload] = None
+
 
 class AppSettingsUpdate(BaseModel):
-    season_theme: Literal['summer', 'winter']
+    season_theme: Optional[Literal['summer', 'winter']] = None
+    theme_assets: Optional[ThemeAssetsPayload] = None
 
 class TotalBalanceStats(BaseModel):
     total_balance: int

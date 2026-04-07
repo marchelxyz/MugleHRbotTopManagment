@@ -88,7 +88,7 @@ function MassActions() {
 */
 
 // --- ИСПРАВЛЕННЫЙ ГЛАВНЫЙ КОМПОНЕНТ ---
-function AdminPage({ seasonTheme, onThemeUpdated }) {
+function AdminPage({ seasonTheme, themeAssets, onAppearanceUpdated }) {
   // Используем одну переменную для навигации. null - это главное меню.
   const [activeSection, setActiveSection] = useState(null);
 
@@ -210,7 +210,7 @@ function AdminPage({ seasonTheme, onThemeUpdated }) {
       case 'registrations': return <RegistrationManager />;
       case 'purchases': return <PurchasesManager />;
       case 'approvals': return <ApprovalsManager />;
-      case 'appearance': return <AppearanceSettings seasonTheme={seasonTheme} onThemeUpdated={onThemeUpdated} />;
+      case 'appearance': return <AppearanceSettings seasonTheme={seasonTheme} themeAssets={themeAssets} onAppearanceUpdated={onAppearanceUpdated} />;
       case 'credentials': return <CredentialsGenerator />;
       default: return null; // На случай непредвиденного значения
     }
