@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 from typing import Optional, List, Literal
 from datetime import datetime, date
 
@@ -400,6 +400,41 @@ class BulkSendCredentialsResponse(BaseModel):
     credentials_generated: int
     messages_sent: int
     failed_users: List[int] = []
+
+class BroadcastEmailRequest(BaseModel):
+    """Массовая email-рассылка одобренным пользователям с указанным email."""
+
+    subject: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=20000)
+    only_browser_users: bool = True
+    append_login_url: bool = True
+
+    @field_validator("subject", "body", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: object) -> str:
+        if v is None:
+            return ""
+        return str(v).strip()
+
+    @field_validator("subject")
+    @classmethod
+    def subject_no_newlines(cls, v: str) -> str:
+        if "\n" in v or "\r" in v:
+            raise ValueError("Тема письма не должна содержать переносы строк")
+        return v
+
+class BroadcastEmailFailedItem(BaseModel):
+    email: str
+    detail: str
+
+class BroadcastEmailResponse(BaseModel):
+    message: str
+    recipient_count: int
+    sent_ok: int
+    failed: List[BroadcastEmailFailedItem] = []
+
+class BroadcastEmailPreviewResponse(BaseModel):
+    recipient_count: int
 
 class LocalGiftResponse(OrmBase):
     id: int

@@ -13,6 +13,7 @@ import io
 from fastapi.responses import StreamingResponse
 from dependencies import get_current_admin_user
 from database import get_db
+from config import settings
 from openpyxl import Workbook
 import pandas as pd
 import pytz
@@ -413,6 +414,49 @@ async def bulk_send_credentials_route(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Не удалось выполнить массовую рассылку"
         )
+
+
+@router.get("/users/broadcast-email/preview", response_model=schemas.BroadcastEmailPreviewResponse)
+async def broadcast_email_preview_route(
+    only_browser_users: bool = Query(
+        True,
+        description="Считать только пользователей с доступом через браузер (не заблокированы, одобрены)",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Число получателей массовой email-рассылки (с валидным email)."""
+    n = await crud.count_broadcast_email_recipients(db, only_browser_users)
+    return schemas.BroadcastEmailPreviewResponse(recipient_count=n)
+
+
+@router.post("/users/broadcast-email", response_model=schemas.BroadcastEmailResponse)
+async def broadcast_email_route(
+    request: schemas.BroadcastEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Рассылка письма пользователям с обычным доступом: одобрены, не заблокированы, есть email."""
+    smtp_user = getattr(settings, "SMTP_USERNAME", None) or ""
+    smtp_pass = getattr(settings, "SMTP_PASSWORD", None) or ""
+    if not str(smtp_user).strip() or not str(smtp_pass).strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="SMTP не настроен (SMTP_USERNAME / SMTP_PASSWORD). Проверьте переменные окружения.",
+        )
+    result = await crud.broadcast_email_to_approved_users(
+        db,
+        subject=request.subject,
+        body_plain=request.body,
+        only_browser_users=request.only_browser_users,
+        append_login_url=request.append_login_url,
+    )
+    msg = f"Отправлено: {result['sent_ok']} из {result['recipient_count']}"
+    return schemas.BroadcastEmailResponse(
+        message=msg,
+        recipient_count=result["recipient_count"],
+        sent_ok=result["sent_ok"],
+        failed=[schemas.BroadcastEmailFailedItem(**f) for f in result["failed"]],
+    )
+
 
 @router.get("/statistics/general", response_model=schemas.GeneralStatsResponse)
 async def get_general_statistics_route(start_date: Optional[date] = Query(None), end_date: Optional[date] = Query(None), db: AsyncSession = Depends(get_db)):

@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
+from email_service import send_email, is_valid_email, build_broadcast_email_content
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_, text
@@ -2393,6 +2394,94 @@ async def bulk_send_credentials(
         "messages_sent": messages_sent,
         "failed_users": failed_users
     }
+
+
+async def broadcast_email_to_approved_users(
+    db: AsyncSession,
+    subject: str,
+    body_plain: str,
+    only_browser_users: bool,
+    append_login_url: bool,
+) -> dict:
+    """Отправляет одно письмо каждому подходящему пользователю по email (SMTP).
+
+    Получатели: статус ``approved``, не ``deleted`` / ``blocked``, указан валидный email.
+    При ``only_browser_users`` — только с ``browser_auth_enabled``.
+
+    Args:
+        db: Сессия БД.
+        subject: Тема письма.
+        body_plain: Текст от администратора.
+        only_browser_users: Ограничить пользователей с доступом через браузер.
+        append_login_url: Добавить в письмо ``WEB_APP_LOGIN_URL`` из настроек.
+
+    Returns:
+        Словарь с ключами ``recipient_count``, ``sent_ok``, ``failed`` (список dict с email и detail).
+    """
+    users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    login_url = None
+    if append_login_url:
+        raw = (getattr(settings, "WEB_APP_LOGIN_URL", None) or "").strip()
+        login_url = raw or None
+    body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
+    sent_ok = 0
+    failed: list[dict[str, str]] = []
+    for user in users:
+        to_email = user.email.strip()
+        try:
+            ok = await send_email(
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+                body_text=body_text,
+            )
+            if ok:
+                sent_ok += 1
+            else:
+                failed.append({"email": to_email, "detail": "Не удалось отправить (проверьте SMTP)"})
+        except Exception as exc:
+            logger.error("Ошибка рассылки на %s: %s", to_email, exc)
+            failed.append({"email": to_email, "detail": str(exc)[:500]})
+    return {
+        "recipient_count": len(users),
+        "sent_ok": sent_ok,
+        "failed": failed,
+    }
+
+
+async def count_broadcast_email_recipients(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> int:
+    """Возвращает число получателей массовой email-рассылки (после фильтра по валидному email)."""
+    users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    return len(users)
+
+
+async def _fetch_broadcast_recipient_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[models.User]:
+    """Возвращает пользователей для рассылки: одобрены, не удалены/заблокированы, есть валидный email."""
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+        models.User.email.isnot(None),
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(select(models.User).where(and_(*conditions)))
+    rows = result.scalars().all()
+    out: list[models.User] = []
+    for user in rows:
+        if not user.email:
+            continue
+        addr = user.email.strip()
+        if addr and is_valid_email(addr):
+            out.append(user)
+    return out
+
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
 async def get_leaderboards_status(db: AsyncSession):
