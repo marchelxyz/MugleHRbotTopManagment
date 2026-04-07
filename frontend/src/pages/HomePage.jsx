@@ -8,15 +8,17 @@ import { formatToMsk, formatFeedDate } from '../utils/dateFormatter';
 // --- 1. ДОБАВЛЕН ИМПОРТ ---
 import LeaderboardBanner from '../components/LeaderboardBanner';
 import Garland from '../components/Garland';
+import { resolveSeasonAssets } from '../themeAssetDefaults';
 
-function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop, seasonTheme }) {
+function HomePage({ user, onNavigate, telegramPhotoUrl, isDesktop, seasonTheme, themeAssets }) {
     const isWinterTheme = seasonTheme === 'winter';
-    const sendThanksImage = isWinterTheme
-        ? 'https://i.postimg.cc/kgrZQyKK/knopka-otpr-sp-sinaa.webp'
-        : 'https://i.postimg.cc/ncfzjKGc/кнопка_спасибки.webp';
-    const feedLogoImage = isWinterTheme
-        ? 'https://i.postimg.cc/L5j1PRjr/LOGO-SP-UVED-SIN.webp'
-        : 'https://i.postimg.cc/cLCwXyrL/Frame_2131328056.webp';
+    const seasonKey = isWinterTheme ? 'winter' : 'summer';
+    const mergedAssets = useMemo(
+        () => resolveSeasonAssets(seasonKey, themeAssets),
+        [seasonKey, themeAssets],
+    );
+    const sendThanksImage = mergedAssets.thanks_button;
+    const feedLogoImage = mergedAssets.thanks_feed_logo;
     const [feed, setFeed] = useState(() => getCachedData('feed'));
     const [banners, setBanners] = useState(() => getCachedData('banners') || []);
     const [isLoading, setIsLoading] = useState(!feed);
