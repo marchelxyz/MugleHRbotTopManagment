@@ -1,196 +1,110 @@
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
-from pathlib import Path
-import logging
-import re
-from sqlalchemy import text, select
 
 from config import settings
-from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications, media_upload
 from redis_cache import redis_cache
+from routers import (
+    admin,
+    app_settings,
+    banners,
+    cache,
+    market,
+    media_upload,
+    notifications,
+    roulette,
+    scheduler,
+    sessions,
+    shared_gifts,
+    telegram,
+    transactions,
+    users,
+)
+from startup_background import run_background_startup
 
 logger = logging.getLogger(__name__)
 
+
+def _is_protected_api_path(path: str) -> bool:
+    """Пути REST API до завершения фоновой инициализации (SPA и статика не сюда)."""
+    if path == "/run-monthly-tasks":
+        return True
+    prefixes = (
+        "/users",
+        "/admin",
+        "/transactions",
+        "/market",
+        "/banners",
+        "/roulette",
+        "/scheduler",
+        "/telegram",
+        "/sessions",
+        "/shared-gifts",
+        "/cache",
+        "/app-settings",
+        "/notifications",
+        "/points",
+        "/leaderboard",
+    )
+    for prefix in prefixes:
+        if path == prefix or path.startswith(prefix + "/"):
+            return True
+    return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    CREATE_TABLES_LOCK_KEY = 1234567891
-    async with engine.connect() as conn:
-        async with conn.begin():
-            await conn.execute(text(f"SELECT pg_advisory_lock({CREATE_TABLES_LOCK_KEY})"))
+    """Сразу отдаёт управление ASGI — порт слушается, миграции идут в фоне."""
+    app.state.startup_ready = False
+    app.state.startup_error = None
+
+    async def _runner() -> None:
         try:
-            async with conn.begin():
-                await conn.run_sync(Base.metadata.create_all)
-        except Exception as e:
-            logger.warning(f"⚠️ metadata.create_all завершился с ошибкой (таблицы могли быть созданы другим воркером): {e}")
-        finally:
-            async with conn.begin():
-                await conn.execute(text(f"SELECT pg_advisory_unlock({CREATE_TABLES_LOCK_KEY})"))
-    
-    migrations_dir = Path(__file__).parent / "migrations"
-    if not migrations_dir.exists():
-        logger.error(f"❌ Папка migrations не найдена: {migrations_dir}")
-        logger.error(f"📂 Текущая директория: {Path(__file__).parent}")
-        logger.error(f"📂 Абсолютный путь: {Path(__file__).parent.absolute()}")
-    else:
-        logger.info(f"✅ Папка migrations найдена: {migrations_dir}")
-        
-        MIGRATION_LOCK_KEY = 1234567890
-        
-        def split_sql_commands(sql_text):
-            """Разбивает SQL текст на отдельные команды, удаляя комментарии и учитывая dollar-quoted блоки"""
-            sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
-            
-            lines = []
-            for line in sql_text.split('\n'):
-                if '--' in line:
-                    line = line.split('--')[0]
-                line = line.strip()
-                if line:
-                    lines.append(line)
-            
-            sql_clean = ' '.join(lines)
-            
-            commands = []
-            current_command = []
-            in_dollar_quote = False
-            dollar_tag = None
-            i = 0
-            
-            while i < len(sql_clean):
-                if not in_dollar_quote and sql_clean[i] == '$':
-                    tag_start = i
-                    j = i + 1
-                    while j < len(sql_clean) and sql_clean[j] != '$':
-                        j += 1
-                    
-                    if j < len(sql_clean):
-                        dollar_tag = sql_clean[tag_start:j + 1]
-                        in_dollar_quote = True
-                        current_command.append(dollar_tag)
-                        i = j + 1
-                        continue
-                
-                if in_dollar_quote and sql_clean[i] == '$':
-                    if i + len(dollar_tag) <= len(sql_clean):
-                        potential_tag = sql_clean[i:i + len(dollar_tag)]
-                        if potential_tag == dollar_tag:
-                            current_command.append(dollar_tag)
-                            i += len(dollar_tag)
-                            in_dollar_quote = False
-                            dollar_tag = None
-                            continue
-                
-                current_command.append(sql_clean[i])
-                
-                if not in_dollar_quote and sql_clean[i] == ';':
-                    cmd = ''.join(current_command).strip()
-                    if cmd:
-                        commands.append(cmd)
-                    current_command = []
-                
-                i += 1
-            
-            if current_command:
-                cmd = ''.join(current_command).strip()
-                if cmd:
-                    commands.append(cmd)
-            
-            return commands
-        
-        async with engine.connect() as conn:
-            logger.info("🔒 Ожидание блокировки для применения миграций...")
-            async with conn.begin():
-                await conn.execute(text(f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"))
-            logger.info("🔓 Блокировка получена, начинаем применение миграций")
-            
-            try:
-                create_table_sql = """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    id SERIAL PRIMARY KEY,
-                    migration_name VARCHAR(255) NOT NULL UNIQUE,
-                    applied_at TIMESTAMP DEFAULT NOW() NOT NULL
-                )
-                """
-                
-                create_index_sql = """
-                CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name)
-                """
-                
-                try:
-                    async with conn.begin():
-                        await conn.execute(text(create_table_sql))
-                        await conn.execute(text(create_index_sql))
-                    logger.info("✅ Таблица schema_migrations создана/проверена")
-                except Exception as e:
-                    logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
-                    raise
-                
-                async with conn.begin():
-                    result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
-                    applied_migrations = {row[0] for row in result.fetchall()}
-                logger.info(f"📋 Уже применено миграций: {len(applied_migrations)}")
-                
-                migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
-                
-                if not migration_files:
-                    logger.warning("⚠️ Файлы миграций не найдены")
-                else:
-                    logger.info(f"🔍 Найдено {len(migration_files)} файлов миграций")
-                    
-                    for migration_file in migration_files:
-                        migration_name = migration_file.name
-                        
-                        if migration_name in applied_migrations:
-                            logger.info(f"⏭️  Миграция {migration_name} уже применена, пропускаем")
-                            continue
-                        
-                        logger.info(f"📄 Применение миграции: {migration_name}")
-                        
-                        try:
-                            with open(migration_file, 'r', encoding='utf-8') as f:
-                                migration_sql = f.read()
-                            
-                            async with conn.begin():
-                                sql_commands = split_sql_commands(migration_sql)
-                                
-                                for i, sql_command in enumerate(sql_commands, 1):
-                                    if sql_command.strip():
-                                        logger.debug(f"  Выполнение команды {i}/{len(sql_commands)}: {sql_command[:50]}...")
-                                        await conn.execute(text(sql_command))
-                                
-                                insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
-                                await conn.execute(insert_migration, {"name": migration_name})
-                            
-                            logger.info(f"✅ Миграция {migration_name} применена успешно")
-                            
-                        except Exception as e:
-                            error_msg = f"❌ КРИТИЧЕСКАЯ ОШИБКА при применении миграции {migration_name}: {e}"
-                            logger.error(error_msg)
-                            logger.exception(e)
-                            raise RuntimeError(error_msg) from e
-                    
-                    logger.info("🎉 Применение миграций завершено")
-            finally:
-                async with conn.begin():
-                    await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
-                logger.info("🔓 Блокировка освобождена")
-        
-        try:
-            await redis_cache.connect()
-        except Exception as e:
-            logger.warning(f"⚠️ Не удалось подключиться к Redis: {e}. Кеширование будет недоступно.")
-    
+            await run_background_startup()
+            app.state.startup_ready = True
+        except Exception:
+            logger.exception("Фоновая инициализация не удалась")
+            app.state.startup_error = "startup_failed"
+
+    task = asyncio.create_task(_runner())
+    app.state._startup_task = task
+
     yield
-    
+
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
     try:
         await redis_cache.disconnect()
     except Exception as e:
-        logger.error(f"Ошибка при отключении от Redis: {e}")
+        logger.error("Ошибка при отключении от Redis: %s", e)
+
+
+class StartupGateMiddleware(BaseHTTPMiddleware):
+    """503 на API до готовности БД; /health и статика проходят."""
+
+    async def dispatch(self, request: Request, call_next):
+        if getattr(request.app.state, "startup_ready", False):
+            return await call_next(request)
+        path = request.url.path
+        if path == "/health" or path.startswith("/assets/"):
+            return await call_next(request)
+        if _is_protected_api_path(path):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Сервис запускается, повторите запрос позже"},
+            )
+        return await call_next(request)
 
 app = FastAPI(lifespan=lifespan)
 
@@ -235,6 +149,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(StartupGateMiddleware)
+
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(market.router)
@@ -278,8 +194,14 @@ _register_spa_assets()
 
 
 @app.get("/health")
-def health_check() -> dict[str, str]:
-    """Проверка для балансировщика и платформ деплоя (Timeweb и др.)."""
+def health_check(request: Request) -> dict[str, str]:
+    """Проверка для балансировщика и платформ деплоя (Timeweb и др.).
+
+    Во время миграций возвращает 200 без ожидания БД. При фатальной ошибке
+    фоновой инициализации — 503, чтобы деплой не считался успешным.
+    """
+    if getattr(request.app.state, "startup_error", None):
+        raise HTTPException(status_code=503, detail="Startup failed")
     return {"status": "ok"}
 
 
