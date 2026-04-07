@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
@@ -7,6 +9,7 @@ import logging
 import re
 from sqlalchemy import text, select
 
+from config import settings
 from database import engine, Base
 from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications, media_upload
 from redis_cache import redis_cache
@@ -219,6 +222,10 @@ origins = [
     "https://mugle-h-rbot-top-managment.vercel.app",
     "http://localhost:8080",
 ]
+if settings.CORS_ORIGINS.strip():
+    origins = list(origins) + [
+        o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -243,6 +250,55 @@ app.include_router(app_settings.router)
 app.include_router(notifications.router)
 app.include_router(media_upload.router)
 
+
+def _static_root() -> Path:
+    """Каталог со сборкой Vite (index.html и assets/)."""
+    if settings.STATIC_ROOT.strip():
+        return Path(settings.STATIC_ROOT)
+    return Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+def _register_spa_assets() -> None:
+    """Монтирует /assets для статики SPA при SERVE_SPA."""
+    if not settings.SERVE_SPA:
+        return
+    root = _static_root()
+    assets_dir = root / "assets"
+    if not root.is_dir() or not assets_dir.is_dir():
+        logger.warning(
+            "SERVE_SPA: не найдено %s или %s — раздача статики отключена",
+            root,
+            assets_dir,
+        )
+        return
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="spa_assets")
+
+
+_register_spa_assets()
+
+
+@app.get("/health")
+def health_check() -> dict[str, str]:
+    """Проверка для балансировщика и платформ деплоя (Timeweb и др.)."""
+    return {"status": "ok"}
+
+
 @app.get("/")
 def read_root():
+    if settings.SERVE_SPA:
+        index = _static_root() / "index.html"
+        if index.is_file():
+            return FileResponse(index)
     return {"message": "Welcome to the HR Spasibo API"}
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """Клиентские маршруты React — отдаём index.html при SERVE_SPA."""
+    del full_path
+    if not settings.SERVE_SPA:
+        raise HTTPException(status_code=404, detail="Not found")
+    index = _static_root() / "index.html"
+    if index.is_file():
+        return FileResponse(index)
+    raise HTTPException(status_code=404, detail="Not found")

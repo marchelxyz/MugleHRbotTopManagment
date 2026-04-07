@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     IMAGE_AVIF_QUALITY: int = 55
     IMAGE_MAX_SIDE_PX: int = 2048
 
+    # Раздача собранного Vite-фронта из одного контейнера (Docker / Timeweb)
+    SERVE_SPA: bool = False
+    STATIC_ROOT: str = ""
+    # Дополнительные origins для CORS (через запятую), кроме встроенного списка в app.py
+    CORS_ORIGINS: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
