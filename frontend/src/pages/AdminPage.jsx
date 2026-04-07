@@ -171,7 +171,7 @@ function AdminPage({ seasonTheme, themeAssets, onAppearanceUpdated }) {
           <button onClick={() => setActiveSection('banners')} className={styles.gridButton}>Баннеры</button>
           <button onClick={() => setActiveSection('appearance')} className={styles.gridButton}>Оформление</button>
           <button onClick={() => setActiveSection('credentials')} className={styles.gridButton}>Генерация учетных данных</button>
-          <button onClick={() => setActiveSection('email-broadcast')} className={styles.gridButton}>Рассылка на email</button>
+          <button onClick={() => setActiveSection('email-broadcast')} className={styles.gridButton}>Рассылка email / Telegram</button>
 {/* --- 3. ВОТ ТВОЯ НОВАЯ КНОПКА --- */}
           <button 
             onClick={handleGenerateBanners} 

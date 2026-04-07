@@ -1,7 +1,7 @@
 // frontend/src/pages/admin/EmailBroadcast.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaEnvelope, FaSync } from 'react-icons/fa';
+import { FaEnvelope, FaSync, FaPaperPlane } from 'react-icons/fa';
 import { getBroadcastEmailPreview, broadcastEmail } from '../../api';
 import styles from '../AdminPage.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
@@ -17,7 +17,10 @@ function EmailBroadcast() {
   const [body, setBody] = useState('');
   const [onlyBrowserUsers, setOnlyBrowserUsers] = useState(true);
   const [appendLoginUrl, setAppendLoginUrl] = useState(true);
-  const [recipientCount, setRecipientCount] = useState(null);
+  const [sendEmail, setSendEmail] = useState(true);
+  const [sendTelegram, setSendTelegram] = useState(false);
+  const [recipientCountEmail, setRecipientCountEmail] = useState(null);
+  const [recipientCountTelegram, setRecipientCountTelegram] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -25,11 +28,13 @@ function EmailBroadcast() {
     setPreviewLoading(true);
     try {
       const response = await getBroadcastEmailPreview(onlyBrowserUsers);
-      setRecipientCount(response.data.recipient_count);
+      setRecipientCountEmail(response.data.recipient_count_email);
+      setRecipientCountTelegram(response.data.recipient_count_telegram);
     } catch (error) {
       const errorMsg = error.response?.data?.detail || 'Не удалось получить число получателей';
       showAlert(errorMsg, 'error');
-      setRecipientCount(null);
+      setRecipientCountEmail(null);
+      setRecipientCountTelegram(null);
     } finally {
       setPreviewLoading(false);
     }
@@ -41,10 +46,14 @@ function EmailBroadcast() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!sendEmail && !sendTelegram) {
+      showAlert('Выберите хотя бы один канал: email или Telegram', 'error');
+      return;
+    }
     const sub = subject.trim();
     const text = body.trim();
     if (!sub) {
-      showAlert('Укажите тему письма', 'error');
+      showAlert('Укажите тему сообщения', 'error');
       return;
     }
     if (!text) {
@@ -52,12 +61,23 @@ function EmailBroadcast() {
       return;
     }
 
-    const countLabel = recipientCount != null ? String(recipientCount) : 'неизвестно';
+    const emailPart =
+      sendEmail && recipientCountEmail != null
+        ? `Email: ориентировочно ${recipientCountEmail} адрес(ов)`
+        : sendEmail
+          ? 'Email: да'
+          : null;
+    const tgPart =
+      sendTelegram && recipientCountTelegram != null
+        ? `Telegram: ориентировочно ${recipientCountTelegram} чат(ов)`
+        : sendTelegram
+          ? 'Telegram: да'
+          : null;
+    const channelsHint = [emailPart, tgPart].filter(Boolean).join('\n');
+
     const isConfirmed = await confirm(
       'Подтверждение рассылки',
-      `Будет отправлено письмо на email пользователям с обычным доступом (одобрены, не заблокированы).\n\n` +
-        `Ориентировочно получателей: ${countLabel}.\n\n` +
-        `Тема: ${sub}\n\nПродолжить?`
+      `Каналы:\n${channelsHint}\n\nТема: ${sub}\n\nПродолжить?`
     );
     if (!isConfirmed) return;
 
@@ -68,19 +88,22 @@ function EmailBroadcast() {
         body: text,
         only_browser_users: onlyBrowserUsers,
         append_login_url: appendLoginUrl,
+        send_email: sendEmail,
+        send_telegram: sendTelegram,
       });
       const data = response.data;
       const failedCount = data.failed?.length ?? 0;
-      if (data.sent_ok === 0) {
+      const totalOk = (data.sent_ok_email ?? 0) + (data.sent_ok_telegram ?? 0);
+      if (totalOk === 0) {
         showAlert(
           failedCount
-            ? `${data.message}. Проверьте SMTP и адреса получателей.`
-            : 'Нет получателей или не удалось отправить письма.',
+            ? `${data.message}. Проверьте SMTP, Telegram и список получателей.`
+            : 'Нет получателей или не удалось отправить сообщения.',
           'error'
         );
       } else if (failedCount > 0) {
-        showAlert(`${data.message}. Не доставлено: ${failedCount}.`, 'error');
-        console.warn('Broadcast email failures', data.failed);
+        showAlert(`${data.message}. Ошибок доставки: ${failedCount}.`, 'error');
+        console.warn('Broadcast failures', data.failed);
       } else {
         showAlert(data.message, 'success');
       }
@@ -97,53 +120,84 @@ function EmailBroadcast() {
     <div>
       <h2>
         <FaEnvelope style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-        Рассылка на email
+        Рассылка (email и Telegram)
       </h2>
       <p style={{ color: '#555', marginBottom: '20px', lineHeight: 1.5 }}>
-        Письма уходят на адреса, указанные у пользователей в профиле. Учитываются только одобренные
-        аккаунты, не заблокированные. По умолчанию — только те, у кого включён вход через браузер
-        (обычный доступ к веб-приложению). Нужен настроенный SMTP на сервере.
+        Учитываются только одобренные аккаунты, не заблокированные. По умолчанию — пользователи с
+        включённым входом через браузер. Для email нужен SMTP на сервере; для Telegram — настроенный
+        бот (TELEGRAM_BOT_TOKEN). Можно отправить только в один канал или сразу в оба.
       </p>
 
       <div className={styles.card}>
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
+            flexDirection: 'column',
+            gap: '8px',
             marginBottom: '16px',
-            flexWrap: 'wrap',
           }}
         >
-          <span style={{ fontWeight: 'bold' }}>Получателей (оценка):</span>
-          <span>
-            {previewLoading ? '…' : recipientCount != null ? recipientCount : '—'}
-          </span>
-          <button
-            type="button"
-            onClick={loadPreview}
-            disabled={previewLoading}
-            className={styles.buttonGrey}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <FaSync size={14} />
-            Обновить
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 'bold' }}>Оценка получателей:</span>
+            <button
+              type="button"
+              onClick={loadPreview}
+              disabled={previewLoading}
+              className={styles.buttonGrey}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <FaSync size={14} />
+              Обновить
+            </button>
+          </div>
+          <div style={{ color: '#444', fontSize: '15px' }}>
+            {previewLoading ? (
+              '…'
+            ) : (
+              <>
+                <FaPaperPlane style={{ marginRight: '6px', opacity: 0.7 }} />
+                Email: {recipientCountEmail != null ? recipientCountEmail : '—'} · Telegram:{' '}
+                {recipientCountTelegram != null ? recipientCountTelegram : '—'}
+              </>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Тема</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+            Каналы доставки
+          </label>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+            />
+            Отправить на email (пользователям с валидным адресом в профиле)
+          </label>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={sendTelegram}
+              onChange={(e) => setSendTelegram(e.target.checked)}
+            />
+            Отправить в Telegram (пользователям с привязанным Telegram)
+          </label>
+
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', marginTop: '16px' }}>
+            Тема
+          </label>
           <input
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             className={styles.input}
             maxLength={200}
-            placeholder="Краткая тема письма"
+            placeholder="Краткая тема (в письме и как заголовок в Telegram)"
           />
 
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', marginTop: '12px' }}>
-            Текст письма
+            Текст сообщения
           </label>
           <textarea
             value={body}
@@ -175,7 +229,7 @@ function EmailBroadcast() {
               checked={appendLoginUrl}
               onChange={(e) => setAppendLoginUrl(e.target.checked)}
             />
-            Добавить в письмо ссылку для входа из настройки WEB_APP_LOGIN_URL на сервере
+            Добавить ссылку для входа (WEB_APP_LOGIN_URL) — в письме и в Telegram
           </label>
 
           <button type="submit" disabled={sending} className={styles.buttonGreen} style={{ marginTop: '16px' }}>

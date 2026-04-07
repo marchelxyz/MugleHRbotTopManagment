@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 from typing import Optional, List, Literal
 from datetime import datetime, date
 
@@ -402,12 +402,14 @@ class BulkSendCredentialsResponse(BaseModel):
     failed_users: List[int] = []
 
 class BroadcastEmailRequest(BaseModel):
-    """Массовая email-рассылка одобренным пользователям с указанным email."""
+    """Рассылка одобренным пользователям: email, Telegram или оба канала."""
 
     subject: str = Field(..., min_length=1, max_length=200)
     body: str = Field(..., min_length=1, max_length=20000)
     only_browser_users: bool = True
     append_login_url: bool = True
+    send_email: bool = True
+    send_telegram: bool = False
 
     @field_validator("subject", "body", mode="before")
     @classmethod
@@ -423,18 +425,28 @@ class BroadcastEmailRequest(BaseModel):
             raise ValueError("Тема письма не должна содержать переносы строк")
         return v
 
+    @model_validator(mode="after")
+    def at_least_one_channel(self) -> "BroadcastEmailRequest":
+        if not self.send_email and not self.send_telegram:
+            raise ValueError("Выберите хотя бы один канал: email или Telegram")
+        return self
+
 class BroadcastEmailFailedItem(BaseModel):
-    email: str
+    channel: Literal["email", "telegram"]
+    target: str
     detail: str
 
 class BroadcastEmailResponse(BaseModel):
     message: str
-    recipient_count: int
-    sent_ok: int
+    recipient_count_email: int = 0
+    recipient_count_telegram: int = 0
+    sent_ok_email: int = 0
+    sent_ok_telegram: int = 0
     failed: List[BroadcastEmailFailedItem] = []
 
 class BroadcastEmailPreviewResponse(BaseModel):
-    recipient_count: int
+    recipient_count_email: int
+    recipient_count_telegram: int
 
 class LocalGiftResponse(OrmBase):
     id: int

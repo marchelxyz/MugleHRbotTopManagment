@@ -2396,55 +2396,96 @@ async def bulk_send_credentials(
     }
 
 
-async def broadcast_email_to_approved_users(
+async def broadcast_announcement_to_users(
     db: AsyncSession,
     subject: str,
     body_plain: str,
     only_browser_users: bool,
     append_login_url: bool,
+    send_email: bool,
+    send_telegram: bool,
 ) -> dict:
-    """Отправляет одно письмо каждому подходящему пользователю по email (SMTP).
+    """Рассылка сообщения по email и/или Telegram.
 
-    Получатели: статус ``approved``, не ``deleted`` / ``blocked``, указан валидный email.
-    При ``only_browser_users`` — только с ``browser_auth_enabled``.
-
-    Args:
-        db: Сессия БД.
-        subject: Тема письма.
-        body_plain: Текст от администратора.
-        only_browser_users: Ограничить пользователей с доступом через браузер.
-        append_login_url: Добавить в письмо ``WEB_APP_LOGIN_URL`` из настроек.
+    Получатели: статус ``approved``, не ``deleted`` / ``blocked``.
+    Email: валидный адрес в профиле. Telegram: ``telegram_id`` не меньше 0.
 
     Returns:
-        Словарь с ключами ``recipient_count``, ``sent_ok``, ``failed`` (список dict с email и detail).
+        Словарь с счётчиками по каналам и списком ``failed`` с ключами
+        ``channel``, ``target``, ``detail``.
     """
-    users = await _fetch_broadcast_recipient_users(db, only_browser_users)
     login_url = None
     if append_login_url:
         raw = (getattr(settings, "WEB_APP_LOGIN_URL", None) or "").strip()
         login_url = raw or None
-    body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
-    sent_ok = 0
+
+    sent_ok_email = 0
+    sent_ok_telegram = 0
+    recipient_count_email = 0
+    recipient_count_telegram = 0
     failed: list[dict[str, str]] = []
-    for user in users:
-        to_email = user.email.strip()
-        try:
-            ok = await send_email(
-                to_email=to_email,
-                subject=subject,
-                body_html=body_html,
-                body_text=body_text,
-            )
-            if ok:
-                sent_ok += 1
-            else:
-                failed.append({"email": to_email, "detail": "Не удалось отправить (проверьте SMTP)"})
-        except Exception as exc:
-            logger.error("Ошибка рассылки на %s: %s", to_email, exc)
-            failed.append({"email": to_email, "detail": str(exc)[:500]})
+
+    if send_email:
+        users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+        recipient_count_email = len(users)
+        body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
+        for user in users:
+            to_email = user.email.strip()
+            try:
+                ok = await send_email(
+                    to_email=to_email,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text,
+                )
+                if ok:
+                    sent_ok_email += 1
+                else:
+                    failed.append(
+                        {
+                            "channel": "email",
+                            "target": to_email,
+                            "detail": "Не удалось отправить (проверьте SMTP)",
+                        }
+                    )
+            except Exception as exc:
+                logger.error("Ошибка рассылки на %s: %s", to_email, exc)
+                failed.append(
+                    {
+                        "channel": "email",
+                        "target": to_email,
+                        "detail": str(exc)[:500],
+                    }
+                )
+
+    if send_telegram:
+        users_tg = await _fetch_broadcast_telegram_users(db, only_browser_users)
+        recipient_count_telegram = len(users_tg)
+        tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
+        for user in users_tg:
+            tid = user.telegram_id
+            try:
+                await send_telegram_message(
+                    chat_id=int(tid),
+                    text=tg_text,
+                    parse_mode="HTML",
+                )
+                sent_ok_telegram += 1
+            except Exception as exc:
+                logger.error("Ошибка Telegram-рассылки %s: %s", tid, exc)
+                failed.append(
+                    {
+                        "channel": "telegram",
+                        "target": str(tid),
+                        "detail": str(exc)[:500],
+                    }
+                )
+
     return {
-        "recipient_count": len(users),
-        "sent_ok": sent_ok,
+        "recipient_count_email": recipient_count_email,
+        "recipient_count_telegram": recipient_count_telegram,
+        "sent_ok_email": sent_ok_email,
+        "sent_ok_telegram": sent_ok_telegram,
         "failed": failed,
     }
 
@@ -2455,6 +2496,15 @@ async def count_broadcast_email_recipients(
 ) -> int:
     """Возвращает число получателей массовой email-рассылки (после фильтра по валидному email)."""
     users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    return len(users)
+
+
+async def count_broadcast_telegram_recipients(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> int:
+    """Число пользователей с Telegram для рассылки (одобрены, есть telegram_id)."""
+    users = await _fetch_broadcast_telegram_users(db, only_browser_users)
     return len(users)
 
 
@@ -2481,6 +2531,37 @@ async def _fetch_broadcast_recipient_users(
         if addr and is_valid_email(addr):
             out.append(user)
     return out
+
+
+def _build_broadcast_telegram_html(
+    subject: str,
+    body_plain: str,
+    login_url: Optional[str],
+) -> str:
+    """Формирует HTML для Telegram (parse_mode=HTML): тема жирным, текст, опционально ссылка."""
+    header = f"<b>{escape_html(subject)}</b>\n\n{escape_html(body_plain)}"
+    if not login_url:
+        return header
+    href = login_url.replace("&", "&amp;")
+    return header + f"\n\n<a href=\"{href}\">Ссылка для входа</a>"
+
+
+async def _fetch_broadcast_telegram_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[models.User]:
+    """Пользователи для рассылки в Telegram: одобрены, есть реальный telegram_id."""
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+        models.User.telegram_id.isnot(None),
+        models.User.telegram_id >= 0,
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(select(models.User).where(and_(*conditions)))
+    return list(result.scalars().all())
 
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
