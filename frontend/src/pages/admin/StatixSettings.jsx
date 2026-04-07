@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaCoins } from 'react-icons/fa';
 import { getStatixBonusSettings, updateStatixBonusSettings } from '../../api';
+import AdminImageUrlField from '../../components/AdminImageUrlField';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { clearCache } from '../../storage';
 import styles from '../AdminPage.module.css';
@@ -62,26 +63,13 @@ const StatixSettings = () => {
     <div className={styles.card}>
       <h2><FaCoins style={{marginRight: '8px'}} />Настройки Statix Bonus</h2>
       <form onSubmit={handleStatixSettingsSubmit}>
-        <div className={styles.imageUploader}>
-          {statixSettings.image_url ? (
-            <img 
-              src={statixSettings.image_url} 
-              alt="Предпросмотр" 
-              className={styles.imagePreview} 
-              onError={(e) => { e.target.style.display = 'none'; }} 
-              onLoad={(e) => { e.target.style.display = 'block'; }}
-            />
-          ) : (
-            <div className={styles.imagePlaceholder}>Фото (4:3)</div>
-          )}
-        </div>
-        <input 
-          type="text" 
-          name="image_url" 
-          value={statixSettings.image_url} 
-          onChange={handleStatixSettingsChange} 
-          placeholder="Ссылка на изображение (URL) 4:3" 
-          className={styles.input} 
+        <AdminImageUrlField
+          value={statixSettings.image_url}
+          onChange={(v) =>
+            setStatixSettings((prev) => ({ ...prev, image_url: v }))
+          }
+          placeholder="Ссылка на изображение (URL) 4:3 или загрузка (AVIF)"
+          urlHint="Загрузка: AVIF в объектное хранилище."
         />
         
         <input 

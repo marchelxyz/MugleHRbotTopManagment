@@ -436,3 +436,16 @@ class UnifiedPurchaseResponse(BaseModel):
 class UnifiedPurchaseListResponse(BaseModel):
     items: List['UnifiedPurchaseResponse']
     total: int
+
+
+class AdminMediaUploadResponse(BaseModel):
+    """Ответ после загрузки изображения в объектное хранилище (конвертация в AVIF)."""
+
+    url: str
+    content_type: str = "image/avif"
+
+
+class AdminMediaStatusResponse(BaseModel):
+    """Доступность загрузки в S3-совместимое хранилище."""
+
+    enabled: bool

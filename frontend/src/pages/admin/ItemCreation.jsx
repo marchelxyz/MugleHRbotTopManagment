@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { clearCache } from '../../storage';
 import { createMarketItem, getAllMarketItems, updateMarketItem, archiveMarketItem, getArchivedMarketItems, restoreMarketItem, deleteMarketItemPermanently } from '../../api';
+import AdminImageUrlField from '../../components/AdminImageUrlField';
 import { FaArchive, FaTrash } from 'react-icons/fa';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
@@ -236,26 +237,11 @@ const ItemCreation = () => {
       <div className={styles.card}>
         <h2>{editingItemId ? 'Редактирование товара' : 'Создать новый товар'}</h2>
         <form onSubmit={handleFormSubmit}>
-          <div className={styles.imageUploader}>
-            {form.image_url ? (
-              <img 
-                src={form.image_url} 
-                alt="Предпросмотр" 
-                className={styles.imagePreview} 
-                onError={(e) => { e.target.style.display = 'none'; }} 
-                onLoad={(e) => { e.target.style.display = 'block'; }}
-              />
-            ) : (
-              <div className={styles.imagePlaceholder}>Фото</div>
-            )}
-          </div>
-          <input 
-            type="text" 
-            name="image_url" 
-            value={form.image_url} 
-            onChange={handleFormChange} 
-            placeholder="Ссылка на изображение (URL) 1080х720px" 
-            className={styles.input} 
+          <AdminImageUrlField
+            value={form.image_url}
+            onChange={(v) => setForm((prev) => ({ ...prev, image_url: v }))}
+            placeholder="Ссылка на изображение (URL) 1080×720px или загрузка (AVIF)"
+            urlHint="Загрузка: конвертация в AVIF и сохранение в объектное хранилище."
           />
           
           <input type="text" name="name" value={form.name} onChange={handleFormChange} placeholder="Название товара" className={styles.input} required />

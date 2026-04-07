@@ -36,6 +36,19 @@ class Settings(BaseSettings):
     ADMIN_EMAILS: str = ""  # Список email админов через запятую для уведомлений
     WEB_APP_LOGIN_URL: str = ""  # URL страницы входа в веб-приложение (опционально)
 
+    # Yandex Object Storage (S3-совместимый API) — загрузка изображений интерфейса (AVIF)
+    S3_ENDPOINT_URL: str = "https://storage.yandexcloud.net"
+    S3_REGION: str = "ru-central1"
+    S3_BUCKET: str = ""
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    # Публичный базовый URL (CDN или вирт. хост), без завершающего /. Если пусто — https://storage.../bucket/key
+    S3_PUBLIC_BASE_URL: str = ""
+    # Для публичного чтения объектов из приложения (если политика бакета использует ACL)
+    S3_OBJECT_ACL: str = ""
+    IMAGE_AVIF_QUALITY: int = 55
+    IMAGE_MAX_SIDE_PX: int = 2048
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
