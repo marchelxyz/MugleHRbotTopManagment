@@ -44,7 +44,7 @@ async def upload_admin_image(
     _admin: User = Depends(get_current_admin_user),
     file: UploadFile = File(...),
 ) -> schemas.AdminMediaUploadResponse:
-    """Принимает изображение, конвертирует в AVIF и загружает в Yandex S3 / совместимое API."""
+    """Принимает изображение, конвертирует в AVIF и загружает в S3 (Timeweb / совместимое API)."""
     if not is_object_storage_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

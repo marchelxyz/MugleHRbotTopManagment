@@ -108,7 +108,7 @@ function BannerManager() {
             value={bannerForm.image_url}
             onChange={(v) => setBannerForm((prev) => ({ ...prev, image_url: v }))}
             placeholder="URL картинки или загрузка в объектное хранилище"
-            urlHint="После загрузки файл конвертируется в AVIF и сохраняется в Yandex Object Storage (если настроено)."
+            urlHint="После загрузки файл конвертируется в AVIF и сохраняется в S3 (Timeweb Object Storage, если настроено)."
           />
           <input type="text" name="link_url" value={bannerForm.link_url} onChange={handleBannerFormChange} placeholder="URL для перехода (необязательно)" className={styles.input} />
           <select name="position" value={bannerForm.position} onChange={handleBannerFormChange} className={styles.input}>

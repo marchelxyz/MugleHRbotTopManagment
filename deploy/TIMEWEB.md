@@ -35,6 +35,16 @@
 
 **Redis не обязателен:** без Redis приложение работает, кеш отключён.
 
+### Object Storage (S3) — Timeweb Cloud
+
+Ключи и бакет — в панели [Хранилище S3](https://timeweb.cloud/my/storage). Дефолты в коде под Timeweb:
+
+- `S3_ENDPOINT_URL=https://s3.twcstorage.ru`
+- `S3_REGION=ru-1`
+- Плюс `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`; при публичном CDN укажите `S3_PUBLIC_BASE_URL`.
+
+Другой провайдер (Yandex, AWS и т.д.) — переопределите endpoint и регион в переменных окружения.
+
 ## Сборка локально
 
 ```bash

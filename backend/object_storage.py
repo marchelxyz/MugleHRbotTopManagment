@@ -1,4 +1,4 @@
-"""Загрузка файлов в S3-совместимое хранилище (в т.ч. Yandex Object Storage)."""
+"""Загрузка файлов в S3-совместимое хранилище (Timeweb Cloud и др.)."""
 
 import uuid
 from datetime import datetime, timezone
@@ -46,7 +46,7 @@ def upload_bytes(key: str, body: bytes, content_type: str) -> str:
         endpoint_url=settings.S3_ENDPOINT_URL.strip(),
         aws_access_key_id=settings.S3_ACCESS_KEY_ID.strip(),
         aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY.strip(),
-        region_name=settings.S3_REGION.strip() or "ru-central1",
+        region_name=settings.S3_REGION.strip() or "ru-1",
     )
     put_kwargs: dict[str, str | bytes] = {
         "Bucket": settings.S3_BUCKET.strip(),
