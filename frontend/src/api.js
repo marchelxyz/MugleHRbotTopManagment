@@ -158,6 +158,19 @@ export const updateBanner = (bannerId, bannerData) =>
 export const deleteBanner = (bannerId) =>
   apiClient.delete(`/admin/banners/${bannerId}`, getAuthHeaders());
 
+export const getAdminMediaStatus = () =>
+  apiClient.get('/admin/media/status', getAuthHeaders());
+
+export const uploadAdminMedia = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiClient.post('/admin/media/upload', formData, {
+    headers: {
+      ...getAuthHeaders().headers,
+    },
+  });
+};
+
 export const getAllMarketItems = () =>
   apiClient.get('/admin/market-items', getAuthHeaders());
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAllBanners, createBanner, updateBanner, deleteBanner } from '../../api';
+import AdminImageUrlField from '../../components/AdminImageUrlField';
 import styles from '../AdminPage.module.css'; // Используем те же стили
 import { useModalAlert } from '../../contexts/ModalAlertContext'; // 1. Импортируем
 import { useConfirmation } from '../../contexts/ConfirmationContext'; // 1. Импортируем
@@ -45,6 +46,10 @@ function BannerManager() {
 
   const handleBannerSubmit = async (e) => {
     e.preventDefault();
+    if (!String(bannerForm.image_url || '').trim()) {
+      setBannerMessage('Укажите URL изображения или загрузите файл.');
+      return;
+    }
     setBannerLoading(true);
     setBannerMessage('');
     try {
@@ -99,7 +104,12 @@ function BannerManager() {
       <div className={styles.card}>
         <h2>{editingBannerId ? 'Редактирование баннера' : 'Создать новый баннер'}</h2>
         <form onSubmit={handleBannerSubmit}>
-          <input type="text" name="image_url" value={bannerForm.image_url} onChange={handleBannerFormChange} placeholder="URL картинки для баннера" className={styles.input} required />
+          <AdminImageUrlField
+            value={bannerForm.image_url}
+            onChange={(v) => setBannerForm((prev) => ({ ...prev, image_url: v }))}
+            placeholder="URL картинки или загрузка в объектное хранилище"
+            urlHint="После загрузки файл конвертируется в AVIF и сохраняется в Yandex Object Storage (если настроено)."
+          />
           <input type="text" name="link_url" value={bannerForm.link_url} onChange={handleBannerFormChange} placeholder="URL для перехода (необязательно)" className={styles.input} />
           <select name="position" value={bannerForm.position} onChange={handleBannerFormChange} className={styles.input}>
             <option value="feed">Баннер в ленте (горизонтальный)</option>
