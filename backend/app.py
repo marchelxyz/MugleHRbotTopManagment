@@ -231,8 +231,14 @@ def ready_check(request: Request) -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/")
-def read_root():
+@app.api_route("/", methods=["GET", "HEAD"], response_model=None)
+def read_root(request: Request):
+    """Корень: SPA или JSON; HEAD даёт 200 без тела.
+
+    Timeweb (и часть прокси) шлют ``HEAD /`` на корень; только ``GET`` давало **405**.
+    """
+    if request.method == "HEAD":
+        return Response(status_code=200)
     if settings.SERVE_SPA:
         index = _static_root() / "index.html"
         if index.is_file():
