@@ -200,20 +200,24 @@ def _liveness_response() -> dict[str, str]:
 
 @app.api_route("/health", methods=["GET", "HEAD"], response_model=None)
 @app.api_route("/health/", methods=["GET", "HEAD"], response_model=None)
-def health_check(request: Request) -> dict[str, str] | Response:
-    """Liveness: всегда 200, без ожидания БД (GET/HEAD — как у части балансировщиков)."""
+def health_check(request: Request):
+    """Liveness: всегда 200, без ожидания БД (GET/HEAD — как у части балансировщиков).
+
+    Без аннотации ``dict | Response``: у стека из двух ``api_route`` FastAPI всё равно
+    может пытаться построить response_field из аннотации и падать при импорте.
+    """
     if request.method == "HEAD":
         return Response(status_code=200)
-    return _liveness_response()
+    return JSONResponse(content=_liveness_response())
 
 
 @app.api_route("/live", methods=["GET", "HEAD"], response_model=None)
 @app.api_route("/live/", methods=["GET", "HEAD"], response_model=None)
-def live_check(request: Request) -> dict[str, str] | Response:
+def live_check(request: Request):
     """Алиас liveness — в панели можно указать путь `/live`."""
     if request.method == "HEAD":
         return Response(status_code=200)
-    return _liveness_response()
+    return JSONResponse(content=_liveness_response())
 
 
 @app.get("/ready")
