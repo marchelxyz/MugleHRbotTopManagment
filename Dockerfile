@@ -18,7 +18,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/backend \
     SERVE_SPA=true \
     STATIC_ROOT=/app/frontend/dist \
-    PORT=8080
+    PORT=8080 \
+    UVICORN_HOST=::
+
+COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
@@ -33,4 +37,4 @@ EXPOSE 8080
 # механизмом; смешение с Docker HEALTHCHECK может давать лишние перезапуски и
 # путаницу со статусом (см. deploy/TIMEWEB.md).
 
-CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -1,10 +1,10 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from config import Settings
+
+from config import settings
 
 Base = declarative_base()
 
-settings = Settings()
 database_url = settings.DATABASE_URL
 
 if database_url and database_url.startswith("postgresql://"):
@@ -12,7 +12,7 @@ if database_url and database_url.startswith("postgresql://"):
 
 engine = create_async_engine(
     database_url,
-    echo=True,
+    echo=settings.SQLALCHEMY_ECHO,
     future=True,
     pool_pre_ping=True,
     pool_recycle=1800,
