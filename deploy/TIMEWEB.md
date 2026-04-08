@@ -25,7 +25,9 @@
 | `index.html` | `/app/frontend/dist/index.html` |
 | Статика JS/CSS | `/app/frontend/dist/assets/` |
 
-Переменные по умолчанию в образе: `SERVE_SPA=true`, `STATIC_ROOT=/app/frontend/dist`, `PORT=8080`, **`UVICORN_HOST=0.0.0.0`** (все IPv4-интерфейсы — типичный случай для health check по IPv4).
+Переменные по умолчанию в образе: `SERVE_SPA=true`, `STATIC_ROOT=/app/frontend/dist`, **`PORT=80`**, **`EXPOSE 80`** — как в рабочем приложении на Timeweb ([mariko_vld](https://github.com/marchelxyz/mariko_vld): в панели `PORT=80`, путь health свой). **`UVICORN_HOST=0.0.0.0`**.
+
+**Важно:** в [документации Timeweb](https://timeweb.cloud/docs/apps/deploying-with-dockerfile) порт для пробы связан с **`EXPOSE`**. Если в образе **`EXPOSE 8080`**, а в переменных **`PORT=80`**, процесс слушает **80**, а проверка может идти на **8080** → `unhealthy`. Поэтому здесь **и `EXPOSE`, и дефолт `PORT` = 80**.
 
 ## Health check (состояние сервиса)
 
@@ -40,18 +42,18 @@
 
 ### «Сборка успешна», но в конце «Deploy failed» / health `unhealthy`
 
-Если в логах есть **`Build succeeded`** и в **логах приложения** видно, что uvicorn поднялся (строка вида `Uvicorn running on http://[...]:8080`), а деплой всё равно падает с **`Health status: unhealthy`** через ~1–2 минуты, причина **не** в предупреждениях Vite и **не** в `pip install` от root.
+Если в логах есть **`Build succeeded`** и в **логах приложения** видно, что uvicorn поднялся (строка вида `Uvicorn running on http://0.0.0.0:80`), а деплой всё равно падает с **`Health status: unhealthy`** через ~1–2 минуты, причина **не** в предупреждениях Vite и **не** в `pip install` от root.
 
 Что проверить:
 
-1. **IPv4 vs IPv6 при привязке порта.** Если в логах есть **`Uvicorn running on http://[::]:8080`**, приложение **стартовало**, но через ~1–2 минуты — **`Shutting down`** и **`Health status: unhealthy`**, часто проба идёт по **IPv4** (IP контейнера или `127.0.0.1`), а сокет слушал только **`::`**. По умолчанию в образе **`UVICORN_HOST=0.0.0.0`**. Обратный редкий случай: проба только на `localhost`→`::1` при отсутствии слушателя на IPv6 — тогда задайте **`UVICORN_HOST=::`** (по согласованию с поддержкой Timeweb).
-2. **Проверка здоровья** должна ходить на **HTTP** внутрь контейнера (порт из настроек, обычно **8080**), путь **`/health`**. Если платформа проверяет **HTTPS** к URL с некорректным SSL на edge, проба может не проходить — уточните в поддержке Timeweb схему и таймауты.
+1. **IPv4 vs IPv6 при привязке порта.** Если в логах **`Uvicorn running on http://[::]:...`** при **`UVICORN_HOST=::`**, а проба с `localhost` идёт на IPv4 — возможен отказ. По умолчанию **`UVICORN_HOST=0.0.0.0`**. Редко нужен только **`::`** — через переменную окружения.
+2. **Проверка здоровья** — **HTTP** на тот же порт, что в **`EXPOSE`** / слушает uvicorn (здесь **80**), путь **`/health`**. Снаружи приложение по-прежнему доступно по **443** на edge Timeweb ([деплой из Dockerfile](https://timeweb.cloud/docs/apps/deploying-with-dockerfile)).
 3. Миграции в фоне: **`/health`** и **`/live`** не ждут БД. **`HEALTHCHECK` в образе не задаём** — только механизм платформы ([путь проверки](https://timeweb.cloud/docs/apps/healthcheck-path)).
-4. **`PORT`** в переменных должен совпадать с портом процесса (по умолчанию **8080**).
+4. **`PORT`** в панели и **`EXPOSE`** в Dockerfile должны совпадать с тем, на чём слушает uvicorn (по умолчанию **80**).
 
 ## Порт и хост привязки (uvicorn)
 
-- Слушает **`PORT`** (по умолчанию **8080**) и **`UVICORN_HOST`** (по умолчанию **`0.0.0.0`**).
+- Слушает **`PORT`** (по умолчанию **80** для Timeweb) и **`UVICORN_HOST`** (**`0.0.0.0`**).
 - Если платформа подставляет свой `PORT`, оставьте как есть.
 - Явно меняйте **`UVICORN_HOST`** только при рекомендации поддержки (редко нужен только **`::`**).
 
@@ -89,7 +91,7 @@
 
 ```bash
 docker build -t hr-spasibo:latest .
-docker run --env-file .env -p 8080:8080 hr-spasibo:latest
+docker run --env-file .env -p 80:80 hr-spasibo:latest
 ```
 
-Откройте `http://localhost:8080/` — SPA; `http://localhost:8080/health` — проверка.
+Откройте `http://localhost:80/` — SPA; `http://localhost:80/health` — проверка. Чтобы не занимать порт 80 локально: `-e PORT=8080 -p 8080:8080`.
