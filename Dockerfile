@@ -42,10 +42,10 @@ WORKDIR /app/backend
 # Иначе в панели PORT=80 + EXPOSE 8080 → проба на 8080, а uvicorn на 80 → unhealthy.
 EXPOSE 80
 
-# По документации Timeweb инструкция HEALTHCHECK в образе имеет приоритет над
-# неявной пробой. Явный GET http://127.0.0.1:$PORT/health обходит localhost→::1.
-# См. deploy/container_liveness_probe.py и deploy/TIMEWEB.md.
-HEALTHCHECK --interval=15s --timeout=10s --start-period=120s --retries=8 \
+# Timeweb: HEALTHCHECK в образе может иметь приоритет. Проба — 127.0.0.1 и ::1
+# (см. deploy/container_liveness_probe.py). start-period укорочен: платформа
+# часто рубит деплой ~100 с, пока Docker ещё в «starting» при длинном периоде.
+HEALTHCHECK --interval=10s --timeout=8s --start-period=25s --retries=12 \
     CMD /opt/venv/bin/python /usr/local/bin/container_liveness_probe.py
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

@@ -52,7 +52,7 @@
 
 1. **IPv4 vs IPv6 / `localhost`.** По умолчанию в образе **`UVICORN_HOST=::`**. Если в панели задано **`UVICORN_HOST=0.0.0.0`**, удалите переменную или поставьте **`::`**. Иначе после пересоздания контейнера проба на **`http://localhost:80/...`** (часто **`::1`**) не попадает в сокет, а с **`172.18.x.x`** запросы всё ещё могут давать 200 — деплой при этом остаётся **`unhealthy`**.
 2. **Проверка здоровья** — **HTTP** на тот же порт, что в **`EXPOSE`** / слушает uvicorn (здесь **80**), путь **`/health`**. Снаружи приложение по-прежнему доступно по **443** на edge Timeweb ([деплой из Dockerfile](https://timeweb.cloud/docs/apps/deploying-with-dockerfile)).
-3. Миграции в фоне: **`/health`** и **`/live`** не ждут БД. В образе задан **`HEALTHCHECK`**: **GET `http://127.0.0.1:$PORT/health`** (скрипт `deploy/container_liveness_probe.py`) — по [документации Timeweb](https://timeweb.cloud/docs/apps/deploying-with-dockerfile) такая инструкция может иметь **приоритет** над неявной пробой и стабильнее, чем `localhost` с IPv6.
+3. Миграции в фоне: **`/health`** и **`/live`** не ждут БД. В образе задан **`HEALTHCHECK`**: скрипт `deploy/container_liveness_probe.py` делает GET **`http://127.0.0.1:$PORT/health`**, при неудаче — **`http://[::1]:$PORT/health`** (совместимость с `UVICORN_HOST=0.0.0.0` и с `::`). По [документации Timeweb](https://timeweb.cloud/docs/apps/deploying-with-dockerfile) инструкция в образе может иметь **приоритет** над неявной пробой.
 4. **`PORT`** в панели и **`EXPOSE`** в Dockerfile должны совпадать с тем, на чём слушает uvicorn (по умолчанию **80**).
 
 ## Порт и хост привязки (uvicorn)
