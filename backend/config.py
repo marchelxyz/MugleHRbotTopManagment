@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     STATIX_BONUS_RESTAURANT_NAME: str = "TG BOT"
     STATIX_BONUS_TIMEOUT_SECONDS: int = 10
 
-    # Настройки Redis
+    # Настройки Redis (REDIS_ENABLED=false — не подключаться и не использовать кеш)
+    REDIS_ENABLED: bool = True
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
