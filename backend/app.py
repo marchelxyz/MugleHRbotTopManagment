@@ -198,8 +198,8 @@ def _liveness_response() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.api_route("/health", methods=["GET", "HEAD"])
-@app.api_route("/health/", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=None)
+@app.api_route("/health/", methods=["GET", "HEAD"], response_model=None)
 def health_check(request: Request) -> dict[str, str] | Response:
     """Liveness: всегда 200, без ожидания БД (GET/HEAD — как у части балансировщиков)."""
     if request.method == "HEAD":
@@ -207,8 +207,8 @@ def health_check(request: Request) -> dict[str, str] | Response:
     return _liveness_response()
 
 
-@app.api_route("/live", methods=["GET", "HEAD"])
-@app.api_route("/live/", methods=["GET", "HEAD"])
+@app.api_route("/live", methods=["GET", "HEAD"], response_model=None)
+@app.api_route("/live/", methods=["GET", "HEAD"], response_model=None)
 def live_check(request: Request) -> dict[str, str] | Response:
     """Алиас liveness — в панели можно указать путь `/live`."""
     if request.method == "HEAD":
