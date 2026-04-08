@@ -2,6 +2,9 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    # Лог SQL в stdout (dev); в проде оставьте false — меньше шума и нагрузки на логи
+    SQLALCHEMY_ECHO: bool = False
+
     ADMIN_API_KEY: str
     
     TELEGRAM_BOT_TOKEN: str

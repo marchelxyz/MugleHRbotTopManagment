@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -198,17 +198,21 @@ def _liveness_response() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/health")
-@app.get("/health/")
-def health_check() -> dict[str, str]:
-    """Liveness: всегда 200, без ожидания БД (требование Timeweb App Platform)."""
+@app.api_route("/health", methods=["GET", "HEAD"])
+@app.api_route("/health/", methods=["GET", "HEAD"])
+def health_check(request: Request) -> dict[str, str] | Response:
+    """Liveness: всегда 200, без ожидания БД (GET/HEAD — как у части балансировщиков)."""
+    if request.method == "HEAD":
+        return Response(status_code=200)
     return _liveness_response()
 
 
-@app.get("/live")
-@app.get("/live/")
-def live_check() -> dict[str, str]:
+@app.api_route("/live", methods=["GET", "HEAD"])
+@app.api_route("/live/", methods=["GET", "HEAD"])
+def live_check(request: Request) -> dict[str, str] | Response:
     """Алиас liveness — в панели можно указать путь `/live`."""
+    if request.method == "HEAD":
+        return Response(status_code=200)
     return _liveness_response()
 
 
