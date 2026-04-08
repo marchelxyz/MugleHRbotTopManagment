@@ -18,7 +18,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/backend \
     SERVE_SPA=true \
     STATIC_ROOT=/app/frontend/dist \
-    PORT=8080 \
+    PORT=80 \
     UVICORN_HOST=0.0.0.0
 
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
@@ -31,7 +31,9 @@ COPY backend/ /app/backend/
 COPY --from=frontend-build /build/dist /app/frontend/dist
 
 WORKDIR /app/backend
-EXPOSE 8080
+# Как в рабочих приложениях Timeweb (см. mariko_vld): EXPOSE и слушаемый порт совпадают.
+# Иначе в панели PORT=80 + EXPOSE 8080 → проба на 8080, а uvicorn на 80 → unhealthy.
+EXPOSE 80
 
 # Не задаём HEALTHCHECK в образе: на App Platform Timeweb проверка идёт своим
 # механизмом; смешение с Docker HEALTHCHECK может давать лишние перезапуски и
