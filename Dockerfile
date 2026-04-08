@@ -22,6 +22,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UVICORN_HOST=::
 
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY deploy/container_liveness_probe.py /usr/local/bin/container_liveness_probe.py
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY backend/requirements.txt /app/backend/requirements.txt
@@ -41,8 +42,10 @@ WORKDIR /app/backend
 # Иначе в панели PORT=80 + EXPOSE 8080 → проба на 8080, а uvicorn на 80 → unhealthy.
 EXPOSE 80
 
-# Не задаём HEALTHCHECK в образе: на App Platform Timeweb проверка идёт своим
-# механизмом; смешение с Docker HEALTHCHECK может давать лишние перезапуски и
-# путаницу со статусом (см. deploy/TIMEWEB.md).
+# По документации Timeweb инструкция HEALTHCHECK в образе имеет приоритет над
+# неявной пробой. Явный GET http://127.0.0.1:$PORT/health обходит localhost→::1.
+# См. deploy/container_liveness_probe.py и deploy/TIMEWEB.md.
+HEALTHCHECK --interval=15s --timeout=10s --start-period=120s --retries=8 \
+    CMD /opt/venv/bin/python /usr/local/bin/container_liveness_probe.py
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
