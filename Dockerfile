@@ -29,9 +29,8 @@ COPY --from=frontend-build /build/dist /app/frontend/dist
 WORKDIR /app/backend
 EXPOSE 8080
 
-# Совпадает с liveness в приложении: 200 без ожидания БД. При наличии HEALTHCHECK
-# Timeweb может отдать приоритет ему (см. документацию платформы).
-HEALTHCHECK --interval=20s --timeout=5s --start-period=90s --retries=5 \
-  CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ.get('PORT','8080'), timeout=4)"
+# Не задаём HEALTHCHECK в образе: на App Platform Timeweb проверка идёт своим
+# механизмом; смешение с Docker HEALTHCHECK может давать лишние перезапуски и
+# путаницу со статусом (см. deploy/TIMEWEB.md).
 
 CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}"]
