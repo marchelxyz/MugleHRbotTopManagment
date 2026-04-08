@@ -10,4 +10,5 @@ set -eu
 PORT="${PORT:-80}"
 UVICORN_HOST="${UVICORN_HOST:-0.0.0.0}"
 cd /app/backend
-exec uvicorn app:app --host "$UVICORN_HOST" --port "$PORT"
+# Интерпретатор из venv (см. Dockerfile /opt/venv); не полагаемся только на PATH в окружении платформы.
+exec /opt/venv/bin/uvicorn app:app --host "$UVICORN_HOST" --port "$PORT"

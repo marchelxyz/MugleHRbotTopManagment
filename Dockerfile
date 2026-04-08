@@ -25,7 +25,13 @@ COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+# Зависимости в venv: не засоряем системный site-packages; pip обновляется до актуальной версии.
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install --no-cache-dir -r /app/backend/requirements.txt
+
+ENV PATH="/opt/venv/bin:${PATH}" \
+    VIRTUAL_ENV=/opt/venv
 
 COPY backend/ /app/backend/
 COPY --from=frontend-build /build/dist /app/frontend/dist

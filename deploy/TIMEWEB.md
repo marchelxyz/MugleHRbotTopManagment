@@ -42,7 +42,7 @@
 
 ### «Сборка успешна», но в конце «Deploy failed» / health `unhealthy`
 
-Если в логах есть **`Build succeeded`** и в **логах приложения** видно, что uvicorn поднялся (строка вида `Uvicorn running on http://0.0.0.0:80`), а деплой всё равно падает с **`Health status: unhealthy`** через ~1–2 минуты, причина **не** в предупреждениях Vite и **не** в `pip install` от root.
+Если в логах есть **`Build succeeded`** и в **логах приложения** видно, что uvicorn поднялся (строка вида `Uvicorn running on http://0.0.0.0:80`), а деплой всё равно падает с **`Health status: unhealthy`** через ~1–2 минуты, причина **не** в предупреждениях Vite. Зависимости Python ставятся в **`/opt/venv`** (образ), а не в системный Python.
 
 Что проверить:
 
