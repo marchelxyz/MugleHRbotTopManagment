@@ -12,6 +12,7 @@ from pathlib import Path
 
 from sqlalchemy import select, text
 
+from config import settings
 from database import Base, engine
 from redis_cache import redis_cache
 
@@ -192,6 +193,10 @@ async def run_background_startup() -> None:
                 async with conn.begin():
                     await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
                 logger.info("🔓 Блокировка освобождена")
+
+    if not settings.REDIS_ENABLED:
+        logger.info("Redis отключён (REDIS_ENABLED=false), подключение не выполняется.")
+        return
 
     try:
         await redis_cache.connect()
