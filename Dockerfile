@@ -22,7 +22,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UVICORN_HOST=::
 
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY deploy/container_liveness_probe.py /usr/local/bin/container_liveness_probe.py
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY backend/requirements.txt /app/backend/requirements.txt
@@ -41,11 +40,5 @@ WORKDIR /app/backend
 # Как в рабочих приложениях Timeweb (см. mariko_vld): EXPOSE и слушаемый порт совпадают.
 # Иначе в панели PORT=80 + EXPOSE 8080 → проба на 8080, а uvicorn на 80 → unhealthy.
 EXPOSE 80
-
-# Timeweb: HEALTHCHECK в образе может иметь приоритет. Проба — 127.0.0.1 и ::1
-# (см. deploy/container_liveness_probe.py). start-period укорочен: платформа
-# часто рубит деплой ~100 с, пока Docker ещё в «starting» при длинном периоде.
-HEALTHCHECK --interval=10s --timeout=8s --start-period=25s --retries=12 \
-    CMD /opt/venv/bin/python /usr/local/bin/container_liveness_probe.py
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
