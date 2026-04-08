@@ -25,7 +25,9 @@
 | `index.html` | `/app/frontend/dist/index.html` |
 | Статика JS/CSS | `/app/frontend/dist/assets/` |
 
-Переменные по умолчанию в образе: `SERVE_SPA=true`, `STATIC_ROOT=/app/frontend/dist`, **`PORT=80`**, **`EXPOSE 80`** — как в рабочем приложении на Timeweb ([mariko_vld](https://github.com/marchelxyz/mariko_vld): в панели `PORT=80`, путь health свой). **`UVICORN_HOST=0.0.0.0`**.
+Переменные по умолчанию в образе: `SERVE_SPA=true`, `STATIC_ROOT=/app/frontend/dist`, **`PORT=80`**, **`EXPOSE 80`** — как в рабочем приложении на Timeweb ([mariko_vld](https://github.com/marchelxyz/mariko_vld): в панели `PORT=80`, путь health свой). **`UVICORN_HOST=::`** (dual-stack: и IPv4 с моста Docker, и `localhost`→`::1` для healthcheck после пересоздания контейнера).
+
+**Не задавайте в панели `UVICORN_HOST=0.0.0.0`**, если не уверены: это переопределит образ и снова отключит приём на `::1`, из‑за чего внутренний healthcheck после строки «Recreating container with healthcheck…» может не проходить, хотя в логах уже есть **`HEAD /` 200** с IPv4-клиента (`172.18.x.x`).
 
 **Важно:** в [документации Timeweb](https://timeweb.cloud/docs/apps/deploying-with-dockerfile) порт для пробы связан с **`EXPOSE`**. Если в образе **`EXPOSE 8080`**, а в переменных **`PORT=80`**, процесс слушает **80**, а проверка может идти на **8080** → `unhealthy`. Поэтому здесь **и `EXPOSE`, и дефолт `PORT` = 80**.
 
@@ -44,20 +46,20 @@
 
 ### «Сборка успешна», но в конце «Deploy failed» / health `unhealthy`
 
-Если в логах есть **`Build succeeded`** и в **логах приложения** видно, что uvicorn поднялся (строка вида `Uvicorn running on http://0.0.0.0:80`), а деплой всё равно падает с **`Health status: unhealthy`** через ~1–2 минуты, причина **не** в предупреждениях Vite. Зависимости Python ставятся в **`/opt/venv`** (образ), а не в системный Python.
+Если в логах есть **`Build succeeded`** и в **логах приложения** видно, что uvicorn поднялся (строка вида `Uvicorn running on http://[::]:80` или `http://0.0.0.0:80`), а деплой всё равно падает с **`Health status: unhealthy`** через ~1–2 минуты, причина **не** в предупреждениях Vite. Зависимости Python ставятся в **`/opt/venv`** (образ), а не в системный Python.
 
 Что проверить:
 
-1. **IPv4 vs IPv6 при привязке порта.** Если в логах **`Uvicorn running on http://[::]:...`** при **`UVICORN_HOST=::`**, а проба с `localhost` идёт на IPv4 — возможен отказ. По умолчанию **`UVICORN_HOST=0.0.0.0`**. Редко нужен только **`::`** — через переменную окружения.
+1. **IPv4 vs IPv6 / `localhost`.** По умолчанию в образе **`UVICORN_HOST=::`**. Если в панели задано **`UVICORN_HOST=0.0.0.0`**, удалите переменную или поставьте **`::`**. Иначе после пересоздания контейнера проба на **`http://localhost:80/...`** (часто **`::1`**) не попадает в сокет, а с **`172.18.x.x`** запросы всё ещё могут давать 200 — деплой при этом остаётся **`unhealthy`**.
 2. **Проверка здоровья** — **HTTP** на тот же порт, что в **`EXPOSE`** / слушает uvicorn (здесь **80**), путь **`/health`**. Снаружи приложение по-прежнему доступно по **443** на edge Timeweb ([деплой из Dockerfile](https://timeweb.cloud/docs/apps/deploying-with-dockerfile)).
 3. Миграции в фоне: **`/health`** и **`/live`** не ждут БД. **`HEALTHCHECK` в образе не задаём** — только механизм платформы ([путь проверки](https://timeweb.cloud/docs/apps/healthcheck-path)).
 4. **`PORT`** в панели и **`EXPOSE`** в Dockerfile должны совпадать с тем, на чём слушает uvicorn (по умолчанию **80**).
 
 ## Порт и хост привязки (uvicorn)
 
-- Слушает **`PORT`** (по умолчанию **80** для Timeweb) и **`UVICORN_HOST`** (**`0.0.0.0`**).
+- Слушает **`PORT`** (по умолчанию **80** для Timeweb) и **`UVICORN_HOST`** (по умолчанию **`::`** в образе).
 - Если платформа подставляет свой `PORT`, оставьте как есть.
-- Явно меняйте **`UVICORN_HOST`** только при рекомендации поддержки (редко нужен только **`::`**).
+- **`UVICORN_HOST=0.0.0.0`** в панели задавайте только осознанно (см. выше про `localhost` и healthcheck).
 
 ## Переменные окружения (обязательно задать в сервисе)
 
