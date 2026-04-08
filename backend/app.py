@@ -91,13 +91,13 @@ async def lifespan(app: FastAPI):
 
 
 class StartupGateMiddleware(BaseHTTPMiddleware):
-    """503 на API до готовности БД; /health и статика проходят."""
+    """503 на API до готовности БД; liveness и статика проходят."""
 
     async def dispatch(self, request: Request, call_next):
         if getattr(request.app.state, "startup_ready", False):
             return await call_next(request)
         path = request.url.path
-        if path == "/health" or path.startswith("/assets/"):
+        if path in ("/health", "/health/", "/live", "/live/") or path.startswith("/assets/"):
             return await call_next(request)
         if _is_protected_api_path(path):
             return JSONResponse(
@@ -193,15 +193,33 @@ def _register_spa_assets() -> None:
 _register_spa_assets()
 
 
-@app.get("/health")
-def health_check(request: Request) -> dict[str, str]:
-    """Проверка для балансировщика и платформ деплоя (Timeweb и др.).
+def _liveness_response() -> dict[str, str]:
+    """Тело ответа для проверок «процесс жив» (Timeweb, балансировщики)."""
+    return {"status": "ok"}
 
-    Во время миграций возвращает 200 без ожидания БД. При фатальной ошибке
-    фоновой инициализации — 503, чтобы деплой не считался успешным.
-    """
+
+@app.get("/health")
+@app.get("/health/")
+def health_check() -> dict[str, str]:
+    """Liveness: всегда 200, без ожидания БД (требование Timeweb App Platform)."""
+    return _liveness_response()
+
+
+@app.get("/live")
+@app.get("/live/")
+def live_check() -> dict[str, str]:
+    """Алиас liveness — в панели можно указать путь `/live`."""
+    return _liveness_response()
+
+
+@app.get("/ready")
+@app.get("/ready/")
+def ready_check(request: Request) -> dict[str, str]:
+    """Readiness: 200 только после миграций; 503 при ошибке или до готовности."""
     if getattr(request.app.state, "startup_error", None):
         raise HTTPException(status_code=503, detail="Startup failed")
+    if not getattr(request.app.state, "startup_ready", False):
+        raise HTTPException(status_code=503, detail="Not ready")
     return {"status": "ok"}
 
 
