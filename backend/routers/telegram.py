@@ -35,9 +35,17 @@ async def safe_send_message(
 
 
 @router.get("/telegram/test")
-async def telegram_test():
-    print("--- DEBUG: TEST ENDPOINT WAS CALLED SUCCESSFULLY! ---")
-    return {"status": "ok"}
+async def telegram_test() -> dict[str, str]:
+    """Проверка маршрутизации без секретов. Не подтверждает setWebhook — см. deploy/set-telegram-webhook.sh info."""
+    return {
+        "status": "ok",
+        "webhook_post_path": "/telegram/webhook",
+        "hint_ru": (
+            "Если при нажатии inline-кнопки в логах нет строки access «POST /telegram/webhook», "
+            "Telegram шлёт обновления не на этот хост: выполните set с APP_PUBLIC_URL вашего Timeweb "
+            "и проверьте getWebhookInfo (url и last_error_message)."
+        ),
+    }
 
 
 @router.post("/telegram/webhook")
@@ -49,11 +57,19 @@ async def telegram_webhook(request: Request) -> dict[str, bool]:
     зависнет до ``answerCallbackQuery``: кнопки в чате «крутятся», пока не таймаут.
     Сначала читаем JSON и отвечаем на callback, затем открываем сессию.
     """
+    client = getattr(request.client, "host", None)
     try:
         data = await request.json()
     except Exception:
         logger.exception("telegram webhook: тело запроса не является JSON")
         return {"ok": True}
+
+    logger.info(
+        "telegram webhook: update_id=%s client=%s keys=%s",
+        data.get("update_id"),
+        client,
+        list(data.keys()),
+    )
 
     callback_block = data.get("callback_query")
     callback_answered = False
