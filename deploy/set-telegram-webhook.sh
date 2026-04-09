@@ -16,6 +16,7 @@
 #   sh deploy/set-telegram-webhook.sh set
 #
 #   sh deploy/set-telegram-webhook.sh info
+#   sh deploy/set-telegram-webhook.sh diagnose   # то же + подсказка по логам
 #   sh deploy/set-telegram-webhook.sh delete
 #
 set -eu
@@ -24,6 +25,7 @@ usage() {
   echo "Использование:" >&2
   echo "  TELEGRAM_BOT_TOKEN=... APP_PUBLIC_URL=https://домен $(basename "$0") set" >&2
   echo "  TELEGRAM_BOT_TOKEN=... $(basename "$0") info" >&2
+  echo "  TELEGRAM_BOT_TOKEN=... $(basename "$0") diagnose" >&2
   echo "  TELEGRAM_BOT_TOKEN=... $(basename "$0") delete" >&2
   exit 1
 }
@@ -47,10 +49,27 @@ case "$cmd" in
     APP_URL="${APP_URL%/}"
     WH_URL="${APP_URL}/telegram/webhook"
     echo "Назначаю webhook: ${WH_URL}"
-    curl -sS -X POST "${API_ROOT}/setWebhook" --data-urlencode "url=${WH_URL}"
+    DROP="${DROP_PENDING_UPDATES:-}"
+    if [ -n "$DROP" ] && [ "$DROP" != "0" ] && [ "$DROP" != "false" ]; then
+      echo "(DROP_PENDING_UPDATES: очередь необработанных update будет сброшена)"
+      curl -sS -X POST "${API_ROOT}/setWebhook" \
+        --data-urlencode "url=${WH_URL}" \
+        --data-urlencode "drop_pending_updates=true"
+    else
+      curl -sS -X POST "${API_ROOT}/setWebhook" --data-urlencode "url=${WH_URL}"
+    fi
     echo
     ;;
   info)
+    curl -sS "${API_ROOT}/getWebhookInfo"
+    echo
+    ;;
+  diagnose)
+    echo "=== getWebhookInfo ===" >&2
+    echo "Поля url, last_error_message, last_error_date, pending_update_count, max_connections." >&2
+    echo "Если url не https://ВАШ-DOMAIN/telegram/webhook — кнопки уйдут не на Timeweb." >&2
+    echo "В логах приложения при нажатии кнопки должна появиться: POST /telegram/webhook" >&2
+    echo "" >&2
     curl -sS "${API_ROOT}/getWebhookInfo"
     echo
     ;;
