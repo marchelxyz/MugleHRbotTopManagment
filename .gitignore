@@ -1,0 +1,29 @@
+# Dependencies (never commit — Docker и CI ставят через npm ci)
+frontend/node_modules/
+**/node_modules/
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+.venv/
+venv/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# Build outputs
+frontend/dist/
+**/dist/
+
+# IDE / local
+.cursor/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*

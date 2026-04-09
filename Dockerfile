@@ -1,10 +1,13 @@
+# syntax=docker/dockerfile:1
 # Сборка: Vite (frontend) + FastAPI (backend), один процесс uvicorn.
 # Корень контекста сборки — каталог репозитория (где лежит этот Dockerfile).
+# BuildKit: кэши pip/npm ускоряют повторные деплои на том же хосте.
 
 FROM node:20-alpine AS frontend-build
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 COPY frontend/ ./
 # Пустой URL = API на том же origin (Telegram Mini App / один домен)
 ARG VITE_API_URL=
@@ -25,10 +28,11 @@ COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY backend/requirements.txt /app/backend/requirements.txt
-# Зависимости в venv: не засоряем системный site-packages; pip обновляется до актуальной версии.
-RUN python -m venv /opt/venv \
-    && /opt/venv/bin/pip install --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir -r /app/backend/requirements.txt
+# venv + pip без лишнего upgrade pip (экономит трафик на медленных каналах к PyPI).
+# Кэш wheel'ов между сборками: включите BuildKit (DOCKER_BUILDKIT=1).
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m venv /opt/venv \
+    && /opt/venv/bin/pip install -r /app/backend/requirements.txt
 
 ENV PATH="/opt/venv/bin:${PATH}" \
     VIRTUAL_ENV=/opt/venv
