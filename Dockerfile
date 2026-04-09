@@ -15,6 +15,8 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 FROM python:3.12-slim-bookworm
+# uv: параллельная установка и общий кэш быстрее pip на медленных каналах к PyPI (Timeweb и т.п.).
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /usr/local/bin/
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -22,17 +24,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SERVE_SPA=true \
     STATIC_ROOT=/app/frontend/dist \
     PORT=80 \
-    UVICORN_HOST=0.0.0.0
+    UVICORN_HOST=0.0.0.0 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 COPY backend/requirements.txt /app/backend/requirements.txt
-# venv + pip без лишнего upgrade pip (экономит трафик на медленных каналах к PyPI).
-# Кэш wheel'ов между сборками: включите BuildKit (DOCKER_BUILDKIT=1).
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m venv /opt/venv \
-    && /opt/venv/bin/pip install -r /app/backend/requirements.txt
+# BuildKit: кэш uv между сборками на том же хосте.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv venv /opt/venv \
+    && uv pip install --python /opt/venv/bin/python -r /app/backend/requirements.txt
 
 ENV PATH="/opt/venv/bin:${PATH}" \
     VIRTUAL_ENV=/opt/venv
