@@ -196,6 +196,7 @@ async def run_background_startup() -> None:
 
     if not settings.REDIS_ENABLED:
         logger.info("Redis отключён (REDIS_ENABLED=false), подключение не выполняется.")
+        logger.success("Сервис готов к работе (БД и миграции; Redis отключён).")
         return
 
     try:
@@ -205,3 +206,4 @@ async def run_background_startup() -> None:
             "⚠️ Не удалось подключиться к Redis: %s. Кеширование будет недоступно.",
             e,
         )
+    logger.success("Сервис готов к работе (БД, миграции; Redis по настройкам).")
