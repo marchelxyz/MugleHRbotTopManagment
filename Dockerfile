@@ -19,7 +19,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SERVE_SPA=true \
     STATIC_ROOT=/app/frontend/dist \
     PORT=80 \
-    UVICORN_HOST=::
+    UVICORN_HOST=0.0.0.0
 
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
