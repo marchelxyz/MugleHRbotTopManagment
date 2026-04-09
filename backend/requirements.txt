@@ -10,8 +10,6 @@ pydantic-settings
 python-multipart
 pyzipper
 openpyxl
-pandas
-pytz
 redis
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
