@@ -4,6 +4,9 @@
 **/*.pyc
 **/.pytest_cache
 **/node_modules
+.github
+**/*.test.js
+**/*.spec.js
 # Чужие Dockerfile из npm-пакетов (например jsbarcode) — не должны попадать в контекст
 **/node_modules/**/Dockerfile
 frontend/dist
