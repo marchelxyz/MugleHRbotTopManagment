@@ -206,37 +206,56 @@ def _liveness_response() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.api_route("/health", methods=["GET", "HEAD"], response_model=None)
-@app.api_route("/health/", methods=["GET", "HEAD"], response_model=None)
-def health_check(request: Request):
-    """Liveness: всегда 200, без ожидания БД (GET/HEAD — как у части балансировщиков).
-
-    Без аннотации ``dict | Response``: у стека из двух ``api_route`` FastAPI всё равно
-    может пытаться построить response_field из аннотации и падать при импорте.
-    """
+def _liveness_http_response(request: Request):
+    """GET — JSON; HEAD — пустое 200 (пробы балансировщиков)."""
     if request.method == "HEAD":
         return Response(status_code=200)
     return JSONResponse(content=_liveness_response())
+
+
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=None)
+def health_check(request: Request):
+    """Liveness без слэша. Отдельный handler от ``/health/``: два @api_route на одной функции дают FastAPIError на части версий."""
+    return _liveness_http_response(request)
+
+
+@app.api_route("/health/", methods=["GET", "HEAD"], response_model=None)
+def health_check_slash(request: Request):
+    """Liveness со слэшем."""
+    return _liveness_http_response(request)
 
 
 @app.api_route("/live", methods=["GET", "HEAD"], response_model=None)
-@app.api_route("/live/", methods=["GET", "HEAD"], response_model=None)
 def live_check(request: Request):
-    """Алиас liveness — в панели можно указать путь `/live`."""
-    if request.method == "HEAD":
-        return Response(status_code=200)
-    return JSONResponse(content=_liveness_response())
+    """Алиас liveness — путь ``/live``."""
+    return _liveness_http_response(request)
 
 
-@app.get("/ready")
-@app.get("/ready/")
-def ready_check(request: Request) -> dict[str, str]:
-    """Readiness: 200 только после миграций; 503 при ошибке или до готовности."""
+@app.api_route("/live/", methods=["GET", "HEAD"], response_model=None)
+def live_check_slash(request: Request):
+    """Алиас liveness — путь ``/live/``."""
+    return _liveness_http_response(request)
+
+
+def _ready_json_or_503(request: Request) -> dict[str, str]:
+    """Readiness: JSON или HTTP 503."""
     if getattr(request.app.state, "startup_error", None):
         raise HTTPException(status_code=503, detail="Startup failed")
     if not getattr(request.app.state, "startup_ready", False):
         raise HTTPException(status_code=503, detail="Not ready")
     return {"status": "ok"}
+
+
+@app.get("/ready", response_model=None)
+def ready_check(request: Request):
+    """Readiness без слэша."""
+    return _ready_json_or_503(request)
+
+
+@app.get("/ready/", response_model=None)
+def ready_check_slash(request: Request):
+    """Readiness со слэшем."""
+    return _ready_json_or_503(request)
 
 
 @app.api_route("/", methods=["GET", "HEAD"], response_model=None)
