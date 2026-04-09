@@ -150,18 +150,17 @@ async def approve_user_registration_route(
     updated_user = await crud.update_user_status(db, user_id, "approved")
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Проверяем, были ли сгенерированы учетные данные
-    generated_login = getattr(updated_user, '_generated_login', None)
-    generated_password = getattr(updated_user, '_generated_password', None)
-    # Учетные данные считаются сгенерированными только если они действительно были созданы сейчас
-    credentials_generated = generated_login is not None and generated_password is not None
-    
+
+    gen_login = getattr(updated_user, "_generated_login", None) or updated_user.login
+    gen_password = getattr(updated_user, "_generated_password", None) or updated_user.password_plain
+    created_now = getattr(updated_user, "_credentials_created_this_call", False)
+
     return schemas.ApproveUserRegistrationResponse(
         user=schemas.UserResponse.model_validate(updated_user),
-        login=generated_login,
-        password=generated_password,
-        credentials_generated=credentials_generated
+        login=gen_login,
+        password=gen_password,
+        credentials_generated=created_now,
+        credentials_active=True,
     )
 
 @router.post("/users/{user_id}/reject", response_model=schemas.UserResponse)

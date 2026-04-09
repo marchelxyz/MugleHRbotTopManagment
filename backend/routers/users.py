@@ -85,7 +85,7 @@ async def login_user(
             detail="Ваша заявка еще на рассмотрении"
         )
     
-    return schemas.UserResponse.model_validate(user)
+    return schemas.user_response_for_public_api(user)
 
 @router.post("/auth/register", response_model=schemas.UserResponse)
 async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -99,7 +99,7 @@ async def register_user(request: schemas.RegisterRequest, db: AsyncSession = Dep
     
     try:
         new_user = await crud.create_user(db, request)
-        return schemas.UserResponse.model_validate(new_user)
+        return schemas.user_response_for_public_api(new_user)
     except ValueError as e:
         # Обрабатываем ошибки валидации
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -112,11 +112,12 @@ async def list_users(
     user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await crud.get_users(db)
+    users = await crud.get_users(db)
+    return [schemas.user_response_for_public_api(u) for u in users]
 
 @router.get("/me", response_model=schemas.UserResponse)
 async def get_self(user: models.User = Depends(get_current_user)):
-    return user
+    return schemas.user_response_for_public_api(user)
 
 @router.put("/me", response_model=schemas.UserResponse)
 async def update_me(
@@ -124,7 +125,8 @@ async def update_me(
     user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    return await crud.update_user_profile(db, user_id=user.id, data=user_data)
+    updated = await crud.update_user_profile(db, user_id=user.id, data=user_data)
+    return schemas.user_response_for_public_api(updated)
 
 @router.post("/me/request-update", status_code=status.HTTP_202_ACCEPTED)
 async def request_profile_update_route(
@@ -188,14 +190,15 @@ async def upload_card(
     )
     await db.commit()
     await db.refresh(user)
-    return schemas.UserResponse.model_validate(user)
+    return schemas.user_response_for_public_api(user)
 
 @router.delete("/me/card", response_model=schemas.UserResponse)
 async def delete_card(
     user: models.User = Depends(get_current_user), 
     db: AsyncSession = Depends(get_db)
 ):
-    return await crud.delete_user_card(db, user.id)
+    u = await crud.delete_user_card(db, user.id)
+    return schemas.user_response_for_public_api(u)
 
 @router.get("/search/", response_model=list[schemas.UserResponse])
 async def search_users(
@@ -207,14 +210,15 @@ async def search_users(
         return []
     
     users = await crud.search_users_by_name(db, query=query)
-    return users
+    return [schemas.user_response_for_public_api(u) for u in users]
 
 @router.post("/me/complete-onboarding", response_model=schemas.UserResponse)
 async def complete_onboarding_route(
     user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    return await crud.mark_onboarding_as_seen(db, user_id=user.id)
+    u = await crud.mark_onboarding_as_seen(db, user_id=user.id)
+    return schemas.user_response_for_public_api(u)
 
 @router.post("/me/change-password", response_model=schemas.UserResponse)
 async def change_password_route(
@@ -247,5 +251,5 @@ async def change_password_route(
     await db.commit()
     await db.refresh(user)
     
-    return schemas.UserResponse.model_validate(user)
+    return schemas.user_response_for_public_api(user)
 

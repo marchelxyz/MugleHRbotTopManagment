@@ -218,8 +218,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             
                 if action == "approve":
                     await crud.update_user_status(db, user_id, "approved")
-                    if user.telegram_id and user.telegram_id >= 0:
-                        await safe_send_message(user.telegram_id, "✅ Ваша заявка на регистрацию одобрена!")
+                    # Сообщение пользователю с логином/паролем отправляет crud.update_user_status (Telegram + почта).
                     await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Авторизация @{escape_html(user.username or user.first_name or '')} одобрена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
                     await crud._create_notification(
                         db, user.id, "system",

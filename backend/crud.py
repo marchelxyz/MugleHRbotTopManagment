@@ -174,6 +174,12 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+
+    if db_user.telegram_id is None:
+        try:
+            await preassign_web_pending_credentials(db, db_user)
+        except Exception as e:
+            logger.exception("Предварительная выдача логина/пароля веб-заявке не удалась: %s", e)
     
     # Отправляем уведомление администраторам через Telegram (если настроено)
     try:
@@ -1086,73 +1092,99 @@ async def _ensure_unique_login(db: AsyncSession, base_login: str, exclude_user_i
         login = f"{base_login}{counter}"
         counter += 1
 
+
+async def preassign_web_pending_credentials(db: AsyncSession, user: models.User) -> None:
+    """Для веб-заявки (без telegram_id): логин и пароль до одобрения; вход до approve запрещён."""
+    if user.telegram_id is not None:
+        return
+    if user.login and user.password_hash:
+        return
+    base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+    login = await _ensure_unique_login(db, base_login, user.id)
+    plain = generate_random_password(12)
+    user.login = login
+    user.password_hash = get_password_hash(plain)
+    user.password_plain = plain
+    user.browser_auth_enabled = False
+    await db.commit()
+    await db.refresh(user)
+
+
 async def update_user_status(db: AsyncSession, user_id: int, status: str):
-    """
-    Обновляет статус пользователя.
-    При одобрении веб-пользователей автоматически генерирует логин и пароль.
-    """
+    """Меняет статус заявки: при reject сбрасывает предварительные веб-учётки; при approve активирует вход и рассылает уведомления."""
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
     if not user:
         return None
-    
-    generated_login = None
-    generated_password = None
-    
-    # Если статус меняется на 'approved' и это веб-пользователь (нет telegram_id или telegram_id < 0)
-    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0):
-        # Генерируем логин, если его еще нет
-        login_was_generated = False
-        if not user.login:
-            base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
-            generated_login = await _ensure_unique_login(db, base_login, user.id)
-            user.login = generated_login
-            login_was_generated = True
-        
-        # Генерируем пароль, если его еще нет
-        password_was_generated = False
-        if not user.password_hash:
-            generated_password = generate_random_password(12)
-            user.password_hash = get_password_hash(generated_password)
-            user.password_plain = generated_password  # Сохраняем пароль в открытом виде для админов
-            password_was_generated = True
-        
-        # Включаем возможность входа через браузер
-        user.browser_auth_enabled = True
-        
-        # Сохраняем флаги генерации для возврата в ответе
-        user._login_was_generated = login_was_generated
-        user._password_was_generated = password_was_generated
-    
-    user.status = status
+
+    if status == "rejected":
+        if user.status == "pending" and user.telegram_id is None:
+            user.login = None
+            user.password_hash = None
+            user.password_plain = None
+            user.browser_auth_enabled = False
+        user.status = "rejected"
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    if status != "approved":
+        user.status = status
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    is_tg_app = user.telegram_id is not None and user.telegram_id >= 0
+
+    credentials_created_this_call = False
+    if not user.login or not user.password_hash:
+        base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+        user.login = await _ensure_unique_login(db, base_login, user.id)
+        plain_pw = generate_random_password(12)
+        user.password_hash = get_password_hash(plain_pw)
+        user.password_plain = plain_pw
+        credentials_created_this_call = True
+
+    user.browser_auth_enabled = True
+    user.status = "approved"
     await db.commit()
     await db.refresh(user)
-    
-    # Если были сгенерированы новые учетные данные, сохраняем их в объекте пользователя
-    # для возврата в ответе (временное поле, не сохраняется в БД)
-    if hasattr(user, '_login_was_generated') or hasattr(user, '_password_was_generated'):
-        if hasattr(user, '_login_was_generated') and user._login_was_generated:
-            user._generated_login = user.login
-        if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
-            user._generated_password = generated_password
-        
-        # Отправляем email с учетными данными пользователю, если был одобрен и есть email
-        if status == 'approved' and user.email and generated_login and generated_password:
-            try:
-                from email_service import send_credentials_to_user
-                login_url = getattr(settings, 'WEB_APP_LOGIN_URL', None)
-                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
-                await send_credentials_to_user(
-                    user_email=user.email,
-                    user_name=user_name,
-                    login=generated_login,
-                    password=generated_password,
-                    login_url=login_url
-                )
-            except Exception as e:
-                logger.error(f"Ошибка при отправке учетных данных на email {user.email}: {e}")
-                # Не прерываем выполнение, если не удалось отправить email
-    
+
+    login_name = user.login
+    login_plain = user.password_plain
+    user._credentials_created_this_call = credentials_created_this_call
+    user._generated_login = login_name
+    user._generated_password = login_plain
+
+    user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+    login_url = getattr(settings, "WEB_APP_LOGIN_URL", None) or None
+
+    try:
+        if is_tg_app and login_name and login_plain:
+            tg_text = (
+                "✅ Ваша заявка на регистрацию одобрена.\n\n"
+                "Данные для входа на сайт:\n"
+                f"Логин: {login_name}\n"
+                f"Пароль: {login_plain}\n\n"
+                "Сохраните пароль и смените его после первого входа."
+            )
+            if login_url:
+                tg_text += f"\n\nСтраница входа: {login_url}"
+            await send_telegram_message(user.telegram_id, tg_text)
+
+        if user.email and login_name and login_plain:
+            from email_service import send_credentials_to_user
+
+            await send_credentials_to_user(
+                user_email=user.email,
+                user_name=user_name,
+                login=login_name,
+                password=login_plain,
+                login_url=login_url,
+            )
+    except Exception as e:
+        logger.error("Ошибка отправки учётных данных после одобрения: %s", e)
+
     return user
 
 # --- ИЗМЕНЕНИЕ: Новая, простая формула расчета цены ---

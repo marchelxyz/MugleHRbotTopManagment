@@ -51,12 +51,31 @@ class UserResponse(UserBase):
     login: Optional[str] = None
     password_plain: Optional[str] = None  # Пароль в открытом виде (только для админов)
     browser_auth_enabled: bool = False
+    registration_date: Optional[datetime] = None
 
     @field_serializer('date_of_birth')
     def serialize_date(self, dob: Optional[date], _info):
         if dob is None:
             return None
         return dob.isoformat()
+
+    @field_serializer('registration_date')
+    def serialize_registration_date(self, val: Optional[datetime], _info):
+        if val is None:
+            return None
+        return val.isoformat()
+
+
+def user_response_for_public_api(user: object) -> UserResponse:
+    """Убирает password_plain из ответов для клиента; у веб-заявки в pending скрывает и login."""
+    u = UserResponse.model_validate(user)
+    extra: dict = {"password_plain": None}
+    tg = u.telegram_id
+    is_web_pending = (u.status or "") == "pending" and (tg is None or tg < 0)
+    if is_web_pending:
+        extra["login"] = None
+    return u.model_copy(update=extra)
+
 
 class ItemCodeResponse(OrmBase):
     id: int
@@ -382,11 +401,16 @@ class SetUserCredentialsResponse(BaseModel):
     user_id: int
 
 class ApproveUserRegistrationResponse(BaseModel):
-    """Ответ при одобрении регистрации пользователя"""
+    """Ответ при одобрении регистрации пользователя."""
+
     user: UserResponse
-    login: Optional[str] = None  # Логин, если был сгенерирован
-    password: Optional[str] = None  # Пароль, если был сгенерирован
-    credentials_generated: bool = False  # Флаг, были ли сгенерированы учетные данные
+    login: Optional[str] = None
+    password: Optional[str] = None
+    credentials_generated: bool = False
+    """True, если логин/пароль созданы в этом запросе (не были заранее у веб-заявки)."""
+
+    credentials_active: bool = False
+    """True, если вход в веб разрешён (данные активированы)."""
 
 class BulkSendCredentialsRequest(BaseModel):
     message: Optional[str] = ""
