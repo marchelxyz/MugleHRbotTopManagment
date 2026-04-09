@@ -73,13 +73,16 @@ async def send_email(
             logger.warning(
                 "В пароле обнаружен одинарный обратный слэш перед Y. "
                 "Если пароль содержит обратный слэш, убедитесь, что в .env файле он правильно экранирован: "
-                "SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\" (с удвоенным обратным слэшем в кавычках)"
+                'SMTP_PASSWORD="sec\\\\ret" (удвоенный \\ внутри кавычек для пароля с обратным слэшем)'
             )
         
         # Проверяем, что SMTP_USERNAME является валидным email адресом
         smtp_username = smtp_username.strip()
         if not is_valid_email(smtp_username):
-            logger.error(f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. Укажите полный email (например: support@teleagentnn.ru)")
+            logger.error(
+                f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. "
+                "Укажите полный email (например: noreply@yourdomain.ru)"
+            )
             return False
         
         # Логируем диагностическую информацию (без полного пароля)
@@ -219,15 +222,15 @@ async def send_email(
                     logger.error(
                         f"Ошибка аутентификации SMTP на {host_to_try}. "
                         f"Проверьте:\n"
-                        f"  1. SMTP_USERNAME должен быть полным email адресом (например: support@teleagentnn.ru)\n"
+                        f"  1. SMTP_USERNAME должен быть полным email адресом (например: noreply@yourdomain.ru)\n"
                         f"     Текущее значение: '{smtp_username}'\n"
                         f"  2. SMTP_PASSWORD должен быть правильным паролем от почтового ящика\n"
                         f"     Длина пароля: {len(smtp_password)} символов\n"
                         f"     Preview: '{password_preview}'\n"
                         f"  3. Убедитесь, что пароль правильно экранирован в .env файле:\n"
                         f"     - Если пароль содержит обратный слэш (\\), удвойте его в .env файле\n"
-                        f"     - Пример для пароля 'j.IIaq-\\Ydpm14': SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\"\n"
-                        f"     - Или используйте одинарные кавычки: SMTP_PASSWORD='j.IIaq-\\Ydpm14'\n"
+                        f"     - Пример: пароль `a\\b` в .env → SMTP_PASSWORD=\"a\\\\b\"\n"
+                        f"     - Или одинарные кавычки в .env: SMTP_PASSWORD='a\\b'\n"
                         f"     - Если пароль содержит другие спецсимволы (#, $, %, &), заключите его в кавычки\n"
                         f"  4. Для Timeweb адрес From должен совпадать с SMTP_USERNAME\n"
                         f"     From адрес: '{sender_email}'\n"
@@ -258,6 +261,12 @@ async def send_email(
         
     except Exception as e:
         logger.error(f"Ошибка при отправке email на {to_email}: {e}")
+        if "Timed out connecting" in str(e) or type(e).__name__ == "SMTPConnectTimeoutError":
+            logger.error(
+                "Таймаут SMTP: с хоста (часто Timeweb App Platform / Docker) исходящий доступ к "
+                "smtp.timeweb.ru:465 может быть закрыт — это не обязательно неверный пароль. "
+                "См. TIMEWEB_EMAIL_SETUP.md в корне репозитория, раздел про среду выполнения."
+            )
         import traceback
         traceback.print_exc()
         return False

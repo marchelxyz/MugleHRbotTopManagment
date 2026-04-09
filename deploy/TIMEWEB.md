@@ -65,6 +65,12 @@
 
 Все секреты и строки подключения из вашего `.env` / продакшена: `DATABASE_URL`, `ADMIN_API_KEY`, Telegram, при необходимости `CORS_ORIGINS` (ваш публичный URL через запятую), SMTP, S3 и т.д.
 
+### Почта (SMTP)
+
+Переменные `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `ADMIN_EMAILS`, при необходимости `WEB_APP_LOGIN_URL` — см. [TIMEWEB_EMAIL_SETUP.md](../TIMEWEB_EMAIL_SETUP.md) в корне репозитория.
+
+**Особенность App Platform:** бэкенд в контейнере может **не устанавливать TCP-соединение** с `smtp.timeweb.ru:465` (в логах `SMTPConnectTimeoutError`). Те же настройки на **Vercel, Railway или VPS** часто работают — ограничение исходящей сети платформы, а не обязательно неверный пароль. Уточните у поддержки Timeweb исходящий SMTP из Apps или используйте отправку почты с хоста, где SMTP доступен.
+
 **Redis не обязателен:** в переменных задайте **`REDIS_ENABLED=false`**, чтобы не пытаться подключаться к `localhost:6379` в контейнере (иначе в логах будут ошибки Redis, кеш недоступен).
 
 **Лог SQL:** по умолчанию **`SQLALCHEMY_ECHO=false`**. Для отладки в панели можно временно выставить **`SQLALCHEMY_ECHO=true`**.
