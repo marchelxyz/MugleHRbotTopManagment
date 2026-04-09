@@ -1159,8 +1159,17 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
     user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
     login_url = getattr(settings, "WEB_APP_LOGIN_URL", None) or None
 
-    try:
-        if is_tg_app and login_name and login_plain:
+    logger.info(
+        "Одобрение user_id=%s: is_tg_app=%s, email=%s, login_set=%s, password_plain_set=%s",
+        user.id,
+        is_tg_app,
+        "да" if user.email else "нет",
+        bool(login_name),
+        bool(login_plain),
+    )
+
+    if is_tg_app and login_name and login_plain:
+        try:
             tg_text = (
                 "✅ Ваша заявка на регистрацию одобрена.\n\n"
                 "Данные для входа на сайт:\n"
@@ -1170,20 +1179,58 @@ async def update_user_status(db: AsyncSession, user_id: int, status: str):
             )
             if login_url:
                 tg_text += f"\n\nСтраница входа: {login_url}"
-            await send_telegram_message(user.telegram_id, tg_text)
+            # Без HTML-разметки: пароль может содержать <>& и ломать parse_mode=HTML.
+            await send_telegram_message(
+                user.telegram_id,
+                tg_text,
+                parse_mode=None,
+            )
+        except Exception as e:
+            logger.error(
+                "Ошибка отправки в Telegram после одобрения user_id=%s: %s",
+                user.id,
+                e,
+            )
 
-        if user.email and login_name and login_plain:
+    if user.email and login_name and login_plain:
+        try:
             from email_service import send_credentials_to_user
 
-            await send_credentials_to_user(
-                user_email=user.email,
+            ok = await send_credentials_to_user(
+                user_email=user.email.strip(),
                 user_name=user_name,
                 login=login_name,
                 password=login_plain,
                 login_url=login_url,
             )
-    except Exception as e:
-        logger.error("Ошибка отправки учётных данных после одобрения: %s", e)
+            if ok:
+                logger.info(
+                    "Письмо с учётными данными отправлено user_id=%s на %s",
+                    user.id,
+                    user.email,
+                )
+            else:
+                logger.warning(
+                    "SMTP не подтвердил отправку учётных данных user_id=%s на %s",
+                    user.id,
+                    user.email,
+                )
+        except Exception as e:
+            logger.error(
+                "Исключение при отправке учётных данных на почту user_id=%s: %s",
+                user.id,
+                e,
+            )
+    elif login_name and login_plain:
+        logger.warning(
+            "После одобрения user_id=%s нет email в профиле — письмо с логином/паролем не отправлялось",
+            user.id,
+        )
+    elif user.email:
+        logger.error(
+            "После одобрения user_id=%s нет login или password_plain в БД — письмо не отправлено",
+            user.id,
+        )
 
     return user
 
