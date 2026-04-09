@@ -1,6 +1,10 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+
+from logging_config import setup_application_logging
+
+setup_application_logging()
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
