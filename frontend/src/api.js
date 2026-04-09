@@ -13,8 +13,8 @@ const apiClient = axios.create({
  */
 export function getAuthHeaders() {
   const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  if (telegramId) {
-    return { headers: { 'X-Telegram-Id': telegramId } };
+  if (telegramId != null && telegramId !== '') {
+    return { headers: { 'X-Telegram-Id': String(telegramId) } };
   }
   const userId = localStorage.getItem('userId');
   if (userId) {
@@ -23,12 +23,15 @@ export function getAuthHeaders() {
   return {};
 }
 
-// Интерсептор для автоматического добавления заголовка авторизации
+// Интерсептор: на каждый запрос подставляем авторизацию (Mini App часто монтируется до стабильного initData).
 apiClient.interceptors.request.use(
   (config) => {
-    // Если есть userId в localStorage (браузерная авторизация), добавляем заголовок
+    const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (tgId != null && tgId !== '' && !config.headers['X-Telegram-Id']) {
+      config.headers['X-Telegram-Id'] = String(tgId);
+    }
     const userId = localStorage.getItem('userId');
-    if (userId && !config.headers['X-Telegram-Id']) {
+    if (userId && !config.headers['X-Telegram-Id'] && !config.headers['X-User-Id']) {
       config.headers['X-User-Id'] = userId;
     }
     return config;
