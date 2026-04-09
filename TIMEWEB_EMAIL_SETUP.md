@@ -8,8 +8,21 @@
 
 ## Требования
 
-1. Почтовый ящик, созданный через Timeweb
+1. Почтовый ящик, созданный через Timeweb (или другой SMTP-совместимый ящик)
 2. Доступ к настройкам SMTP почтового ящика
+
+## Где запущен бэкенд и почему «раньше работало, сейчас нет»
+
+Один и тот же набор переменных `SMTP_*` может вести себя по-разному:
+
+| Где крутится API | Исходящий SMTP к `smtp.timeweb.ru` |
+|------------------|-------------------------------------|
+| **Vercel, Railway, свой VPS, локально** и т.п. | Обычно **доступен**: те же `SMTP_HOST` / порт / логин / пароль, что в почтовом клиенте. |
+| **Timeweb App Platform** (деплой из Dockerfile, контейнер) | Часто **недоступен**: в логах `SMTPConnectTimeoutError` / `Timed out connecting to smtp.timeweb.ru on port 465` — это **не** неверный пароль, а **сетевая политика** (исходящие порты 465/587/25 могут быть закрыты). |
+
+Если почта **стабильно работала**, пока основное приложение было на другом хосте (например Vercel/Railway), а после переноса **бэкенда** в Apps на Timeweb письма перестали уходить — сначала проверьте логи на таймаут к SMTP, затем **уточните в поддержке Timeweb**, разрешён ли исходящий SMTP из контейнеров Apps и есть ли **внутренний relay**. Запасной путь без SMTP — провайдер с **HTTP API** (HTTPS, порт 443), его контейнеры обычно не режут; в текущем коде реализована только отправка через **SMTP** (`backend/email_service.py`).
+
+Подробнее про переменные в контейнере: `deploy/TIMEWEB.md` (раздел про окружение и почту).
 
 ## Настройка SMTP Timeweb
 
@@ -31,13 +44,13 @@
 # POP3 сервер: pop3.timeweb.ru (для получения писем, не используется в этом проекте)
 SMTP_HOST=smtp.timeweb.ru
 SMTP_PORT=465
-SMTP_USERNAME=support@teleagentnn.ru
-SMTP_PASSWORD="j.IIaq-\\Ydpm14"  # Пароль в кавычках, если содержит специальные символы
+SMTP_USERNAME=noreply@yourdomain.ru
+SMTP_PASSWORD="your-mailbox-password"  # В кавычках, если есть \ - - . и др.; см. ниже
 SMTP_USE_TLS=false
 
 # Email адреса администраторов (через запятую)
 # Сюда будут приходить уведомления о новых регистрациях
-ADMIN_EMAILS=support@teleagentnn.ru
+ADMIN_EMAILS=admin@yourdomain.ru
 
 # URL страницы входа в веб-приложение (опционально)
 # Это полный URL вашего фронтенда (где пользователи открывают приложение)
@@ -49,9 +62,9 @@ WEB_APP_LOGIN_URL=https://your-app.com
 ```
 
 **⚠️ Важно для паролей со специальными символами:**
-Если пароль содержит специальные символы (например, `\`, `-`, `.`), оберните его в двойные кавычки в `.env` файле:
-- `SMTP_PASSWORD="j.IIaq-\\Ydpm14"` - правильный формат
-- `SMTP_PASSWORD=j.IIaq-\Ydpm14` - может не работать из-за специальных символов
+Если пароль содержит обратный слэш `\`, оберните значение в кавычки и **удвойте** каждый `\` в файле `.env`:
+- Правильно: `SMTP_PASSWORD="abc\\-xyz"` (если реальный пароль `abc\-xyz`)
+- Неправильно: `SMTP_PASSWORD=abc\-xyz` (слэш «съестся» при разборе)
 
 ### Описание переменных
 
@@ -127,10 +140,10 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NU
 ```env
 SMTP_HOST=smtp.timeweb.ru
 SMTP_PORT=465
-SMTP_USERNAME=support@teleagentnn.ru
-SMTP_PASSWORD="j.IIaq-\\Ydpm14"
+SMTP_USERNAME=noreply@yourdomain.ru
+SMTP_PASSWORD="your-mailbox-password"
 SMTP_USE_TLS=false
-ADMIN_EMAILS=support@teleagentnn.ru
+ADMIN_EMAILS=admin@yourdomain.ru
 ```
 
 **Проверка DNS разрешения:**
@@ -149,7 +162,7 @@ from backend.email_service import send_email
 
 async def test_email():
     result = await send_email(
-        to_email="support@teleagentnn.ru",  # Ваш email для теста
+        to_email="you@example.com",  # Ваш email для теста
         subject="Тестовое письмо",
         body_html="<h1>Тест</h1><p>Это тестовое письмо.</p>",
         body_text="Тест\n\nЭто тестовое письмо."
@@ -168,7 +181,7 @@ asyncio.run(test_email())
 1. **Проверьте настройки SMTP:**
    - Убедитесь, что `SMTP_HOST=smtp.timeweb.ru` (⚠️ используйте `.ru`, не `.com`)
    - Убедитесь, что `SMTP_USERNAME` и `SMTP_PASSWORD` указаны правильно
-   - Если пароль содержит специальные символы, оберните его в двойные кавычки: `SMTP_PASSWORD="j.IIaq-\\Ydpm14"`
+   - Если пароль содержит специальные символы, оберните его в двойные кавычки и экранируйте `\` (см. выше)
    - Проверьте, что порт соответствует типу соединения (465 для SSL, 587 для TLS)
    - Проверьте DNS разрешение: `nslookup smtp.timeweb.ru` должно работать
 
@@ -180,9 +193,14 @@ asyncio.run(test_email())
    - Убедитесь, что почтовый ящик активен в панели Timeweb
    - Проверьте, что пароль указан правильно
 
-4. **Проверьте firewall/безопасность:**
-   - Убедитесь, что сервер может подключаться к `smtp.timeweb.ru` на портах 465 или 587
-   - ⚠️ **Важно:** Используйте `smtp.timeweb.ru` (с `.ru`), а не `smtp.timeweb.com` (`.com` не разрешается DNS)
+4. **Проверьте firewall и среду выполнения:**
+   - С VPS / Railway / Vercel (где разрешён исходящий трафик) сервер должен достучаться до `smtp.timeweb.ru` на **465** или **587**.
+   - С **Timeweb App Platform** при **`SMTPConnectTimeoutError`** / **Timed out connecting** — см. раздел **«Где запущен бэкенд…»** в начале этого файла; локально с тем же `.env` отправка может проходить, а из контейнера — нет.
+   - ⚠️ **Хост:** используйте `smtp.timeweb.ru` (`.ru`), не `smtp.timeweb.com` (у `.com` часто нет нужной DNS-записи).
+
+### Таймаут подключения к SMTP (не 535 / не «неверный пароль»)
+
+Если в логах: `Timed out connecting to smtp.timeweb.ru on port 465` — подключение **не устанавливается**. Это не исправляется сменой пароля. Действия: поддержка Timeweb (исходящий SMTP из Apps), либо перенос функции отправки почты на хост с открытым SMTP, либо в перспективе — интеграция через **HTTP API** почтового сервиса (в проекте пока только SMTP).
 
 ### Письма попадают в спам
 
