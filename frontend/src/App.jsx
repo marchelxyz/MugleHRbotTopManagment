@@ -296,7 +296,11 @@ function App() {
           })
         ]);
         
-        setUser(userResponse.data);
+        const u = userResponse.data;
+        setUser(u);
+        // Резерв для API до появления initDataUnsafe (иначе /sessions/start и request-update без заголовков → 401).
+        localStorage.setItem('userId', String(u.id));
+        localStorage.setItem('user', JSON.stringify(u));
         
         // Сохраняем предзагруженные данные в кэш для HomePage
         // Используем Promise.all для параллельного сохранения
@@ -533,10 +537,9 @@ function App() {
   const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
   const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
   
-    // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
+  // Сессия в Mini App: только после user.id (иначе POST /sessions/start без заголовков).
   useEffect(() => {
-    // Отслеживание сессии только в Telegram WebApp
-    if (!isTelegramWebApp) {
+    if (!isTelegramWebApp || !user?.id) {
       return;
     }
 
@@ -637,14 +640,12 @@ function App() {
         startPinging();
 
       } catch (startError) {
-        // Ошибки могут возникать, если пользователь не авторизован, это нормально
         console.error('Не удалось запустить сессию:', startError);
       }
     };
 
     sessionManager();
 
-    // Функция очистки: сработает, когда компонент размонтируется
     return () => {
       isActive = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -654,7 +655,7 @@ function App() {
         console.log('Отслеживание сессии остановлено.');
       }
     };
-  }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+  }, [user?.id, isTelegramWebApp]);
 
   // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
   const statusCheckIntervalRef = useRef(null);
