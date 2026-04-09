@@ -103,6 +103,10 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path in ("/health", "/health/", "/live", "/live/") or path.startswith("/assets/"):
             return await call_next(request)
+        # Webhook должен доходить до обработчика даже пока идёт фоновый старт (миграции),
+        # иначе Telegram получает 503 и кнопки «висят» / обновления теряются.
+        if request.method == "POST" and path.rstrip("/") == "/telegram/webhook":
+            return await call_next(request)
         if _is_protected_api_path(path):
             return JSONResponse(
                 status_code=503,

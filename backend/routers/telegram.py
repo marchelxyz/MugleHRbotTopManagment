@@ -1,20 +1,36 @@
-from fastapi import APIRouter, Depends, Request
-import httpx
+import logging
 import traceback
+
+import httpx
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-import crud, models, schemas
+
+import crud
+from bot import answer_callback_query, escape_html, send_telegram_message
 from database import get_db, settings
-from bot import send_telegram_message, answer_callback_query, escape_html
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-async def safe_send_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None):
-    """Безопасно отправляет сообщение, обрабатывая ошибки"""
+
+async def safe_send_message(
+    chat_id: int,
+    text: str,
+    reply_markup: dict | None = None,
+    message_thread_id: int | None = None,
+) -> None:
+    """Отправляет сообщение в Telegram; ошибки только в лог (не роняет webhook)."""
     try:
         await send_telegram_message(chat_id, text, reply_markup, message_thread_id)
     except Exception as e:
-        print(f"Failed to send message to {chat_id}: {e}")
-        print(traceback.format_exc())
+        logger.error(
+            "safe_send_message: chat_id=%s thread=%s err=%s",
+            chat_id,
+            message_thread_id,
+            e,
+            exc_info=True,
+        )
 
 @router.get("/telegram/test")
 async def telegram_test():
@@ -124,8 +140,13 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
 
         elif "callback_query" in data:
             callback_query = data["callback_query"]
-            await answer_callback_query(callback_query["id"])
-            
+            cq_id = callback_query["id"]
+            answered = await answer_callback_query(cq_id)
+            if not answered:
+                logger.error(
+                    "Не удалось answerCallbackQuery — кнопка может «крутиться». Проверьте TELEGRAM_BOT_TOKEN и логи выше."
+                )
+
             user_tg_id = callback_query["from"]["id"]
             user = await crud.get_user_by_telegram(db, user_tg_id)
             if user and not user.has_interacted_with_bot:
@@ -133,6 +154,12 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
             
             callback_data = callback_query["data"]
             admin_username = callback_query["from"].get("username", "Администратор")
+            logger.info(
+                "telegram webhook callback from_id=%s data=%r answered_ok=%s",
+                user_tg_id,
+                callback_data,
+                answered,
+            )
 
             if callback_data.startswith("approve_update_") or callback_data.startswith("reject_update_"):
                 
@@ -213,34 +240,71 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
                 user_id = int(callback_data.split("_")[1])
                 action = callback_data.split("_")[0]
 
-                user = await crud.get_user(db, user_id)
-                if not user: return {"ok": False, "error": "User not found"}
-            
+                pending = await crud.get_user(db, user_id)
+                if not pending:
+                    logger.warning(
+                        "Регистрация callback: пользователь user_id=%s не найден",
+                        user_id,
+                    )
+                    return {"ok": True}
+
                 if action == "approve":
-                    await crud.update_user_status(db, user_id, "approved")
-                    # Сообщение пользователю с логином/паролем отправляет crud.update_user_status (Telegram + почта).
-                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"✅ Авторизация @{escape_html(user.username or user.first_name or '')} одобрена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
+                    updated = await crud.update_user_status(db, user_id, "approved")
+                    # Сообщение пользователю с логином/паролем — внутри update_user_status.
+                    if not updated:
+                        logger.error(
+                            "update_user_status(approved) вернул None для user_id=%s",
+                            user_id,
+                        )
+                        return {"ok": True}
+                    display = escape_html(
+                        updated.username or updated.first_name or "user"
+                    )
+                    await safe_send_message(
+                        settings.TELEGRAM_CHAT_ID,
+                        f"✅ Авторизация @{display} одобрена администратором @{escape_html(admin_username)}!",
+                        message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
+                    )
                     await crud._create_notification(
-                        db, user.id, "system",
+                        db,
+                        updated.id,
+                        "system",
                         "Регистрация одобрена",
                         "Ваша заявка на регистрацию одобрена! Добро пожаловать.",
                     )
                     await db.commit()
 
                 elif action == "reject":
-                    await crud.update_user_status(db, user_id, "rejected")
-                    if user.telegram_id and user.telegram_id >= 0:
-                        await safe_send_message(user.telegram_id, "❌ В регистрации отказано.")
-                    await safe_send_message(settings.TELEGRAM_CHAT_ID, f"❌ Авторизация @{escape_html(user.username or user.first_name or '')} отклонена администратором @{escape_html(admin_username)}!", message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID)
+                    tg_target = pending.telegram_id
+                    updated = await crud.update_user_status(db, user_id, "rejected")
+                    if not updated:
+                        logger.error(
+                            "update_user_status(rejected) вернул None для user_id=%s",
+                            user_id,
+                        )
+                        return {"ok": True}
+                    if tg_target is not None and tg_target >= 0:
+                        await safe_send_message(
+                            tg_target, "❌ В регистрации отказано."
+                        )
+                    display = escape_html(
+                        updated.username or updated.first_name or "user"
+                    )
+                    await safe_send_message(
+                        settings.TELEGRAM_CHAT_ID,
+                        f"❌ Авторизация @{display} отклонена администратором @{escape_html(admin_username)}!",
+                        message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
+                    )
                     await crud._create_notification(
-                        db, user.id, "system",
+                        db,
+                        updated.id,
+                        "system",
                         "Регистрация отклонена",
                         "В регистрации отказано.",
                     )
                     await db.commit()
 
     except Exception as e:
-        print(f"Error in telegram webhook: {e}")
-        print(traceback.format_exc())
+        logger.exception("Ошибка в telegram webhook: %s", e)
 
     return {"ok": True}
