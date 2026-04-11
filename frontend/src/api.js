@@ -16,6 +16,10 @@ export function getAuthHeaders() {
   if (telegramId != null && telegramId !== '') {
     return { headers: { 'X-Telegram-Id': String(telegramId) } };
   }
+  const adminPanelToken = localStorage.getItem('adminPanelToken');
+  if (adminPanelToken) {
+    return { headers: { Authorization: `Bearer ${adminPanelToken}` } };
+  }
   const userId = localStorage.getItem('userId');
   if (userId) {
     return { headers: { 'X-User-Id': userId } };
@@ -33,6 +37,10 @@ apiClient.interceptors.request.use(
     const userId = localStorage.getItem('userId');
     if (userId && !config.headers['X-Telegram-Id'] && !config.headers['X-User-Id']) {
       config.headers['X-User-Id'] = userId;
+    }
+    const adminPanelToken = localStorage.getItem('adminPanelToken');
+    if (adminPanelToken && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${adminPanelToken}`;
     }
     return config;
   },
@@ -67,6 +75,24 @@ export const checkUserStatusById = (userId) => {
     headers: { 'X-User-Id': userId },
   });
 };
+
+/** Вход в админ-панель по email из ADMIN_EMAILS и ADMIN_PANEL_PASSWORD (без Telegram). */
+export function loginAdminPanel(email, password) {
+  return apiClient.post('/admin/auth/login', { email, password });
+}
+
+/** Проверка Bearer-токена панели и актуальный профиль. */
+export function getAdminPanelMe() {
+  const token = localStorage.getItem('adminPanelToken');
+  return apiClient.get('/admin/auth/me', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}
+
+export function clearAdminPanelAuth() {
+  localStorage.removeItem('adminPanelToken');
+  localStorage.removeItem('adminPanelUser');
+}
 
 export const registerUser = (telegramId, userData) => {
   const headers = {};

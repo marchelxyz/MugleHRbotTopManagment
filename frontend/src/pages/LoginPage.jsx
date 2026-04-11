@@ -1,12 +1,12 @@
 // frontend/src/pages/LoginPage.jsx
 
 import React, { useState, useEffect } from 'react';
-import { loginUser } from '../api';
+import { loginUser, loginAdminPanel } from '../api';
 import styles from './LoginPage.module.css';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
-function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) {
+function LoginPage({ onLoginSuccess, onAdminPanelLoginSuccess, onShowRegistration, telegramUser = null }) {
   const { showAlert } = useModalAlert();
   const [formData, setFormData] = useState({
     login: '',
@@ -15,6 +15,9 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showAdminPanelLogin, setShowAdminPanelLogin] = useState(false);
+  const [adminForm, setAdminForm] = useState({ email: '', password: '' });
+  const [adminLoading, setAdminLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordData, setForgotPasswordData] = useState({
     fio: '',
@@ -127,6 +130,40 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
     }
   };
 
+  const handleAdminFormChange = (e) => {
+    const { name, value } = e.target;
+    setAdminForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAdminPanelSubmit = async (e) => {
+    e.preventDefault();
+    if (!adminForm.email.trim() || !adminForm.password) {
+      showAlert('Введите email и пароль администратора.', 'error');
+      return;
+    }
+    setAdminLoading(true);
+    try {
+      const response = await loginAdminPanel(adminForm.email.trim(), adminForm.password);
+      const { access_token: accessToken, user } = response.data;
+      showAlert('Вход в админ-панель выполнен.', 'success');
+      setTimeout(() => {
+        if (onAdminPanelLoginSuccess) {
+          onAdminPanelLoginSuccess(user, accessToken);
+        }
+      }, 400);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      const msg =
+        typeof detail === 'string'
+          ? detail
+          : 'Не удалось войти. Проверьте email (из списка админов) и пароль панели.';
+      showAlert(msg, 'error');
+      console.error(err);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.loginContainer}>
@@ -185,6 +222,46 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
         <div className={styles.registerLink}>
           <p>Нет аккаунта? <button type="button" onClick={handleRegisterClick} className={styles.linkButton}>Зарегистрироваться</button></p>
         </div>
+
+        {!telegramUser && (
+          <div className={styles.adminPanelSection}>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setShowAdminPanelLogin((v) => !v)}
+            >
+              {showAdminPanelLogin ? 'Скрыть вход администратора' : 'Вход администратора'}
+            </button>
+            {showAdminPanelLogin && (
+              <form onSubmit={handleAdminPanelSubmit} className={styles.form}>
+                <p className={styles.adminHint}>
+                  Укажите служебный email администратора и пароль панели (их задаёт владелец сервера в переменных окружения).
+                </p>
+                <input
+                  name="email"
+                  type="email"
+                  value={adminForm.email}
+                  onChange={handleAdminFormChange}
+                  placeholder="Email администратора"
+                  className={styles.input}
+                  autoComplete="username"
+                />
+                <input
+                  name="password"
+                  type="password"
+                  value={adminForm.password}
+                  onChange={handleAdminFormChange}
+                  placeholder="Пароль админ-панели"
+                  className={styles.input}
+                  autoComplete="current-password"
+                />
+                <button type="submit" disabled={adminLoading} className={styles.submitButton}>
+                  {adminLoading ? 'Вход…' : 'Войти в админ-панель'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
       </div>
 
       {showForgotPassword && (

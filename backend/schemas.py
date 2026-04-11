@@ -77,6 +77,60 @@ def user_response_for_public_api(user: object) -> UserResponse:
     return u.model_copy(update=extra)
 
 
+def panel_admin_user_response(email: str) -> UserResponse:
+    """Профиль для входа в админку по ADMIN_EMAILS + ADMIN_PANEL_PASSWORD (не строка в БД)."""
+    normalized = email.strip().lower()
+    return UserResponse(
+        id=-1,
+        telegram_id=None,
+        position="—",
+        first_name="Администратор",
+        last_name="панели",
+        department="—",
+        username=None,
+        balance=0,
+        reserved_balance=0,
+        daily_transfer_count=0,
+        is_admin=True,
+        status="approved",
+        ticket_parts=0,
+        tickets=0,
+        card_barcode=None,
+        card_balance=None,
+        phone_number=None,
+        date_of_birth=None,
+        email=normalized or None,
+        has_seen_onboarding=True,
+        has_interacted_with_bot=False,
+        login=None,
+        password_plain=None,
+        browser_auth_enabled=False,
+        registration_date=None,
+    )
+
+
+class AdminPanelLoginRequest(BaseModel):
+    """Тело POST /admin/auth/login."""
+
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=1)
+
+
+class AdminPanelLoginResponse(BaseModel):
+    """Ответ после успешного входа в админ-панель по паролю."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserResponse
+
+
+class AdminPanelMeResponse(BaseModel):
+    """Текущий админ-панельный пользователь по Bearer-токену."""
+
+    user: UserResponse
+
+
 class ItemCodeResponse(OrmBase):
     id: int
     code_value: str

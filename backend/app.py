@@ -17,6 +17,7 @@ from config import settings
 from redis_cache import redis_cache
 from routers import (
     admin,
+    admin_auth,
     app_settings,
     banners,
     cache,
@@ -103,6 +104,8 @@ class StartupGateMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path in ("/health", "/health/", "/live", "/live/") or path.startswith("/assets/"):
             return await call_next(request)
+        if path.rstrip("/") == "/admin/auth/login" and request.method == "POST":
+            return await call_next(request)
         # Webhook должен доходить до обработчика даже пока идёт фоновый старт (миграции),
         # иначе Telegram получает 503 и кнопки «висят» / обновления теряются.
         if request.method == "POST" and path.rstrip("/") == "/telegram/webhook":
@@ -162,6 +165,7 @@ app.add_middleware(StartupGateMiddleware)
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(market.router)
+app.include_router(admin_auth.router)
 app.include_router(admin.router)
 app.include_router(banners.router)
 app.include_router(roulette.router)

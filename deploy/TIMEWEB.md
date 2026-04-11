@@ -69,6 +69,8 @@
 
 Переменные `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `ADMIN_EMAILS`, при необходимости `WEB_APP_LOGIN_URL` — см. [TIMEWEB_EMAIL_SETUP.md](../TIMEWEB_EMAIL_SETUP.md) в корне репозитория.
 
+**Админ-панель в браузере без Telegram:** в `ADMIN_EMAILS` перечислите email (через запятую), задайте **`ADMIN_PANEL_PASSWORD`** — на странице входа появится форма «Вход администратора»; API выдаёт Bearer-токен (подпись `ADMIN_API_KEY`).
+
 **Особенность App Platform:** бэкенд в контейнере может **не устанавливать TCP-соединение** с `smtp.timeweb.ru:465` (в логах `SMTPConnectTimeoutError`). Те же настройки на **Vercel, Railway или VPS** часто работают — ограничение исходящей сети платформы, а не обязательно неверный пароль. Уточните у поддержки Timeweb исходящий SMTP из Apps или используйте отправку почты с хоста, где SMTP доступен.
 
 **Redis не обязателен:** в переменных задайте **`REDIS_ENABLED=false`**, чтобы не пытаться подключаться к `localhost:6379` в контейнере (иначе в логах будут ошибки Redis, кеш недоступен).

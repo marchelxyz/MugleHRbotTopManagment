@@ -2,7 +2,16 @@
 
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { injectThemeAssetStyles } from './utils/themeAssetsCss';
-import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings, updateMe } from './api';
+import {
+  checkUserStatus,
+  checkUserStatusById,
+  clearAdminPanelAuth,
+  getAdminPanelMe,
+  getFeed,
+  getBanners,
+  getAppSettings,
+  updateMe,
+} from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты навигации (загружаются сразу, так как всегда видны)
@@ -229,43 +238,52 @@ function App() {
     
     // Если не в Telegram WebApp, проверяем браузерную авторизацию
     if (!isTelegramWebApp || !telegramUser) {
-      // Проверяем, есть ли сохраненный пользователь в localStorage
       const savedUserId = localStorage.getItem('userId');
       const savedUser = localStorage.getItem('user');
-      
-      if (savedUserId && savedUser) {
-        // Сначала восстанавливаем пользователя из localStorage для мгновенного отображения
+      const adminPanelToken = localStorage.getItem('adminPanelToken');
+
+      const restoreAdminPanel = async () => {
+        try {
+          const me = await getAdminPanelMe();
+          setUser(me.data.user);
+          localStorage.setItem('adminPanelUser', JSON.stringify(me.data.user));
+        } catch (err) {
+          clearAdminPanelAuth();
+          localStorage.removeItem('adminPanelUser');
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      if (adminPanelToken) {
+        restoreAdminPanel();
+      } else if (savedUserId && savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
         } catch (err) {
           console.error('Ошибка парсинга сохраненного пользователя:', err);
         }
-        
-        // Затем проверяем статус пользователя на сервере
+
         const checkBrowserUser = async () => {
           try {
-            const { checkUserStatusById } = await import('./api');
             const userResponse = await checkUserStatusById(savedUserId);
-            // Обновляем пользователя актуальными данными с сервера
             setUser(userResponse.data);
-            // Обновляем localStorage актуальными данными
             localStorage.setItem('user', JSON.stringify(userResponse.data));
           } catch (err) {
-            // Если пользователь не найден или ошибка авторизации, очищаем localStorage
             if (err.response && (err.response.status === 401 || err.response.status === 404)) {
               localStorage.removeItem('userId');
               localStorage.removeItem('user');
               setUser(null);
             } else {
-              // При других ошибках (сеть и т.д.) оставляем пользователя из localStorage
               console.warn('Не удалось проверить статус пользователя, используем сохраненные данные:', err);
             }
           } finally {
             setLoading(false);
           }
         };
-        
+
         checkBrowserUser();
       } else {
         setLoading(false);
@@ -335,7 +353,17 @@ function App() {
   
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
+  const handleAdminPanelLoginSuccess = (userData, accessToken) => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('user');
+    localStorage.setItem('adminPanelToken', accessToken);
+    localStorage.setItem('adminPanelUser', JSON.stringify(userData));
+    setUser(userData);
+    setPage('admin');
+  };
+
   const handleLoginSuccess = (userData) => {
+    clearAdminPanelAuth();
     setUser(userData);
     localStorage.setItem('userId', userData.id.toString());
     localStorage.setItem('user', JSON.stringify(userData));
@@ -357,6 +385,21 @@ function App() {
   /** Обновляет данные пользователя с сервера (баланс, спасибки и т.д.). */
   const refreshUser = useCallback(async () => {
     const telegramUser = tg?.initDataUnsafe?.user;
+    if (!telegramUser && user?.id === -1) {
+      const token = localStorage.getItem('adminPanelToken');
+      if (!token) return;
+      try {
+        const resp = await getAdminPanelMe();
+        setUser(resp.data.user);
+        localStorage.setItem('adminPanelUser', JSON.stringify(resp.data.user));
+      } catch (err) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          clearAdminPanelAuth();
+          setUser(null);
+        }
+      }
+      return;
+    }
     const userId = telegramUser ? null : (user?.id ?? localStorage.getItem('userId'));
     if (!telegramUser && !userId) return;
     try {
@@ -444,7 +487,13 @@ function App() {
             onBackToLogin={() => setShowRegistration(false)}
           />;
         }
-        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
+        return (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onAdminPanelLoginSuccess={handleAdminPanelLoginSuccess}
+            onShowRegistration={() => setShowRegistration(true)}
+          />
+        );
       }
       // Если пользователь авторизован, но статус pending, показываем соответствующую страницу
       // (остальная логика будет обработана ниже)
@@ -462,7 +511,13 @@ function App() {
             onBackToLogin={() => setShowRegistration(false)}
           />;
         }
-        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
+        return (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onAdminPanelLoginSuccess={handleAdminPanelLoginSuccess}
+            onShowRegistration={() => setShowRegistration(true)}
+          />
+        );
       }
       // В Telegram: выбор между "Войти" (привязка к веб-аккаунту) и "Регистрация"
       if (showLoginInTelegram) {
@@ -470,6 +525,7 @@ function App() {
           <LoginPage
             telegramUser={telegramUser}
             onLoginSuccess={handleLoginSuccess}
+            onAdminPanelLoginSuccess={handleAdminPanelLoginSuccess}
             onShowRegistration={() => setShowLoginInTelegram(false)}
           />
         );
