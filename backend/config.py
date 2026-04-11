@@ -37,7 +37,9 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str = ""  # Полный email адрес от Timeweb
     SMTP_PASSWORD: str = ""  # Пароль от почтового ящика
     SMTP_USE_TLS: bool = False  # True для порта 587, False для порта 465
-    ADMIN_EMAILS: str = ""  # Список email админов через запятую для уведомлений
+    ADMIN_EMAILS: str = ""  # Список email админов через запятую: уведомления и вход в админ-панель
+    # Пароль для входа в /admin по email из ADMIN_EMAILS (без записи в БД). Пусто — вход отключён.
+    ADMIN_PANEL_PASSWORD: str = ""
     WEB_APP_LOGIN_URL: str = ""  # URL страницы входа в веб-приложение (опционально)
 
     # Object Storage S3 (Timeweb Cloud по умолчанию; совместимо с любым S3 API)
