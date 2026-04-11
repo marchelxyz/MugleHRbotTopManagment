@@ -1,6 +1,6 @@
 # Timeweb App Platform — пути и проверки
 
-## Критично: поле «Путь к директории проекта»
+## Критично: поле «Путь к директории проекта» 
 
 В [настройках деплоя из Dockerfile](https://timeweb.cloud/docs/apps/deploying-with-dockerfile) это поле задаёт **и расположение Dockerfile, и контекст сборки**.
 
