@@ -1,5 +1,9 @@
 // frontend/src/api.js
 import axios from 'axios';
+import {
+  ADMIN_PANEL_TOKEN_KEY,
+  ADMIN_PANEL_USER_KEY,
+} from './constants/adminPanelStorage.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
@@ -16,7 +20,7 @@ export function getAuthHeaders() {
   if (telegramId != null && telegramId !== '') {
     return { headers: { 'X-Telegram-Id': String(telegramId) } };
   }
-  const adminPanelToken = localStorage.getItem('adminPanelToken');
+  const adminPanelToken = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
   if (adminPanelToken) {
     return { headers: { Authorization: `Bearer ${adminPanelToken}` } };
   }
@@ -38,7 +42,7 @@ apiClient.interceptors.request.use(
     if (userId && !config.headers['X-Telegram-Id'] && !config.headers['X-User-Id']) {
       config.headers['X-User-Id'] = userId;
     }
-    const adminPanelToken = localStorage.getItem('adminPanelToken');
+    const adminPanelToken = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
     if (adminPanelToken && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${adminPanelToken}`;
     }
@@ -76,22 +80,22 @@ export const checkUserStatusById = (userId) => {
   });
 };
 
-/** Вход в админ-панель по email из ADMIN_EMAILS и ADMIN_PANEL_PASSWORD (без Telegram). */
+/** Вход в админ-панель: email из ADMIN_EMAILS, пароль ADMIN_PANEL_PASSWORD на сервере. */
 export function loginAdminPanel(email, password) {
   return apiClient.post('/admin/auth/login', { email, password });
 }
 
-/** Проверка Bearer-токена панели и актуальный профиль. */
+/** Проверка Bearer и актуальный профиль панели. */
 export function getAdminPanelMe() {
-  const token = localStorage.getItem('adminPanelToken');
+  const token = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
   return apiClient.get('/admin/auth/me', {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 }
 
 export function clearAdminPanelAuth() {
-  localStorage.removeItem('adminPanelToken');
-  localStorage.removeItem('adminPanelUser');
+  localStorage.removeItem(ADMIN_PANEL_TOKEN_KEY);
+  localStorage.removeItem(ADMIN_PANEL_USER_KEY);
 }
 
 export const registerUser = (telegramId, userData) => {

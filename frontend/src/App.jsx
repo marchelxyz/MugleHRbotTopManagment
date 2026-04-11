@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { injectThemeAssetStyles } from './utils/themeAssetsCss';
 import {
+  ADMIN_PANEL_TOKEN_KEY,
+  ADMIN_PANEL_USER_KEY,
+} from './constants/adminPanelStorage.js';
+import {
   checkUserStatus,
   checkUserStatusById,
   clearAdminPanelAuth,
@@ -240,16 +244,16 @@ function App() {
     if (!isTelegramWebApp || !telegramUser) {
       const savedUserId = localStorage.getItem('userId');
       const savedUser = localStorage.getItem('user');
-      const adminPanelToken = localStorage.getItem('adminPanelToken');
+      const adminPanelToken = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
 
       const restoreAdminPanel = async () => {
         try {
           const me = await getAdminPanelMe();
           setUser(me.data.user);
-          localStorage.setItem('adminPanelUser', JSON.stringify(me.data.user));
+          localStorage.setItem(ADMIN_PANEL_USER_KEY, JSON.stringify(me.data.user));
         } catch (err) {
           clearAdminPanelAuth();
-          localStorage.removeItem('adminPanelUser');
+          localStorage.removeItem(ADMIN_PANEL_USER_KEY);
           setUser(null);
         } finally {
           setLoading(false);
@@ -356,8 +360,8 @@ function App() {
   const handleAdminPanelLoginSuccess = (userData, accessToken) => {
     localStorage.removeItem('userId');
     localStorage.removeItem('user');
-    localStorage.setItem('adminPanelToken', accessToken);
-    localStorage.setItem('adminPanelUser', JSON.stringify(userData));
+    localStorage.setItem(ADMIN_PANEL_TOKEN_KEY, accessToken);
+    localStorage.setItem(ADMIN_PANEL_USER_KEY, JSON.stringify(userData));
     setUser(userData);
     setPage('admin');
   };
@@ -386,12 +390,12 @@ function App() {
   const refreshUser = useCallback(async () => {
     const telegramUser = tg?.initDataUnsafe?.user;
     if (!telegramUser && user?.id === -1) {
-      const token = localStorage.getItem('adminPanelToken');
+      const token = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
       if (!token) return;
       try {
         const resp = await getAdminPanelMe();
         setUser(resp.data.user);
-        localStorage.setItem('adminPanelUser', JSON.stringify(resp.data.user));
+        localStorage.setItem(ADMIN_PANEL_USER_KEY, JSON.stringify(resp.data.user));
       } catch (err) {
         if (err.response?.status === 401 || err.response?.status === 403) {
           clearAdminPanelAuth();
