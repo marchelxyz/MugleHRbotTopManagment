@@ -32,6 +32,7 @@ from routers import (
     transactions,
     users,
 )
+from dual_database_sync import start_dual_db_sync_background
 from startup_background import run_background_startup
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ async def lifespan(app: FastAPI):
         try:
             await run_background_startup()
             app.state.startup_ready = True
+            start_dual_db_sync_background(app)
         except Exception:
             logger.exception("Фоновая инициализация не удалась")
             app.state.startup_error = "startup_failed"
@@ -82,6 +84,14 @@ async def lifespan(app: FastAPI):
     app.state._startup_task = task
 
     yield
+
+    db_sync_task = getattr(app.state, "_db_sync_task", None)
+    if db_sync_task is not None:
+        db_sync_task.cancel()
+        try:
+            await db_sync_task
+        except asyncio.CancelledError:
+            pass
 
     task.cancel()
     try:

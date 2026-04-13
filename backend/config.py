@@ -5,6 +5,13 @@ class Settings(BaseSettings):
     # Лог SQL в stdout (dev); в проде оставьте false — меньше шума и нагрузки на логи
     SQLALCHEMY_ECHO: bool = False
 
+    # Синхронизация данных из внешней PostgreSQL (например Railway) в DATABASE_URL (Timeweb).
+    # Источник только для чтения в коде; задайте публичный URL и включите DB_SYNC_ENABLED.
+    SYNC_SOURCE_DATABASE_URL: str = ""
+    DB_SYNC_ENABLED: bool = False
+    DB_SYNC_INTERVAL_SECONDS: float = 30.0
+    DB_SYNC_BATCH_SIZE: int = 200
+
     ADMIN_API_KEY: str
     
     TELEGRAM_BOT_TOKEN: str

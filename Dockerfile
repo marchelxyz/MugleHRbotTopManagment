@@ -31,6 +31,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY deploy/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# pg_dump / pg_restore для одноразовой миграции БД (deploy/pg_migrate_source_to_target.sh).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY backend/requirements.txt /app/backend/requirements.txt
 # BuildKit: кэш uv между сборками на том же хосте.
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -41,6 +46,8 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     VIRTUAL_ENV=/opt/venv
 
 COPY backend/ /app/backend/
+COPY deploy/pg_migrate_source_to_target.sh /app/deploy/pg_migrate_source_to_target.sh
+RUN chmod +x /app/deploy/pg_migrate_source_to_target.sh
 COPY --from=frontend-build /build/dist /app/frontend/dist
 
 WORKDIR /app/backend
