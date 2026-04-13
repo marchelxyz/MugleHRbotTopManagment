@@ -174,10 +174,11 @@ export const createMarketItem = (itemData) =>
 
 export const getBanners = () => apiClient.get('/banners');
 
-export const getAppSettings = () => apiClient.get('/app-settings');
+// Завершающий слэш обязателен: иначе PUT попадает не в APIRouter, а в SPA catch-all → 405.
+export const getAppSettings = () => apiClient.get('/app-settings/');
 
 export const updateAppSettings = (settingsData) =>
-  apiClient.put('/app-settings', settingsData, getAuthHeaders());
+  apiClient.put('/app-settings/', settingsData, getAuthHeaders());
 
 export const getAllBanners = () =>
   apiClient.get('/admin/banners', getAuthHeaders());
