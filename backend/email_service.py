@@ -5,9 +5,9 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
+import html
 import logging
 import re
-import json
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -73,13 +73,16 @@ async def send_email(
             logger.warning(
                 "В пароле обнаружен одинарный обратный слэш перед Y. "
                 "Если пароль содержит обратный слэш, убедитесь, что в .env файле он правильно экранирован: "
-                "SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\" (с удвоенным обратным слэшем в кавычках)"
+                'SMTP_PASSWORD="sec\\\\ret" (удвоенный \\ внутри кавычек для пароля с обратным слэшем)'
             )
         
         # Проверяем, что SMTP_USERNAME является валидным email адресом
         smtp_username = smtp_username.strip()
         if not is_valid_email(smtp_username):
-            logger.error(f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. Укажите полный email (например: support@teleagentnn.ru)")
+            logger.error(
+                f"SMTP_USERNAME '{smtp_username}' не является валидным email адресом. "
+                "Укажите полный email (например: noreply@yourdomain.ru)"
+            )
             return False
         
         # Логируем диагностическую информацию (без полного пароля)
@@ -219,15 +222,15 @@ async def send_email(
                     logger.error(
                         f"Ошибка аутентификации SMTP на {host_to_try}. "
                         f"Проверьте:\n"
-                        f"  1. SMTP_USERNAME должен быть полным email адресом (например: support@teleagentnn.ru)\n"
+                        f"  1. SMTP_USERNAME должен быть полным email адресом (например: noreply@yourdomain.ru)\n"
                         f"     Текущее значение: '{smtp_username}'\n"
                         f"  2. SMTP_PASSWORD должен быть правильным паролем от почтового ящика\n"
                         f"     Длина пароля: {len(smtp_password)} символов\n"
                         f"     Preview: '{password_preview}'\n"
                         f"  3. Убедитесь, что пароль правильно экранирован в .env файле:\n"
                         f"     - Если пароль содержит обратный слэш (\\), удвойте его в .env файле\n"
-                        f"     - Пример для пароля 'j.IIaq-\\Ydpm14': SMTP_PASSWORD=\"j.IIaq-\\\\Ydpm14\"\n"
-                        f"     - Или используйте одинарные кавычки: SMTP_PASSWORD='j.IIaq-\\Ydpm14'\n"
+                        f"     - Пример: пароль `a\\b` в .env → SMTP_PASSWORD=\"a\\\\b\"\n"
+                        f"     - Или одинарные кавычки в .env: SMTP_PASSWORD='a\\b'\n"
                         f"     - Если пароль содержит другие спецсимволы (#, $, %, &), заключите его в кавычки\n"
                         f"  4. Для Timeweb адрес From должен совпадать с SMTP_USERNAME\n"
                         f"     From адрес: '{sender_email}'\n"
@@ -258,6 +261,12 @@ async def send_email(
         
     except Exception as e:
         logger.error(f"Ошибка при отправке email на {to_email}: {e}")
+        if "Timed out connecting" in str(e) or type(e).__name__ == "SMTPConnectTimeoutError":
+            logger.error(
+                "Таймаут SMTP: с хоста (часто Timeweb App Platform / Docker) исходящий доступ к "
+                "smtp.timeweb.ru:465 может быть закрыт — это не обязательно неверный пароль. "
+                "См. TIMEWEB_EMAIL_SETUP.md в корне репозитория, раздел про среду выполнения."
+            )
         import traceback
         traceback.print_exc()
         return False
@@ -326,6 +335,12 @@ async def send_registration_notification_to_admins(
                 <p style="color: #666; font-size: 14px;">
                     Пожалуйста, проверьте заявку в административной панели и примите решение об одобрении или отклонении.
                 </p>
+                {(
+                    '<p style="background-color:#e7f3ff;padding:12px;border-radius:5px;font-size:14px;">'
+                    '<strong>Веб-заявка:</strong> логин и пароль для входа отображаются в разделе '
+                    'админки «Заявки на регистрацию» до одобрения; после нажатия «Одобрить» вход активируется '
+                    'и при наличии email пользователю уходит письмо с теми же данными.</p>'
+                ) if is_web_registration else ''}
             </div>
         </body>
         </html>
@@ -343,6 +358,7 @@ async def send_registration_notification_to_admins(
 {f'Дата рождения: {user_dob}' if user_dob else ''}
 
 Пожалуйста, проверьте заявку в административной панели и примите решение об одобрении или отклонении.
+{f"Веб-заявка: логин/пароль в админке «Заявки на регистрацию»; после одобрения — письмо пользователю (если указан email)." if is_web_registration else ""}
         """
         
         # Отправляем уведомление каждому админу
@@ -387,89 +403,54 @@ async def send_credentials_to_user(
         True если письмо отправлено успешно
     """
     try:
+        to = (user_email or "").strip()
+        if not to or not is_valid_email(to):
+            logger.warning(
+                "send_credentials_to_user: пропуск — невалидный или пустой email %r",
+                user_email,
+            )
+            return False
+
         subject = "Ваши учетные данные для входа в систему"
-        
-        login_url_html = f'<div style="text-align: center; margin: 20px 0;"><a href="{login_url}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Войти в систему</a></div>' if login_url else ''
-        
-        # Экранируем логин и пароль для безопасного использования в JavaScript
-        login_escaped = json.dumps(login)
-        password_escaped = json.dumps(password)
-        
-        # JavaScript для копирования (работает в большинстве современных email клиентов)
-        copy_script = """
-        <script>
-        function copyToClipboard(text, buttonId) {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(function() {
-                    var btn = document.getElementById(buttonId);
-                    var originalText = btn.textContent;
-                    btn.textContent = '✓ Скопировано!';
-                    btn.style.backgroundColor = '#28a745';
-                    setTimeout(function() {
-                        btn.textContent = originalText;
-                        btn.style.backgroundColor = '#6c757d';
-                    }, 2000);
-                }).catch(function(err) {
-                    alert('Не удалось скопировать. Скопируйте вручную: ' + text);
-                });
-            } else {
-                // Fallback для старых браузеров
-                var textArea = document.createElement('textarea');
-                textArea.value = text;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-999999px';
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    var btn = document.getElementById(buttonId);
-                    var originalText = btn.textContent;
-                    btn.textContent = '✓ Скопировано!';
-                    btn.style.backgroundColor = '#28a745';
-                    setTimeout(function() {
-                        btn.textContent = originalText;
-                        btn.style.backgroundColor = '#6c757d';
-                    }, 2000);
-                } catch (err) {
-                    alert('Не удалось скопировать. Скопируйте вручную: ' + text);
-                }
-                document.body.removeChild(textArea);
-            }
-        }
-        </script>
-        """
-        
+
+        safe_name = html.escape(user_name)
+        safe_login = html.escape(login)
+        safe_password = html.escape(password)
+        login_url_html = ""
+        if login_url:
+            safe_url = html.escape(login_url, quote=True)
+            login_url_html = (
+                f'<div style="text-align: center; margin: 20px 0;">'
+                f'<a href="{safe_url}" style="background-color: #007bff; color: white; '
+                f'padding: 10px 20px; text-decoration: none; border-radius: 5px; '
+                f'display: inline-block;">Войти в систему</a></div>'
+            )
+
+        # Без <script>: в почте скрипты всё равно режутся и могут ухудшать доставляемость.
         html_body = f"""
         <html>
         <head>
             <meta charset="UTF-8">
-            {copy_script}
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #2c3e50;">Добро пожаловать, {user_name}!</h2>
-                
+                <h2 style="color: #2c3e50;">Добро пожаловать, {safe_name}!</h2>
+
                 <p>Ваша заявка на регистрацию была одобрена. Ниже указаны ваши учетные данные для входа в систему:</p>
-                
+
                 <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
-                    <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <strong>Логин:</strong> 
-                        <code style="background-color: #e9ecef; padding: 2px 6px; border-radius: 3px; flex: 1; min-width: 100px;">{login}</code>
-                        <button id="copy-login-btn" onclick="copyToClipboard({login_escaped}, 'copy-login-btn')" style="background-color: #6c757d; color: white; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap;">📋 Копировать</button>
-                    </div>
-                    <div style="margin: 10px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <strong>Пароль:</strong> 
-                        <code style="background-color: #e9ecef; padding: 2px 6px; border-radius: 3px; flex: 1; min-width: 100px;">{password}</code>
-                        <button id="copy-password-btn" onclick="copyToClipboard({password_escaped}, 'copy-password-btn')" style="background-color: #6c757d; color: white; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap;">📋 Копировать</button>
-                    </div>
+                    <p style="margin: 10px 0;"><strong>Логин:</strong>
+                    <code style="background-color: #e9ecef; padding: 4px 8px; border-radius: 3px;">{safe_login}</code></p>
+                    <p style="margin: 10px 0;"><strong>Пароль:</strong>
+                    <code style="background-color: #e9ecef; padding: 4px 8px; border-radius: 3px;">{safe_password}</code></p>
                 </div>
-                
+
                 <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
-                    <p style="margin: 0; color: #856404;"><strong>⚠️ Важно:</strong> Сохраните эти данные в безопасном месте. Рекомендуется изменить пароль после первого входа.</p>
+                    <p style="margin: 0; color: #856404;"><strong>Важно:</strong> Сохраните эти данные в безопасном месте. Рекомендуется изменить пароль после первого входа.</p>
                 </div>
-                
+
                 {login_url_html}
-                
+
                 <p style="color: #666; font-size: 14px; margin-top: 30px;">
                     Если у вас возникли вопросы, обратитесь к администратору системы.
                 </p>
@@ -494,10 +475,10 @@ async def send_credentials_to_user(
         """
         
         return await send_email(
-            to_email=user_email,
+            to_email=to,
             subject=subject,
             body_html=html_body,
-            body_text=text_body
+            body_text=text_body,
         )
         
     except Exception as e:
@@ -715,3 +696,45 @@ async def send_purchase_notification_to_admins(
     except Exception as e:
         logger.error(f"Ошибка при отправке уведомления админам о покупке: {e}")
         return False
+
+
+def build_broadcast_email_content(
+    body_plain: str,
+    login_url: Optional[str] = None,
+) -> tuple[str, str]:
+    """Формирует HTML и текст письма для массовой рассылки (текст экранируется).
+
+    Args:
+        body_plain: Текст сообщения от администратора.
+        login_url: Если задан, в конец добавляется блок со ссылкой для входа.
+
+    Returns:
+        Кортеж (body_html, body_text) для send_email.
+    """
+    import html as html_mod
+
+    stripped = body_plain.strip()
+    text_parts = [stripped]
+    if login_url:
+        text_parts.append("")
+        text_parts.append(f"Ссылка для входа: {login_url}")
+    body_text = "\n".join(text_parts)
+
+    escaped = html_mod.escape(stripped)
+    inner = escaped.replace("\n", "<br/>")
+    html_chunks: list[str] = [
+        "<html><head><meta charset=\"UTF-8\"></head><body>",
+        "<div style=\"max-width:600px;margin:0 auto;padding:20px;font-family:Arial,sans-serif;"
+        "line-height:1.6;color:#333;\">",
+        f"<p style=\"margin:0;\">{inner}</p>",
+    ]
+    if login_url:
+        safe_url = html_mod.escape(login_url, quote=True)
+        html_chunks.append(
+            "<p style=\"margin-top:20px;\">"
+            f"<a href=\"{safe_url}\" style=\"color:#007bff;\">Перейти по ссылке для входа</a></p>"
+            f"<p style=\"font-size:12px;color:#666;word-break:break-all;\">{html_mod.escape(login_url)}</p>"
+        )
+    html_chunks.extend(["</div>", "</body></html>"])
+    body_html = "".join(html_chunks)
+    return body_html, body_text

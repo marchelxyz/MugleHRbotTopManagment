@@ -340,6 +340,21 @@
   }
 }
 
+.adminPanelSection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: center;
+}
+
+.adminHint {
+  font-size: 13px;
+  color: #666;
+  text-align: left;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
 /* Адаптация для планшетов */
 @media (min-width: 768px) and (max-width: 1024px) {
   .loginContainer {

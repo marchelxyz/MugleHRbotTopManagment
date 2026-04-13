@@ -1,7 +1,10 @@
 import httpx
 from database import settings
 import json
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 
@@ -61,7 +64,8 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
     
-    async with httpx.AsyncClient() as client:
+    timeout = httpx.Timeout(30.0, connect=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             response = await client.post(SEND_MESSAGE_URL, json=payload)
             response.raise_for_status()
@@ -85,14 +89,49 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
             print(f"An unexpected error occurred while sending message to {chat_id}: {e}")
             raise
 
-async def answer_callback_query(callback_query_id: str):
-    """Отправляет ответ на нажатие inline-кнопки, чтобы убрать 'часики'."""
-    payload = {'callback_query_id': callback_query_id}
-    async with httpx.AsyncClient() as client:
+async def answer_callback_query(
+    callback_query_id: str,
+    text: str | None = None,
+    show_alert: bool = False,
+) -> bool:
+    """Отвечает на inline-кнопку (снимает «часики»). Обязательно проверять ответ API.
+
+    Раньше игнорировался ``ok: false`` от Telegram — клиент видел бесконечную загрузку.
+    """
+    payload: dict = {"callback_query_id": callback_query_id}
+    if text:
+        payload["text"] = text[:200]
+    if show_alert:
+        payload["show_alert"] = True
+    timeout = httpx.Timeout(30.0, connect=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
-            await client.post(ANSWER_CALLBACK_URL, json=payload)
+            response = await client.post(ANSWER_CALLBACK_URL, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("ok"):
+                return True
+            logger.error(
+                "answerCallbackQuery отклонён Telegram: %s (id=%s…)",
+                result.get("description", result),
+                callback_query_id[:12],
+            )
+            return False
+        except httpx.HTTPStatusError as e:
+            try:
+                body = e.response.json()
+                desc = body.get("description", e.response.text)
+            except Exception:
+                desc = e.response.text
+            logger.error(
+                "answerCallbackQuery HTTP %s: %s",
+                e.response.status_code,
+                desc,
+            )
+            return False
         except Exception as e:
-            print(f"Could not answer callback query. Error: {e}")
+            logger.exception("answerCallbackQuery: %s", e)
+            return False
 
 async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name: str, item_name: str, invitation_id: int):
     """Отправить уведомление о приглашении на совместный подарок"""

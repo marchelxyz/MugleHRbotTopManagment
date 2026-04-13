@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 from typing import Optional, List, Literal
 from datetime import datetime, date
 
@@ -51,12 +51,85 @@ class UserResponse(UserBase):
     login: Optional[str] = None
     password_plain: Optional[str] = None  # Пароль в открытом виде (только для админов)
     browser_auth_enabled: bool = False
+    registration_date: Optional[datetime] = None
 
     @field_serializer('date_of_birth')
     def serialize_date(self, dob: Optional[date], _info):
         if dob is None:
             return None
         return dob.isoformat()
+
+    @field_serializer('registration_date')
+    def serialize_registration_date(self, val: Optional[datetime], _info):
+        if val is None:
+            return None
+        return val.isoformat()
+
+
+def user_response_for_public_api(user: object) -> UserResponse:
+    """Убирает password_plain из ответов для клиента; у веб-заявки в pending скрывает и login."""
+    u = UserResponse.model_validate(user)
+    extra: dict = {"password_plain": None}
+    tg = u.telegram_id
+    is_web_pending = (u.status or "") == "pending" and (tg is None or tg < 0)
+    if is_web_pending:
+        extra["login"] = None
+    return u.model_copy(update=extra)
+
+
+def panel_admin_user_response(email: str) -> UserResponse:
+    """Профиль для входа в админку по ADMIN_EMAILS + ADMIN_PANEL_PASSWORD (не строка в БД)."""
+    normalized = email.strip().lower()
+    return UserResponse(
+        id=-1,
+        telegram_id=None,
+        position="—",
+        first_name="Администратор",
+        last_name="панели",
+        department="—",
+        username=None,
+        balance=0,
+        reserved_balance=0,
+        daily_transfer_count=0,
+        is_admin=True,
+        status="approved",
+        ticket_parts=0,
+        tickets=0,
+        card_barcode=None,
+        card_balance=None,
+        phone_number=None,
+        date_of_birth=None,
+        email=normalized or None,
+        has_seen_onboarding=True,
+        has_interacted_with_bot=False,
+        login=None,
+        password_plain=None,
+        browser_auth_enabled=False,
+        registration_date=None,
+    )
+
+
+class AdminPanelLoginRequest(BaseModel):
+    """Тело POST /admin/auth/login."""
+
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=1)
+
+
+class AdminPanelLoginResponse(BaseModel):
+    """Ответ после успешного входа в админ-панель по паролю."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserResponse
+
+
+class AdminPanelMeResponse(BaseModel):
+    """Текущий админ-панельный пользователь по Bearer-токену."""
+
+    user: UserResponse
+
 
 class ItemCodeResponse(OrmBase):
     id: int
@@ -261,12 +334,32 @@ class PopularItemsStats(BaseModel):
 class InactiveUsersStats(BaseModel):
     users: List[UserResponse]
 
+class ThemeSeasonAssets(BaseModel):
+    """URL изображений для одной сезонной темы (пустые поля — дефолты из фронта)."""
+
+    header_image_mobile: Optional[str] = None
+    header_image_desktop: Optional[str] = None
+    section_header_image: Optional[str] = None
+    sidenav_logo: Optional[str] = None
+    thanks_button: Optional[str] = None
+    thanks_feed_logo: Optional[str] = None
+    leaderboard_thanks_logo: Optional[str] = None
+
+
+class ThemeAssetsPayload(BaseModel):
+    summer: Optional[ThemeSeasonAssets] = None
+    winter: Optional[ThemeSeasonAssets] = None
+
+
 class AppSettingsResponse(OrmBase):
     id: int
     season_theme: Literal['summer', 'winter']
+    theme_assets: Optional[ThemeAssetsPayload] = None
+
 
 class AppSettingsUpdate(BaseModel):
-    season_theme: Literal['summer', 'winter']
+    season_theme: Optional[Literal['summer', 'winter']] = None
+    theme_assets: Optional[ThemeAssetsPayload] = None
 
 class TotalBalanceStats(BaseModel):
     total_balance: int
@@ -362,11 +455,16 @@ class SetUserCredentialsResponse(BaseModel):
     user_id: int
 
 class ApproveUserRegistrationResponse(BaseModel):
-    """Ответ при одобрении регистрации пользователя"""
+    """Ответ при одобрении регистрации пользователя."""
+
     user: UserResponse
-    login: Optional[str] = None  # Логин, если был сгенерирован
-    password: Optional[str] = None  # Пароль, если был сгенерирован
-    credentials_generated: bool = False  # Флаг, были ли сгенерированы учетные данные
+    login: Optional[str] = None
+    password: Optional[str] = None
+    credentials_generated: bool = False
+    """True, если логин/пароль созданы в этом запросе (не были заранее у веб-заявки)."""
+
+    credentials_active: bool = False
+    """True, если вход в веб разрешён (данные активированы)."""
 
 class BulkSendCredentialsRequest(BaseModel):
     message: Optional[str] = ""
@@ -380,6 +478,53 @@ class BulkSendCredentialsResponse(BaseModel):
     credentials_generated: int
     messages_sent: int
     failed_users: List[int] = []
+
+class BroadcastEmailRequest(BaseModel):
+    """Рассылка одобренным пользователям: email, Telegram или оба канала."""
+
+    subject: str = Field(..., min_length=1, max_length=200)
+    body: str = Field(..., min_length=1, max_length=20000)
+    only_browser_users: bool = True
+    append_login_url: bool = True
+    send_email: bool = True
+    send_telegram: bool = False
+
+    @field_validator("subject", "body", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: object) -> str:
+        if v is None:
+            return ""
+        return str(v).strip()
+
+    @field_validator("subject")
+    @classmethod
+    def subject_no_newlines(cls, v: str) -> str:
+        if "\n" in v or "\r" in v:
+            raise ValueError("Тема письма не должна содержать переносы строк")
+        return v
+
+    @model_validator(mode="after")
+    def at_least_one_channel(self) -> "BroadcastEmailRequest":
+        if not self.send_email and not self.send_telegram:
+            raise ValueError("Выберите хотя бы один канал: email или Telegram")
+        return self
+
+class BroadcastEmailFailedItem(BaseModel):
+    channel: Literal["email", "telegram"]
+    target: str
+    detail: str
+
+class BroadcastEmailResponse(BaseModel):
+    message: str
+    recipient_count_email: int = 0
+    recipient_count_telegram: int = 0
+    sent_ok_email: int = 0
+    sent_ok_telegram: int = 0
+    failed: List[BroadcastEmailFailedItem] = []
+
+class BroadcastEmailPreviewResponse(BaseModel):
+    recipient_count_email: int
+    recipient_count_telegram: int
 
 class LocalGiftResponse(OrmBase):
     id: int
@@ -436,3 +581,16 @@ class UnifiedPurchaseResponse(BaseModel):
 class UnifiedPurchaseListResponse(BaseModel):
     items: List['UnifiedPurchaseResponse']
     total: int
+
+
+class AdminMediaUploadResponse(BaseModel):
+    """Ответ после загрузки изображения в объектное хранилище (конвертация в AVIF)."""
+
+    url: str
+    content_type: str = "image/avif"
+
+
+class AdminMediaStatusResponse(BaseModel):
+    """Доступность загрузки в S3-совместимое хранилище."""
+
+    enabled: bool

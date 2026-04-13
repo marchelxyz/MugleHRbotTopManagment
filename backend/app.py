@@ -1,193 +1,131 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from starlette.middleware.base import BaseHTTPMiddleware
-from pathlib import Path
+import asyncio
 import logging
-import re
-from sqlalchemy import text, select
+from contextlib import asynccontextmanager
 
-from database import engine, Base
-from routers import users, transactions, market, admin, banners, roulette, scheduler, telegram, sessions, shared_gifts, cache, app_settings, notifications
+from logging_config import setup_application_logging
+
+setup_application_logging()
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from config import settings
 from redis_cache import redis_cache
+from routers import (
+    admin,
+    admin_auth,
+    app_settings,
+    banners,
+    cache,
+    market,
+    media_upload,
+    notifications,
+    roulette,
+    scheduler,
+    sessions,
+    shared_gifts,
+    telegram,
+    transactions,
+    users,
+)
+from dual_database_sync import start_dual_db_sync_background
+from startup_background import run_background_startup
 
 logger = logging.getLogger(__name__)
 
+
+def _is_protected_api_path(path: str) -> bool:
+    """Пути REST API до завершения фоновой инициализации (SPA и статика не сюда)."""
+    if path == "/run-monthly-tasks":
+        return True
+    prefixes = (
+        "/users",
+        "/admin",
+        "/transactions",
+        "/market",
+        "/banners",
+        "/roulette",
+        "/scheduler",
+        "/telegram",
+        "/sessions",
+        "/shared-gifts",
+        "/cache",
+        "/app-settings",
+        "/notifications",
+        "/points",
+        "/leaderboard",
+    )
+    for prefix in prefixes:
+        if path == prefix or path.startswith(prefix + "/"):
+            return True
+    return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    CREATE_TABLES_LOCK_KEY = 1234567891
-    async with engine.connect() as conn:
-        async with conn.begin():
-            await conn.execute(text(f"SELECT pg_advisory_lock({CREATE_TABLES_LOCK_KEY})"))
+    """Сразу отдаёт управление ASGI — порт слушается, миграции идут в фоне."""
+    app.state.startup_ready = False
+    app.state.startup_error = None
+
+    async def _runner() -> None:
         try:
-            async with conn.begin():
-                await conn.run_sync(Base.metadata.create_all)
-        except Exception as e:
-            logger.warning(f"⚠️ metadata.create_all завершился с ошибкой (таблицы могли быть созданы другим воркером): {e}")
-        finally:
-            async with conn.begin():
-                await conn.execute(text(f"SELECT pg_advisory_unlock({CREATE_TABLES_LOCK_KEY})"))
-    
-    migrations_dir = Path(__file__).parent / "migrations"
-    if not migrations_dir.exists():
-        logger.error(f"❌ Папка migrations не найдена: {migrations_dir}")
-        logger.error(f"📂 Текущая директория: {Path(__file__).parent}")
-        logger.error(f"📂 Абсолютный путь: {Path(__file__).parent.absolute()}")
-    else:
-        logger.info(f"✅ Папка migrations найдена: {migrations_dir}")
-        
-        MIGRATION_LOCK_KEY = 1234567890
-        
-        def split_sql_commands(sql_text):
-            """Разбивает SQL текст на отдельные команды, удаляя комментарии и учитывая dollar-quoted блоки"""
-            sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
-            
-            lines = []
-            for line in sql_text.split('\n'):
-                if '--' in line:
-                    line = line.split('--')[0]
-                line = line.strip()
-                if line:
-                    lines.append(line)
-            
-            sql_clean = ' '.join(lines)
-            
-            commands = []
-            current_command = []
-            in_dollar_quote = False
-            dollar_tag = None
-            i = 0
-            
-            while i < len(sql_clean):
-                if not in_dollar_quote and sql_clean[i] == '$':
-                    tag_start = i
-                    j = i + 1
-                    while j < len(sql_clean) and sql_clean[j] != '$':
-                        j += 1
-                    
-                    if j < len(sql_clean):
-                        dollar_tag = sql_clean[tag_start:j + 1]
-                        in_dollar_quote = True
-                        current_command.append(dollar_tag)
-                        i = j + 1
-                        continue
-                
-                if in_dollar_quote and sql_clean[i] == '$':
-                    if i + len(dollar_tag) <= len(sql_clean):
-                        potential_tag = sql_clean[i:i + len(dollar_tag)]
-                        if potential_tag == dollar_tag:
-                            current_command.append(dollar_tag)
-                            i += len(dollar_tag)
-                            in_dollar_quote = False
-                            dollar_tag = None
-                            continue
-                
-                current_command.append(sql_clean[i])
-                
-                if not in_dollar_quote and sql_clean[i] == ';':
-                    cmd = ''.join(current_command).strip()
-                    if cmd:
-                        commands.append(cmd)
-                    current_command = []
-                
-                i += 1
-            
-            if current_command:
-                cmd = ''.join(current_command).strip()
-                if cmd:
-                    commands.append(cmd)
-            
-            return commands
-        
-        async with engine.connect() as conn:
-            logger.info("🔒 Ожидание блокировки для применения миграций...")
-            async with conn.begin():
-                await conn.execute(text(f"SELECT pg_advisory_lock({MIGRATION_LOCK_KEY})"))
-            logger.info("🔓 Блокировка получена, начинаем применение миграций")
-            
-            try:
-                create_table_sql = """
-                CREATE TABLE IF NOT EXISTS schema_migrations (
-                    id SERIAL PRIMARY KEY,
-                    migration_name VARCHAR(255) NOT NULL UNIQUE,
-                    applied_at TIMESTAMP DEFAULT NOW() NOT NULL
-                )
-                """
-                
-                create_index_sql = """
-                CREATE INDEX IF NOT EXISTS idx_schema_migrations_name ON schema_migrations(migration_name)
-                """
-                
-                try:
-                    async with conn.begin():
-                        await conn.execute(text(create_table_sql))
-                        await conn.execute(text(create_index_sql))
-                    logger.info("✅ Таблица schema_migrations создана/проверена")
-                except Exception as e:
-                    logger.error(f"❌ Ошибка при создании таблицы schema_migrations: {e}")
-                    raise
-                
-                async with conn.begin():
-                    result = await conn.execute(select(text("migration_name")).select_from(text("schema_migrations")))
-                    applied_migrations = {row[0] for row in result.fetchall()}
-                logger.info(f"📋 Уже применено миграций: {len(applied_migrations)}")
-                
-                migration_files = sorted([f for f in migrations_dir.glob("*.sql")])
-                
-                if not migration_files:
-                    logger.warning("⚠️ Файлы миграций не найдены")
-                else:
-                    logger.info(f"🔍 Найдено {len(migration_files)} файлов миграций")
-                    
-                    for migration_file in migration_files:
-                        migration_name = migration_file.name
-                        
-                        if migration_name in applied_migrations:
-                            logger.info(f"⏭️  Миграция {migration_name} уже применена, пропускаем")
-                            continue
-                        
-                        logger.info(f"📄 Применение миграции: {migration_name}")
-                        
-                        try:
-                            with open(migration_file, 'r', encoding='utf-8') as f:
-                                migration_sql = f.read()
-                            
-                            async with conn.begin():
-                                sql_commands = split_sql_commands(migration_sql)
-                                
-                                for i, sql_command in enumerate(sql_commands, 1):
-                                    if sql_command.strip():
-                                        logger.debug(f"  Выполнение команды {i}/{len(sql_commands)}: {sql_command[:50]}...")
-                                        await conn.execute(text(sql_command))
-                                
-                                insert_migration = text("INSERT INTO schema_migrations (migration_name) VALUES (:name) ON CONFLICT DO NOTHING")
-                                await conn.execute(insert_migration, {"name": migration_name})
-                            
-                            logger.info(f"✅ Миграция {migration_name} применена успешно")
-                            
-                        except Exception as e:
-                            error_msg = f"❌ КРИТИЧЕСКАЯ ОШИБКА при применении миграции {migration_name}: {e}"
-                            logger.error(error_msg)
-                            logger.exception(e)
-                            raise RuntimeError(error_msg) from e
-                    
-                    logger.info("🎉 Применение миграций завершено")
-            finally:
-                async with conn.begin():
-                    await conn.execute(text(f"SELECT pg_advisory_unlock({MIGRATION_LOCK_KEY})"))
-                logger.info("🔓 Блокировка освобождена")
-        
-        try:
-            await redis_cache.connect()
-        except Exception as e:
-            logger.warning(f"⚠️ Не удалось подключиться к Redis: {e}. Кеширование будет недоступно.")
-    
+            await run_background_startup()
+            app.state.startup_ready = True
+            start_dual_db_sync_background(app)
+        except Exception:
+            logger.exception("Фоновая инициализация не удалась")
+            app.state.startup_error = "startup_failed"
+
+    task = asyncio.create_task(_runner())
+    app.state._startup_task = task
+
     yield
-    
+
+    db_sync_task = getattr(app.state, "_db_sync_task", None)
+    if db_sync_task is not None:
+        db_sync_task.cancel()
+        try:
+            await db_sync_task
+        except asyncio.CancelledError:
+            pass
+
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
     try:
         await redis_cache.disconnect()
     except Exception as e:
-        logger.error(f"Ошибка при отключении от Redis: {e}")
+        logger.error("Ошибка при отключении от Redis: %s", e)
+
+
+class StartupGateMiddleware(BaseHTTPMiddleware):
+    """503 на API до готовности БД; liveness и статика проходят."""
+
+    async def dispatch(self, request: Request, call_next):
+        if getattr(request.app.state, "startup_ready", False):
+            return await call_next(request)
+        path = request.url.path
+        if path in ("/health", "/health/", "/live", "/live/") or path.startswith("/assets/"):
+            return await call_next(request)
+        if path.rstrip("/") == "/admin/auth/login" and request.method == "POST":
+            return await call_next(request)
+        # Webhook должен доходить до обработчика даже пока идёт фоновый старт (миграции),
+        # иначе Telegram получает 503 и кнопки «висят» / обновления теряются.
+        if request.method == "POST" and path.rstrip("/") == "/telegram/webhook":
+            return await call_next(request)
+        if _is_protected_api_path(path):
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "Сервис запускается, повторите запрос позже"},
+            )
+        return await call_next(request)
 
 app = FastAPI(lifespan=lifespan)
 
@@ -219,6 +157,10 @@ origins = [
     "https://mugle-h-rbot-top-managment.vercel.app",
     "http://localhost:8080",
 ]
+if settings.CORS_ORIGINS.strip():
+    origins = list(origins) + [
+        o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -228,9 +170,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(StartupGateMiddleware)
+
 app.include_router(users.router)
 app.include_router(transactions.router)
 app.include_router(market.router)
+app.include_router(admin_auth.router)
 app.include_router(admin.router)
 app.include_router(banners.router)
 app.include_router(roulette.router)
@@ -241,7 +186,114 @@ app.include_router(shared_gifts.router)
 app.include_router(cache.router)
 app.include_router(app_settings.router)
 app.include_router(notifications.router)
+app.include_router(media_upload.router)
 
-@app.get("/")
-def read_root():
+
+def _static_root() -> Path:
+    """Каталог со сборкой Vite (index.html и assets/)."""
+    if settings.STATIC_ROOT.strip():
+        return Path(settings.STATIC_ROOT)
+    return Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+def _register_spa_assets() -> None:
+    """Монтирует /assets для статики SPA при SERVE_SPA."""
+    if not settings.SERVE_SPA:
+        return
+    root = _static_root()
+    assets_dir = root / "assets"
+    if not root.is_dir() or not assets_dir.is_dir():
+        logger.warning(
+            "SERVE_SPA: не найдено %s или %s — раздача статики отключена",
+            root,
+            assets_dir,
+        )
+        return
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="spa_assets")
+
+
+_register_spa_assets()
+
+
+def _liveness_response() -> dict[str, str]:
+    """Тело ответа для проверок «процесс жив» (Timeweb, балансировщики)."""
+    return {"status": "ok"}
+
+
+def _liveness_http_response(request: Request):
+    """GET — JSON; HEAD — пустое 200 (пробы балансировщиков)."""
+    if request.method == "HEAD":
+        return Response(status_code=200)
+    return JSONResponse(content=_liveness_response())
+
+
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=None)
+def health_check(request: Request):
+    """Liveness без слэша. Отдельный handler от ``/health/``: два @api_route на одной функции дают FastAPIError на части версий."""
+    return _liveness_http_response(request)
+
+
+@app.api_route("/health/", methods=["GET", "HEAD"], response_model=None)
+def health_check_slash(request: Request):
+    """Liveness со слэшем."""
+    return _liveness_http_response(request)
+
+
+@app.api_route("/live", methods=["GET", "HEAD"], response_model=None)
+def live_check(request: Request):
+    """Алиас liveness — путь ``/live``."""
+    return _liveness_http_response(request)
+
+
+@app.api_route("/live/", methods=["GET", "HEAD"], response_model=None)
+def live_check_slash(request: Request):
+    """Алиас liveness — путь ``/live/``."""
+    return _liveness_http_response(request)
+
+
+def _ready_json_or_503(request: Request) -> dict[str, str]:
+    """Readiness: JSON или HTTP 503."""
+    if getattr(request.app.state, "startup_error", None):
+        raise HTTPException(status_code=503, detail="Startup failed")
+    if not getattr(request.app.state, "startup_ready", False):
+        raise HTTPException(status_code=503, detail="Not ready")
+    return {"status": "ok"}
+
+
+@app.get("/ready", response_model=None)
+def ready_check(request: Request):
+    """Readiness без слэша."""
+    return _ready_json_or_503(request)
+
+
+@app.get("/ready/", response_model=None)
+def ready_check_slash(request: Request):
+    """Readiness со слэшем."""
+    return _ready_json_or_503(request)
+
+
+@app.api_route("/", methods=["GET", "HEAD"], response_model=None)
+def read_root(request: Request):
+    """Корень: SPA или JSON; HEAD даёт 200 без тела.
+
+    Timeweb (и часть прокси) шлют ``HEAD /`` на корень; только ``GET`` давало **405**.
+    """
+    if request.method == "HEAD":
+        return Response(status_code=200)
+    if settings.SERVE_SPA:
+        index = _static_root() / "index.html"
+        if index.is_file():
+            return FileResponse(index)
     return {"message": "Welcome to the HR Spasibo API"}
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """Клиентские маршруты React — отдаём index.html при SERVE_SPA."""
+    del full_path
+    if not settings.SERVE_SPA:
+        raise HTTPException(status_code=404, detail="Not found")
+    index = _static_root() / "index.html"
+    if index.is_file():
+        return FileResponse(index)
+    raise HTTPException(status_code=404, detail="Not found")

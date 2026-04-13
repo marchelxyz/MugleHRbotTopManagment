@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
 from bot import send_telegram_message, escape_html
+from email_service import send_email, is_valid_email, build_broadcast_email_content
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_, text
@@ -173,6 +174,12 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+
+    if db_user.telegram_id is None:
+        try:
+            await preassign_web_pending_credentials(db, db_user)
+        except Exception as e:
+            logger.exception("Предварительная выдача логина/пароля веб-заявке не удалась: %s", e)
     
     # Отправляем уведомление администраторам через Telegram (если настроено)
     try:
@@ -1085,73 +1092,146 @@ async def _ensure_unique_login(db: AsyncSession, base_login: str, exclude_user_i
         login = f"{base_login}{counter}"
         counter += 1
 
+
+async def preassign_web_pending_credentials(db: AsyncSession, user: models.User) -> None:
+    """Для веб-заявки (без telegram_id): логин и пароль до одобрения; вход до approve запрещён."""
+    if user.telegram_id is not None:
+        return
+    if user.login and user.password_hash:
+        return
+    base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+    login = await _ensure_unique_login(db, base_login, user.id)
+    plain = generate_random_password(12)
+    user.login = login
+    user.password_hash = get_password_hash(plain)
+    user.password_plain = plain
+    user.browser_auth_enabled = False
+    await db.commit()
+    await db.refresh(user)
+
+
 async def update_user_status(db: AsyncSession, user_id: int, status: str):
-    """
-    Обновляет статус пользователя.
-    При одобрении веб-пользователей автоматически генерирует логин и пароль.
-    """
+    """Меняет статус заявки: при reject сбрасывает предварительные веб-учётки; при approve активирует вход и рассылает уведомления."""
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
     if not user:
         return None
-    
-    generated_login = None
-    generated_password = None
-    
-    # Если статус меняется на 'approved' и это веб-пользователь (нет telegram_id или telegram_id < 0)
-    if status == 'approved' and (user.telegram_id is None or user.telegram_id < 0):
-        # Генерируем логин, если его еще нет
-        login_was_generated = False
-        if not user.login:
-            base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
-            generated_login = await _ensure_unique_login(db, base_login, user.id)
-            user.login = generated_login
-            login_was_generated = True
-        
-        # Генерируем пароль, если его еще нет
-        password_was_generated = False
-        if not user.password_hash:
-            generated_password = generate_random_password(12)
-            user.password_hash = get_password_hash(generated_password)
-            user.password_plain = generated_password  # Сохраняем пароль в открытом виде для админов
-            password_was_generated = True
-        
-        # Включаем возможность входа через браузер
-        user.browser_auth_enabled = True
-        
-        # Сохраняем флаги генерации для возврата в ответе
-        user._login_was_generated = login_was_generated
-        user._password_was_generated = password_was_generated
-    
-    user.status = status
+
+    if status == "rejected":
+        if user.status == "pending" and user.telegram_id is None:
+            user.login = None
+            user.password_hash = None
+            user.password_plain = None
+            user.browser_auth_enabled = False
+        user.status = "rejected"
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    if status != "approved":
+        user.status = status
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    is_tg_app = user.telegram_id is not None and user.telegram_id >= 0
+
+    credentials_created_this_call = False
+    if not user.login or not user.password_hash:
+        base_login = generate_login_from_name(user.first_name, user.last_name, user.id)
+        user.login = await _ensure_unique_login(db, base_login, user.id)
+        plain_pw = generate_random_password(12)
+        user.password_hash = get_password_hash(plain_pw)
+        user.password_plain = plain_pw
+        credentials_created_this_call = True
+
+    user.browser_auth_enabled = True
+    user.status = "approved"
     await db.commit()
     await db.refresh(user)
-    
-    # Если были сгенерированы новые учетные данные, сохраняем их в объекте пользователя
-    # для возврата в ответе (временное поле, не сохраняется в БД)
-    if hasattr(user, '_login_was_generated') or hasattr(user, '_password_was_generated'):
-        if hasattr(user, '_login_was_generated') and user._login_was_generated:
-            user._generated_login = user.login
-        if hasattr(user, '_password_was_generated') and user._password_was_generated and generated_password:
-            user._generated_password = generated_password
-        
-        # Отправляем email с учетными данными пользователю, если был одобрен и есть email
-        if status == 'approved' and user.email and generated_login and generated_password:
-            try:
-                from email_service import send_credentials_to_user
-                login_url = getattr(settings, 'WEB_APP_LOGIN_URL', None)
-                user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
-                await send_credentials_to_user(
-                    user_email=user.email,
-                    user_name=user_name,
-                    login=generated_login,
-                    password=generated_password,
-                    login_url=login_url
+
+    login_name = user.login
+    login_plain = user.password_plain
+    user._credentials_created_this_call = credentials_created_this_call
+    user._generated_login = login_name
+    user._generated_password = login_plain
+
+    user_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Пользователь"
+    login_url = getattr(settings, "WEB_APP_LOGIN_URL", None) or None
+
+    logger.info(
+        "Одобрение user_id=%s: is_tg_app=%s, email=%s, login_set=%s, password_plain_set=%s",
+        user.id,
+        is_tg_app,
+        "да" if user.email else "нет",
+        bool(login_name),
+        bool(login_plain),
+    )
+
+    if is_tg_app and login_name and login_plain:
+        try:
+            tg_text = (
+                "✅ Ваша заявка на регистрацию одобрена.\n\n"
+                "Данные для входа на сайт:\n"
+                f"Логин: {login_name}\n"
+                f"Пароль: {login_plain}\n\n"
+                "Сохраните пароль и смените его после первого входа."
+            )
+            if login_url:
+                tg_text += f"\n\nСтраница входа: {login_url}"
+            # Без HTML-разметки: пароль может содержать <>& и ломать parse_mode=HTML.
+            await send_telegram_message(
+                user.telegram_id,
+                tg_text,
+                parse_mode=None,
+            )
+        except Exception as e:
+            logger.error(
+                "Ошибка отправки в Telegram после одобрения user_id=%s: %s",
+                user.id,
+                e,
+            )
+
+    if user.email and login_name and login_plain:
+        try:
+            from email_service import send_credentials_to_user
+
+            ok = await send_credentials_to_user(
+                user_email=user.email.strip(),
+                user_name=user_name,
+                login=login_name,
+                password=login_plain,
+                login_url=login_url,
+            )
+            if ok:
+                logger.info(
+                    "Письмо с учётными данными отправлено user_id=%s на %s",
+                    user.id,
+                    user.email,
                 )
-            except Exception as e:
-                logger.error(f"Ошибка при отправке учетных данных на email {user.email}: {e}")
-                # Не прерываем выполнение, если не удалось отправить email
-    
+            else:
+                logger.warning(
+                    "SMTP не подтвердил отправку учётных данных user_id=%s на %s",
+                    user.id,
+                    user.email,
+                )
+        except Exception as e:
+            logger.error(
+                "Исключение при отправке учётных данных на почту user_id=%s: %s",
+                user.id,
+                e,
+            )
+    elif login_name and login_plain:
+        logger.warning(
+            "После одобрения user_id=%s нет email в профиле — письмо с логином/паролем не отправлялось",
+            user.id,
+        )
+    elif user.email:
+        logger.error(
+            "После одобрения user_id=%s нет login или password_plain в БД — письмо не отправлено",
+            user.id,
+        )
+
     return user
 
 # --- ИЗМЕНЕНИЕ: Новая, простая формула расчета цены ---
@@ -2393,6 +2473,175 @@ async def bulk_send_credentials(
         "messages_sent": messages_sent,
         "failed_users": failed_users
     }
+
+
+async def broadcast_announcement_to_users(
+    db: AsyncSession,
+    subject: str,
+    body_plain: str,
+    only_browser_users: bool,
+    append_login_url: bool,
+    send_email: bool,
+    send_telegram: bool,
+) -> dict:
+    """Рассылка сообщения по email и/или Telegram.
+
+    Получатели: статус ``approved``, не ``deleted`` / ``blocked``.
+    Email: валидный адрес в профиле. Telegram: ``telegram_id`` не меньше 0.
+
+    Returns:
+        Словарь с счётчиками по каналам и списком ``failed`` с ключами
+        ``channel``, ``target``, ``detail``.
+    """
+    login_url = None
+    if append_login_url:
+        raw = (getattr(settings, "WEB_APP_LOGIN_URL", None) or "").strip()
+        login_url = raw or None
+
+    sent_ok_email = 0
+    sent_ok_telegram = 0
+    recipient_count_email = 0
+    recipient_count_telegram = 0
+    failed: list[dict[str, str]] = []
+
+    if send_email:
+        users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+        recipient_count_email = len(users)
+        body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
+        for user in users:
+            to_email = user.email.strip()
+            try:
+                ok = await send_email(
+                    to_email=to_email,
+                    subject=subject,
+                    body_html=body_html,
+                    body_text=body_text,
+                )
+                if ok:
+                    sent_ok_email += 1
+                else:
+                    failed.append(
+                        {
+                            "channel": "email",
+                            "target": to_email,
+                            "detail": "Не удалось отправить (проверьте SMTP)",
+                        }
+                    )
+            except Exception as exc:
+                logger.error("Ошибка рассылки на %s: %s", to_email, exc)
+                failed.append(
+                    {
+                        "channel": "email",
+                        "target": to_email,
+                        "detail": str(exc)[:500],
+                    }
+                )
+
+    if send_telegram:
+        users_tg = await _fetch_broadcast_telegram_users(db, only_browser_users)
+        recipient_count_telegram = len(users_tg)
+        tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
+        for user in users_tg:
+            tid = user.telegram_id
+            try:
+                await send_telegram_message(
+                    chat_id=int(tid),
+                    text=tg_text,
+                    parse_mode="HTML",
+                )
+                sent_ok_telegram += 1
+            except Exception as exc:
+                logger.error("Ошибка Telegram-рассылки %s: %s", tid, exc)
+                failed.append(
+                    {
+                        "channel": "telegram",
+                        "target": str(tid),
+                        "detail": str(exc)[:500],
+                    }
+                )
+
+    return {
+        "recipient_count_email": recipient_count_email,
+        "recipient_count_telegram": recipient_count_telegram,
+        "sent_ok_email": sent_ok_email,
+        "sent_ok_telegram": sent_ok_telegram,
+        "failed": failed,
+    }
+
+
+async def count_broadcast_email_recipients(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> int:
+    """Возвращает число получателей массовой email-рассылки (после фильтра по валидному email)."""
+    users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    return len(users)
+
+
+async def count_broadcast_telegram_recipients(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> int:
+    """Число пользователей с Telegram для рассылки (одобрены, есть telegram_id)."""
+    users = await _fetch_broadcast_telegram_users(db, only_browser_users)
+    return len(users)
+
+
+async def _fetch_broadcast_recipient_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[models.User]:
+    """Возвращает пользователей для рассылки: одобрены, не удалены/заблокированы, есть валидный email."""
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+        models.User.email.isnot(None),
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(select(models.User).where(and_(*conditions)))
+    rows = result.scalars().all()
+    out: list[models.User] = []
+    for user in rows:
+        if not user.email:
+            continue
+        addr = user.email.strip()
+        if addr and is_valid_email(addr):
+            out.append(user)
+    return out
+
+
+def _build_broadcast_telegram_html(
+    subject: str,
+    body_plain: str,
+    login_url: Optional[str],
+) -> str:
+    """Формирует HTML для Telegram (parse_mode=HTML): тема жирным, текст, опционально ссылка."""
+    header = f"<b>{escape_html(subject)}</b>\n\n{escape_html(body_plain)}"
+    if not login_url:
+        return header
+    href = login_url.replace("&", "&amp;")
+    return header + f"\n\n<a href=\"{href}\">Ссылка для входа</a>"
+
+
+async def _fetch_broadcast_telegram_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[models.User]:
+    """Пользователи для рассылки в Telegram: одобрены, есть реальный telegram_id."""
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+        models.User.telegram_id.isnot(None),
+        models.User.telegram_id >= 0,
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(select(models.User).where(and_(*conditions)))
+    return list(result.scalars().all())
+
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
 async def get_leaderboards_status(db: AsyncSession):

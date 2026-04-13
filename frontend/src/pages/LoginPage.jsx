@@ -1,12 +1,13 @@
 // frontend/src/pages/LoginPage.jsx
 
 import React, { useState, useEffect } from 'react';
+import AdminPanelLoginSection from '../components/AdminPanelLoginSection';
 import { loginUser } from '../api';
 import styles from './LoginPage.module.css';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
-function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) {
+function LoginPage({ onLoginSuccess, onAdminPanelLoginSuccess, onShowRegistration, telegramUser = null }) {
   const { showAlert } = useModalAlert();
   const [formData, setFormData] = useState({
     login: '',
@@ -185,6 +186,13 @@ function LoginPage({ onLoginSuccess, onShowRegistration, telegramUser = null }) 
         <div className={styles.registerLink}>
           <p>Нет аккаунта? <button type="button" onClick={handleRegisterClick} className={styles.linkButton}>Зарегистрироваться</button></p>
         </div>
+
+        {!telegramUser && (
+          <AdminPanelLoginSection
+            onSuccess={onAdminPanelLoginSuccess}
+            showAlert={showAlert}
+          />
+        )}
       </div>
 
       {showForgotPassword && (

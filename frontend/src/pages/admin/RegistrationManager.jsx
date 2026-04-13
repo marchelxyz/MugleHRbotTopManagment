@@ -52,8 +52,8 @@ function RegistrationManager() {
       const response = await approveUserRegistration(userId);
       const data = response.data;
       
-      // Если были сгенерированы учетные данные, сохраняем их для отображения
-      if (data.credentials_generated && data.login && data.password) {
+      // Показываем модалку, если в ответе есть логин и пароль (веб мог получить их заранее)
+      if (data.login && data.password) {
         const credentials = {
           login: data.login,
           password: data.password
@@ -176,9 +176,64 @@ function RegistrationManager() {
                   <p><strong>Подразделение:</strong> {user.department || 'не указано'}</p>
                   <p><strong>Телефон:</strong> {user.phone_number || 'не указан'}</p>
                   <p><strong>Дата рождения:</strong> {formatDateForDisplay(user.date_of_birth) || 'не указана'}</p>
-                  {user.telegram_id && <p><strong>Telegram ID:</strong> {user.telegram_id}</p>}
+                  {user.email && <p><strong>Email:</strong> {user.email}</p>}
+                  {user.telegram_id != null && user.telegram_id >= 0 && (
+                    <p><strong>Telegram ID:</strong> {user.telegram_id}</p>
+                  )}
                   <p><strong>Дата регистрации:</strong> {formatDateForDisplay(user.registration_date) || 'не указана'}</p>
                 </div>
+
+                {!isWebUser && (
+                  <p className={registrationStyles.credentialsHint}>
+                    После одобрения логин и пароль будут отправлены в Telegram
+                    {user.email ? ' и на указанный email' : ''}. Здесь же откроется окно с данными для копирования.
+                  </p>
+                )}
+
+                {/* Предварительные учётные данные веб-заявки (вход активируется только после одобрения) */}
+                {isWebUser && user.login && user.password_plain && (
+                  <div className={`${registrationStyles.credentialsBox} ${registrationStyles.credentialsBoxPending}`}>
+                    <p className={registrationStyles.credentialsTitle}>
+                      <strong>Данные для входа (ещё не активны до одобрения):</strong>
+                    </p>
+                    <div className={registrationStyles.credentialItem}>
+                      <label>Логин:</label>
+                      <div className={registrationStyles.credentialValue}>
+                        <span>{user.login}</span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(user.login, 'Логин')}
+                          className={registrationStyles.copyButton}
+                          title="Копировать логин"
+                        >
+                          <FaCopy />
+                        </button>
+                      </div>
+                    </div>
+                    <div className={registrationStyles.credentialItem}>
+                      <label>Пароль:</label>
+                      <div className={registrationStyles.credentialValue}>
+                        <span>{showPassword ? user.password_plain : '••••••••••••'}</span>
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility(user.id)}
+                          className={registrationStyles.eyeButton}
+                          title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                        >
+                          {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(user.password_plain, 'Пароль')}
+                          className={registrationStyles.copyButton}
+                          title="Копировать пароль"
+                        >
+                          <FaCopy />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Отображение сгенерированных учетных данных для веб-пользователей */}
                 {credentials && isWebUser && (

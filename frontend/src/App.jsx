@@ -1,7 +1,21 @@
 // frontend/src/App.jsx
 
 import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { checkUserStatus, checkUserStatusById, getFeed, getBanners, getAppSettings, updateMe } from './api';
+import { injectThemeAssetStyles } from './utils/themeAssetsCss';
+import {
+  ADMIN_PANEL_TOKEN_KEY,
+  ADMIN_PANEL_USER_KEY,
+} from './constants/adminPanelStorage.js';
+import {
+  checkUserStatus,
+  checkUserStatusById,
+  clearAdminPanelAuth,
+  getAdminPanelMe,
+  getFeed,
+  getBanners,
+  getAppSettings,
+  updateMe,
+} from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
 // Компоненты навигации (загружаются сразу, так как всегда видны)
@@ -53,6 +67,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showEmailPromptModal, setShowEmailPromptModal] = useState(false);
   const [seasonTheme, setSeasonTheme] = useState('summer');
+  const [themeAssets, setThemeAssets] = useState(null);
   const seasonThemeRef = useRef('summer');
   // Инициализация windowWidth с проверкой доступности window
   const [windowWidth, setWindowWidth] = useState(() => {
@@ -135,12 +150,26 @@ function App() {
         if (response?.data?.season_theme) {
           setSeasonTheme(response.data.season_theme);
         }
+        setThemeAssets(response?.data?.theme_assets ?? null);
       } catch (error) {
         console.warn('Не удалось загрузить настройки оформления, используем летнюю тему.', error);
       }
     };
 
     fetchAppTheme();
+  }, []);
+
+  useEffect(() => {
+    injectThemeAssetStyles(themeAssets);
+  }, [themeAssets]);
+
+  const handleAppearanceUpdated = useCallback((data) => {
+    if (data?.season_theme) {
+      setSeasonTheme(data.season_theme);
+    }
+    if (data && Object.prototype.hasOwnProperty.call(data, 'theme_assets')) {
+      setThemeAssets(data.theme_assets ?? null);
+    }
   }, []);
 
   useEffect(() => {
@@ -213,43 +242,52 @@ function App() {
     
     // Если не в Telegram WebApp, проверяем браузерную авторизацию
     if (!isTelegramWebApp || !telegramUser) {
-      // Проверяем, есть ли сохраненный пользователь в localStorage
       const savedUserId = localStorage.getItem('userId');
       const savedUser = localStorage.getItem('user');
-      
-      if (savedUserId && savedUser) {
-        // Сначала восстанавливаем пользователя из localStorage для мгновенного отображения
+      const adminPanelToken = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
+
+      const restoreAdminPanel = async () => {
+        try {
+          const me = await getAdminPanelMe();
+          setUser(me.data.user);
+          localStorage.setItem(ADMIN_PANEL_USER_KEY, JSON.stringify(me.data.user));
+        } catch (err) {
+          clearAdminPanelAuth();
+          localStorage.removeItem(ADMIN_PANEL_USER_KEY);
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      if (adminPanelToken) {
+        restoreAdminPanel();
+      } else if (savedUserId && savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
         } catch (err) {
           console.error('Ошибка парсинга сохраненного пользователя:', err);
         }
-        
-        // Затем проверяем статус пользователя на сервере
+
         const checkBrowserUser = async () => {
           try {
-            const { checkUserStatusById } = await import('./api');
             const userResponse = await checkUserStatusById(savedUserId);
-            // Обновляем пользователя актуальными данными с сервера
             setUser(userResponse.data);
-            // Обновляем localStorage актуальными данными
             localStorage.setItem('user', JSON.stringify(userResponse.data));
           } catch (err) {
-            // Если пользователь не найден или ошибка авторизации, очищаем localStorage
             if (err.response && (err.response.status === 401 || err.response.status === 404)) {
               localStorage.removeItem('userId');
               localStorage.removeItem('user');
               setUser(null);
             } else {
-              // При других ошибках (сеть и т.д.) оставляем пользователя из localStorage
               console.warn('Не удалось проверить статус пользователя, используем сохраненные данные:', err);
             }
           } finally {
             setLoading(false);
           }
         };
-        
+
         checkBrowserUser();
       } else {
         setLoading(false);
@@ -280,7 +318,11 @@ function App() {
           })
         ]);
         
-        setUser(userResponse.data);
+        const u = userResponse.data;
+        setUser(u);
+        // Резерв для API до появления initDataUnsafe (иначе /sessions/start и request-update без заголовков → 401).
+        localStorage.setItem('userId', String(u.id));
+        localStorage.setItem('user', JSON.stringify(u));
         
         // Сохраняем предзагруженные данные в кэш для HomePage
         // Используем Promise.all для параллельного сохранения
@@ -315,7 +357,17 @@ function App() {
   
   const handleRegistrationSuccess = () => { window.location.reload(); };
   
+  const handleAdminPanelLoginSuccess = (userData, accessToken) => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('user');
+    localStorage.setItem(ADMIN_PANEL_TOKEN_KEY, accessToken);
+    localStorage.setItem(ADMIN_PANEL_USER_KEY, JSON.stringify(userData));
+    setUser(userData);
+    setPage('admin');
+  };
+
   const handleLoginSuccess = (userData) => {
+    clearAdminPanelAuth();
     setUser(userData);
     localStorage.setItem('userId', userData.id.toString());
     localStorage.setItem('user', JSON.stringify(userData));
@@ -337,6 +389,21 @@ function App() {
   /** Обновляет данные пользователя с сервера (баланс, спасибки и т.д.). */
   const refreshUser = useCallback(async () => {
     const telegramUser = tg?.initDataUnsafe?.user;
+    if (!telegramUser && user?.id === -1) {
+      const token = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
+      if (!token) return;
+      try {
+        const resp = await getAdminPanelMe();
+        setUser(resp.data.user);
+        localStorage.setItem(ADMIN_PANEL_USER_KEY, JSON.stringify(resp.data.user));
+      } catch (err) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          clearAdminPanelAuth();
+          setUser(null);
+        }
+      }
+      return;
+    }
     const userId = telegramUser ? null : (user?.id ?? localStorage.getItem('userId'));
     if (!telegramUser && !userId) return;
     try {
@@ -424,7 +491,13 @@ function App() {
             onBackToLogin={() => setShowRegistration(false)}
           />;
         }
-        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
+        return (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onAdminPanelLoginSuccess={handleAdminPanelLoginSuccess}
+            onShowRegistration={() => setShowRegistration(true)}
+          />
+        );
       }
       // Если пользователь авторизован, но статус pending, показываем соответствующую страницу
       // (остальная логика будет обработана ниже)
@@ -442,7 +515,13 @@ function App() {
             onBackToLogin={() => setShowRegistration(false)}
           />;
         }
-        return <LoginPage onLoginSuccess={handleLoginSuccess} onShowRegistration={() => setShowRegistration(true)} />;
+        return (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onAdminPanelLoginSuccess={handleAdminPanelLoginSuccess}
+            onShowRegistration={() => setShowRegistration(true)}
+          />
+        );
       }
       // В Telegram: выбор между "Войти" (привязка к веб-аккаунту) и "Регистрация"
       if (showLoginInTelegram) {
@@ -450,6 +529,7 @@ function App() {
           <LoginPage
             telegramUser={telegramUser}
             onLoginSuccess={handleLoginSuccess}
+            onAdminPanelLoginSuccess={handleAdminPanelLoginSuccess}
             onShowRegistration={() => setShowLoginInTelegram(false)}
           />
         );
@@ -482,7 +562,7 @@ function App() {
     
     if (user.status === 'approved') {
       switch (page) {
-        case 'leaderboard': return <LeaderboardPage user={user} />;
+        case 'leaderboard': return <LeaderboardPage user={user} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
         case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
         case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} />;
@@ -502,10 +582,10 @@ function App() {
         case 'history': return <HistoryPage user={user} onBack={() => navigate('profile')} />;
         // --- 2. ГЛАВНОЕ ИЗМЕНЕНИЕ: Передаем новую функцию в TransferPage ---
         case 'transfer': return <TransferPage user={user} onBack={() => navigate('home')} onTransferSuccess={handleTransferSuccess} />;
-        case 'admin': return <AdminPage seasonTheme={seasonTheme} onThemeUpdated={setSeasonTheme} />;
+        case 'admin': return <AdminPage seasonTheme={seasonTheme} themeAssets={themeAssets} onAppearanceUpdated={handleAppearanceUpdated} />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} />;
+          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
       }
     }
     
@@ -517,10 +597,9 @@ function App() {
   const showSideNav = isDesktop && isUserApproved && !isOnboardingVisible;
   const showBottomNav = !isDesktop && isUserApproved && !isOnboardingVisible;
   
-    // --- НОВЫЙ БЛОК ДЛЯ ОТСЛЕЖИВАНИЯ СЕССИИ ---
+  // Сессия в Mini App: только после user.id (иначе POST /sessions/start без заголовков).
   useEffect(() => {
-    // Отслеживание сессии только в Telegram WebApp
-    if (!isTelegramWebApp) {
+    if (!isTelegramWebApp || !user?.id) {
       return;
     }
 
@@ -621,14 +700,12 @@ function App() {
         startPinging();
 
       } catch (startError) {
-        // Ошибки могут возникать, если пользователь не авторизован, это нормально
         console.error('Не удалось запустить сессию:', startError);
       }
     };
 
     sessionManager();
 
-    // Функция очистки: сработает, когда компонент размонтируется
     return () => {
       isActive = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -638,7 +715,7 @@ function App() {
         console.log('Отслеживание сессии остановлено.');
       }
     };
-  }, []); // Пустой массив зависимостей означает, что этот код выполнится только один раз
+  }, [user?.id, isTelegramWebApp]);
 
   // --- АВТОМАТИЧЕСКАЯ ПРОВЕРКА СТАТУСА ДЛЯ ПОЛЬЗОВАТЕЛЕЙ СО СТАТУСОМ PENDING ---
   const statusCheckIntervalRef = useRef(null);

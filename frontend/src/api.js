@@ -1,7 +1,11 @@
 // frontend/src/api.js
 import axios from 'axios';
+import {
+  ADMIN_PANEL_TOKEN_KEY,
+  ADMIN_PANEL_USER_KEY,
+} from './constants/adminPanelStorage.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -13,8 +17,12 @@ const apiClient = axios.create({
  */
 export function getAuthHeaders() {
   const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  if (telegramId) {
-    return { headers: { 'X-Telegram-Id': telegramId } };
+  if (telegramId != null && telegramId !== '') {
+    return { headers: { 'X-Telegram-Id': String(telegramId) } };
+  }
+  const adminPanelToken = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
+  if (adminPanelToken) {
+    return { headers: { Authorization: `Bearer ${adminPanelToken}` } };
   }
   const userId = localStorage.getItem('userId');
   if (userId) {
@@ -23,13 +31,20 @@ export function getAuthHeaders() {
   return {};
 }
 
-// Интерсептор для автоматического добавления заголовка авторизации
+// Интерсептор: на каждый запрос подставляем авторизацию (Mini App часто монтируется до стабильного initData).
 apiClient.interceptors.request.use(
   (config) => {
-    // Если есть userId в localStorage (браузерная авторизация), добавляем заголовок
+    const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (tgId != null && tgId !== '' && !config.headers['X-Telegram-Id']) {
+      config.headers['X-Telegram-Id'] = String(tgId);
+    }
     const userId = localStorage.getItem('userId');
-    if (userId && !config.headers['X-Telegram-Id']) {
+    if (userId && !config.headers['X-Telegram-Id'] && !config.headers['X-User-Id']) {
       config.headers['X-User-Id'] = userId;
+    }
+    const adminPanelToken = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
+    if (adminPanelToken && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${adminPanelToken}`;
     }
     return config;
   },
@@ -64,6 +79,24 @@ export const checkUserStatusById = (userId) => {
     headers: { 'X-User-Id': userId },
   });
 };
+
+/** Вход в админ-панель: email из ADMIN_EMAILS, пароль ADMIN_PANEL_PASSWORD на сервере. */
+export function loginAdminPanel(email, password) {
+  return apiClient.post('/admin/auth/login', { email, password });
+}
+
+/** Проверка Bearer и актуальный профиль панели. */
+export function getAdminPanelMe() {
+  const token = localStorage.getItem(ADMIN_PANEL_TOKEN_KEY);
+  return apiClient.get('/admin/auth/me', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}
+
+export function clearAdminPanelAuth() {
+  localStorage.removeItem(ADMIN_PANEL_TOKEN_KEY);
+  localStorage.removeItem(ADMIN_PANEL_USER_KEY);
+}
 
 export const registerUser = (telegramId, userData) => {
   const headers = {};
@@ -158,6 +191,19 @@ export const updateBanner = (bannerId, bannerData) =>
 export const deleteBanner = (bannerId) =>
   apiClient.delete(`/admin/banners/${bannerId}`, getAuthHeaders());
 
+export const getAdminMediaStatus = () =>
+  apiClient.get('/admin/media/status', getAuthHeaders());
+
+export const uploadAdminMedia = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiClient.post('/admin/media/upload', formData, {
+    headers: {
+      ...getAuthHeaders().headers,
+    },
+  });
+};
+
 export const getAllMarketItems = () =>
   apiClient.get('/admin/market-items', getAuthHeaders());
 
@@ -218,6 +264,15 @@ export const setUserCredentials = (userId, credentials) =>
 
 export const bulkSendCredentials = (requestData) =>
   apiClient.post('/admin/users/bulk-send-credentials', requestData, getAuthHeaders());
+
+export const getBroadcastEmailPreview = (onlyBrowserUsers) =>
+  apiClient.get('/admin/users/broadcast-email/preview', {
+    params: { only_browser_users: onlyBrowserUsers },
+    ...getAuthHeaders(),
+  });
+
+export const broadcastEmail = (payload) =>
+  apiClient.post('/admin/users/broadcast-email', payload, getAuthHeaders());
 
 // --- НОВЫЕ ФУНКЦИИ ДЛЯ СТАТИСТИКИ АДМИН-ПАНЕЛИ ---
 

@@ -1,3 +1,9 @@
+"""
+Локальная отладка без публичного HTTPS: long polling → пересылка в POST /telegram/webhook.
+
+На продакшене с Timeweb/Docker обычно достаточно одного uvicorn и вызова
+``deploy/set-telegram-webhook.sh set`` (см. комментарии в скрипте).
+"""
 import httpx
 import asyncio
 import os

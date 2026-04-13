@@ -22,8 +22,10 @@ class RedisCache:
         self.redis_client: Optional[aioredis.Redis] = None
         self._connection_pool: Optional[aioredis.ConnectionPool] = None
     
-    async def connect(self):
-        """Подключается к Redis."""
+    async def connect(self) -> None:
+        """Подключается к Redis. При REDIS_ENABLED=false — без действий."""
+        if not settings.REDIS_ENABLED:
+            return
         try:
             if settings.REDIS_URL:
                 self._connection_pool = aioredis.ConnectionPool.from_url(
@@ -47,13 +49,17 @@ class RedisCache:
             logger.error(f"❌ Ошибка подключения к Redis: {e}")
             raise
     
-    async def disconnect(self):
-        """Отключается от Redis."""
+    async def disconnect(self) -> None:
+        """Закрывает пул и клиент, если подключение было установлено."""
+        had_connection = self.redis_client is not None or self._connection_pool is not None
         if self.redis_client:
             await self.redis_client.close()
         if self._connection_pool:
             await self._connection_pool.disconnect()
-        logger.info("Redis отключен")
+        self.redis_client = None
+        self._connection_pool = None
+        if had_connection:
+            logger.info("Redis отключен")
     
     def _get_key(self, user_id: int, key: str) -> str:
         """Формирует ключ для Redis с учетом user_id."""
@@ -70,8 +76,12 @@ class RedisCache:
         Returns:
             Распарсенное значение или None
         """
+        if not settings.REDIS_ENABLED:
+            return None
         if not self.redis_client:
             await self.connect()
+        if not self.redis_client:
+            return None
         
         try:
             redis_key = self._get_key(user_id, key)
@@ -98,9 +108,13 @@ class RedisCache:
             value: Значение для сохранения
             ttl: Время жизни в секундах (по умолчанию 1 час для feed/market, 5 минут для leaderboard)
         """
+        if not settings.REDIS_ENABLED:
+            return
         if not self.redis_client:
             await self.connect()
-        
+        if not self.redis_client:
+            return
+
         try:
             redis_key = self._get_key(user_id, key)
             
@@ -126,9 +140,13 @@ class RedisCache:
             user_id: ID пользователя Telegram
             key: Ключ кеша
         """
+        if not settings.REDIS_ENABLED:
+            return
         if not self.redis_client:
             await self.connect()
-        
+        if not self.redis_client:
+            return
+
         try:
             redis_key = self._get_key(user_id, key)
             await self.redis_client.delete(redis_key)
@@ -143,9 +161,13 @@ class RedisCache:
         Args:
             user_id: ID пользователя Telegram
         """
+        if not settings.REDIS_ENABLED:
+            return
         if not self.redis_client:
             await self.connect()
-        
+        if not self.redis_client:
+            return
+
         try:
             pattern = self._get_key(user_id, "*")
             keys = await self.redis_client.keys(pattern)
@@ -160,8 +182,12 @@ class RedisCache:
         Очищает кеш определенного ключа для всех пользователей.
         Например: key='market' удалит все cache:*:market.
         """
+        if not settings.REDIS_ENABLED:
+            return
         if not self.redis_client:
             await self.connect()
+        if not self.redis_client:
+            return
 
         try:
             pattern = f"cache:*:{key}"
@@ -183,9 +209,13 @@ class RedisCache:
         Returns:
             True если ключ существует, False иначе
         """
+        if not settings.REDIS_ENABLED:
+            return False
         if not self.redis_client:
             await self.connect()
-        
+        if not self.redis_client:
+            return False
+
         try:
             redis_key = self._get_key(user_id, key)
             return await self.redis_client.exists(redis_key) > 0

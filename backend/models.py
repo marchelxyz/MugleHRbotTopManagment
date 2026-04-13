@@ -218,3 +218,5 @@ class AppSettings(Base):
     id = Column(Integer, primary_key=True, index=True)
     season_theme = Column(String, default="summer", nullable=False)
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    # URL картинок интерфейса (лето/зима), JSON: { "summer": {...}, "winter": {...} }
+    theme_assets = Column(JSON, nullable=True)

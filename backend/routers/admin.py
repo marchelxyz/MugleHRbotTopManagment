@@ -6,6 +6,7 @@ from sqlalchemy import select, func, union_all, literal, case
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 import crud
 import schemas
 import models
@@ -13,9 +14,9 @@ import io
 from fastapi.responses import StreamingResponse
 from dependencies import get_current_admin_user
 from database import get_db
+from config import settings
 from openpyxl import Workbook
-import pandas as pd
-import pytz
+from openpyxl.worksheet.worksheet import Worksheet
 
 router = APIRouter(
     prefix="/admin",
@@ -149,18 +150,17 @@ async def approve_user_registration_route(
     updated_user = await crud.update_user_status(db, user_id, "approved")
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Проверяем, были ли сгенерированы учетные данные
-    generated_login = getattr(updated_user, '_generated_login', None)
-    generated_password = getattr(updated_user, '_generated_password', None)
-    # Учетные данные считаются сгенерированными только если они действительно были созданы сейчас
-    credentials_generated = generated_login is not None and generated_password is not None
-    
+
+    gen_login = getattr(updated_user, "_generated_login", None) or updated_user.login
+    gen_password = getattr(updated_user, "_generated_password", None) or updated_user.password_plain
+    created_now = getattr(updated_user, "_credentials_created_this_call", False)
+
     return schemas.ApproveUserRegistrationResponse(
         user=schemas.UserResponse.model_validate(updated_user),
-        login=generated_login,
-        password=generated_password,
-        credentials_generated=credentials_generated
+        login=gen_login,
+        password=gen_password,
+        credentials_generated=created_now,
+        credentials_active=True,
     )
 
 @router.post("/users/{user_id}/reject", response_model=schemas.UserResponse)
@@ -414,6 +414,74 @@ async def bulk_send_credentials_route(
             detail="Не удалось выполнить массовую рассылку"
         )
 
+
+@router.get("/users/broadcast-email/preview", response_model=schemas.BroadcastEmailPreviewResponse)
+async def broadcast_email_preview_route(
+    only_browser_users: bool = Query(
+        True,
+        description="Считать только пользователей с доступом через браузер (не заблокированы, одобрены)",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Оценка числа получателей по email и в Telegram (независимо от выбранных каналов при отправке)."""
+    n_email = await crud.count_broadcast_email_recipients(db, only_browser_users)
+    n_tg = await crud.count_broadcast_telegram_recipients(db, only_browser_users)
+    return schemas.BroadcastEmailPreviewResponse(
+        recipient_count_email=n_email,
+        recipient_count_telegram=n_tg,
+    )
+
+
+@router.post("/users/broadcast-email", response_model=schemas.BroadcastEmailResponse)
+async def broadcast_email_route(
+    request: schemas.BroadcastEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Рассылка в email, Telegram или оба канала: одобренные пользователи, не заблокированы."""
+    if request.send_email:
+        smtp_user = getattr(settings, "SMTP_USERNAME", None) or ""
+        smtp_pass = getattr(settings, "SMTP_PASSWORD", None) or ""
+        if not str(smtp_user).strip() or not str(smtp_pass).strip():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="SMTP не настроен (SMTP_USERNAME / SMTP_PASSWORD). Проверьте переменные окружения.",
+            )
+    if request.send_telegram:
+        token = getattr(settings, "TELEGRAM_BOT_TOKEN", None) or ""
+        if not str(token).strip():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Telegram бот не настроен (TELEGRAM_BOT_TOKEN).",
+            )
+    result = await crud.broadcast_announcement_to_users(
+        db,
+        subject=request.subject,
+        body_plain=request.body,
+        only_browser_users=request.only_browser_users,
+        append_login_url=request.append_login_url,
+        send_email=request.send_email,
+        send_telegram=request.send_telegram,
+    )
+    parts: list[str] = []
+    if request.send_email:
+        parts.append(
+            f"Email: {result['sent_ok_email']}/{result['recipient_count_email']}",
+        )
+    if request.send_telegram:
+        parts.append(
+            f"Telegram: {result['sent_ok_telegram']}/{result['recipient_count_telegram']}",
+        )
+    msg = "; ".join(parts) if parts else "Ничего не отправлено"
+    return schemas.BroadcastEmailResponse(
+        message=msg,
+        recipient_count_email=result["recipient_count_email"],
+        recipient_count_telegram=result["recipient_count_telegram"],
+        sent_ok_email=result["sent_ok_email"],
+        sent_ok_telegram=result["sent_ok_telegram"],
+        failed=[schemas.BroadcastEmailFailedItem(**f) for f in result["failed"]],
+    )
+
+
 @router.get("/statistics/general", response_model=schemas.GeneralStatsResponse)
 async def get_general_statistics_route(start_date: Optional[date] = Query(None), end_date: Optional[date] = Query(None), db: AsyncSession = Depends(get_db)):
     stats = await crud.get_general_statistics(db=db, start_date=start_date, end_date=end_date)
@@ -522,66 +590,64 @@ async def export_consolidated_report(
     inactive_users_data = await crud.get_inactive_users(db, start_date, end_date)
     
     general_stats['average_session_duration_minutes'] = avg_session_stats['average_duration_minutes']
-    
-    moscow_tz = pytz.timezone('Europe/Moscow')
+
+    moscow_tz = ZoneInfo("Europe/Moscow")
     output = io.BytesIO()
 
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        
-        general_stats_translation = {
-            "new_users_count": "Всего пользователей",
-            "active_users_count": "Активные пользователи",
-            "transactions_count": "Всего транзакций",
-            "store_purchases_count": "Покупок в магазине",
-            "total_turnover": "Оборот 'спасибок'",
-            "total_store_spent": "Потрачено в магазине",
-            "average_session_duration_minutes": "Среднее время сессии (мин)"
+    general_stats_translation = {
+        "new_users_count": "Всего пользователей",
+        "active_users_count": "Активные пользователи",
+        "transactions_count": "Всего транзакций",
+        "store_purchases_count": "Покупок в магазине",
+        "total_turnover": "Оборот 'спасибок'",
+        "total_store_spent": "Потрачено в магазине",
+        "average_session_duration_minutes": "Среднее время сессии (мин)"
+    }
+
+    translated_stats = {
+        general_stats_translation.get(key, key): value
+        for key, value in general_stats.items()
+    }
+
+    workbook = Workbook()
+    ws_general = workbook.active
+    ws_general.title = "Общая статистика"
+    ws_general.append(["Метрика", "Значение"])
+    for metric, value in translated_stats.items():
+        ws_general.append([metric, value])
+
+    senders_list = [
+        {"#": i, "Имя": row[0].first_name, "Фамилия": row[0].last_name, "Должность": row[0].position, "Отправлено": row.sent_count}
+        for i, row in enumerate(engagement_data["top_senders"], 1)
+    ]
+    _append_dict_rows_sheet(workbook, "Топ Донаторы", senders_list)
+
+    receivers_list = [
+        {"#": i, "Имя": row[0].first_name, "Фамилия": row[0].last_name, "Должность": row[0].position, "Получено": row.received_count}
+        for i, row in enumerate(engagement_data["top_receivers"], 1)
+    ]
+    _append_dict_rows_sheet(workbook, "Топ Инфлюенсеры", receivers_list)
+
+    items_list = [
+        {"#": i, "Название товара": row[0].name, "Цена": row[0].price, "Кол-во покупок": row.purchase_count}
+        for i, row in enumerate(popular_items_data, 1)
+    ]
+    _append_dict_rows_sheet(workbook, "Популярные товары", items_list)
+
+    inactive_list = [
+        {
+            "Имя": user.first_name,
+            "Фамилия": user.last_name,
+            "Должность": user.position,
+            "Отдел": user.department,
+            "Дата регистрации": _format_dt_moscow(user.registration_date, moscow_tz),
+            "Последний вход": _format_dt_moscow(user.last_login_date, moscow_tz),
         }
-        
-        translated_stats = {
-            general_stats_translation.get(key, key): value 
-            for key, value in general_stats.items()
-        }
-        
-        df_general = pd.DataFrame.from_dict(translated_stats, orient='index', columns=['Значение'])
-        df_general.index.name = 'Метрика'
-        df_general.to_excel(writer, sheet_name='Общая статистика')
+        for user in inactive_users_data
+    ]
+    _append_dict_rows_sheet(workbook, "Неактивные пользователи", inactive_list)
 
-        senders_list = [
-            {"#": i, "Имя": row[0].first_name, "Фамилия": row[0].last_name, "Должность": row[0].position, "Отправлено": row.sent_count}
-            for i, row in enumerate(engagement_data["top_senders"], 1)
-        ]
-        df_senders = pd.DataFrame(senders_list)
-        df_senders.to_excel(writer, sheet_name='Топ Донаторы', index=False)
-
-        receivers_list = [
-            {"#": i, "Имя": row[0].first_name, "Фамилия": row[0].last_name, "Должность": row[0].position, "Получено": row.received_count}
-            for i, row in enumerate(engagement_data["top_receivers"], 1)
-        ]
-        df_receivers = pd.DataFrame(receivers_list)
-        df_receivers.to_excel(writer, sheet_name='Топ Инфлюенсеры', index=False)
-
-        items_list = [
-            {"#": i, "Название товара": row[0].name, "Цена": row[0].price, "Кол-во покупок": row.purchase_count}
-            for i, row in enumerate(popular_items_data, 1)
-        ]
-        df_items = pd.DataFrame(items_list)
-        df_items.to_excel(writer, sheet_name='Популярные товары', index=False)
-
-        inactive_list = [
-            {
-                "Имя": user.first_name,
-                "Фамилия": user.last_name,
-                "Должность": user.position,
-                "Отдел": user.department,
-                "Дата регистрации": user.registration_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
-                "Последний вход": user.last_login_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
-            }
-            for user in inactive_users_data
-        ]
-        df_inactive = pd.DataFrame(inactive_list)
-        df_inactive.to_excel(writer, sheet_name='Неактивные пользователи', index=False)
-
+    workbook.save(output)
     output.seek(0)
     filename = f"consolidated_report_{start_date}_to_{end_date}.xlsx"
     return StreamingResponse(
@@ -594,32 +660,33 @@ async def export_consolidated_report(
 async def export_all_users(db: AsyncSession = Depends(get_db)):
     all_users = await crud.get_all_users_for_admin(db)
 
-    moscow_tz = pytz.timezone('Europe/Moscow')
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        users_list = [
-            {
-                "ID": user.id,
-                "Telegram ID": user.telegram_id,
-                "Имя": user.first_name,
-                "Фамилия": user.last_name,
-                "Username": user.username,
-                "Отдел": user.department,
-                "Должность": user.position,
-                "Баланс": user.balance,
-                "Билеты": user.tickets,
-                "Статус": user.status,
-                "Админ": "Да" if user.is_admin else "Нет",
-                "Дата регистрации": user.registration_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.registration_date else None,
-                "Последний вход": user.last_login_date.astimezone(moscow_tz).strftime('%Y-%m-%d %H:%M') if user.last_login_date else None
-            }
-            for user in all_users
-        ]
-        
-        df_users = pd.DataFrame(users_list)
-        df_users.to_excel(writer, sheet_name='Все пользователи', index=False)
+    moscow_tz = ZoneInfo("Europe/Moscow")
 
+    users_list = [
+        {
+            "ID": user.id,
+            "Telegram ID": user.telegram_id,
+            "Имя": user.first_name,
+            "Фамилия": user.last_name,
+            "Username": user.username,
+            "Отдел": user.department,
+            "Должность": user.position,
+            "Баланс": user.balance,
+            "Билеты": user.tickets,
+            "Статус": user.status,
+            "Админ": "Да" if user.is_admin else "Нет",
+            "Дата регистрации": _format_dt_moscow(user.registration_date, moscow_tz),
+            "Последний вход": _format_dt_moscow(user.last_login_date, moscow_tz),
+        }
+        for user in all_users
+    ]
+
+    output = io.BytesIO()
+    workbook = Workbook()
+    ws = workbook.active
+    ws.title = "Все пользователи"
+    _write_dict_rows_on_sheet(ws, users_list)
+    workbook.save(output)
     output.seek(0)
 
     filename = f"all_users_{datetime.utcnow().date()}.xlsx"
@@ -646,8 +713,6 @@ async def delete_item_permanently_route(
         )
     
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-from fastapi import Response
 
 @router.get("/statix-bonus", response_model=schemas.StatixBonusItemResponse)
 async def get_statix_bonus_settings(
@@ -851,3 +916,26 @@ async def _get_all_purchases_from_db(
     page_items = result_items[offset:offset + per_page]
 
     return page_items, total
+
+
+def _format_dt_moscow(dt: Optional[datetime], tz: ZoneInfo) -> Optional[str]:
+    """Форматирует aware-datetime в локальное время Москвы."""
+    if dt is None:
+        return None
+    return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M")
+
+
+def _write_dict_rows_on_sheet(ws: Worksheet, rows: list[dict[str, object]]) -> None:
+    """Записывает заголовки и строки из списка словарей на существующий лист."""
+    if not rows:
+        return
+    headers = list(rows[0].keys())
+    ws.append(headers)
+    for row in rows:
+        ws.append([row.get(h) for h in headers])
+
+
+def _append_dict_rows_sheet(workbook: Workbook, title: str, rows: list[dict[str, object]]) -> None:
+    """Создаёт лист и пишет таблицу из списка словарей (ключи первой строки — заголовки)."""
+    ws = workbook.create_sheet(title)
+    _write_dict_rows_on_sheet(ws, rows)

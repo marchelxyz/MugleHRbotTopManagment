@@ -1,0 +1,20 @@
+.git
+.gitignore
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/node_modules
+.github
+**/*.test.js
+**/*.spec.js
+# Чужие Dockerfile из npm-пакетов (например jsbarcode) — не должны попадать в контекст
+**/node_modules/**/Dockerfile
+frontend/dist
+.env
+.env.*
+*.md
+!README.md
+.cursor
+agent-transcripts
+mcps
+backend/migrations/*.sql.bak

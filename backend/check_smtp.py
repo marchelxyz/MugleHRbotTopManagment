@@ -46,8 +46,8 @@ async def test_smtp():
     if not smtp_username or not smtp_password:
         print("\n❌ ОШИБКА: SMTP_USERNAME или SMTP_PASSWORD не заданы в .env файле")
         print("\nДобавьте в backend/.env:")
-        print('SMTP_USERNAME=support@teleagentnn.ru')
-        print('SMTP_PASSWORD="j.IIaq-\\\\Ydpm14"')
+        print('SMTP_USERNAME=noreply@yourdomain.ru')
+        print('SMTP_PASSWORD="your-smtp-password"')
         return False
     
     # Пробуем отправить тестовое письмо
