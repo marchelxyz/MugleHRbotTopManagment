@@ -19,15 +19,16 @@ async def create_new_transaction(tr: schemas.TransferRequest, db: AsyncSession =
 
 @router.get("/transactions/feed", response_model=list[schemas.FeedItem])
 async def get_feed(
-    days: int = 7,
+    days: int = 90,
     limit: int = 200,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Получает ленту транзакций.
     Параметры:
-    - days: количество дней для выборки (по умолчанию 7)
-    - limit: максимальное количество записей (по умолчанию 200)
+    - days: глубина выборки по timestamp (по умолчанию 90; раньше 7 — после миграции БД
+      старые переводы не попадали в ленту при том, что строки в таблице есть)
+    - limit: максимум записей (по умолчанию 200), от новых к старым
     """
     return await crud.get_feed(db, days=days, limit=limit)
 

@@ -324,10 +324,10 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
     
 # crud.py
 
-async def get_feed(db: AsyncSession, days: int = 7, limit: int = 200):
+async def get_feed(db: AsyncSession, days: int = 90, limit: int = 200):
     """
     Получает ленту транзакций за последние N дней с ограничением количества.
-    По умолчанию: последняя неделя (7 дней), максимум 200 записей.
+    По умолчанию: 90 дней, максимум 200 записей (новые первыми).
     """
     Sender = aliased(models.User, name='sender_user')
     Receiver = aliased(models.User, name='receiver_user')
