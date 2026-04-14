@@ -20,11 +20,14 @@ from config import settings
 from bot import send_telegram_message, escape_html
 from email_service import send_email, is_valid_email, build_broadcast_email_content
 from datetime import datetime, timedelta, date
+from zoneinfo import ZoneInfo
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import or_, text
 from redis_cache import redis_cache
 
 logger = logging.getLogger(__name__)
+
+_TRANSFER_LIMIT_TZ = ZoneInfo("Europe/Moscow")
 
 
 async def _create_notification(
@@ -96,17 +99,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     pwd_context = _get_password_context()
     return pwd_context.verify(plain_password, hashed_password)
 
+def _transfer_limit_calendar_date() -> date:
+    """Календарная дата (Europe/Moscow) для дневного лимита переводов «спасибок»."""
+    return datetime.now(_TRANSFER_LIMIT_TZ).date()
+
+
 def _should_reset_daily_transfer(user: models.User) -> bool:
-    """Проверяет, нужно ли сбросить daily_transfer_count (новый день)."""
-    today = date.today()
-    return user.last_login_date is None or user.last_login_date.date() < today
+    """Проверяет, нужно ли сбросить daily_transfer_count (новый календарный день)."""
+    today = _transfer_limit_calendar_date()
+    stored = user.daily_transfer_count_for_date
+    return stored is None or stored != today
 
 
 async def _reset_daily_transfer_if_needed(db: AsyncSession, user: models.User) -> None:
-    """Сбрасывает daily_transfer_count при наступлении нового дня."""
+    """Сбрасывает daily_transfer_count при наступлении нового календарного дня."""
     if user and _should_reset_daily_transfer(user):
         user.daily_transfer_count = 0
-        user.last_login_date = datetime.utcnow()
+        user.daily_transfer_count_for_date = _transfer_limit_calendar_date()
         await db.commit()
         await db.refresh(user)
 
@@ -265,22 +274,15 @@ async def update_user_profile(db: AsyncSession, user_id: int, data: schemas.User
 
 # Транзакции
 async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
-    today = date.today()
+    today = _transfer_limit_calendar_date()
     sender = await db.get(models.User, tr.sender_id)
     if not sender:
         raise ValueError("Отправитель не найден")
 
-    # Обновляем счетчик, если наступил новый день
-    # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-    # Обновляем счетчик, если наступил новый день
-    # Сравниваем дату с датой, добавляя .date()
-    if sender.last_login_date is None or sender.last_login_date.date() < today:
+    if sender.daily_transfer_count_for_date is None or sender.daily_transfer_count_for_date != today:
         sender.daily_transfer_count = 0
-    
-    # Записываем текущее время в last_login_date, так как колонка теперь DateTime
-    sender.last_login_date = datetime.utcnow()
-    
-    fixed_amount = 1 
+
+    fixed_amount = 1
     if sender.daily_transfer_count >= 3:
         raise ValueError("Дневной лимит переводов исчерпан (3 в день)")
 
@@ -289,6 +291,7 @@ async def create_transaction(db: AsyncSession, tr: schemas.TransferRequest):
         raise ValueError("Получатель не найден")
     
     sender.daily_transfer_count += 1
+    sender.daily_transfer_count_for_date = today
     receiver.balance += fixed_amount
     sender.ticket_parts += 1
     
@@ -1562,7 +1565,7 @@ async def reset_tickets(db: AsyncSession):
 async def reset_daily_transfer_limits(db: AsyncSession):
     """Сбрасывает счетчик ежедневных переводов для всех пользователей."""
     await db.execute(
-        update(models.User).values(daily_transfer_count=0)
+        update(models.User).values(daily_transfer_count=0, daily_transfer_count_for_date=None)
     )
     await db.commit()
 
