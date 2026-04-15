@@ -150,7 +150,7 @@ export const getMarketItems = () => apiClient.get('/market/items');
 
 export const purchaseItem = (userId, itemId) => {
   // Убедись, что user_id здесь это telegram_id
-  return apiClient.post('/market/purchase/', { user_id: userId, item_id: itemId });
+  return apiClient.post('/market/purchase', { user_id: userId, item_id: itemId });
 };
 
 export const purchaseLocalItem = (userId, itemId, city, websiteUrl) => {
