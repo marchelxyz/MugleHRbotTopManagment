@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     TELEGRAM_PURCHASE_TOPIC_ID: int
     TELEGRAM_UPDATE_TOPIC_ID: int
     TELEGRAM_ADMIN_LOG_TOPIC_ID: int
+    # Опциональный внешний relay для исходящих запросов в Telegram API.
+    # Нужен, когда сервер приложения не может стабильно ходить в api.telegram.org.
+    TELEGRAM_RELAY_URL: str = ""
+    TELEGRAM_RELAY_SECRET: str = ""
 
     # Настройки интеграции со Statix Bonus
     STATIX_BONUS_API_URL: str = "https://cabinet.statix-pro.ru/webhooks/custom/muggle_rest.php"
