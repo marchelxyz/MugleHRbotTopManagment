@@ -2504,6 +2504,7 @@ async def broadcast_announcement_to_users(
     body_plain: str,
     only_browser_users: bool,
     append_login_url: bool,
+    include_web_credentials: bool,
     do_send_email: bool,
     do_send_telegram: bool,
     user_ids: Optional[list[int]] = None,
@@ -2557,6 +2558,21 @@ async def broadcast_announcement_to_users(
             "detail": None,
         }
 
+    def _web_credentials_for_user(user: models.User) -> Optional[dict[str, str]]:
+        if not include_web_credentials:
+            return None
+        login = (user.login or "").strip()
+        password = (user.password_plain or "").strip()
+        if not login or not password or not bool(user.browser_auth_enabled):
+            return None
+        email = (user.email or "").strip()
+        alternate_login = email if email and is_valid_email(email) else ""
+        return {
+            "login": login,
+            "password": password,
+            "alternate_login": alternate_login,
+        }
+
     if do_send_email:
         users = await _fetch_broadcast_recipient_users(
             db,
@@ -2564,11 +2580,15 @@ async def broadcast_announcement_to_users(
             user_ids=user_ids_set,
         )
         recipient_count_email = len(users)
-        body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
         for user in users:
             to_email = (user.email or "").strip()
             entry = _make_entry(user, "email", to_email)
             try:
+                body_html, body_text = build_broadcast_email_content(
+                    body_plain,
+                    login_url=login_url,
+                    web_credentials=_web_credentials_for_user(user),
+                )
                 ok = await send_email(
                     to_email=to_email,
                     subject=subject,
@@ -2612,11 +2632,16 @@ async def broadcast_announcement_to_users(
         # сообщение (бот заблокирован, chat not found и т.д.), это попадёт в
         # отчёт по получателям ниже.
         recipient_count_telegram = len(users_tg)
-        tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
         for user in users_tg:
             tid = user.telegram_id
             entry = _make_entry(user, "telegram", str(tid))
             try:
+                tg_text = _build_broadcast_telegram_html(
+                    subject,
+                    body_plain,
+                    login_url,
+                    web_credentials=_web_credentials_for_user(user),
+                )
                 await send_telegram_message(
                     chat_id=int(tid),
                     text=tg_text,
@@ -2725,13 +2750,29 @@ def _build_broadcast_telegram_html(
     subject: str,
     body_plain: str,
     login_url: Optional[str],
+    web_credentials: Optional[dict[str, str]] = None,
 ) -> str:
     """Формирует HTML для Telegram (parse_mode=HTML): тема жирным, текст, опционально ссылка."""
     header = f"<b>{escape_html(subject)}</b>\n\n{escape_html(body_plain)}"
-    if not login_url:
-        return header
-    href = login_url.replace("&", "&amp;")
-    return header + f"\n\n<a href=\"{href}\">Ссылка для входа</a>"
+    parts = [header]
+    if login_url:
+        href = login_url.replace("&", "&amp;")
+        parts.append(f'<a href="{href}">Ссылка для входа</a>')
+    if web_credentials:
+        credentials_lines = [
+            "<b>Данные для веб-входа</b>",
+            f"Логин: <code>{escape_html(web_credentials.get('login') or '')}</code>",
+        ]
+        alternate_login = web_credentials.get("alternate_login") or ""
+        if alternate_login:
+            credentials_lines.append(
+                f"Альтернативный логин: <code>{escape_html(alternate_login)}</code>"
+            )
+        credentials_lines.append(
+            f"Пароль: <code>{escape_html(web_credentials.get('password') or '')}</code>"
+        )
+        parts.append("\n".join(credentials_lines))
+    return "\n\n".join(parts)
 
 
 async def _fetch_broadcast_telegram_users(
