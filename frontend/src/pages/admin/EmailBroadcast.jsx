@@ -254,6 +254,19 @@ function EmailBroadcast() {
   const hiddenTelegramCount =
     eligibleStats.telegramNoDialog + eligibleStats.telegramNoId;
 
+  const noStartUsers = useMemo(
+    () =>
+      eligibleUsers
+        .filter((u) => u.telegram_no_dialog)
+        .sort((a, b) =>
+          `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(
+            `${b.last_name || ''} ${b.first_name || ''}`,
+            'ru',
+          ),
+        ),
+    [eligibleUsers],
+  );
+
   const setUserSelected = (userId, selected) => {
     setSelection((prev) => {
       const next = { ...prev };
@@ -502,6 +515,58 @@ function EmailBroadcast() {
               Включён дополнительный фильтр: только пользователи с доступом через
               браузер.
             </div>
+          )}
+          {noStartUsers.length > 0 && (
+            <details style={{ marginTop: 8 }}>
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  color: '#8a6d00',
+                  fontWeight: 600,
+                }}
+              >
+                Показать список тех, кто не нажал /start ({noStartUsers.length})
+              </summary>
+              <div
+                style={{
+                  maxHeight: 260,
+                  overflow: 'auto',
+                  marginTop: 8,
+                  border: '1px solid #eee',
+                  borderRadius: 4,
+                  background: '#fff',
+                }}
+              >
+                <table style={tableStyles}>
+                  <thead style={{ background: '#f4f4f4' }}>
+                    <tr>
+                      <th style={cellStyles}>Имя</th>
+                      <th style={cellStyles}>Отдел / должность</th>
+                      <th style={cellStyles}>Контакты</th>
+                      <th style={cellStyles}>Telegram ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {noStartUsers.map((u) => {
+                      const fullName =
+                        `${u.last_name || ''} ${u.first_name || ''}`.trim() ||
+                        `id:${u.id}`;
+                      return (
+                        <tr key={`no-start-${u.id}`}>
+                          <td style={cellStyles}>{fullName}</td>
+                          <td style={cellStyles}>
+                            {u.department || '—'}
+                            {u.position ? ` · ${u.position}` : ''}
+                          </td>
+                          <td style={cellStyles}>{u.email || '—'}</td>
+                          <td style={cellStyles}>{u.telegram_id || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           )}
         </div>
 
