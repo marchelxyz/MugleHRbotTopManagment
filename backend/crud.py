@@ -21,6 +21,8 @@ from bot import (
     send_telegram_message,
     escape_html,
     classify_telegram_error,
+    classify_smtp_error,
+    human_delivery_reason,
     is_permanent_telegram_error,
     safe_admin_notify,
 )
@@ -2533,6 +2535,28 @@ async def broadcast_announcement_to_users(
         {int(uid) for uid in user_ids} if user_ids else None
     )
 
+    def _make_entry(user: models.User, channel: str, target: str) -> dict:
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        return {
+            "user_id": user.id,
+            "channel": channel,
+            "target": target,
+            "name": full_name,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "department": user.department or "",
+            "position": user.position or "",
+            "phone": user.phone_number or "",
+            "email": (user.email or "").strip() or None,
+            "telegram_id": user.telegram_id,
+            "ok": False,
+            "skipped": False,
+            "skip_reason": None,
+            "error_code": None,
+            "reason": None,
+            "detail": None,
+        }
+
     if do_send_email:
         users = await _fetch_broadcast_recipient_users(
             db,
@@ -2543,18 +2567,7 @@ async def broadcast_announcement_to_users(
         body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
         for user in users:
             to_email = (user.email or "").strip()
-            full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-            entry = {
-                "user_id": user.id,
-                "channel": "email",
-                "target": to_email,
-                "name": full_name,
-                "ok": False,
-                "skipped": False,
-                "skip_reason": None,
-                "error_code": None,
-                "detail": None,
-            }
+            entry = _make_entry(user, "email", to_email)
             try:
                 ok = await send_email(
                     to_email=to_email,
@@ -2568,14 +2581,19 @@ async def broadcast_announcement_to_users(
                 else:
                     detail = "Не удалось отправить (проверьте SMTP)"
                     entry["error_code"] = "smtp_error"
+                    entry["reason"] = human_delivery_reason("smtp_error")
                     entry["detail"] = detail
                     failed.append(
                         {"channel": "email", "target": to_email, "detail": detail}
                     )
             except Exception as exc:
-                logger.error("Ошибка рассылки на %s: %s", to_email, exc)
                 detail = str(exc)[:500]
-                entry["error_code"] = "exception"
+                code = classify_smtp_error(detail)
+                logger.error(
+                    "Ошибка рассылки на %s: %s (code=%s)", to_email, exc, code
+                )
+                entry["error_code"] = code
+                entry["reason"] = human_delivery_reason(code)
                 entry["detail"] = detail
                 failed.append(
                     {"channel": "email", "target": to_email, "detail": detail}
@@ -2595,18 +2613,7 @@ async def broadcast_announcement_to_users(
         tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
         for user in users_tg:
             tid = user.telegram_id
-            full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-            entry = {
-                "user_id": user.id,
-                "channel": "telegram",
-                "target": str(tid),
-                "name": full_name,
-                "ok": False,
-                "skipped": False,
-                "skip_reason": None,
-                "error_code": None,
-                "detail": None,
-            }
+            entry = _make_entry(user, "telegram", str(tid))
             try:
                 await send_telegram_message(
                     chat_id=int(tid),
@@ -2620,29 +2627,27 @@ async def broadcast_announcement_to_users(
                 code = classify_telegram_error(detail)
                 logger.error("Ошибка Telegram-рассылки %s: %s (code=%s)", tid, exc, code)
                 entry["error_code"] = code
+                entry["reason"] = human_delivery_reason(code)
                 entry["detail"] = detail
                 failed.append(
                     {"channel": "telegram", "target": str(tid), "detail": detail}
                 )
             recipients_report.append(entry)
         for user in skipped_no_dialog:
-            full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-            recipients_report.append(
-                {
-                    "user_id": user.id,
-                    "channel": "telegram",
-                    "target": str(user.telegram_id) if user.telegram_id is not None else "",
-                    "name": full_name,
-                    "ok": False,
-                    "skipped": True,
-                    "skip_reason": "no_bot_dialog",
-                    "error_code": "no_bot_dialog",
-                    "detail": (
-                        "Пользователь ни разу не нажимал /start у бота — Telegram "
-                        "запрещает боту первое сообщение. Попросите написать боту."
-                    ),
-                }
+            entry = _make_entry(
+                user,
+                "telegram",
+                str(user.telegram_id) if user.telegram_id is not None else "",
             )
+            entry["skipped"] = True
+            entry["skip_reason"] = "no_bot_dialog"
+            entry["error_code"] = "no_bot_dialog"
+            entry["reason"] = human_delivery_reason("no_bot_dialog")
+            entry["detail"] = (
+                "Пользователь ни разу не нажимал /start у бота — Telegram "
+                "запрещает боту первое сообщение. Попросите написать боту."
+            )
+            recipients_report.append(entry)
 
     return {
         "recipient_count_email": recipient_count_email,

@@ -11,11 +11,13 @@ import {
   FaSearch,
   FaUserCheck,
   FaUserSlash,
+  FaFileExcel,
 } from 'react-icons/fa';
 import {
   getBroadcastEmailPreview,
   getBroadcastEligibleUsers,
   broadcastEmail,
+  exportBroadcastReport,
 } from '../../api';
 import styles from '../AdminPage.module.css';
 import { useModalAlert } from '../../contexts/ModalAlertContext';
@@ -26,16 +28,22 @@ const DEFAULT_BODY_SUGGESTION =
 
 const ERROR_HINTS = {
   blocked: 'Пользователь заблокировал бота — попросите разблокировать.',
-  deactivated: 'Аккаунт Telegram удалён.',
-  not_found: 'Чат с пользователем не найден.',
+  deactivated: 'Аккаунт Telegram удалён или заморожен.',
+  not_found: 'Чат с пользователем не найден (некорректный telegram_id).',
   no_dialog: 'Бот не может первым написать — пользователь не нажимал /start.',
   no_bot_dialog:
-    'Пользователь ни разу не нажимал /start у бота — попросите написать боту.',
-  topic: 'Тема в админ-чате недоступна.',
-  parse: 'Ошибка форматирования (HTML).',
-  rate_limit: 'Telegram временно ограничил отправку (повторите позже).',
-  smtp_error: 'Ошибка SMTP — проверьте настройки почты.',
-  exception: 'Сбой при отправке.',
+    'Не нажимал /start у бота — Telegram запрещает боту первое сообщение.',
+  topic: 'Тема (топик) в админ-чате удалена или закрыта.',
+  parse: 'Ошибка форматирования сообщения (HTML/Markdown).',
+  rate_limit: 'Telegram временно ограничил частоту отправки (повторите позже).',
+  timeout: 'Таймаут соединения с серверами Telegram.',
+  network: 'Сетевая ошибка при обращении к Telegram.',
+  smtp_error: 'SMTP отверг письмо — проверьте логин/пароль и хост.',
+  smtp_auth: 'Ошибка аутентификации SMTP (логин или пароль).',
+  smtp_connect: 'Не удалось подключиться к SMTP-серверу.',
+  smtp_recipient: 'Адресат отверг письмо (несуществующий ящик).',
+  invalid_email: 'Невалидный email-адрес в профиле пользователя.',
+  exception: 'Внутренний сбой при отправке.',
   other: 'Не удалось доставить.',
 };
 
@@ -368,7 +376,7 @@ function EmailBroadcast() {
     try {
       const response = await broadcastEmail(payload);
       const data = response.data;
-      setReport(data);
+      setReport({ ...data, subject: sub, sent_at: new Date().toISOString() });
       const failedCount = data.failed?.length ?? 0;
       const totalOk = (data.sent_ok_email ?? 0) + (data.sent_ok_telegram ?? 0);
       if (totalOk === 0) {
@@ -670,7 +678,41 @@ function EmailBroadcast() {
   );
 }
 
+function ReasonBadge({ code, reason }) {
+  const text = reason || ERROR_HINTS[code] || code || 'Не удалось доставить';
+  let bg = '#fdecea';
+  let color = '#b71c1c';
+  if (code === 'no_bot_dialog' || code === 'no_dialog') {
+    bg = '#fff8e1';
+    color = '#8a6d00';
+  } else if (code === 'rate_limit' || code === 'timeout' || code === 'network') {
+    bg = '#e3f2fd';
+    color = '#0d47a1';
+  } else if (code === 'topic') {
+    bg = '#ede7f6';
+    color = '#4527a0';
+  }
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '2px 8px',
+        borderRadius: 12,
+        fontSize: 12,
+        background: bg,
+        color,
+        whiteSpace: 'nowrap',
+      }}
+      title={code || ''}
+    >
+      {text}
+    </span>
+  );
+}
+
 function BroadcastReport({ report }) {
+  const [exporting, setExporting] = useState(false);
+
   const sentEmail = report.recipients.filter(
     (r) => r.channel === 'email' && r.ok,
   );
@@ -684,7 +726,55 @@ function BroadcastReport({ report }) {
     (r) => r.channel === 'telegram' && !r.ok,
   );
 
-  const renderGroup = (title, items, ok, isTelegram = false) => {
+  // Сводка по причинам недоставки
+  const reasonsSummary = useMemo(() => {
+    const map = new Map();
+    for (const r of report.recipients) {
+      if (r.ok) continue;
+      const code = r.error_code || 'other';
+      const label = r.reason || ERROR_HINTS[code] || code;
+      const cur = map.get(code) || { code, label, count: 0, channel: r.channel };
+      cur.count += 1;
+      map.set(code, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [report]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const response = await exportBroadcastReport({
+        subject: report.subject || '',
+        sent_at: report.sent_at || null,
+        recipients: report.recipients,
+        sent_ok_email: report.sent_ok_email || 0,
+        sent_ok_telegram: report.sent_ok_telegram || 0,
+        recipient_count_email: report.recipient_count_email || 0,
+        recipient_count_telegram: report.recipient_count_telegram || 0,
+      });
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date()
+        .toISOString()
+        .replace(/[-:]/g, '')
+        .slice(0, 13);
+      a.href = url;
+      a.download = `broadcast_report_${stamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Не удалось скачать Excel-отчёт', e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const renderGroup = (title, items, ok) => {
     if (items.length === 0) return null;
     return (
       <div style={{ marginTop: 16 }}>
@@ -701,23 +791,37 @@ function BroadcastReport({ report }) {
         </h4>
         <ul style={{ paddingLeft: 18, margin: 0 }}>
           {items.map((r, idx) => (
-            <li key={`${r.channel}-${r.user_id}-${idx}`} style={{ marginBottom: 4 }}>
+            <li
+              key={`${r.channel}-${r.user_id}-${idx}`}
+              style={{ marginBottom: 6, lineHeight: 1.5 }}
+            >
               <b>{r.name || `id:${r.user_id}`}</b>
-              {r.target ? ` · ${r.target}` : ''}
-              {!ok && r.error_code ? (
-                <span style={{ color: '#b71c1c', marginLeft: 6 }}>
-                  — {ERROR_HINTS[r.error_code] || r.error_code}
+              {r.department ? (
+                <span style={{ color: '#888', fontSize: 12, marginLeft: 6 }}>
+                  {r.department}
+                  {r.position ? ` · ${r.position}` : ''}
                 </span>
               ) : null}
-              {!ok && r.detail ? (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: '#777',
-                    marginLeft: isTelegram ? 0 : 4,
-                  }}
-                >
-                  {r.detail}
+              <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                {r.channel === 'email' ? '📧 ' : '💬 '}
+                {r.target || '—'}
+                {r.phone ? ` · ☎ ${r.phone}` : ''}
+              </div>
+              {!ok ? (
+                <div style={{ marginTop: 4 }}>
+                  <ReasonBadge code={r.error_code} reason={r.reason} />
+                  {r.detail ? (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: '#888',
+                        marginTop: 2,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {r.detail}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </li>
@@ -729,12 +833,67 @@ function BroadcastReport({ report }) {
 
   return (
     <div className={styles.card} style={{ marginTop: 20 }}>
-      <h3 style={{ marginTop: 0 }}>Отчёт о доставке</h3>
-      <div style={{ color: '#555', marginBottom: 8 }}>{report.message}</div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Отчёт о доставке</h3>
+        <button
+          type="button"
+          className={styles.buttonGreen}
+          disabled={exporting || !report.recipients.length}
+          onClick={handleExport}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <FaFileExcel />
+          {exporting ? 'Готовим Excel…' : 'Скачать Excel'}
+        </button>
+      </div>
+      <div style={{ color: '#555', margin: '8px 0' }}>{report.message}</div>
+
+      {reasonsSummary.length > 0 && (
+        <div
+          style={{
+            background: '#fafafa',
+            border: '1px solid #eee',
+            borderRadius: 6,
+            padding: 12,
+            marginTop: 8,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+            Причины недоставки
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {reasonsSummary.map((row) => (
+              <div
+                key={row.code}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  fontSize: 13,
+                }}
+              >
+                <ReasonBadge code={row.code} reason={row.label} />
+                <span style={{ color: '#444', fontWeight: 600 }}>
+                  {row.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {renderGroup('Email — доставлено', sentEmail, true)}
       {renderGroup('Email — не доставлено', failedEmail, false)}
-      {renderGroup('Telegram — доставлено', sentTelegram, true, true)}
-      {renderGroup('Telegram — не доставлено', failedTelegram, false, true)}
+      {renderGroup('Telegram — доставлено', sentTelegram, true)}
+      {renderGroup('Telegram — не доставлено', failedTelegram, false)}
       {report.recipients.length === 0 && (
         <div style={{ color: '#777' }}>Нет получателей в отчёте.</div>
       )}

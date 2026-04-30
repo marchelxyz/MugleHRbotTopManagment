@@ -455,6 +455,106 @@ async def broadcast_eligible_users_route(
     )
 
 
+@router.post("/users/broadcast/export-report")
+async def broadcast_export_report_route(
+    payload: schemas.BroadcastReportExportRequest,
+):
+    """Возвращает Excel-файл с отчётом о последней рассылке.
+
+    Сервер не хранит результаты рассылки между запросами, поэтому фронт
+    отправляет уже полученный отчёт целиком. На лист попадают: ФИО, отдел,
+    должность, телефон, email, telegram_id, канал, статус и человекочитаемая
+    причина (если сообщение не доставлено).
+    """
+    moscow_tz = ZoneInfo("Europe/Moscow")
+    now_moscow = datetime.now(moscow_tz)
+
+    rows: list[dict[str, object]] = []
+    for r in payload.recipients:
+        if r.ok:
+            status_text = "Доставлено"
+        elif r.skipped:
+            status_text = "Пропущено"
+        else:
+            status_text = "Не доставлено"
+        contact = ""
+        if r.channel == "email":
+            contact = r.target or r.email or ""
+        else:
+            contact = (
+                f"tg:{r.telegram_id}" if r.telegram_id is not None else (r.target or "")
+            )
+        full_name = (
+            f"{r.last_name} {r.first_name}".strip() or r.name or f"id:{r.user_id}"
+        )
+        rows.append(
+            {
+                "ID": r.user_id,
+                "Фамилия": r.last_name or "",
+                "Имя": r.first_name or "",
+                "ФИО": full_name,
+                "Отдел": r.department or "",
+                "Должность": r.position or "",
+                "Телефон": r.phone or "",
+                "Email": r.email or "",
+                "Telegram ID": r.telegram_id if r.telegram_id is not None else "",
+                "Канал": "Email" if r.channel == "email" else "Telegram",
+                "Контакт": contact,
+                "Статус": status_text,
+                "Причина": r.reason or ("" if r.ok else "—"),
+                "Код ошибки": r.error_code or "",
+                "Подробности": (r.detail or "")[:500],
+            }
+        )
+
+    output = io.BytesIO()
+    workbook = Workbook()
+    ws = workbook.active
+    ws.title = "Отчёт по рассылке"
+
+    # Метаданные о рассылке — сводка наверху отдельным маленьким блоком
+    ws.append(["Тема", payload.subject or ""])
+    ws.append(["Дата формирования (МСК)", now_moscow.strftime("%Y-%m-%d %H:%M")])
+    ws.append(
+        ["Email доставлено", f"{payload.sent_ok_email}/{payload.recipient_count_email}"]
+    )
+    ws.append(
+        [
+            "Telegram доставлено",
+            f"{payload.sent_ok_telegram}/{payload.recipient_count_telegram}",
+        ]
+    )
+    ws.append([])
+
+    if rows:
+        headers = list(rows[0].keys())
+        ws.append(headers)
+        for row in rows:
+            ws.append([row.get(h, "") for h in headers])
+    else:
+        ws.append(["Нет данных для экспорта"])
+
+    # Авто-ширина колонок (грубо, но достаточно для читаемости)
+    for column_cells in ws.columns:
+        max_length = 0
+        col_letter = column_cells[0].column_letter
+        for cell in column_cells:
+            value = "" if cell.value is None else str(cell.value)
+            if len(value) > max_length:
+                max_length = len(value)
+        ws.column_dimensions[col_letter].width = min(max_length + 2, 60)
+
+    workbook.save(output)
+    output.seek(0)
+
+    filename = f"broadcast_report_{now_moscow.strftime('%Y%m%d_%H%M')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @router.post("/users/broadcast-email", response_model=schemas.BroadcastEmailResponse)
 async def broadcast_email_route(
     request: schemas.BroadcastEmailRequest,

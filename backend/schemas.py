@@ -535,16 +535,28 @@ class BroadcastEmailFailedItem(BaseModel):
 
 
 class BroadcastRecipientReport(BaseModel):
-    """Подробная запись о доставке для одного пользователя в одном канале."""
+    """Подробная запись о доставке для одного пользователя в одном канале.
+
+    Поле ``reason`` — человекочитаемая русская формулировка (для UI и Excel),
+    ``error_code`` — машинный код причины (для логики/группировки на фронте).
+    """
 
     user_id: int
     channel: Literal["email", "telegram"]
     target: str
     name: str = ""
+    first_name: str = ""
+    last_name: str = ""
+    department: str = ""
+    position: str = ""
+    phone: str = ""
+    email: Optional[str] = None
+    telegram_id: Optional[int] = None
     ok: bool = False
     skipped: bool = False
     skip_reason: Optional[str] = None
     error_code: Optional[str] = None
+    reason: Optional[str] = None
     detail: Optional[str] = None
 
 
@@ -586,6 +598,22 @@ class BroadcastEligibleResponse(BaseModel):
     available_email: int = 0
     available_telegram: int = 0
     telegram_no_dialog_count: int = 0
+
+
+class BroadcastReportExportRequest(BaseModel):
+    """Запрос на экспорт отчёта о рассылке в Excel.
+
+    Сервер не хранит результаты последней рассылки между запросами, поэтому
+    клиент возвращает в этот эндпоинт уже полученный отчёт целиком.
+    """
+
+    subject: str = ""
+    sent_at: Optional[str] = None
+    recipients: List[BroadcastRecipientReport] = []
+    sent_ok_email: int = 0
+    sent_ok_telegram: int = 0
+    recipient_count_email: int = 0
+    recipient_count_telegram: int = 0
 
 class LocalGiftResponse(OrmBase):
     id: int

@@ -81,6 +81,10 @@ def classify_telegram_error(description: str) -> str:
         return "parse"
     if "too many requests" in desc:
         return "rate_limit"
+    if "timed out" in desc or "timeout" in desc:
+        return "timeout"
+    if "network" in desc or "name or service not known" in desc or "connection" in desc:
+        return "network"
     return "other"
 
 
@@ -90,6 +94,66 @@ def is_permanent_telegram_error(description: str) -> bool:
         return False
     desc = description.lower()
     return any(p in desc for p in _TG_PERMANENT_ERROR_PATTERNS)
+
+
+# Человекочитаемые причины недоставки — единый источник правды для UI и Excel.
+# Ключи синхронизированы с classify_telegram_error и кодами рассылки в crud.py.
+DELIVERY_REASON_LABELS: dict[str, str] = {
+    # Telegram
+    "blocked": "Пользователь заблокировал бота",
+    "deactivated": "Аккаунт Telegram удалён или заморожен",
+    "not_found": "Чат с пользователем не найден (некорректный telegram_id)",
+    "no_dialog": "Бот не может первым написать пользователю",
+    "no_bot_dialog": "Пользователь ни разу не нажимал /start у бота",
+    "topic": "Тема (топик) в админ-чате удалена или закрыта",
+    "parse": "Ошибка форматирования сообщения (HTML/Markdown)",
+    "rate_limit": "Telegram временно ограничил частоту отправки",
+    "timeout": "Таймаут соединения с серверами Telegram",
+    "network": "Сетевая ошибка при обращении к Telegram",
+    # Email
+    "smtp_error": "SMTP отверг письмо (проверьте логин/пароль и хост)",
+    "smtp_auth": "Ошибка аутентификации SMTP (логин/пароль)",
+    "smtp_connect": "Не удалось подключиться к SMTP-серверу",
+    "smtp_recipient": "Адресат отверг письмо (несуществующий ящик)",
+    "invalid_email": "Невалидный email-адрес в профиле",
+    # Общие
+    "exception": "Внутренний сбой при отправке",
+    "other": "Не удалось доставить (см. detail)",
+}
+
+
+def human_delivery_reason(code: str | None) -> str:
+    """Возвращает русское объяснение кода ошибки доставки.
+
+    Если код не известен — возвращает «Не удалось доставить».
+    """
+    if not code:
+        return "—"
+    return DELIVERY_REASON_LABELS.get(code, DELIVERY_REASON_LABELS["other"])
+
+
+def classify_smtp_error(description: str | None) -> str:
+    """Возвращает код SMTP-ошибки по тексту исключения.
+
+    Используется только при exception на send_email — типовые ошибки SMTP мы
+    хотим маркировать осмысленно, чтобы в Excel-отчёте читатель сразу видел
+    причину (а не сухой stacktrace).
+    """
+    if not description:
+        return "smtp_error"
+    desc = description.lower()
+    if "535" in desc or "incorrect authentication" in desc or "authentication" in desc:
+        return "smtp_auth"
+    if (
+        "connect" in desc
+        or "name or service not known" in desc
+        or "nxdomain" in desc
+        or "timed out connecting" in desc
+    ):
+        return "smtp_connect"
+    if "550" in desc or "554" in desc or "no such user" in desc or "user unknown" in desc:
+        return "smtp_recipient"
+    return "smtp_error"
 
 
 async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, message_thread_id: int = None, parse_mode: str = 'HTML'):
