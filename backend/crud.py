@@ -17,7 +17,15 @@ import config
 from sqlalchemy.ext.asyncio import AsyncSession
 import models, schemas
 from config import settings
-from bot import send_telegram_message, escape_html
+from bot import (
+    send_telegram_message,
+    escape_html,
+    classify_telegram_error,
+    classify_smtp_error,
+    human_delivery_reason,
+    is_permanent_telegram_error,
+    safe_admin_notify,
+)
 from email_service import send_email, is_valid_email, build_broadcast_email_content
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
@@ -214,15 +222,20 @@ async def create_user(db: AsyncSession, user: schemas.RegisterRequest):
                 ]
             }
             
-            await send_telegram_message(
+            notify_result = await safe_admin_notify(
                 chat_id=settings.TELEGRAM_CHAT_ID,
                 text=user_info,
                 reply_markup=keyboard,
                 message_thread_id=settings.TELEGRAM_ADMIN_TOPIC_ID,
-                parse_mode=None
+                parse_mode=None,
             )
+            if not notify_result.get("ok"):
+                logger.error(
+                    "Не удалось отправить новую регистрацию в админ-чат: %s",
+                    notify_result.get("error"),
+                )
     except Exception as e:
-        print(f"FAILED to send Telegram admin notification. Error: {e}")
+        logger.exception("FAILED to send Telegram admin notification: %s", e)
     
     # Отправляем уведомление администраторам через Email (если настроено)
     try:
@@ -672,11 +685,11 @@ async def create_purchase(db: AsyncSession, pr: schemas.PurchaseRequest):
                 f"🔑 <b>Выданный код:</b> <code>{escape_html(issued_code_value)}</code>"
             )
         admin_message += f"\n\n📉 <b>Новый баланс пользователя:</b> {user_balance} спасибок"
-        
-        await send_telegram_message(
+
+        await safe_admin_notify(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
-            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID,
         )
 
         # Уведомление для пользователя (теперь для всех покупок)
@@ -802,14 +815,14 @@ async def create_local_gift(db: AsyncSession, pr: schemas.LocalGiftRequest):
             ]
         }
         
-        await send_telegram_message(
+        await safe_admin_notify(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
             reply_markup=reply_markup,
-            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID,
         )
     except Exception as e:
-        print(f"Could not send admin notification. Error: {e}")
+        logger.exception("Could not send admin notification (local gift): %s", e)
     
     # Отправляем уведомление пользователю
     try:
@@ -1758,13 +1771,18 @@ async def request_profile_update(db: AsyncSession, user: models.User, update_dat
         ]
     }
 
-    await send_telegram_message(
+    notify_result = await safe_admin_notify(
         chat_id=settings.TELEGRAM_CHAT_ID,
         text=admin_message_text,
         reply_markup=keyboard,
-        message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID # <-- Используем новую переменную
+        message_thread_id=settings.TELEGRAM_UPDATE_TOPIC_ID,
     )
-    
+    if not notify_result.get("ok"):
+        logger.error(
+            "Не удалось доставить запрос на изменение профиля в админ-чат: %s",
+            notify_result.get("error"),
+        )
+
     return db_update_request
 
 
@@ -1973,11 +1991,10 @@ async def admin_update_user(db: AsyncSession, user_id: int, user_data: schemas.A
             f"🎯 <b>Пользователь:</b> {escape_html(target_user_name)}\n\n"
             f"<b>Изменения:</b>\n" + "\n".join([escape_html(change) for change in changes_log])
         )
-        
-        await bot.send_telegram_message(
+        await safe_admin_notify(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=log_message,
-            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID,
         )
         
         # Отправляем email с учетными данными, если были установлены логин и пароль
@@ -2057,11 +2074,10 @@ async def admin_delete_user(db: AsyncSession, user_id: int, admin_user: models.U
         f"🎯 <b>Бывший пользователь:</b> {escape_html(target_user_name)} (<code>{user_id}</code>)\n\n"
         f"Личные данные пользователя стерты, история транзакций сохранена."
     )
-    
-    await bot.send_telegram_message(
+    await safe_admin_notify(
         chat_id=config.settings.TELEGRAM_CHAT_ID,
         text=log_message,
-        message_thread_id=config.settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+        message_thread_id=config.settings.TELEGRAM_ADMIN_LOG_TOPIC_ID,
     )
 
     # 6. Возвращаем измененный (теперь анонимный) объект пользователя
@@ -2169,15 +2185,17 @@ async def admin_change_user_password(db: AsyncSession, user_id: int, new_passwor
         f"👤 <b>Логин:</b> <code>{escape_html(user.login or 'не установлен')}</code>"
     )
     
-    try:
-        await bot.send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID,
-            text=log_message,
-            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+    notify_result = await safe_admin_notify(
+        chat_id=settings.TELEGRAM_CHAT_ID,
+        text=log_message,
+        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID,
+    )
+    if not notify_result.get("ok"):
+        logger.error(
+            "Не удалось отправить уведомление об изменении пароля: %s",
+            notify_result.get("error"),
         )
-    except Exception as e:
-        logger.error(f"Не удалось отправить уведомление об изменении пароля: {e}")
-    
+
     return user
 
 # --- ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ ПАРОЛЯ ПОЛЬЗОВАТЕЛЯ ---
@@ -2208,14 +2226,16 @@ async def admin_delete_user_password(db: AsyncSession, user_id: int, admin_user:
         f"⚠️ <b>Вход через браузер отключен</b>"
     )
     
-    try:
-        await bot.send_telegram_message(
-            chat_id=settings.TELEGRAM_CHAT_ID,
-            text=log_message,
-            message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID
+    notify_result = await safe_admin_notify(
+        chat_id=settings.TELEGRAM_CHAT_ID,
+        text=log_message,
+        message_thread_id=settings.TELEGRAM_ADMIN_LOG_TOPIC_ID,
+    )
+    if not notify_result.get("ok"):
+        logger.error(
+            "Не удалось отправить уведомление об удалении пароля: %s",
+            notify_result.get("error"),
         )
-    except Exception as e:
-        logger.error(f"Не удалось отправить уведомление об удалении пароля: {e}")
     
     return user
 
@@ -2484,17 +2504,20 @@ async def broadcast_announcement_to_users(
     body_plain: str,
     only_browser_users: bool,
     append_login_url: bool,
-    send_email: bool,
-    send_telegram: bool,
+    do_send_email: bool,
+    do_send_telegram: bool,
+    user_ids: Optional[list[int]] = None,
 ) -> dict:
-    """Рассылка сообщения по email и/или Telegram.
+    """Рассылка сообщения по email и/или Telegram с постатусной отчётностью.
 
-    Получатели: статус ``approved``, не ``deleted`` / ``blocked``.
-    Email: валидный адрес в профиле. Telegram: ``telegram_id`` не меньше 0.
+    Если ``user_ids`` указан — отправка идёт только этим пользователям (с теми же
+    фильтрами по валидному email / привязке Telegram). Иначе — всем подходящим
+    под фильтры.
 
     Returns:
-        Словарь с счётчиками по каналам и списком ``failed`` с ключами
-        ``channel``, ``target``, ``detail``.
+        Словарь с агрегированными счётчиками и подробным списком ``recipients``
+        (один элемент на пару user×channel), а также списком ``failed`` для
+        обратной совместимости.
     """
     login_url = None
     if append_login_url:
@@ -2506,13 +2529,45 @@ async def broadcast_announcement_to_users(
     recipient_count_email = 0
     recipient_count_telegram = 0
     failed: list[dict[str, str]] = []
+    recipients_report: list[dict] = []
 
-    if send_email:
-        users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    user_ids_set: Optional[set[int]] = (
+        {int(uid) for uid in user_ids} if user_ids else None
+    )
+
+    def _make_entry(user: models.User, channel: str, target: str) -> dict:
+        full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+        return {
+            "user_id": user.id,
+            "channel": channel,
+            "target": target,
+            "name": full_name,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "department": user.department or "",
+            "position": user.position or "",
+            "phone": user.phone_number or "",
+            "email": (user.email or "").strip() or None,
+            "telegram_id": user.telegram_id,
+            "ok": False,
+            "skipped": False,
+            "skip_reason": None,
+            "error_code": None,
+            "reason": None,
+            "detail": None,
+        }
+
+    if do_send_email:
+        users = await _fetch_broadcast_recipient_users(
+            db,
+            only_browser_users=only_browser_users,
+            user_ids=user_ids_set,
+        )
         recipient_count_email = len(users)
         body_html, body_text = build_broadcast_email_content(body_plain, login_url=login_url)
         for user in users:
-            to_email = user.email.strip()
+            to_email = (user.email or "").strip()
+            entry = _make_entry(user, "email", to_email)
             try:
                 ok = await send_email(
                     to_email=to_email,
@@ -2522,30 +2577,43 @@ async def broadcast_announcement_to_users(
                 )
                 if ok:
                     sent_ok_email += 1
+                    entry["ok"] = True
                 else:
+                    detail = "Не удалось отправить (проверьте SMTP)"
+                    entry["error_code"] = "smtp_error"
+                    entry["reason"] = human_delivery_reason("smtp_error")
+                    entry["detail"] = detail
                     failed.append(
-                        {
-                            "channel": "email",
-                            "target": to_email,
-                            "detail": "Не удалось отправить (проверьте SMTP)",
-                        }
+                        {"channel": "email", "target": to_email, "detail": detail}
                     )
             except Exception as exc:
-                logger.error("Ошибка рассылки на %s: %s", to_email, exc)
-                failed.append(
-                    {
-                        "channel": "email",
-                        "target": to_email,
-                        "detail": str(exc)[:500],
-                    }
+                detail = str(exc)[:500]
+                code = classify_smtp_error(detail)
+                logger.error(
+                    "Ошибка рассылки на %s: %s (code=%s)", to_email, exc, code
                 )
+                entry["error_code"] = code
+                entry["reason"] = human_delivery_reason(code)
+                entry["detail"] = detail
+                failed.append(
+                    {"channel": "email", "target": to_email, "detail": detail}
+                )
+            recipients_report.append(entry)
 
-    if send_telegram:
-        users_tg = await _fetch_broadcast_telegram_users(db, only_browser_users)
+    if do_send_telegram:
+        users_tg, skipped_no_dialog = await _fetch_broadcast_telegram_users(
+            db,
+            only_browser_users=only_browser_users,
+            user_ids=user_ids_set,
+        )
+        # «Не доходят» в Telegram: пользователь не нажал /start у бота — Telegram
+        # запрещает боту первое сообщение. Помечаем такие записи отдельно,
+        # счётчик recipient_count_telegram включает только реально доступных.
         recipient_count_telegram = len(users_tg)
         tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
         for user in users_tg:
             tid = user.telegram_id
+            entry = _make_entry(user, "telegram", str(tid))
             try:
                 await send_telegram_message(
                     chat_id=int(tid),
@@ -2553,15 +2621,33 @@ async def broadcast_announcement_to_users(
                     parse_mode="HTML",
                 )
                 sent_ok_telegram += 1
+                entry["ok"] = True
             except Exception as exc:
-                logger.error("Ошибка Telegram-рассылки %s: %s", tid, exc)
+                detail = str(exc)[:500]
+                code = classify_telegram_error(detail)
+                logger.error("Ошибка Telegram-рассылки %s: %s (code=%s)", tid, exc, code)
+                entry["error_code"] = code
+                entry["reason"] = human_delivery_reason(code)
+                entry["detail"] = detail
                 failed.append(
-                    {
-                        "channel": "telegram",
-                        "target": str(tid),
-                        "detail": str(exc)[:500],
-                    }
+                    {"channel": "telegram", "target": str(tid), "detail": detail}
                 )
+            recipients_report.append(entry)
+        for user in skipped_no_dialog:
+            entry = _make_entry(
+                user,
+                "telegram",
+                str(user.telegram_id) if user.telegram_id is not None else "",
+            )
+            entry["skipped"] = True
+            entry["skip_reason"] = "no_bot_dialog"
+            entry["error_code"] = "no_bot_dialog"
+            entry["reason"] = human_delivery_reason("no_bot_dialog")
+            entry["detail"] = (
+                "Пользователь ни разу не нажимал /start у бота — Telegram "
+                "запрещает боту первое сообщение. Попросите написать боту."
+            )
+            recipients_report.append(entry)
 
     return {
         "recipient_count_email": recipient_count_email,
@@ -2569,30 +2655,44 @@ async def broadcast_announcement_to_users(
         "sent_ok_email": sent_ok_email,
         "sent_ok_telegram": sent_ok_telegram,
         "failed": failed,
+        "recipients": recipients_report,
     }
 
 
 async def count_broadcast_email_recipients(
     db: AsyncSession,
     only_browser_users: bool,
+    user_ids: Optional[list[int]] = None,
 ) -> int:
     """Возвращает число получателей массовой email-рассылки (после фильтра по валидному email)."""
-    users = await _fetch_broadcast_recipient_users(db, only_browser_users)
+    user_ids_set = {int(uid) for uid in user_ids} if user_ids else None
+    users = await _fetch_broadcast_recipient_users(
+        db,
+        only_browser_users=only_browser_users,
+        user_ids=user_ids_set,
+    )
     return len(users)
 
 
 async def count_broadcast_telegram_recipients(
     db: AsyncSession,
     only_browser_users: bool,
+    user_ids: Optional[list[int]] = None,
 ) -> int:
-    """Число пользователей с Telegram для рассылки (одобрены, есть telegram_id)."""
-    users = await _fetch_broadcast_telegram_users(db, only_browser_users)
+    """Число пользователей с Telegram для рассылки (одобрены, бот доступен)."""
+    user_ids_set = {int(uid) for uid in user_ids} if user_ids else None
+    users, _skipped = await _fetch_broadcast_telegram_users(
+        db,
+        only_browser_users=only_browser_users,
+        user_ids=user_ids_set,
+    )
     return len(users)
 
 
 async def _fetch_broadcast_recipient_users(
     db: AsyncSession,
     only_browser_users: bool,
+    user_ids: Optional[set[int]] = None,
 ) -> list[models.User]:
     """Возвращает пользователей для рассылки: одобрены, не удалены/заблокированы, есть валидный email."""
     conditions = [
@@ -2603,6 +2703,10 @@ async def _fetch_broadcast_recipient_users(
     ]
     if only_browser_users:
         conditions.append(models.User.browser_auth_enabled.is_(True))
+    if user_ids is not None:
+        if not user_ids:
+            return []
+        conditions.append(models.User.id.in_(user_ids))
     result = await db.execute(select(models.User).where(and_(*conditions)))
     rows = result.scalars().all()
     out: list[models.User] = []
@@ -2631,8 +2735,15 @@ def _build_broadcast_telegram_html(
 async def _fetch_broadcast_telegram_users(
     db: AsyncSession,
     only_browser_users: bool,
-) -> list[models.User]:
-    """Пользователи для рассылки в Telegram: одобрены, есть реальный telegram_id."""
+    user_ids: Optional[set[int]] = None,
+) -> tuple[list[models.User], list[models.User]]:
+    """Возвращает (доступные_для_бота, пропущенные_без_диалога).
+
+    Telegram блокирует боту первое сообщение пользователю, который не нажал /start.
+    Поэтому раскладываем на две группы: те, кто хоть раз взаимодействовал с ботом
+    (``has_interacted_with_bot``) и те, кому слать бессмысленно — их фронт покажет
+    отдельным списком в отчёте.
+    """
     conditions = [
         models.User.status == "approved",
         models.User.status != "deleted",
@@ -2642,8 +2753,68 @@ async def _fetch_broadcast_telegram_users(
     ]
     if only_browser_users:
         conditions.append(models.User.browser_auth_enabled.is_(True))
+    if user_ids is not None:
+        if not user_ids:
+            return [], []
+        conditions.append(models.User.id.in_(user_ids))
     result = await db.execute(select(models.User).where(and_(*conditions)))
-    return list(result.scalars().all())
+    rows = list(result.scalars().all())
+    available: list[models.User] = []
+    skipped: list[models.User] = []
+    for user in rows:
+        if getattr(user, "has_interacted_with_bot", False):
+            available.append(user)
+        else:
+            skipped.append(user)
+    return available, skipped
+
+
+async def fetch_broadcast_eligible_users(
+    db: AsyncSession,
+    only_browser_users: bool,
+) -> list[dict]:
+    """Возвращает список кандидатов на рассылку с признаками доступности каналов.
+
+    Используется фронтом для экрана выбора получателей: показывает email/имя/
+    Telegram-id, плюс флаги ``email_available`` / ``telegram_available`` /
+    ``telegram_no_dialog``.
+    """
+    conditions = [
+        models.User.status == "approved",
+        models.User.status != "deleted",
+        models.User.status != "blocked",
+    ]
+    if only_browser_users:
+        conditions.append(models.User.browser_auth_enabled.is_(True))
+    result = await db.execute(
+        select(models.User)
+        .where(and_(*conditions))
+        .order_by(models.User.last_name, models.User.first_name)
+    )
+    rows = result.scalars().all()
+    out: list[dict] = []
+    for user in rows:
+        addr = (user.email or "").strip()
+        email_ok = bool(addr) and is_valid_email(addr)
+        tg_id = user.telegram_id
+        has_real_tg = tg_id is not None and tg_id >= 0
+        has_dialog = bool(getattr(user, "has_interacted_with_bot", False))
+        out.append(
+            {
+                "id": user.id,
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "email": addr if email_ok else (user.email or None),
+                "telegram_id": tg_id if has_real_tg else None,
+                "department": user.department or "",
+                "position": user.position or "",
+                "browser_auth_enabled": bool(user.browser_auth_enabled),
+                "email_available": email_ok,
+                "telegram_available": has_real_tg and has_dialog,
+                "telegram_no_dialog": has_real_tg and not has_dialog,
+            }
+        )
+    return out
 
 
 # --- ДОБАВЬ ЭТУ НОВУЮ ФУНКЦИЮ В КОНЕЦ ФАЙЛА ---
@@ -3237,13 +3408,13 @@ async def create_statix_bonus_purchase(db: AsyncSession, user_id: int, bonus_amo
                 f"📉 <b>Новый баланс:</b> {user.balance} спасибок"
             )
             
-            await send_telegram_message(
+            await safe_admin_notify(
                 chat_id=settings.TELEGRAM_CHAT_ID,
                 text=admin_message,
-                message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+                message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID,
             )
         except Exception as e:
-            print(f"Could not send admin notification for Statix purchase. Error: {e}")
+            logger.exception("Could not send admin notification for Statix purchase: %s", e)
 
         # Email пользователю и админам
         try:
@@ -3564,13 +3735,13 @@ async def accept_shared_gift_invitation(db: AsyncSession, invitation_id: int, us
             f"📉 <b>Баланс покупателя:</b> {buyer.balance} спасибок"
         )
         
-        await send_telegram_message(
+        await safe_admin_notify(
             chat_id=settings.TELEGRAM_CHAT_ID,
             text=admin_message,
-            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID
+            message_thread_id=settings.TELEGRAM_PURCHASE_TOPIC_ID,
         )
     except Exception as e:
-        print(f"Failed to send shared gift admin notification: {e}")
+        logger.exception("Failed to send shared gift admin notification: %s", e)
 
     # Email покупателю и админам
     try:

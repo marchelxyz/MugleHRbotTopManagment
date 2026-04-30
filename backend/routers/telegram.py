@@ -7,7 +7,12 @@ from fastapi import APIRouter, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import crud
-from bot import answer_callback_query, escape_html, send_telegram_message
+from bot import (
+    answer_callback_query,
+    escape_html,
+    send_telegram_message,
+    safe_admin_notify,
+)
 from database import AsyncSessionLocal, settings
 
 logger = logging.getLogger(__name__)
@@ -21,7 +26,21 @@ async def safe_send_message(
     reply_markup: dict | None = None,
     message_thread_id: int | None = None,
 ) -> None:
-    """Отправляет сообщение в Telegram; ошибки только в лог (не роняет webhook)."""
+    """Отправляет сообщение в Telegram; ошибки только в лог (не роняет webhook).
+
+    Для адресатов (личные сообщения / DM) ошибки не критичны — просто пишем лог.
+    Для админ-чата (TELEGRAM_CHAT_ID) используется ``safe_admin_notify`` с
+    автоматическим фолбэком, чтобы уведомления не пропадали из-за «protected»
+    тредов или сбоев HTML-парсинга.
+    """
+    if chat_id == settings.TELEGRAM_CHAT_ID:
+        await safe_admin_notify(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=reply_markup,
+            message_thread_id=message_thread_id,
+        )
+        return
     try:
         await send_telegram_message(chat_id, text, reply_markup, message_thread_id)
     except Exception as e:

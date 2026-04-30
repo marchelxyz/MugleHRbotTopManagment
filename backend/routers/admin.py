@@ -432,12 +432,138 @@ async def broadcast_email_preview_route(
     )
 
 
+@router.get("/users/broadcast/eligible", response_model=schemas.BroadcastEligibleResponse)
+async def broadcast_eligible_users_route(
+    only_browser_users: bool = Query(
+        True,
+        description="Только пользователи с включённым входом через браузер",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Список пользователей-кандидатов на рассылку (для UI выбора получателей)."""
+    users = await crud.fetch_broadcast_eligible_users(db, only_browser_users)
+    available_email = sum(1 for u in users if u.get("email_available"))
+    available_telegram = sum(1 for u in users if u.get("telegram_available"))
+    no_dialog = sum(1 for u in users if u.get("telegram_no_dialog"))
+    return schemas.BroadcastEligibleResponse(
+        only_browser_users=only_browser_users,
+        users=[schemas.BroadcastEligibleUser(**u) for u in users],
+        total=len(users),
+        available_email=available_email,
+        available_telegram=available_telegram,
+        telegram_no_dialog_count=no_dialog,
+    )
+
+
+@router.post("/users/broadcast/export-report")
+async def broadcast_export_report_route(
+    payload: schemas.BroadcastReportExportRequest,
+):
+    """Возвращает Excel-файл с отчётом о последней рассылке.
+
+    Сервер не хранит результаты рассылки между запросами, поэтому фронт
+    отправляет уже полученный отчёт целиком. На лист попадают: ФИО, отдел,
+    должность, телефон, email, telegram_id, канал, статус и человекочитаемая
+    причина (если сообщение не доставлено).
+    """
+    moscow_tz = ZoneInfo("Europe/Moscow")
+    now_moscow = datetime.now(moscow_tz)
+
+    rows: list[dict[str, object]] = []
+    for r in payload.recipients:
+        if r.ok:
+            status_text = "Доставлено"
+        elif r.skipped:
+            status_text = "Пропущено"
+        else:
+            status_text = "Не доставлено"
+        contact = ""
+        if r.channel == "email":
+            contact = r.target or r.email or ""
+        else:
+            contact = (
+                f"tg:{r.telegram_id}" if r.telegram_id is not None else (r.target or "")
+            )
+        full_name = (
+            f"{r.last_name} {r.first_name}".strip() or r.name or f"id:{r.user_id}"
+        )
+        rows.append(
+            {
+                "ID": r.user_id,
+                "Фамилия": r.last_name or "",
+                "Имя": r.first_name or "",
+                "ФИО": full_name,
+                "Отдел": r.department or "",
+                "Должность": r.position or "",
+                "Телефон": r.phone or "",
+                "Email": r.email or "",
+                "Telegram ID": r.telegram_id if r.telegram_id is not None else "",
+                "Канал": "Email" if r.channel == "email" else "Telegram",
+                "Контакт": contact,
+                "Статус": status_text,
+                "Причина": r.reason or ("" if r.ok else "—"),
+                "Код ошибки": r.error_code or "",
+                "Подробности": (r.detail or "")[:500],
+            }
+        )
+
+    output = io.BytesIO()
+    workbook = Workbook()
+    ws = workbook.active
+    ws.title = "Отчёт по рассылке"
+
+    # Метаданные о рассылке — сводка наверху отдельным маленьким блоком
+    ws.append(["Тема", payload.subject or ""])
+    ws.append(["Дата формирования (МСК)", now_moscow.strftime("%Y-%m-%d %H:%M")])
+    ws.append(
+        ["Email доставлено", f"{payload.sent_ok_email}/{payload.recipient_count_email}"]
+    )
+    ws.append(
+        [
+            "Telegram доставлено",
+            f"{payload.sent_ok_telegram}/{payload.recipient_count_telegram}",
+        ]
+    )
+    ws.append([])
+
+    if rows:
+        headers = list(rows[0].keys())
+        ws.append(headers)
+        for row in rows:
+            ws.append([row.get(h, "") for h in headers])
+    else:
+        ws.append(["Нет данных для экспорта"])
+
+    # Авто-ширина колонок (грубо, но достаточно для читаемости)
+    for column_cells in ws.columns:
+        max_length = 0
+        col_letter = column_cells[0].column_letter
+        for cell in column_cells:
+            value = "" if cell.value is None else str(cell.value)
+            if len(value) > max_length:
+                max_length = len(value)
+        ws.column_dimensions[col_letter].width = min(max_length + 2, 60)
+
+    workbook.save(output)
+    output.seek(0)
+
+    filename = f"broadcast_report_{now_moscow.strftime('%Y%m%d_%H%M')}.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @router.post("/users/broadcast-email", response_model=schemas.BroadcastEmailResponse)
 async def broadcast_email_route(
     request: schemas.BroadcastEmailRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Рассылка в email, Telegram или оба канала: одобренные пользователи, не заблокированы."""
+    """Рассылка в email, Telegram или оба канала: одобренные пользователи, не заблокированы.
+
+    Если в теле передан ``user_ids`` — отправка ограничена этим списком.
+    """
     if request.send_email:
         smtp_user = getattr(settings, "SMTP_USERNAME", None) or ""
         smtp_pass = getattr(settings, "SMTP_PASSWORD", None) or ""
@@ -459,8 +585,9 @@ async def broadcast_email_route(
         body_plain=request.body,
         only_browser_users=request.only_browser_users,
         append_login_url=request.append_login_url,
-        send_email=request.send_email,
-        send_telegram=request.send_telegram,
+        do_send_email=request.send_email,
+        do_send_telegram=request.send_telegram,
+        user_ids=request.user_ids,
     )
     parts: list[str] = []
     if request.send_email:
@@ -479,6 +606,9 @@ async def broadcast_email_route(
         sent_ok_email=result["sent_ok_email"],
         sent_ok_telegram=result["sent_ok_telegram"],
         failed=[schemas.BroadcastEmailFailedItem(**f) for f in result["failed"]],
+        recipients=[
+            schemas.BroadcastRecipientReport(**r) for r in result.get("recipients", [])
+        ],
     )
 
 
