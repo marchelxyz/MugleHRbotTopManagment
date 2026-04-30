@@ -11,6 +11,19 @@ TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
 
+
+def _format_exception_for_log(exc: Exception) -> str:
+    """Возвращает информативный текст исключения.
+
+    У некоторых исключений httpx/aiohttp ``str(exc)`` бывает пустым. В логах это
+    выглядело как ``error: ''`` и ломало fallback-логику. Тип + repr почти всегда
+    дают полезную диагностическую строку без токенов/секретов.
+    """
+    text = str(exc).strip()
+    if text:
+        return f"{type(exc).__name__}: {text}"
+    return f"{type(exc).__name__}: {exc!r}"
+
 def escape_markdown(text) -> str:
     """
     Экранирует специальные символы Markdown для безопасного использования в сообщениях Telegram.
@@ -203,9 +216,11 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
             )
             raise Exception(f"HTTP error: {error_msg}")
         except Exception as e:
+            error_text = _format_exception_for_log(e)
             logger.error(
                 "Unexpected error sending to %s (thread=%s): %s",
-                chat_id, message_thread_id, e,
+                chat_id, message_thread_id, error_text,
+                exc_info=True,
             )
             raise
 
@@ -219,10 +234,12 @@ async def safe_admin_notify(
 ) -> dict:
     """Отправка уведомления в админ-чат с фолбэками и без проброса исключений.
 
-    Делает 3 попытки:
+    Делает до 3 попыток:
       1. Как заказано (тред + parse_mode);
-      2. Без message_thread_id (если тред «protected»/удалён или Telegram отвечает thread not found);
-      3. Без parse_mode (на случай ошибок парсинга HTML/Markdown).
+      2. Без message_thread_id при любой ошибке в топике — лучше доставить
+         уведомление в общий чат, чем потерять его;
+      3. Без parse_mode как последний шанс, если Telegram/HTTP-клиент вернул
+         неинформативную или parse-related ошибку.
 
     Возвращает: ``{"ok": bool, "attempt": int, "error": str|None, "fallback": str|None}``.
     Никогда не бросает исключений — для устойчивости основной бизнес-логики.
@@ -241,37 +258,45 @@ async def safe_admin_notify(
             )
             return None
         except Exception as exc:
-            return str(exc)
+            return _format_exception_for_log(exc)
 
     err1 = await _try(message_thread_id, parse_mode)
     if err1 is None:
         return {"ok": True, "attempt": 1, "error": None, "fallback": None}
     attempts.append({"attempt": 1, "error": err1})
 
-    err1_low = err1.lower()
-    if message_thread_id and (
-        "thread not found" in err1_low
-        or "topic_closed" in err1_low
-        or "topic_deleted" in err1_low
-    ):
+    err_for_plain = err1
+    plain_thread = message_thread_id
+    if message_thread_id:
         err2 = await _try(None, parse_mode)
         if err2 is None:
             fallback_used = "no_thread"
             logger.warning(
-                "safe_admin_notify: тред %s недоступен в чате %s, отправлено без треда",
-                message_thread_id, chat_id,
+                "safe_admin_notify: первая попытка в тред %s чата %s провалилась (%s), отправлено без треда",
+                message_thread_id, chat_id, err1,
             )
             return {"ok": True, "attempt": 2, "error": None, "fallback": fallback_used}
         attempts.append({"attempt": 2, "error": err2})
-        err1_low = err2.lower()
+        err_for_plain = err2
+        plain_thread = None
 
-    if parse_mode and ("can't parse" in err1_low or "parse entities" in err1_low):
-        err3 = await _try(message_thread_id, None)
+    err_low = err_for_plain.lower()
+    should_try_plain = (
+        parse_mode
+        and (
+            "can't parse" in err_low
+            or "parse entities" in err_low
+            or "bad request" in err_low
+            or plain_thread is None
+        )
+    )
+    if should_try_plain:
+        err3 = await _try(plain_thread, None)
         if err3 is None:
             fallback_used = "no_parse_mode"
             logger.warning(
-                "safe_admin_notify: HTML парсер отверг сообщение в %s, отправлено plain",
-                chat_id,
+                "safe_admin_notify: сообщение в %s отправлено без parse_mode (thread=%s)",
+                chat_id, plain_thread,
             )
             return {"ok": True, "attempt": 3, "error": None, "fallback": fallback_used}
         attempts.append({"attempt": 3, "error": err3})
