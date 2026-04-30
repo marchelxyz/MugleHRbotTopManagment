@@ -1,7 +1,7 @@
 // frontend/src/components/ColleagueSelector.jsx
 
 import React, { useState, useEffect } from 'react';
-import { getAllUsers } from '../api';
+import { getAllUsers, getTelegramPhotoProxyUrl } from '../api';
 import { useModalAlert } from '../contexts/ModalAlertContext';
 import { formatUserName } from '../utils/nameFormatter';
 import styles from './ColleagueSelector.module.css';
@@ -95,7 +95,7 @@ const ColleagueSelector = ({ isOpen, onClose, onSelect, currentUserId }) => {
                 <div className={styles.userAvatar}>
                   {user.telegram_photo_url ? (
                     <img 
-                      src={user.telegram_photo_url} 
+                      src={getTelegramPhotoProxyUrl(user.telegram_photo_url)}
                       alt={user.first_name}
                       className={styles.avatarImage}
                     />

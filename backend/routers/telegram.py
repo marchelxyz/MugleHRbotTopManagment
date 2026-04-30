@@ -1,15 +1,19 @@
 import logging
 import traceback
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import crud
 from bot import (
     answer_callback_query,
+    download_telegram_file,
     escape_html,
+    fetch_telegram_photo_url,
+    get_telegram_file_path,
     send_telegram_message,
     safe_admin_notify,
 )
@@ -65,6 +69,36 @@ async def telegram_test() -> dict[str, str]:
             "и проверьте getWebhookInfo (url и last_error_message)."
         ),
     }
+
+
+@router.get("/telegram/photo-proxy")
+async def telegram_photo_proxy(url: str = Query(..., min_length=1)) -> Response:
+    """Проксирует Telegram WebApp photo_url через backend/Railway relay.
+
+    Во фронте Telegram часто отдаёт ``https://t.me/i/userpic/...``. Если клиент
+    или серверный маршрут не может стабильно достучаться до Telegram, relay
+    скачивает изображение с внешнего хоста, а приложение отдаёт его как обычный
+    backend-ресурс.
+    """
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or host not in {"t.me", "telegram.org"}:
+        raise HTTPException(status_code=400, detail="Only Telegram photo URLs are allowed")
+
+    try:
+        content, content_type = await fetch_telegram_photo_url(url)
+    except Exception as exc:
+        logger.error("telegram photo proxy failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=502, detail="Telegram photo proxy failed") from exc
+
+    if not content:
+        raise HTTPException(status_code=502, detail="Telegram photo is empty")
+
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.post("/telegram/webhook")
@@ -162,61 +196,42 @@ async def _dispatch_telegram_webhook_body(
                 file_id = document["file_id"]
                 print(f"Processing pkpass file for user {user.id}, file_id: {file_id}")
 
-                timeout = httpx.Timeout(60.0, read=30.0)
-                async with httpx.AsyncClient(timeout=timeout) as client:
-                    file_path_res = await client.get(
-                        f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}"
+                file_path = await get_telegram_file_path(file_id)
+                print(f"File path retrieved: {file_path}")
+
+                file_content = await download_telegram_file(file_path)
+
+                if not file_content or len(file_content) == 0:
+                    print("Empty file content received")
+                    await safe_send_message(
+                        user.telegram_id,
+                        "❌ Файл пустой. Попробуйте отправить файл еще раз.",
                     )
-                    file_path_res.raise_for_status()
-                    file_path_data = file_path_res.json()
+                    return
 
-                    if not file_path_data.get("ok") or "result" not in file_path_data:
-                        print(f"Failed to get file path: {file_path_data}")
-                        await safe_send_message(
-                            user.telegram_id,
-                            "❌ Ошибка при получении файла. Попробуйте отправить файл еще раз.",
-                        )
-                        return
+                print(f"File downloaded, size: {len(file_content)} bytes")
 
-                    file_path = file_path_data["result"]["file_path"]
-                    print(f"File path retrieved: {file_path}")
-
-                    file_url = f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/{file_path}"
-                    file_res = await client.get(file_url)
-                    file_res.raise_for_status()
-                    file_content = file_res.content
-
-                    if not file_content or len(file_content) == 0:
-                        print("Empty file content received")
-                        await safe_send_message(
-                            user.telegram_id,
-                            "❌ Файл пустой. Попробуйте отправить файл еще раз.",
-                        )
-                        return
-
-                    print(f"File downloaded, size: {len(file_content)} bytes")
-
-                    result = await crud.process_pkpass_file(db, user.id, file_content)
-                    if result:
-                        print(f"Pkpass file processed successfully for user {user.id}")
-                        await safe_send_message(
-                            user.telegram_id,
-                            "✅ Ваша бонусная карта успешно добавлена в профиль!",
-                        )
-                        await crud._create_notification(
-                            db,
-                            user.id,
-                            "system",
-                            "Бонусная карта добавлена",
-                            "Ваша бонусная карта успешно добавлена в профиль.",
-                        )
-                        await db.commit()
-                    else:
-                        print(f"Failed to process pkpass file for user {user.id}")
-                        await safe_send_message(
-                            user.telegram_id,
-                            "❌ Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.",
-                        )
+                result = await crud.process_pkpass_file(db, user.id, file_content)
+                if result:
+                    print(f"Pkpass file processed successfully for user {user.id}")
+                    await safe_send_message(
+                        user.telegram_id,
+                        "✅ Ваша бонусная карта успешно добавлена в профиль!",
+                    )
+                    await crud._create_notification(
+                        db,
+                        user.id,
+                        "system",
+                        "Бонусная карта добавлена",
+                        "Ваша бонусная карта успешно добавлена в профиль.",
+                    )
+                    await db.commit()
+                else:
+                    print(f"Failed to process pkpass file for user {user.id}")
+                    await safe_send_message(
+                        user.telegram_id,
+                        "❌ Ошибка при обработке файла. Убедитесь, что файл .pkpass корректен.",
+                    )
 
             except httpx.ReadTimeout as e:
                 print(f"Read timeout while processing pkpass file: {e}")
