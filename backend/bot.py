@@ -12,6 +12,67 @@ SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
 
 
+def _telegram_relay_url() -> str | None:
+    """Возвращает базовый URL Railway relay, если он настроен."""
+    raw = (getattr(settings, "TELEGRAM_RELAY_URL", "") or "").strip()
+    return raw.rstrip("/") if raw else None
+
+
+def _telegram_relay_headers() -> dict[str, str]:
+    secret = (getattr(settings, "TELEGRAM_RELAY_SECRET", "") or "").strip()
+    return {"X-Relay-Secret": secret} if secret else {}
+
+
+def _extract_telegram_response_error(data: dict, fallback: str) -> str:
+    """Достаёт description из прямого ответа Telegram или HTTPException detail relay."""
+    description = data.get("description")
+    if isinstance(description, str) and description:
+        return description
+
+    detail = data.get("detail")
+    if isinstance(detail, dict):
+        detail_description = detail.get("description")
+        if isinstance(detail_description, str) and detail_description:
+            return detail_description
+        return str(detail)
+    if isinstance(detail, str) and detail:
+        return detail
+
+    return fallback
+
+
+async def _post_telegram_json(
+    *,
+    method: str,
+    direct_url: str,
+    payload: dict,
+    timeout: httpx.Timeout,
+) -> dict:
+    """POST в Telegram API напрямую или через Railway relay.
+
+    Relay используется только если задан ``TELEGRAM_RELAY_URL``. Для обратной
+    совместимости с уже созданным relay endpoint ``sendMessage`` маппится на
+    ``/send-message``. Для callback-кнопок нужен endpoint
+    ``/answer-callback-query`` на relay.
+    """
+    relay_url = _telegram_relay_url()
+    relay_paths = {
+        "sendMessage": "send-message",
+        "answerCallbackQuery": "answer-callback-query",
+    }
+    url = direct_url
+    headers: dict[str, str] = {}
+    if relay_url:
+        relay_path = relay_paths.get(method, method)
+        url = f"{relay_url}/{relay_path}"
+        headers = _telegram_relay_headers()
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 def _format_exception_for_log(exc: Exception) -> str:
     """Возвращает информативный текст исключения.
 
@@ -189,40 +250,41 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
         payload['message_thread_id'] = message_thread_id
     
     timeout = httpx.Timeout(30.0, connect=10.0)
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    try:
+        result = await _post_telegram_json(
+            method="sendMessage",
+            direct_url=SEND_MESSAGE_URL,
+            payload=payload,
+            timeout=timeout,
+        )
+        if result.get('ok'):
+            logger.info("Telegram sendMessage ok chat_id=%s thread=%s", chat_id, message_thread_id)
+            return result
+        error_msg = result.get('description', 'Unknown error')
+        logger.error(
+            "Telegram API error sending to %s (thread=%s): %s",
+            chat_id, message_thread_id, error_msg,
+        )
+        raise Exception(f"Telegram API error: {error_msg}")
+    except httpx.HTTPStatusError as e:
         try:
-            response = await client.post(SEND_MESSAGE_URL, json=payload)
-            response.raise_for_status()
-            result = response.json()
-            if result.get('ok'):
-                logger.info("Telegram sendMessage ok chat_id=%s thread=%s", chat_id, message_thread_id)
-                return result
-            else:
-                error_msg = result.get('description', 'Unknown error')
-                logger.error(
-                    "Telegram API error sending to %s (thread=%s): %s",
-                    chat_id, message_thread_id, error_msg,
-                )
-                raise Exception(f"Telegram API error: {error_msg}")
-        except httpx.HTTPStatusError as e:
-            try:
-                error_data = e.response.json()
-                error_msg = error_data.get('description', str(e))
-            except Exception:
-                error_msg = str(e)
-            logger.error(
-                "HTTP error sending to %s (thread=%s): %s",
-                chat_id, message_thread_id, error_msg,
-            )
-            raise Exception(f"HTTP error: {error_msg}")
-        except Exception as e:
-            error_text = _format_exception_for_log(e)
-            logger.error(
-                "Unexpected error sending to %s (thread=%s): %s",
-                chat_id, message_thread_id, error_text,
-                exc_info=True,
-            )
-            raise
+            error_data = e.response.json()
+            error_msg = _extract_telegram_response_error(error_data, str(e))
+        except Exception:
+            error_msg = str(e)
+        logger.error(
+            "HTTP error sending to %s (thread=%s): %s",
+            chat_id, message_thread_id, error_msg,
+        )
+        raise Exception(f"HTTP error: {error_msg}")
+    except Exception as e:
+        error_text = _format_exception_for_log(e)
+        logger.error(
+            "Unexpected error sending to %s (thread=%s): %s",
+            chat_id, message_thread_id, error_text,
+            exc_info=True,
+        )
+        raise
 
 
 async def safe_admin_notify(
@@ -327,34 +389,40 @@ async def answer_callback_query(
     if show_alert:
         payload["show_alert"] = True
     timeout = httpx.Timeout(30.0, connect=10.0)
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    try:
+        result = await _post_telegram_json(
+            method="answerCallbackQuery",
+            direct_url=ANSWER_CALLBACK_URL,
+            payload=payload,
+            timeout=timeout,
+        )
+        if result.get("ok"):
+            return True
+        logger.error(
+            "answerCallbackQuery отклонён Telegram: %s (id=%s…)",
+            result.get("description", result),
+            callback_query_id[:12],
+        )
+        return False
+    except httpx.HTTPStatusError as e:
         try:
-            response = await client.post(ANSWER_CALLBACK_URL, json=payload)
-            response.raise_for_status()
-            result = response.json()
-            if result.get("ok"):
-                return True
-            logger.error(
-                "answerCallbackQuery отклонён Telegram: %s (id=%s…)",
-                result.get("description", result),
-                callback_query_id[:12],
-            )
-            return False
-        except httpx.HTTPStatusError as e:
-            try:
-                body = e.response.json()
-                desc = body.get("description", e.response.text)
-            except Exception:
-                desc = e.response.text
-            logger.error(
-                "answerCallbackQuery HTTP %s: %s",
-                e.response.status_code,
-                desc,
-            )
-            return False
-        except Exception as e:
-            logger.exception("answerCallbackQuery: %s", e)
-            return False
+            body = e.response.json()
+            desc = _extract_telegram_response_error(body, e.response.text)
+        except Exception:
+            desc = e.response.text
+        logger.error(
+            "answerCallbackQuery HTTP %s: %s",
+            e.response.status_code,
+            desc,
+        )
+        return False
+    except Exception as e:
+        logger.error(
+            "answerCallbackQuery: %s",
+            _format_exception_for_log(e),
+            exc_info=True,
+        )
+        return False
 
 async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name: str, item_name: str, invitation_id: int):
     """Отправить уведомление о приглашении на совместный подарок"""
