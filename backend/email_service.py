@@ -701,12 +701,14 @@ async def send_purchase_notification_to_admins(
 def build_broadcast_email_content(
     body_plain: str,
     login_url: Optional[str] = None,
+    web_credentials: Optional[dict[str, str]] = None,
 ) -> tuple[str, str]:
     """Формирует HTML и текст письма для массовой рассылки (текст экранируется).
 
     Args:
         body_plain: Текст сообщения от администратора.
         login_url: Если задан, в конец добавляется блок со ссылкой для входа.
+        web_credentials: Если задан, добавляет персональные данные веб-входа.
 
     Returns:
         Кортеж (body_html, body_text) для send_email.
@@ -718,6 +720,14 @@ def build_broadcast_email_content(
     if login_url:
         text_parts.append("")
         text_parts.append(f"Ссылка для входа: {login_url}")
+    if web_credentials:
+        login = web_credentials.get("login") or ""
+        password = web_credentials.get("password") or ""
+        alternate_login = web_credentials.get("alternate_login") or ""
+        text_parts.extend(["", "Данные для веб-входа:", f"Логин: {login}"])
+        if alternate_login:
+            text_parts.append(f"Альтернативный логин: {alternate_login}")
+        text_parts.append(f"Пароль: {password}")
     body_text = "\n".join(text_parts)
 
     escaped = html_mod.escape(stripped)
@@ -734,6 +744,29 @@ def build_broadcast_email_content(
             "<p style=\"margin-top:20px;\">"
             f"<a href=\"{safe_url}\" style=\"color:#007bff;\">Перейти по ссылке для входа</a></p>"
             f"<p style=\"font-size:12px;color:#666;word-break:break-all;\">{html_mod.escape(login_url)}</p>"
+        )
+    if web_credentials:
+        safe_login = html_mod.escape(web_credentials.get("login") or "")
+        safe_password = html_mod.escape(web_credentials.get("password") or "")
+        safe_alternate = html_mod.escape(web_credentials.get("alternate_login") or "")
+        alternate_html = (
+            "<p style=\"margin:8px 0;\"><strong>Альтернативный логин:</strong> "
+            f"<code style=\"background:#e9ecef;padding:3px 6px;border-radius:3px;\">{safe_alternate}</code></p>"
+            if safe_alternate
+            else ""
+        )
+        html_chunks.append(
+            "<div style=\"background:#f8f9fa;padding:16px;border-radius:5px;"
+            "margin:20px 0;border-left:4px solid #007bff;\">"
+            "<p style=\"margin:0 0 10px 0;\"><strong>Данные для веб-входа</strong></p>"
+            "<p style=\"margin:8px 0;\"><strong>Логин:</strong> "
+            f"<code style=\"background:#e9ecef;padding:3px 6px;border-radius:3px;\">{safe_login}</code></p>"
+            f"{alternate_html}"
+            "<p style=\"margin:8px 0;\"><strong>Пароль:</strong> "
+            f"<code style=\"background:#e9ecef;padding:3px 6px;border-radius:3px;\">{safe_password}</code></p>"
+            "<p style=\"margin:12px 0 0 0;color:#856404;font-size:13px;\">"
+            "Сохраните эти данные в безопасном месте.</p>"
+            "</div>"
         )
     html_chunks.extend(["</div>", "</body></html>"])
     body_html = "".join(html_chunks)

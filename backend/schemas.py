@@ -490,6 +490,7 @@ class BroadcastEmailRequest(BaseModel):
     body: str = Field(..., min_length=1, max_length=20000)
     only_browser_users: bool = True
     append_login_url: bool = True
+    include_web_credentials: bool = False
     send_email: bool = True
     send_telegram: bool = False
     user_ids: Optional[List[int]] = None

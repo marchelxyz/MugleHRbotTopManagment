@@ -585,6 +585,7 @@ async def broadcast_email_route(
         body_plain=request.body,
         only_browser_users=request.only_browser_users,
         append_login_url=request.append_login_url,
+        include_web_credentials=request.include_web_credentials,
         do_send_email=request.send_email,
         do_send_telegram=request.send_telegram,
         user_ids=request.user_ids,

@@ -164,6 +164,7 @@ function EmailBroadcast() {
   const [body, setBody] = useState('');
   const [onlyBrowserUsers, setOnlyBrowserUsers] = useState(true);
   const [appendLoginUrl, setAppendLoginUrl] = useState(true);
+  const [includeWebCredentials, setIncludeWebCredentials] = useState(false);
   const [recipientCountEmail, setRecipientCountEmail] = useState(null);
   const [recipientCountTelegram, setRecipientCountTelegram] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -352,6 +353,7 @@ function EmailBroadcast() {
         body: text,
         only_browser_users: onlyBrowserUsers,
         append_login_url: appendLoginUrl,
+        include_web_credentials: includeWebCredentials,
         send_email: true,
         send_telegram: false, // пусть админ сознательно отправит и в телеграм при «всем»
       };
@@ -378,6 +380,7 @@ function EmailBroadcast() {
         body: text,
         only_browser_users: onlyBrowserUsers,
         append_login_url: appendLoginUrl,
+        include_web_credentials: includeWebCredentials,
         send_email: selectedSummary.email > 0,
         send_telegram: selectedSummary.telegram > 0,
         user_ids: selectedSummary.ids,
@@ -396,6 +399,11 @@ function EmailBroadcast() {
         ? (recipientCountTelegram ?? '—')
         : selectedSummary.telegram;
       summaryParts.push(`Telegram: ${cnt} чат(ов)`);
+    }
+    if (includeWebCredentials) {
+      summaryParts.push(
+        'В рассылку будут добавлены веб-логин/пароль только тем пользователям, у кого они сохранены.',
+      );
     }
     const isConfirmed = await confirm(
       'Подтверждение рассылки',
@@ -783,6 +791,15 @@ function EmailBroadcast() {
             />
             Добавить ссылку для входа (WEB_APP_LOGIN_URL) — в письме и в
             Telegram
+          </label>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={includeWebCredentials}
+              onChange={(e) => setIncludeWebCredentials(e.target.checked)}
+            />
+            Добавить логин и пароль веб-входа. Если у пользователя есть email,
+            он будет указан как альтернативный логин.
           </label>
 
           <button
