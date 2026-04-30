@@ -1,6 +1,6 @@
 // frontend/src/pages/LeaderboardPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { getLeaderboard, getMyRank, getLeaderboardStatus } from '../api';
+import { getLeaderboard, getMyRank, getLeaderboardStatus, getTelegramPhotoProxyUrl } from '../api';
 import styles from './LeaderboardPage.module.css';
 import PageLayout from '../components/PageLayout';
 import { FaCrown, FaCalendarDay, FaCalendarAlt, FaGift, FaInfinity } from 'react-icons/fa';
@@ -120,7 +120,7 @@ function LeaderboardPage({ user, seasonTheme, themeAssets }) {
               {top3[1] && (
                 <div className={`${styles.podiumItem} ${styles.place2}`}>
                   <FaCrown className={styles.podiumIcon} color="#C0C0C0" />
-                  <img src={top3[1].user.telegram_photo_url || 'placeholder.png'} alt={top3[1].user.first_name} className={styles.podiumAvatar} loading="lazy" />
+                  <img src={getTelegramPhotoProxyUrl(top3[1].user.telegram_photo_url) || 'placeholder.png'} alt={top3[1].user.first_name} className={styles.podiumAvatar} loading="lazy" />
                   <div className={styles.podiumName}>{top3[1].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[1].total_received}</div>
                 </div>
@@ -128,7 +128,7 @@ function LeaderboardPage({ user, seasonTheme, themeAssets }) {
               {top3[0] && (
                 <div className={`${styles.podiumItem} ${styles.place1}`}>
                   <FaCrown className={styles.podiumIcon} color="#FFD700" />
-                  <img src={top3[0].user.telegram_photo_url || 'placeholder.png'} alt={top3[0].user.first_name} className={styles.podiumAvatar} loading="lazy" />
+                  <img src={getTelegramPhotoProxyUrl(top3[0].user.telegram_photo_url) || 'placeholder.png'} alt={top3[0].user.first_name} className={styles.podiumAvatar} loading="lazy" />
                   <div className={styles.podiumName}>{top3[0].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[0].total_received}</div>
                 </div>
@@ -136,7 +136,7 @@ function LeaderboardPage({ user, seasonTheme, themeAssets }) {
               {top3[2] && (
                 <div className={`${styles.podiumItem} ${styles.place3}`}>
                   <FaCrown className={styles.podiumIcon} color="#CD7F32" />
-                  <img src={top3[2].user.telegram_photo_url || 'placeholder.png'} alt={top3[2].user.first_name} className={styles.podiumAvatar} loading="lazy" />
+                  <img src={getTelegramPhotoProxyUrl(top3[2].user.telegram_photo_url) || 'placeholder.png'} alt={top3[2].user.first_name} className={styles.podiumAvatar} loading="lazy" />
                   <div className={styles.podiumName}>{top3[2].user.first_name}</div>
                   <div className={styles.podiumPoints}>{top3[2].total_received}</div>
                 </div>
@@ -149,7 +149,7 @@ function LeaderboardPage({ user, seasonTheme, themeAssets }) {
               {others.map((item, index) => (
                 <li key={item.user.id} className={styles.listItem}>
                   <span className={styles.rank}>{index + 4}</span>
-                  <img src={item.user.telegram_photo_url || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} loading="lazy" />
+                  <img src={getTelegramPhotoProxyUrl(item.user.telegram_photo_url) || 'placeholder.png'} alt={item.user.first_name} className={styles.listItemAvatar} loading="lazy" />
                   <div className={styles.userInfo}>
                     <span className={styles.userName}>{item.user.first_name}</span>
                   </div>

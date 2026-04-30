@@ -1,6 +1,7 @@
 // frontend/src/components/UserAvatar.jsx
 
 import React from 'react';
+import { getTelegramPhotoProxyUrl } from '../api';
 import styles from './UserAvatar.module.css';
 
 // Функция для генерации цвета на основе имени
@@ -21,7 +22,7 @@ function UserAvatar({ user }) {
   // --- НАЧАЛО ИЗМЕНЕНИЙ ---
   // Если есть URL фото, показываем его
   if (user.telegram_photo_url) {
-    return <img src={user.telegram_photo_url} alt={`${user.first_name}`} className={styles.avatarImage} loading="lazy" />;
+    return <img src={getTelegramPhotoProxyUrl(user.telegram_photo_url)} alt={`${user.first_name}`} className={styles.avatarImage} loading="lazy" />;
   }
   // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 

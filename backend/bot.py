@@ -1,15 +1,15 @@
 import httpx
 from database import settings
-import json
 import logging
-import re
 
 logger = logging.getLogger(__name__)
 
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/"
+TELEGRAM_FILE_API_URL = f"https://api.telegram.org/file/bot{settings.TELEGRAM_BOT_TOKEN}/"
 
 SEND_MESSAGE_URL = f"{TELEGRAM_API_URL}sendMessage"
 ANSWER_CALLBACK_URL = f"{TELEGRAM_API_URL}answerCallbackQuery"
+GET_FILE_URL = f"{TELEGRAM_API_URL}getFile"
 
 
 def _telegram_relay_url() -> str | None:
@@ -59,6 +59,7 @@ async def _post_telegram_json(
     relay_paths = {
         "sendMessage": "send-message",
         "answerCallbackQuery": "answer-callback-query",
+        "getFile": "get-file",
     }
     url = direct_url
     headers: dict[str, str] = {}
@@ -71,6 +72,31 @@ async def _post_telegram_json(
         response = await client.post(url, json=payload, headers=headers)
     response.raise_for_status()
     return response.json()
+
+
+async def _fetch_telegram_binary(
+    *,
+    relay_path: str,
+    relay_payload: dict,
+    direct_url: str,
+    timeout: httpx.Timeout,
+) -> tuple[bytes, str]:
+    relay_url = _telegram_relay_url()
+    headers: dict[str, str] = {}
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        if relay_url:
+            headers = _telegram_relay_headers()
+            response = await client.post(
+                f"{relay_url}/{relay_path}",
+                json=relay_payload,
+                headers=headers,
+            )
+        else:
+            response = await client.get(direct_url)
+
+    response.raise_for_status()
+    content_type = response.headers.get("content-type") or "application/octet-stream"
+    return response.content, content_type
 
 
 def _format_exception_for_log(exc: Exception) -> str:
@@ -244,7 +270,7 @@ async def send_telegram_message(chat_id: int, text: str, reply_markup: dict = No
     if parse_mode:
         payload['parse_mode'] = parse_mode
     if reply_markup:
-        payload['reply_markup'] = json.dumps(reply_markup)
+        payload['reply_markup'] = reply_markup
     
     if message_thread_id:
         payload['message_thread_id'] = message_thread_id
@@ -423,6 +449,43 @@ async def answer_callback_query(
             exc_info=True,
         )
         return False
+
+
+async def get_telegram_file_path(file_id: str) -> str:
+    """Получает Telegram file_path через прямой API или Railway relay."""
+    timeout = httpx.Timeout(30.0, connect=10.0)
+    result = await _post_telegram_json(
+        method="getFile",
+        direct_url=GET_FILE_URL,
+        payload={"file_id": file_id},
+        timeout=timeout,
+    )
+    if not result.get("ok") or "result" not in result or "file_path" not in result["result"]:
+        raise Exception(f"Telegram getFile error: {result}")
+    return result["result"]["file_path"]
+
+
+async def download_telegram_file(file_path: str) -> bytes:
+    """Скачивает файл Telegram через прямой API или Railway relay."""
+    timeout = httpx.Timeout(60.0, connect=10.0, read=45.0)
+    content, _ = await _fetch_telegram_binary(
+        relay_path="download-file",
+        relay_payload={"file_path": file_path},
+        direct_url=f"{TELEGRAM_FILE_API_URL}{file_path}",
+        timeout=timeout,
+    )
+    return content
+
+
+async def fetch_telegram_photo_url(photo_url: str) -> tuple[bytes, str]:
+    """Скачивает Telegram WebApp photo_url через relay, если он настроен."""
+    timeout = httpx.Timeout(30.0, connect=10.0, read=30.0)
+    return await _fetch_telegram_binary(
+        relay_path="fetch-url",
+        relay_payload={"url": photo_url},
+        direct_url=photo_url,
+        timeout=timeout,
+    )
 
 async def send_shared_gift_invitation(invited_user_telegram_id: int, buyer_name: str, item_name: str, invitation_id: int):
     """Отправить уведомление о приглашении на совместный подарок"""

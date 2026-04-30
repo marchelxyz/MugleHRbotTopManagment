@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaCrown } from 'react-icons/fa';
+import { getTelegramPhotoProxyUrl } from '../api';
 import styles from './LeaderboardBanner.module.css';
 
 // Цвета для корон
@@ -36,7 +37,7 @@ function LeaderboardBanner({ banner, onNavigate }) {
               color={crownColors[user.rank]} 
             />
             <img 
-              src={user.telegram_photo_url || 'placeholder.png'} 
+              src={getTelegramPhotoProxyUrl(user.telegram_photo_url) || 'placeholder.png'}
               alt={user.first_name} 
               className={styles.podiumAvatar}
               loading="lazy"
