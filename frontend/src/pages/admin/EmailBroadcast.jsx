@@ -235,6 +235,25 @@ function EmailBroadcast() {
     });
   }, [eligibleUsers, search]);
 
+  const eligibleStats = useMemo(() => {
+    const total = eligibleUsers.length;
+    const emailAvailable = eligibleUsers.filter((u) => u.email_available).length;
+    const telegramAvailable = eligibleUsers.filter((u) => u.telegram_available).length;
+    const telegramNoDialog = eligibleUsers.filter((u) => u.telegram_no_dialog).length;
+    const telegramWithId = eligibleUsers.filter((u) => u.telegram_id != null).length;
+    const telegramNoId = total - telegramWithId;
+    return {
+      total,
+      emailAvailable,
+      telegramAvailable,
+      telegramNoDialog,
+      telegramNoId,
+    };
+  }, [eligibleUsers]);
+
+  const hiddenTelegramCount =
+    eligibleStats.telegramNoDialog + eligibleStats.telegramNoId;
+
   const setUserSelected = (userId, selected) => {
     setSelection((prev) => {
       const next = { ...prev };
@@ -449,6 +468,41 @@ function EmailBroadcast() {
             Telegram:{' '}
             {recipientCountTelegram != null ? recipientCountTelegram : '—'}
           </span>
+        </div>
+        <div
+          style={{
+            background: '#fafafa',
+            border: '1px solid #eee',
+            borderRadius: 6,
+            padding: '10px 12px',
+            margin: '-4px 0 16px',
+            color: '#444',
+            fontSize: 13,
+            lineHeight: 1.5,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>
+            Почему число меньше общего списка пользователей
+          </div>
+          <div>
+            В текущем фильтре найдено пользователей: <b>{eligibleStats.total}</b>.
+            Email доступен: <b>{eligibleStats.emailAvailable}</b>. Telegram доступен
+            боту: <b>{eligibleStats.telegramAvailable}</b>.
+          </div>
+          <div style={{ color: hiddenTelegramCount ? '#8a6d00' : '#666' }}>
+            Не попали в Telegram-оценку:{' '}
+            <b>{hiddenTelegramCount}</b>
+            {' '}· не нажали /start у бота:{' '}
+            <b>{eligibleStats.telegramNoDialog}</b>
+            {' '}· без Telegram ID:{' '}
+            <b>{eligibleStats.telegramNoId}</b>.
+          </div>
+          {onlyBrowserUsers && (
+            <div style={{ color: '#666' }}>
+              Включён дополнительный фильтр: только пользователи с доступом через
+              браузер.
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit}>
