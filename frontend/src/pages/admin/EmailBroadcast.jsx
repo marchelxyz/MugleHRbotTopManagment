@@ -239,20 +239,19 @@ function EmailBroadcast() {
     const total = eligibleUsers.length;
     const emailAvailable = eligibleUsers.filter((u) => u.email_available).length;
     const telegramAvailable = eligibleUsers.filter((u) => u.telegram_available).length;
-    const telegramNoDialog = eligibleUsers.filter((u) => u.telegram_no_dialog).length;
     const telegramWithId = eligibleUsers.filter((u) => u.telegram_id != null).length;
     const telegramNoId = total - telegramWithId;
+    const telegramNoStartMark = eligibleUsers.filter((u) => u.telegram_no_dialog).length;
     return {
       total,
       emailAvailable,
       telegramAvailable,
-      telegramNoDialog,
+      telegramNoStartMark,
       telegramNoId,
     };
   }, [eligibleUsers]);
 
-  const hiddenTelegramCount =
-    eligibleStats.telegramNoDialog + eligibleStats.telegramNoId;
+  const hiddenTelegramCount = eligibleStats.telegramNoId;
 
   const noStartUsers = useMemo(
     () =>
@@ -443,8 +442,8 @@ function EmailBroadcast() {
         Учитываются только одобренные аккаунты, не заблокированные. Можно
         отправить всем подходящим пользователям или выбрать конкретных людей и
         указать каналы доставки на каждого. Для email нужен SMTP на сервере;
-        для Telegram — пользователь должен хотя бы раз нажать /start у бота
-        (иначе Telegram запретит боту первое сообщение).
+        для Telegram нужен привязанный Telegram ID. Реальную доставку проверяем
+        по ответу Telegram после отправки.
       </p>
 
       <div className={styles.card}>
@@ -499,17 +498,22 @@ function EmailBroadcast() {
           </div>
           <div>
             В текущем фильтре найдено пользователей: <b>{eligibleStats.total}</b>.
-            Email доступен: <b>{eligibleStats.emailAvailable}</b>. Telegram доступен
-            боту: <b>{eligibleStats.telegramAvailable}</b>.
+            Email доступен: <b>{eligibleStats.emailAvailable}</b>. Telegram ID есть
+            у: <b>{eligibleStats.telegramAvailable}</b>.
           </div>
           <div style={{ color: hiddenTelegramCount ? '#8a6d00' : '#666' }}>
             Не попали в Telegram-оценку:{' '}
             <b>{hiddenTelegramCount}</b>
-            {' '}· не нажали /start у бота:{' '}
-            <b>{eligibleStats.telegramNoDialog}</b>
             {' '}· без Telegram ID:{' '}
             <b>{eligibleStats.telegramNoId}</b>.
           </div>
+          {eligibleStats.telegramNoStartMark > 0 && (
+            <div style={{ color: '#8a6d00' }}>
+              Нет отметки /start в базе:{' '}
+              <b>{eligibleStats.telegramNoStartMark}</b>. Отправка всё равно будет
+              выполнена, а результат попадёт в отчёт доставки.
+            </div>
+          )}
           {onlyBrowserUsers && (
             <div style={{ color: '#666' }}>
               Включён дополнительный фильтр: только пользователи с доступом через
@@ -525,7 +529,7 @@ function EmailBroadcast() {
                   fontWeight: 600,
                 }}
               >
-                Показать список тех, кто не нажал /start ({noStartUsers.length})
+                Показать список без отметки /start в базе ({noStartUsers.length})
               </summary>
               <div
                 style={{
