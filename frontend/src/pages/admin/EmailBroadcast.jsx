@@ -162,7 +162,7 @@ function EmailBroadcast() {
   const { confirm } = useConfirmation();
   const [subject, setSubject] = useState('Новая ссылка для входа в приложение');
   const [body, setBody] = useState('');
-  const [onlyBrowserUsers, setOnlyBrowserUsers] = useState(false);
+  const [onlyBrowserUsers, setOnlyBrowserUsers] = useState(true);
   const [appendLoginUrl, setAppendLoginUrl] = useState(true);
   const [recipientCountEmail, setRecipientCountEmail] = useState(null);
   const [recipientCountTelegram, setRecipientCountTelegram] = useState(null);
@@ -649,8 +649,8 @@ function EmailBroadcast() {
               checked={onlyBrowserUsers}
               onChange={(e) => setOnlyBrowserUsers(e.target.checked)}
             />
-            Ограничить только пользователями с доступом через браузер (обычно
-            оставьте выключенным, чтобы считать всех approved)
+            Только пользователи с доступом через браузер (рекомендуется для
+            ссылки на вход)
           </label>
           <label className={styles.checkboxLabel}>
             <input

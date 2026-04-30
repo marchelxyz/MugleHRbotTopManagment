@@ -488,7 +488,7 @@ class BroadcastEmailRequest(BaseModel):
 
     subject: str = Field(..., min_length=1, max_length=200)
     body: str = Field(..., min_length=1, max_length=20000)
-    only_browser_users: bool = False
+    only_browser_users: bool = True
     append_login_url: bool = True
     send_email: bool = True
     send_telegram: bool = False

@@ -418,8 +418,8 @@ async def bulk_send_credentials_route(
 @router.get("/users/broadcast-email/preview", response_model=schemas.BroadcastEmailPreviewResponse)
 async def broadcast_email_preview_route(
     only_browser_users: bool = Query(
-        False,
-        description="Ограничить пользователями с доступом через браузер (по умолчанию считаются все approved)",
+        True,
+        description="Считать только пользователей с доступом через браузер (не заблокированы, одобрены)",
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -435,8 +435,8 @@ async def broadcast_email_preview_route(
 @router.get("/users/broadcast/eligible", response_model=schemas.BroadcastEligibleResponse)
 async def broadcast_eligible_users_route(
     only_browser_users: bool = Query(
-        False,
-        description="Ограничить пользователями с включённым входом через браузер",
+        True,
+        description="Только пользователи с включённым входом через браузер",
     ),
     db: AsyncSession = Depends(get_db),
 ):
