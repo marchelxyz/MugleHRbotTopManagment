@@ -432,12 +432,38 @@ async def broadcast_email_preview_route(
     )
 
 
+@router.get("/users/broadcast/eligible", response_model=schemas.BroadcastEligibleResponse)
+async def broadcast_eligible_users_route(
+    only_browser_users: bool = Query(
+        True,
+        description="Только пользователи с включённым входом через браузер",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Список пользователей-кандидатов на рассылку (для UI выбора получателей)."""
+    users = await crud.fetch_broadcast_eligible_users(db, only_browser_users)
+    available_email = sum(1 for u in users if u.get("email_available"))
+    available_telegram = sum(1 for u in users if u.get("telegram_available"))
+    no_dialog = sum(1 for u in users if u.get("telegram_no_dialog"))
+    return schemas.BroadcastEligibleResponse(
+        only_browser_users=only_browser_users,
+        users=[schemas.BroadcastEligibleUser(**u) for u in users],
+        total=len(users),
+        available_email=available_email,
+        available_telegram=available_telegram,
+        telegram_no_dialog_count=no_dialog,
+    )
+
+
 @router.post("/users/broadcast-email", response_model=schemas.BroadcastEmailResponse)
 async def broadcast_email_route(
     request: schemas.BroadcastEmailRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Рассылка в email, Telegram или оба канала: одобренные пользователи, не заблокированы."""
+    """Рассылка в email, Telegram или оба канала: одобренные пользователи, не заблокированы.
+
+    Если в теле передан ``user_ids`` — отправка ограничена этим списком.
+    """
     if request.send_email:
         smtp_user = getattr(settings, "SMTP_USERNAME", None) or ""
         smtp_pass = getattr(settings, "SMTP_PASSWORD", None) or ""
@@ -459,8 +485,9 @@ async def broadcast_email_route(
         body_plain=request.body,
         only_browser_users=request.only_browser_users,
         append_login_url=request.append_login_url,
-        send_email=request.send_email,
-        send_telegram=request.send_telegram,
+        do_send_email=request.send_email,
+        do_send_telegram=request.send_telegram,
+        user_ids=request.user_ids,
     )
     parts: list[str] = []
     if request.send_email:
@@ -479,6 +506,9 @@ async def broadcast_email_route(
         sent_ok_email=result["sent_ok_email"],
         sent_ok_telegram=result["sent_ok_telegram"],
         failed=[schemas.BroadcastEmailFailedItem(**f) for f in result["failed"]],
+        recipients=[
+            schemas.BroadcastRecipientReport(**r) for r in result.get("recipients", [])
+        ],
     )
 
 

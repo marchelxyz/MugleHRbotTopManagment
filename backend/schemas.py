@@ -480,7 +480,11 @@ class BulkSendCredentialsResponse(BaseModel):
     failed_users: List[int] = []
 
 class BroadcastEmailRequest(BaseModel):
-    """Рассылка одобренным пользователям: email, Telegram или оба канала."""
+    """Рассылка одобренным пользователям: email, Telegram или оба канала.
+
+    Если ``user_ids`` указан — рассылка ограничена этим списком (с учётом
+    стандартных фильтров «есть валидный email» / «привязан Telegram»).
+    """
 
     subject: str = Field(..., min_length=1, max_length=200)
     body: str = Field(..., min_length=1, max_length=20000)
@@ -488,6 +492,7 @@ class BroadcastEmailRequest(BaseModel):
     append_login_url: bool = True
     send_email: bool = True
     send_telegram: bool = False
+    user_ids: Optional[List[int]] = None
 
     @field_validator("subject", "body", mode="before")
     @classmethod
@@ -503,16 +508,45 @@ class BroadcastEmailRequest(BaseModel):
             raise ValueError("Тема письма не должна содержать переносы строк")
         return v
 
+    @field_validator("user_ids")
+    @classmethod
+    def normalize_user_ids(cls, v):
+        if v is None:
+            return None
+        ids = [int(x) for x in v if x is not None]
+        ids = list(dict.fromkeys(ids))
+        if not ids:
+            raise ValueError(
+                "Список user_ids пуст. Чтобы отправить всем, не передавайте поле"
+            )
+        return ids
+
     @model_validator(mode="after")
     def at_least_one_channel(self) -> "BroadcastEmailRequest":
         if not self.send_email and not self.send_telegram:
             raise ValueError("Выберите хотя бы один канал: email или Telegram")
         return self
 
+
 class BroadcastEmailFailedItem(BaseModel):
     channel: Literal["email", "telegram"]
     target: str
     detail: str
+
+
+class BroadcastRecipientReport(BaseModel):
+    """Подробная запись о доставке для одного пользователя в одном канале."""
+
+    user_id: int
+    channel: Literal["email", "telegram"]
+    target: str
+    name: str = ""
+    ok: bool = False
+    skipped: bool = False
+    skip_reason: Optional[str] = None
+    error_code: Optional[str] = None
+    detail: Optional[str] = None
+
 
 class BroadcastEmailResponse(BaseModel):
     message: str
@@ -521,10 +555,37 @@ class BroadcastEmailResponse(BaseModel):
     sent_ok_email: int = 0
     sent_ok_telegram: int = 0
     failed: List[BroadcastEmailFailedItem] = []
+    recipients: List[BroadcastRecipientReport] = []
+
 
 class BroadcastEmailPreviewResponse(BaseModel):
     recipient_count_email: int
     recipient_count_telegram: int
+
+
+class BroadcastEligibleUser(BaseModel):
+    """Кандидат на рассылку — для UI выбора получателей."""
+
+    id: int
+    first_name: str = ""
+    last_name: str = ""
+    email: Optional[str] = None
+    telegram_id: Optional[int] = None
+    department: str = ""
+    position: str = ""
+    browser_auth_enabled: bool = False
+    email_available: bool = False
+    telegram_available: bool = False
+    telegram_no_dialog: bool = False
+
+
+class BroadcastEligibleResponse(BaseModel):
+    only_browser_users: bool
+    users: List[BroadcastEligibleUser] = []
+    total: int = 0
+    available_email: int = 0
+    available_telegram: int = 0
+    telegram_no_dialog_count: int = 0
 
 class LocalGiftResponse(OrmBase):
     id: int

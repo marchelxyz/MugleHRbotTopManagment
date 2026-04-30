@@ -272,6 +272,12 @@ export const getBroadcastEmailPreview = (onlyBrowserUsers) =>
     ...getAuthHeaders(),
   });
 
+export const getBroadcastEligibleUsers = (onlyBrowserUsers) =>
+  apiClient.get('/admin/users/broadcast/eligible', {
+    params: { only_browser_users: onlyBrowserUsers },
+    ...getAuthHeaders(),
+  });
+
 export const broadcastEmail = (payload) =>
   apiClient.post('/admin/users/broadcast-email', payload, getAuthHeaders());
 
