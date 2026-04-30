@@ -2606,9 +2606,11 @@ async def broadcast_announcement_to_users(
             only_browser_users=only_browser_users,
             user_ids=user_ids_set,
         )
-        # «Не доходят» в Telegram: пользователь не нажал /start у бота — Telegram
-        # запрещает боту первое сообщение. Помечаем такие записи отдельно,
-        # счётчик recipient_count_telegram включает только реально доступных.
+        # Не отсекаем по has_interacted_with_bot заранее: исторически все
+        # пользователи проходили /start по инструкции, а фактическую доставку
+        # подтверждает только ответ Telegram API. Если Telegram отклонит
+        # сообщение (бот заблокирован, chat not found и т.д.), это попадёт в
+        # отчёт по получателям ниже.
         recipient_count_telegram = len(users_tg)
         tg_text = _build_broadcast_telegram_html(subject, body_plain, login_url)
         for user in users_tg:
@@ -2679,7 +2681,7 @@ async def count_broadcast_telegram_recipients(
     only_browser_users: bool,
     user_ids: Optional[list[int]] = None,
 ) -> int:
-    """Число пользователей с Telegram для рассылки (одобрены, бот доступен)."""
+    """Число пользователей с Telegram для рассылки (одобрены, есть telegram_id)."""
     user_ids_set = {int(uid) for uid in user_ids} if user_ids else None
     users, _skipped = await _fetch_broadcast_telegram_users(
         db,
@@ -2737,12 +2739,11 @@ async def _fetch_broadcast_telegram_users(
     only_browser_users: bool,
     user_ids: Optional[set[int]] = None,
 ) -> tuple[list[models.User], list[models.User]]:
-    """Возвращает (доступные_для_бота, пропущенные_без_диалога).
+    """Возвращает пользователей для Telegram-рассылки и пустой список skipped.
 
-    Telegram блокирует боту первое сообщение пользователю, который не нажал /start.
-    Поэтому раскладываем на две группы: те, кто хоть раз взаимодействовал с ботом
-    (``has_interacted_with_bot``) и те, кому слать бессмысленно — их фронт покажет
-    отдельным списком в отчёте.
+    ``has_interacted_with_bot`` больше не используется как блокирующий фильтр:
+    существующим пользователям флаг будет проставлен миграцией, а реальная
+    доставляемость определяется ответом Telegram API во время рассылки.
     """
     conditions = [
         models.User.status == "approved",
@@ -2759,14 +2760,7 @@ async def _fetch_broadcast_telegram_users(
         conditions.append(models.User.id.in_(user_ids))
     result = await db.execute(select(models.User).where(and_(*conditions)))
     rows = list(result.scalars().all())
-    available: list[models.User] = []
-    skipped: list[models.User] = []
-    for user in rows:
-        if getattr(user, "has_interacted_with_bot", False):
-            available.append(user)
-        else:
-            skipped.append(user)
-    return available, skipped
+    return rows, []
 
 
 async def fetch_broadcast_eligible_users(
@@ -2810,7 +2804,7 @@ async def fetch_broadcast_eligible_users(
                 "position": user.position or "",
                 "browser_auth_enabled": bool(user.browser_auth_enabled),
                 "email_available": email_ok,
-                "telegram_available": has_real_tg and has_dialog,
+                "telegram_available": has_real_tg,
                 "telegram_no_dialog": has_real_tg and not has_dialog,
             }
         )
