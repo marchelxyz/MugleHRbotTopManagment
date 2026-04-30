@@ -15,6 +15,7 @@ import {
   getBanners,
   getAppSettings,
   updateMe,
+  getTelegramPhotoProxyUrl,
 } from './api';
 import { initializeCache, clearCache, setCachedData } from './storage';
 
@@ -300,7 +301,7 @@ function App() {
     }
 
     if (telegramUser.photo_url) {
-      setTelegramPhotoUrl(telegramUser.photo_url);
+      setTelegramPhotoUrl(getTelegramPhotoProxyUrl(telegramUser.photo_url));
     }
 
     const fetchUser = async () => {
@@ -561,11 +562,12 @@ function App() {
     }
     
     if (user.status === 'approved') {
+      const effectiveTelegramPhotoUrl = telegramPhotoUrl || getTelegramPhotoProxyUrl(user?.telegram_photo_url);
       switch (page) {
         case 'leaderboard': return <LeaderboardPage user={user} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
         case 'roulette': return <RoulettePage user={user} onUpdateUser={updateUser} />;
         case 'marketplace': return <MarketplacePage user={user} onPurchaseSuccess={handlePurchaseAndUpdate} />;
-        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} />;
+        case 'profile': return <ProfilePage user={user} telegramPhotoUrl={effectiveTelegramPhotoUrl} onNavigate={navigate} />;
         case 'bonus_card': return <BonusCardPage user={user} onBack={() => navigate('profile')} onUpdateUser={updateUser} />;
         case 'edit_profile': return <EditProfilePage user={user} onBack={() => navigate('profile')} onSaveSuccess={handleProfileSaveSuccess} />;
         case 'notifications': return <NotificationsPage user={user} onBack={() => navigate('profile')} />;
@@ -585,7 +587,7 @@ function App() {
         case 'admin': return <AdminPage seasonTheme={seasonTheme} themeAssets={themeAssets} onAppearanceUpdated={handleAppearanceUpdated} />;
         case 'home':
         default:
-          return <HomePage user={user} telegramPhotoUrl={telegramPhotoUrl || user?.telegram_photo_url} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
+          return <HomePage user={user} telegramPhotoUrl={effectiveTelegramPhotoUrl} onNavigate={navigate} isDesktop={isDesktop} seasonTheme={seasonTheme} themeAssets={themeAssets} />;
       }
     }
     

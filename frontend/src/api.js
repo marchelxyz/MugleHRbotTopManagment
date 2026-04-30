@@ -7,6 +7,14 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
+export const getTelegramPhotoProxyUrl = (photoUrl) => {
+  if (!photoUrl) return '';
+  if (photoUrl.includes('/telegram/photo-proxy?')) return photoUrl;
+
+  const base = API_BASE_URL.replace(/\/$/, '');
+  return `${base}/telegram/photo-proxy?url=${encodeURIComponent(photoUrl)}`;
+};
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
 });
